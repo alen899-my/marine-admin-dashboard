@@ -7,7 +7,7 @@ import Link from "next/link";
 import Image from "next/image"; // Import Next.js Image
 import { useState, ChangeEvent, FormEvent } from "react"; // Import Event types
 import Alert from "../ui/alert/Alert";
-import { EyeClosedIcon, EyeIcon } from "lucide-react";
+import { EyeClosedIcon, EyeIcon, EyeOff } from "lucide-react";
 
 // Define the shape of your error object
 interface FieldErrors {
@@ -185,7 +185,7 @@ export default function SignInForm() {
                     {showPassword ? (
                       <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
                     ) : (
-                      <EyeClosedIcon className="fill-gray-500 dark:fill-gray-400" />
+                      <EyeOff className="fill-gray-500 dark:fill-gray-400" />
                     )}
                   </span>
                 </div>

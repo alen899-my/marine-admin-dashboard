@@ -7,7 +7,7 @@ import Image from "next/image"; // Import Next.js Image
 import { useState, ChangeEvent, FormEvent } from "react"; // Import types
 import Select from "../form/Select";
 import Alert from "../ui/alert/Alert";
-import { EyeClosedIcon, EyeIcon } from "lucide-react";
+import { EyeClosedIcon, EyeIcon, EyeOff } from "lucide-react";
 
 // Define the shape of the form state
 interface FormState {
@@ -236,7 +236,7 @@ export default function SignUpForm() {
                     {showPassword ? (
                       <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
                     ) : (
-                      <EyeClosedIcon className="fill-gray-500 dark:fill-gray-400" />
+                      <EyeOff className="fill-gray-500 dark:fill-gray-400" />
                     )}
                   </span>
                 </div>
