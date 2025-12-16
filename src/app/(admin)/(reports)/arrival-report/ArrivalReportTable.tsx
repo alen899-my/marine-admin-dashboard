@@ -228,10 +228,10 @@ export default function ArrivalReportTable({ refresh }: ArrivalReportTableProps)
     setSaving(true);
 
     try {
-      const payload = {
+     const payload = {
         ...editData,
         reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
-        eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
+        arrivalTime: editData.eventTime ? `${editData.eventTime}+05:30` : null, 
       };
 
       const res = await fetch(`/api/arrival-report/${selectedReport._id}`, {

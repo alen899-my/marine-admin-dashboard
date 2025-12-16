@@ -74,8 +74,8 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
           vesselName: formData.vesselName,
           voyageId: formData.voyageId,
           portName: formData.portName,
-          reportDate: formData.reportDate, // ✅ NEW: Send to API
-          arrivalTime: formData.arrivalTime,
+         reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
+          arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
           robVlsfo:
             formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
           robLsmgo:
