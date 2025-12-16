@@ -1,0 +1,437 @@
+"use client";
+
+import { useState } from "react";
+import { toast } from "react-toastify";
+
+import AddForm from "@/components/common/AddForm";
+import ComponentCard from "@/components/common/ComponentCard";
+import Input from "@/components/form/input/InputField";
+import TextArea from "@/components/form/input/TextArea";
+import Label from "@/components/form/Label";
+import Button from "@/components/ui/button/Button";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+
+interface AddDailyNoonReportButtonProps {
+  onSuccess: () => void;
+}
+
+// Defined interface for the error details to avoid 'any'
+interface APIErrorDetail {
+  field: string;
+  message: string;
+}
+
+export default function AddDailyNoonReportButton({
+  onSuccess,
+}: AddDailyNoonReportButtonProps) {
+  const { isOpen, openModal, closeModal } = useModal();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ***** CHANGE: Get Current Time in IST for default value *****
+  const getCurrentDateTime = () => {
+    return new Date()
+      .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+      .replace(" ", "T")
+      .slice(0, 16);
+  };
+
+  const [form, setForm] = useState({
+    vesselName: "",
+    voyageNo: "",
+    reportDate: getCurrentDateTime(),
+    nextPort: "",
+    latitude: "",
+    longitude: "",
+    distanceTravelled: "",
+    distanceToGo: "",
+    vlsfoConsumed: "",
+    lsmgoConsumed: "",
+    windForce: "",
+    seaState: "",
+    weatherRemarks: "",
+    generalRemarks: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      vesselName: "",
+      voyageNo: "",
+      reportDate: getCurrentDateTime(),
+      nextPort: "",
+      latitude: "",
+      longitude: "",
+      distanceTravelled: "",
+      distanceToGo: "",
+      vlsfoConsumed: "",
+      lsmgoConsumed: "",
+      windForce: "",
+      seaState: "",
+      weatherRemarks: "",
+      generalRemarks: "",
+    });
+    setErrors({});
+  };
+
+  const handleClose = () => {
+    resetForm();
+    closeModal();
+  };
+
+  const handleSubmit = async () => {
+    setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      // ***** CHANGE: Append +05:30 to reportDate to lock it to IST *****
+      const payload = {
+        ...form,
+        reportDate: form.reportDate ? `${form.reportDate}+05:30` : null,
+      };
+
+      const res = await fetch("/api/noon-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.details) {
+          const fieldErrors: Record<string, string> = {};
+          // Fixed: Use APIErrorDetail interface instead of any
+          data.details.forEach((err: APIErrorDetail) => {
+            fieldErrors[err.field] = err.message;
+          });
+          setErrors(fieldErrors);
+          toast.error("Please fix highlighted errors");
+        } else {
+          toast.error(data.error || "Failed to submit noon report");
+        }
+        return;
+      }
+
+      toast.success("Daily Noon Report submitted successfully!");
+      onSuccess();
+      handleClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <Button size="md" variant="primary" onClick={openModal}>
+        Add Daily Noon Report
+      </Button>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        className="max-w-6xl p-6 lg:p-10"
+      >
+        <AddForm
+          title="Add Daily Noon Report"
+          description="Simple data collection form for daily noon position and consumption reports."
+          submitLabel={isSubmitting ? "Submitting..." : "Submit Noon Report"}
+          onCancel={handleClose}
+          onSubmit={handleSubmit}
+        >
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+            {/* GENERAL INFORMATION */}
+            <ComponentCard title="General Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    Report Date & Time (IST){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    name="reportDate"
+                    value={form.reportDate}
+                    onChange={handleChange}
+                    className={errors.reportDate ? "border-red-500" : ""}
+                  />
+                  {errors.reportDate && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.reportDate}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Vessel Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="vesselName"
+                    value={form.vesselName}
+                    onChange={handleChange}
+                    className={errors.vesselName ? "border-red-500" : ""}
+                  />
+                  {errors.vesselName && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.vesselName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Voyage No / ID <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="voyageNo"
+                    value={form.voyageNo}
+                    onChange={handleChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
+                  />
+                  {errors.voyageNo && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.voyageNo}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Next Port <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="nextPort"
+                    value={form.nextPort}
+                    onChange={handleChange}
+                    className={errors.nextPort ? "border-red-500" : ""}
+                  />
+                  {errors.nextPort && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.nextPort}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ComponentCard>
+
+            {/* POSITION */}
+            <ComponentCard title="Position & Distance">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    Latitude <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="latitude"
+                    placeholder="e.g. 24°30.5' N"
+                    value={form.latitude}
+                    onChange={handleChange}
+                    className={errors.latitude ? "border-red-500" : ""}
+                  />
+                  {errors.latitude && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.latitude}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Longitude <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="longitude"
+                    placeholder="e.g. 054°22.7' E"
+                    value={form.longitude}
+                    onChange={handleChange}
+                    className={errors.longitude ? "border-red-500" : ""}
+                  />
+                  {errors.longitude && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.longitude}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Distance Travelled (last 24 hrs, NM){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="distanceTravelled"
+                    value={form.distanceTravelled}
+                    onChange={handleChange}
+                    className={errors.distanceTravelled ? "border-red-500" : ""}
+                  />
+                  {errors.distanceTravelled && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.distanceTravelled}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Distance To Go (NM) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="distanceToGo"
+                    value={form.distanceToGo}
+                    onChange={handleChange}
+                    className={errors.distanceToGo ? "border-red-500" : ""}
+                  />
+                  {errors.distanceToGo && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.distanceToGo}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ComponentCard>
+
+            {/* FUEL */}
+            <ComponentCard title="Fuel Consumption">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    Fuel Consumed - VLSFO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="vlsfoConsumed"
+                    value={form.vlsfoConsumed}
+                    onChange={handleChange}
+                    className={errors.vlsfoConsumed ? "border-red-500" : ""}
+                  />
+                  {errors.vlsfoConsumed && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.vlsfoConsumed}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Fuel Consumed - LSMGO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="lsmgoConsumed"
+                    value={form.lsmgoConsumed}
+                    onChange={handleChange}
+                    className={errors.lsmgoConsumed ? "border-red-500" : ""}
+                  />
+                  {errors.lsmgoConsumed && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.lsmgoConsumed}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ComponentCard>
+
+            {/* WEATHER */}
+            <ComponentCard title="Weather">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    Wind / Beaufort Scale{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="windForce"
+                    value={form.windForce}
+                    placeholder="e.g. NW 15 kn / BF 4"
+                    onChange={handleChange}
+                    className={errors.windForce ? "border-red-500" : ""}
+                  />
+                  {errors.windForce && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.windForce}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Sea State / Swell <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="seaState"
+                    value={form.seaState}
+                    onChange={handleChange}
+                    className={errors.seaState ? "border-red-500" : ""}
+                  />
+                  {errors.seaState && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.seaState}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label>Weather Remarks</Label>
+                <TextArea
+                  name="weatherRemarks"
+                  rows={4}
+                  placeholder="Any additional details about weather, visibility, current, etc."
+                  value={form.weatherRemarks}
+                  onChange={handleChange}
+                  className={errors.weatherRemarks ? "border-red-500" : ""}
+                />
+                {errors.weatherRemarks && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.weatherRemarks}
+                  </p>
+                )}
+              </div>
+            </ComponentCard>
+
+            {/* GENERAL REMARKS */}
+            <ComponentCard title="General Remarks">
+              <Label>Remarks</Label>
+              <TextArea
+                name="generalRemarks"
+                rows={4}
+                placeholder="Any operational notes, incidents, speed changes, instructions, etc."
+                value={form.generalRemarks}
+                onChange={handleChange}
+                className={errors.generalRemarks ? "border-red-500" : ""}
+              />
+              {errors.generalRemarks && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.generalRemarks}
+                </p>
+              )}
+            </ComponentCard>
+          </div>
+        </AddForm>
+      </Modal>
+    </>
+  );
+}

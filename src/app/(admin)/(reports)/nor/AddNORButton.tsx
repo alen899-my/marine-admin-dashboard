@@ -1,0 +1,384 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+// Imports - Adjust paths to match your project structure
+import { useModal } from "@/hooks/useModal";
+import { Modal } from "@/components/ui/modal";
+import Button from "@/components/ui/button/Button";
+import AddForm from "@/components/common/AddForm";
+import ComponentCard from "@/components/common/ComponentCard";
+import Label from "@/components/form/Label";
+import Input from "@/components/form/input/InputField";
+import TextArea from "@/components/form/input/TextArea";
+import FileInput from "@/components/form/input/FileInput";
+// Import validation schema (adjust path as needed)
+import { norSchema } from "@/lib/validations/norSchema";
+
+interface AddNORReportButtonProps {
+  onSuccess: () => void;
+}
+
+export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
+  const router = useRouter();
+  const { isOpen, openModal, closeModal } = useModal();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const getCurrentDateTime = () => {
+    return new Date()
+      .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+      .replace(" ", "T")
+      .slice(0, 16);
+  };
+
+  // Form State
+  const [formData, setFormData] = useState({
+    vesselName: "",
+    voyageNo: "",
+    portName: "",
+    reportDate: getCurrentDateTime(),
+    pilotStation: "",
+    norTenderTime: "",
+    etaPort: "",
+    remarks: "",
+  });
+
+  // File State
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Handle Text Change
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear specific error when user types
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[name];
+        return newErr;
+      });
+    }
+  };
+
+  // Handle File Change with 500KB Validation
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // Check if file size is > 500KB (500 * 1024 bytes)
+      if (file.size > 500 * 1024) {
+        setErrors((prev) => ({
+          ...prev,
+          norDocument: "File size must be below 500 KB.",
+        }));
+        setSelectedFile(null); // Clear the file state
+        e.target.value = ""; // Reset the input UI
+        return;
+      }
+
+      // If valid, clear error and set file
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.norDocument;
+        return newErr;
+      });
+      setSelectedFile(file);
+    }
+  };
+
+  const handleClose = () => {
+    setErrors({});
+    setIsSubmitting(false);
+    setFormData({
+      vesselName: "",
+      voyageNo: "",
+      portName: "",
+      reportDate: getCurrentDateTime(),
+      pilotStation: "",
+      norTenderTime: "",
+      etaPort: "",
+      remarks: "",
+    });
+    setSelectedFile(null);
+    closeModal();
+  };
+
+  // FIX: Make 'e' optional and safely check for preventDefault
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+
+    setIsSubmitting(true);
+
+    // --- JOI VALIDATION START ---
+    const { error } = norSchema.validate(formData, { abortEarly: false });
+
+    if (error) {
+      const newErrors: Record<string, string> = {};
+      error.details.forEach((err) => {
+        // Map Joi error path to state keys
+        if (err.path && err.path[0]) {
+          newErrors[err.path[0] as string] = err.message;
+        }
+      });
+
+      setErrors(newErrors);
+      setIsSubmitting(false);
+      return;
+    }
+    // --- JOI VALIDATION END ---
+
+    try {
+      // Create FormData object
+      const data = new FormData();
+      data.append("vesselName", formData.vesselName);
+      data.append("voyageNo", formData.voyageNo);
+      data.append("portName", formData.portName);
+      data.append(
+        "reportDate",
+        formData.reportDate ? `${formData.reportDate}+05:30` : ""
+      );
+      // Match the key expected by backend
+      data.append("pilotStation", formData.pilotStation);
+
+      data.append(
+        "norTenderTime",
+        formData.norTenderTime ? `${formData.norTenderTime}+05:30` : ""
+      );
+      data.append(
+        "etaPort", 
+        formData.etaPort ? `${formData.etaPort}+05:30` : ""
+      );
+      data.append("remarks", formData.remarks);
+
+      // Append File if exists
+      if (selectedFile) {
+        data.append("norDocument", selectedFile);
+      }
+
+      // API Call - Using standard operational path
+      const response = await fetch("/api/nor", {
+        method: "POST",
+        body: data,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit NOR");
+      }
+
+      toast.success("NOR Record added successfully!");
+      onSuccess();
+      handleClose();
+      router.refresh();
+    } catch (error: unknown) {
+      // Fix: Use unknown and strict type narrowing instead of any
+      console.error(error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to add record.";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <Button size="md" variant="primary" onClick={openModal}>
+        Add NOR
+      </Button>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        className="max-w-6xl p-6 lg:p-10"
+      >
+        <AddForm
+          title="Add NOR Record"
+          description="Submit Notice of Readiness details and documentation."
+          submitLabel={isSubmitting ? "Submitting..." : "Submit NOR Record"}
+          onCancel={handleClose}
+          onSubmit={handleSubmit}
+        >
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+            {/* GENERAL INFORMATION */}
+            <ComponentCard title="General Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    Reporting Date & Time{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    name="reportDate"
+                    value={formData.reportDate}
+                    onChange={handleChange}
+                    className={errors.reportDate ? "border-red-500" : ""}
+                  />
+                  {errors.reportDate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.reportDate}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label>
+                    Vessel Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="vesselName"
+                    value={formData.vesselName}
+                    onChange={handleChange}
+                    className={errors.vesselName ? "border-red-500" : ""}
+                  />
+                  {errors.vesselName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vesselName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Voyage No / ID <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="voyageNo"
+                    value={formData.voyageNo}
+                    onChange={handleChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
+                  />
+                  {errors.voyageNo && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.voyageNo}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Port Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="portName"
+                    value={formData.portName}
+                    onChange={handleChange}
+                    className={errors.portName ? "border-red-500" : ""}
+                  />
+                  {errors.portName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.portName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Pilot Station <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="pilotStation"
+                    placeholder="Name / position of pilot station"
+                    value={formData.pilotStation}
+                    onChange={handleChange}
+                    className={errors.pilotStation ? "border-red-500" : ""}
+                  />
+                  {errors.pilotStation && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.pilotStation}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ComponentCard>
+
+            {/* NOR DETAILS */}
+            <ComponentCard title="NOR Details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>
+                    NOR Tender Time (IST){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    name="norTenderTime"
+                    value={formData.norTenderTime}
+                    onChange={handleChange}
+                    className={errors.norTenderTime ? "border-red-500" : ""}
+                  />
+                  {errors.norTenderTime && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.norTenderTime}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    ETA Port (IST) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    name="etaPort"
+                    value={formData.etaPort}
+                    onChange={handleChange}
+                    className={errors.etaPort ? "border-red-500" : ""}
+                  />
+                  {errors.etaPort && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.etaPort}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label>NOR Document (PDF / Image) - Max 500 KB</Label>
+                {/* Replaced manual file input with FileInput component */}
+                <div
+                  className={
+                    errors.norDocument ? "border border-red-500 rounded-lg" : ""
+                  }
+                >
+                  <FileInput className="w-full" onChange={handleFileChange} />
+                </div>
+                {/* Error message for file size */}
+                {errors.norDocument && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.norDocument}
+                  </p>
+                )}
+              </div>
+            </ComponentCard>
+
+            {/* REMARKS */}
+            <ComponentCard title="Remarks">
+              <Label>Remarks</Label>
+              <TextArea
+                rows={4}
+                name="remarks"
+                placeholder="Additional notes..."
+                value={formData.remarks}
+                onChange={handleChange}
+                className={errors.remarks ? "border-red-500" : ""}
+              />
+              {/* Optional error display if you later decide to validate length etc */}
+              {errors.remarks && (
+                <p className="text-xs text-red-500 mt-1">{errors.remarks}</p>
+              )}
+            </ComponentCard>
+          </div>
+        </AddForm>
+      </Modal>
+    </>
+  );
+}
