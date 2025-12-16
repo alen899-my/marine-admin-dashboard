@@ -229,16 +229,27 @@ export default function SignUpForm() {
                     placeholder="Enter your password"
                     className={fieldErrors.password ? "border-red-500" : ""}
                   />
-                  <span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
-                  >
-                    {showPassword ? (
-                      <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
-                    ) : (
-                      <EyeOff className="fill-gray-500 dark:fill-gray-400" />
-                    )}
-                  </span>
+                  <button
+  type="button"
+  onClick={() => setShowPassword((prev) => !prev)}
+  aria-label={showPassword ? "Hide password" : "Show password"}
+  className="
+    absolute right-4 top-1/2 -translate-y-1/2
+    flex items-center justify-center
+    h-9 w-9 rounded-full
+    text-gray-500 dark:text-gray-400
+   
+    
+    transition
+  "
+>
+  {showPassword ? (
+    <EyeIcon className="h-5 w-5" />
+  ) : (
+    <EyeOff className="h-5 w-5" />
+  )}
+</button>
+
                 </div>
                 {fieldErrors.password && (
                   <p className="text-red-500 text-sm mt-1">
