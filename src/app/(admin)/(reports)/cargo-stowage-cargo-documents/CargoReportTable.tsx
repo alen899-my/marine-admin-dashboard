@@ -561,9 +561,7 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       onChange={(val) => setEditData({ ...editData, status: val })}
                       className="dark:bg-dark-900"
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                      <ChevronDownIcon />
-                    </span>
+                  
                   </div>
                 </div>
                 <div>
@@ -610,9 +608,7 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       onChange={(val) => setEditData({ ...editData, portType: val })}
                       className="dark:bg-dark-900"
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                      <ChevronDownIcon />
-                    </span>
+                
                   </div>
                 </div>
 
@@ -626,9 +622,7 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       onChange={(val) => setEditData({ ...editData, documentType: val })}
                       className="dark:bg-dark-900"
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                      <ChevronDownIcon />
-                    </span>
+                
                   </div>
                 </div>
                 <div>

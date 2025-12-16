@@ -278,9 +278,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                       onChange={(val) => handleSelectChange("portType", val)}
                       className={`${errors.portType ? "border-red-500" : ""} dark:bg-dark-900`}
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                      <ChevronDownIcon />
-                    </span>
+                    
                   </div>
                   {errors.portType && <p className="text-xs text-red-500 mt-1">{errors.portType}</p>}
                 </div>
@@ -301,9 +299,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                       onChange={(val) => handleSelectChange("documentType", val)}
                       className={`${errors.documentType ? "border-red-500" : ""} dark:bg-dark-900`}
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                      <ChevronDownIcon />
-                    </span>
+                   
                   </div>
                   {errors.documentType && <p className="text-xs text-red-500 mt-1">{errors.documentType}</p>}
                 </div>
