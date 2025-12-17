@@ -790,3 +790,14 @@ span.flatpickr-weekday,
   width: 0;
   height: 0;
 }
+
+/* Force NProgress to be on top of everything */
+#nprogress .bar {
+  background: var(--color-brand-500) !important; /* Ensures brand color */
+  height: 4px !important;
+  z-index: 99999999 !important; /* Must be higher than ToastContainer */
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px var(--color-brand-500), 0 0 5px var(--color-brand-500) !important;
+}

@@ -30,6 +30,8 @@
     "mongodb": "^7.0.0",
     "mongoose": "^9.0.0",
     "next": "^16.0.10",
+    "next-nprogress-bar": "^2.4.7",
+    "nextjs-toploader": "^3.9.17",
     "nodemailer": "^7.0.11",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
