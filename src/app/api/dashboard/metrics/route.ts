@@ -10,41 +10,33 @@ export async function GET() {
   try {
     await dbConnect();
 
-    // 1) Daily Noon Reports
-    const dailyNoon = await ReportDaily.countDocuments({
-      type: "noon",
-      status: "active",
-    });
-
-    // 2) Departure Reports
-    const departure = await ReportOperational.countDocuments({
-      eventType: "departure",
-      status: "active",
-    });
-
-    // 3) Arrival Reports
-    const arrival = await ReportOperational.countDocuments({
-      eventType: "arrival",
-      status: "active",
-    });
-
-    // 4) NOR Reports
-    const nor = await ReportOperational.countDocuments({
-      eventType: "nor",
-      status: "active",
-    });
-
-    // 5) Cargo Stowage Reports (Documents)
-    const cargoStowage = await Document.countDocuments({
-      documentType: "stowage_plan",
-      status: "active",
-    });
-    
-    // 6) Cargo Documents (Documents)
-    const cargoDocuments = await Document.countDocuments({
-      documentType: "cargo_documents",
-      status: "active",
-    });
+    // Fire all queries simultaneously using Promise.all
+    const [
+      dailyNoon,
+      departure,
+      arrival,
+      nor,
+      cargoStowage,
+      cargoDocuments
+    ] = await Promise.all([
+      // 1) Daily Noon
+      ReportDaily.countDocuments({ type: "noon", status: "active" }),
+      
+      // 2) Departure
+      ReportOperational.countDocuments({ eventType: "departure", status: "active" }),
+      
+      // 3) Arrival
+      ReportOperational.countDocuments({ eventType: "arrival", status: "active" }),
+      
+      // 4) NOR
+      ReportOperational.countDocuments({ eventType: "nor", status: "active" }),
+      
+      // 5) Cargo Stowage
+      Document.countDocuments({ documentType: "stowage_plan", status: "active" }),
+      
+      // 6) Cargo Documents
+      Document.countDocuments({ documentType: "cargo_documents", status: "active" })
+    ]);
 
     return NextResponse.json({
       dailyNoon,
