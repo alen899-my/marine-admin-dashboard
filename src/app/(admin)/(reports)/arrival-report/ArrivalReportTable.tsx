@@ -47,9 +47,19 @@ interface EditFormData {
 
 interface ArrivalReportTableProps {
   refresh: number;
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
 }
 
-export default function ArrivalReportTable({ refresh }: ArrivalReportTableProps) {
+export default function ArrivalReportTable({ 
+  refresh,
+  search,
+  status,
+  startDate,
+  endDate,
+ }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -63,11 +73,6 @@ export default function ArrivalReportTable({ refresh }: ArrivalReportTableProps)
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const LIMIT = 10;
 
@@ -282,16 +287,6 @@ export default function ArrivalReportTable({ refresh }: ArrivalReportTableProps)
   /* ================= RENDER ================= */
   return (
     <>
-      <Filters
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-      />
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">

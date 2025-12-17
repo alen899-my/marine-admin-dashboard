@@ -3,7 +3,6 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
-import Filters from "@/components/common/Filters";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
@@ -11,7 +10,6 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { ChevronDownIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -42,10 +40,18 @@ interface IDepartureReport {
 
 interface DepartureReportTableProps {
   refresh: number;
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
 }
 
 export default function DepartureReportTable({
   refresh,
+  search,
+  status,
+  startDate,
+  endDate,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
@@ -60,11 +66,6 @@ export default function DepartureReportTable({
   const [totalPages, setTotalPages] = useState(1);
   const [openEdit, setOpenEdit] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const LIMIT = 10;
 
@@ -289,16 +290,6 @@ export default function DepartureReportTable({
   /* ================= RENDER ================= */
   return (
     <>
-      <Filters
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-      />
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900  rounded-xl">
         <div className="max-w-full overflow-x-auto overflow-hidden">
           <div className="min-w-[1200px]">

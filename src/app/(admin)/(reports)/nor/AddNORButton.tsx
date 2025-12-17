@@ -198,7 +198,16 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        className="max-w-6xl p-6 lg:p-10"
+        className={`
+        w-full
+        max-w-[95vw]
+        sm:max-w-[90vw]
+        md:max-w-[720px]
+        lg:max-w-[900px]
+        p-4
+        sm:p-6
+        lg:p-8
+      `}
       >
         <AddForm
           title="Add NOR Record"

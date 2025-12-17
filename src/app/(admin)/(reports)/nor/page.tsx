@@ -1,27 +1,55 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
-import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import Filters from "@/components/common/Filters";
+import { useState } from "react";
 import AddNORButton from "./AddNORButton";
 import NorReportTable from "./NorReportTable";
-import { useState } from "react";
 
 export default function NoticeOfReadiness() {
   const [refresh, setRefresh] = useState(0);
 
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   return (
-    <div>
-      <PageBreadcrumb pageTitle="NOR" />
+    <div className="space-y-6">
+      {/* Header Section: Title on left, Button on right */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+          NOR
+        </h2>
 
-      <div className="space-y-6">
-        <ComponentCard title="NOR Table" action={<AddNORButton onSuccess={handleRefresh}/>}>
-         
-
-          <NorReportTable refresh={refresh}/>
-        </ComponentCard>
+        {/* Button moved here */}
+        <AddNORButton onSuccess={handleRefresh} />
       </div>
+      <ComponentCard
+        headerClassName="p-0 px-1"
+        title={
+          <Filters
+            search={search}
+            setSearch={setSearch}
+            status={status}
+            setStatus={setStatus}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+          />
+        }
+      >
+        <NorReportTable
+          refresh={refresh}
+          search={search}
+          status={status}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </ComponentCard>
     </div>
   );
 }

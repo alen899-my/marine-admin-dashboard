@@ -1,29 +1,59 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
-import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import Filters from "@/components/common/Filters"; // Imported Filters
+import { useState } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonReportTable from "./DailyNoonReportTable";
-import { useState } from "react";
 
 export default function DailyNoonReport() {
   const [refresh, setRefresh] = useState(0);
 
+  // --- Moved State from Table to Page ---
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   return (
-    <div>
-      <PageBreadcrumb pageTitle="Daily Noon Report" />
+    <div className="space-y-6">
+      {/* Header Section: Title on left, Button on right */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+          Daily Noon Report
+        </h2>
 
-      <div className="space-y-6">
-        {/* ✅ Pass the button to the 'action' prop */}
-        <ComponentCard 
-          title="Daily Noon Report Table" 
-          action={<AddDailyNoonReportButton onSuccess={handleRefresh} />}
-        >
-          <DailyNoonReportTable refresh={refresh} />
-        </ComponentCard>
+        {/* Button moved here */}
+        <AddDailyNoonReportButton onSuccess={handleRefresh} />
       </div>
+
+      {/* Card Section: Action prop removed */}
+      <ComponentCard
+      headerClassName="p-0 px-1"
+      title={
+          <Filters
+            search={search}
+            setSearch={setSearch}
+            status={status}
+            setStatus={setStatus}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+          />
+        } 
+      >
+        <DailyNoonReportTable 
+          refresh={refresh} 
+          // Passing filter props down
+          search={search}
+          status={status}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </ComponentCard>
     </div>
   );
 }

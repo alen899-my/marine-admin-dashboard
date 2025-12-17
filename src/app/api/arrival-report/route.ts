@@ -1,3 +1,4 @@
+// src/app/api/arrival-report/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 
@@ -6,6 +7,30 @@ import ReportOperational from "@/models/ReportOperational";
 
 // VALIDATION
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
+
+// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+function parseDateString(dateStr: string | null | undefined): Date | undefined {
+  if (!dateStr) return undefined;
+
+  // Check if string matches dd/mm/yyyy format (simple check)
+  if (typeof dateStr === "string" && dateStr.includes("/")) {
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
+      const year = parseInt(parts[2], 10);
+      
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
+  // Fallback: Try standard parsing (for ISO strings or if Joi already converted it)
+  const fallbackDate = new Date(dateStr);
+  return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
+}
 
 /* ======================================
    GET ALL ARRIVAL REPORTS
@@ -50,18 +75,27 @@ export async function GET(req: NextRequest) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
 
       if (startDate) {
-        dateQuery.$gte = new Date(startDate);
+        // ✅ Parse dd/mm/yyyy
+        const parsedStart = parseDateString(startDate);
+        if (parsedStart) {
+          dateQuery.$gte = parsedStart;
+        }
       }
 
       if (endDate) {
-        // End of the selected day (23:59:59)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateQuery.$lte = end;
+        // ✅ Parse dd/mm/yyyy
+        const parsedEnd = parseDateString(endDate);
+        if (parsedEnd) {
+          // End of the selected day (23:59:59.999)
+          parsedEnd.setHours(23, 59, 59, 999);
+          dateQuery.$lte = parsedEnd;
+        }
       }
       
-      // Assign the typed object to the query
-      query.reportDate = dateQuery;
+      // Assign the typed object to the query only if valid
+      if (dateQuery.$gte || dateQuery.$lte) {
+        query.reportDate = dateQuery;
+      }
     }
 
     // 5. Fetch Data
@@ -116,6 +150,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ PARSE DATE safely here
+    const parsedReportDate = parseDateString(value.reportDate);
+
+    if (!parsedReportDate) {
+        return NextResponse.json(
+            { error: "Invalid Date Format. Please use dd/mm/yyyy" }, 
+            { status: 400 }
+        );
+    }
+
     const report = await ReportOperational.create({
       eventType: "arrival",
       status: "active",
@@ -124,8 +168,8 @@ export async function POST(req: NextRequest) {
       voyageId: value.voyageId,
       portName: value.portName,
 
-      // ✅ ADDED: Reporting Date
-      reportDate: new Date(value.reportDate),
+      // ✅ ADDED: Reporting Date (using parsed object)
+      reportDate: parsedReportDate,
 
       // ✅ shared field
       eventTime: new Date(value.arrivalTime),

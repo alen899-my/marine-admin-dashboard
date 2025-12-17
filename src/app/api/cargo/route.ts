@@ -1,3 +1,4 @@
+// src/app/api/cargo/route.ts
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -5,6 +6,30 @@ import { dbConnect } from "@/lib/db";
 import Document from "@/models/Document"; // Adjust path to your model
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
+
+// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+function parseDateString(dateStr: string | null | undefined): Date | undefined {
+  if (!dateStr) return undefined;
+
+  // Check if string matches dd/mm/yyyy format (simple check)
+  if (typeof dateStr === "string" && dateStr.includes("/")) {
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
+      const year = parseInt(parts[2], 10);
+      
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
+  // Fallback: Try standard parsing (for ISO strings or if Joi already converted it)
+  const fallbackDate = new Date(dateStr);
+  return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
+}
 
 export async function POST(req: Request) {
   try {
@@ -83,6 +108,32 @@ export async function POST(req: Request) {
     }
     // --- File Handling End ---
 
+    // ✅ PARSE REPORT DATE
+    let finalReportDate = new Date(); // Default to now
+    if (reportDate) {
+       const parsed = parseDateString(reportDate);
+       if (!parsed) {
+         return NextResponse.json(
+           { error: "Invalid Report Date Format. Please use dd/mm/yyyy" }, 
+           { status: 400 }
+         );
+       }
+       finalReportDate = parsed;
+    }
+
+    // ✅ PARSE DOCUMENT DATE (Fixed this section)
+    let finalDocumentDate = new Date();
+    if (documentDate) {
+      const parsed = parseDateString(documentDate);
+      if (!parsed) {
+        return NextResponse.json(
+          { error: "Invalid Document Date Format. Please use dd/mm/yyyy" },
+          { status: 400 }
+        );
+      }
+      finalDocumentDate = parsed;
+    }
+
     // Save to Database
     const newDoc = await Document.create({
       vesselName,
@@ -90,8 +141,10 @@ export async function POST(req: Request) {
       portName,
       portType,
       documentType,
-      reportDate: reportDate ? new Date(reportDate) : new Date(),
-      documentDate: new Date(documentDate),
+      
+      reportDate: finalReportDate,
+      documentDate: finalDocumentDate, // ✅ Using the parsed date variable
+      
       remarks,
       file: {
         url: fileUrl,
@@ -107,7 +160,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     console.error("Upload Error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Internal Server Error";
@@ -132,7 +184,6 @@ export async function GET(req: Request) {
     const endDate = searchParams.get("endDate");
 
     // 2. Build Query
-    // Fixed: Use Record<string, unknown> instead of 'any' to satisfy linter
     const query: Record<string, unknown> = {};
 
     // 3. Apply Status Filter
@@ -146,29 +197,36 @@ export async function GET(req: Request) {
         { vesselName: { $regex: search, $options: "i" } },
         { voyageNo: { $regex: search, $options: "i" } },
         { portName: { $regex: search, $options: "i" } },
-        // Optional: Add documentType to search if needed
-        // { documentType: { $regex: search, $options: "i" } },
       ];
     }
     
     // ✅ Date Filter Addition: Apply Date Range Query
     if (startDate || endDate) {
-      // Define a typed object for the date query to avoid implicitly creating properties on 'unknown'
+      // Define a typed object for the date query
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
 
       if (startDate) {
-        dateQuery.$gte = new Date(startDate);
+        // ✅ Parse dd/mm/yyyy
+        const parsedStart = parseDateString(startDate);
+        if (parsedStart) {
+          dateQuery.$gte = parsedStart;
+        }
       }
 
       if (endDate) {
-        // End of the selected day (23:59:59)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateQuery.$lte = end;
+        // ✅ Parse dd/mm/yyyy
+        const parsedEnd = parseDateString(endDate);
+        if (parsedEnd) {
+          // End of the selected day (23:59:59.999)
+          parsedEnd.setHours(23, 59, 59, 999);
+          dateQuery.$lte = parsedEnd;
+        }
       }
 
       // Assign the typed object to the query
-      query.reportDate = dateQuery;
+      if (dateQuery.$gte || dateQuery.$lte) {
+        query.reportDate = dateQuery;
+      }
     }
 
     // 5. Fetch Data
@@ -189,7 +247,6 @@ export async function GET(req: Request) {
       },
     });
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     const errorMessage =
       error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });

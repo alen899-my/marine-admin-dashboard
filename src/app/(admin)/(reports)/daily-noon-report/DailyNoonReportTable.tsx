@@ -3,7 +3,6 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
-import Filters from "@/components/common/Filters";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
@@ -11,7 +10,6 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { ChevronDownIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -52,12 +50,21 @@ interface IDailyNoonReport {
   remarks?: string;
 }
 
+// Updated Props Interface
 interface DailyNoonReportTableProps {
   refresh: number;
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
 }
 
 export default function DailyNoonReportTable({
   refresh,
+  search,
+  status,
+  startDate,
+  endDate,
 }: DailyNoonReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDailyNoonReport[]>([]);
@@ -65,21 +72,18 @@ export default function DailyNoonReportTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  
+
   const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(null);
-  
+
   // Edit data requires a structure similar to the report but mutable for form inputs
   const [editData, setEditData] = useState<IDailyNoonReport | null>(null);
-  
+
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 10;
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // Local state for filters removed (now coming from props)
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -175,11 +179,11 @@ export default function DailyNoonReportTable({
     }
   }, [LIMIT, search, status, startDate, endDate]);
 
-  // Filter Trigger (Search, Status, Dates)
+  // Filter Trigger (Search, Status, Dates) - using props now
   useEffect(() => {
     fetchReports(1);
     setCurrentPage(1);
-  }, [fetchReports]); 
+  }, [fetchReports]); // fetchReports dependency already includes search/status/dates
 
   // Refresh Trigger
   useEffect(() => {
@@ -302,16 +306,7 @@ export default function DailyNoonReportTable({
 
   return (
     <>
-      <Filters
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-      />
+      {/* Filters Removed from here */}
       <div
         className="border border-gray-200 bg-white text-gray-800
                   dark:border-white/10 dark:bg-slate-900 dark:text-gray-100 rounded-xl"
@@ -504,7 +499,6 @@ export default function DailyNoonReportTable({
                       }
                       className="dark:bg-dark-900"
                     />
-               
                   </div>
                 </div>
                 <div>

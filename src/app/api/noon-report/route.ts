@@ -6,6 +6,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
 import ReportDaily from "@/models/ReportDaily";
 
+// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+function parseDateString(dateStr: string | null | undefined): Date | undefined {
+  if (!dateStr) return undefined;
+
+  // Check if string matches dd/mm/yyyy format (simple check)
+  if (typeof dateStr === "string" && dateStr.includes("/")) {
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
+      const year = parseInt(parts[2], 10);
+      
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
+  // Fallback: Try standard parsing (for ISO strings or if Joi already converted it)
+  const fallbackDate = new Date(dateStr);
+  return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
+}
+
 //  GET ALL NOON REPORTS
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +51,6 @@ export async function GET(req: NextRequest) {
     // -----------------------------
     // BUILD QUERY OBJECT
     // -----------------------------
-    // Fixed: Use Record<string, unknown> to satisfy no-explicit-any
     const query: Record<string, unknown> = {};
 
     // STATUS FILTER
@@ -44,25 +67,32 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // 2. Apply Date Filter (Exact match to NOR logic)
+    // 2. Apply Date Filter (Using Custom Parser)
     if (startDate || endDate) {
-      // Define a typed object for the date query to avoid implicitly creating properties on 'unknown'
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
 
       if (startDate) {
-        // Start of the selected day
-        dateQuery.$gte = new Date(startDate);
+        // ✅ Parse dd/mm/yyyy
+        const parsedStart = parseDateString(startDate);
+        if (parsedStart) {
+          dateQuery.$gte = parsedStart;
+        }
       }
 
       if (endDate) {
-        // End of the selected day (23:59:59.999)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateQuery.$lte = end;
+        // ✅ Parse dd/mm/yyyy
+        const parsedEnd = parseDateString(endDate);
+        if (parsedEnd) {
+          // End of the selected day (23:59:59.999)
+          parsedEnd.setHours(23, 59, 59, 999);
+          dateQuery.$lte = parsedEnd;
+        }
       }
 
-      // Assign the typed object to the query
-      query.reportDate = dateQuery;
+      // Only attach if we successfully parsed at least one date
+      if (dateQuery.$gte || dateQuery.$lte) {
+        query.reportDate = dateQuery;
+      }
     }
 
     // COUNT
@@ -85,7 +115,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     console.error("GET NOON REPORT ERROR →", error);
     return NextResponse.json(
       { error: "Failed to fetch reports" },
@@ -101,6 +130,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // JOI VALIDATION
+    // Note: Ensure your Joi schema allows reportDate to be a string
     const { error, value } = noonReportSchema.validate(body, {
       abortEarly: false,
     });
@@ -136,6 +166,16 @@ export async function POST(req: NextRequest) {
       generalRemarks,
     } = value;
 
+    // ✅ PARSE DATE safely here
+    const parsedReportDate = parseDateString(reportDate);
+
+    if (!parsedReportDate) {
+        return NextResponse.json(
+            { error: "Invalid Date Format. Please use dd/mm/yyyy" }, 
+            { status: 400 }
+        );
+    }
+
     // SAVE REPORT
     const report = await ReportDaily.create({
       vesselName: vesselName,
@@ -143,8 +183,9 @@ export async function POST(req: NextRequest) {
 
       type: "noon",
       status: "active",
-      // ***** CHANGE: Ensure Date is created from valid string *****
-      reportDate: new Date(reportDate),
+      
+      // ✅ Use the parsed date object
+      reportDate: parsedReportDate,
 
       position: {
         lat: latitude,
@@ -180,7 +221,6 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     console.error("NOON REPORT ERROR →", error);
     const errorMessage =
       error instanceof Error ? error.message : "Internal server error";

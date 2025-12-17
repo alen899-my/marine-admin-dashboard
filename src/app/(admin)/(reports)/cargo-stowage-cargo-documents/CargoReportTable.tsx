@@ -7,13 +7,11 @@ import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import Select from "@/components/form/Select";
-import Filters from "@/components/common/Filters";
-import { ChevronDownIcon } from "lucide-react";
 
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
@@ -37,9 +35,19 @@ interface ICargoReport {
 
 interface CargoReportTableProps {
   refresh: number;
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
 }
 
-export default function CargoReportTable({ refresh }: CargoReportTableProps) {
+export default function CargoReportTable({
+  refresh,
+  search,
+  status,
+  startDate,
+  endDate,
+}: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,8 +58,10 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
   const [openDelete, setOpenDelete] = useState(false);
 
   // Selection States
-  const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(null);
-  
+  const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(
+    null
+  );
+
   // Edit data state - using Partial or a specific edit interface is safer, but any is acceptable for form state if dynamic
   // We will keep it loosely typed for form handling flexibility or define a specific shape:
   const [editData, setEditData] = useState<{
@@ -74,13 +84,6 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
-
-  //filter states 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  // ✅ Date Filter Addition: Main state for filters
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const LIMIT = 10;
 
@@ -121,7 +124,8 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
     {
       header: "S.No",
       // Fix 'any' in arguments
-      render: (_: ICargoReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: ICargoReport, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Vessel Name",
@@ -130,7 +134,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
     {
       header: "Type",
       render: (r: ICargoReport) => (
-        <span className="capitalize">{r?.portType?.replace("_", " ") ?? "-"}</span>
+        <span className="capitalize">
+          {r?.portType?.replace("_", " ") ?? "-"}
+        </span>
       ),
     },
     {
@@ -159,35 +165,38 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
   ];
 
   /* ================= 2. API FUNCTIONS ================= */
-  
+
   // 3. Fix useEffect dependency warning: Wrap in useCallback
-  const fetchReports = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/cargo?${query.toString()}`);
+        const res = await fetch(`/api/cargo?${query.toString()}`);
 
-      if (!res.ok) throw new Error(`Error: ${res.status}`);
+        if (!res.ok) throw new Error(`Error: ${res.status}`);
 
-      const result = await res.json();
-      setReports(result.data || []);
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch (err) {
-      // Fix 'err' unused: Log it or use a typed catch
-      console.error(err);
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  }, [LIMIT, search, status, startDate, endDate]); // Dependencies for useCallback
+        const result = await res.json();
+        setReports(result.data || []);
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch (err) {
+        // Fix 'err' unused: Log it or use a typed catch
+        console.error(err);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [LIMIT, search, status, startDate, endDate]
+  ); // Dependencies for useCallback
 
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -198,7 +207,10 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
       formData.append("status", editData.status);
       formData.append("vesselName", editData.vesselName);
 
-      formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
+      formData.append(
+        "reportDate",
+        editData.reportDate ? `${editData.reportDate}+05:30` : ""
+      );
 
       formData.append("voyageNo", editData.voyageNo);
       formData.append("portName", editData.portName);
@@ -233,7 +245,8 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
     } catch (err: unknown) {
       // Fix: Type safe error handling
       console.error(err);
-      const message = err instanceof Error ? err.message : "Failed to update record";
+      const message =
+        err instanceof Error ? err.message : "Failed to update record";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -253,9 +266,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
       setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
       toast.success("Record deleted");
     } catch (err) {
-        // Fix unused err by removing it or logging it
-        console.error(err);
-        toast.error("Failed to delete record");
+      // Fix unused err by removing it or logging it
+      console.error(err);
+      toast.error("Failed to delete record");
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
@@ -267,12 +280,12 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
   useEffect(() => {
     fetchReports(1);
     setCurrentPage(1);
-  }, [fetchReports]); 
+  }, [fetchReports]);
 
   // Fetch when page changes (skip if it's page 1 as the previous effect handles that transition often, but logic here is fine)
   useEffect(() => {
     if (currentPage > 1) {
-        fetchReports(currentPage);
+      fetchReports(currentPage);
     }
   }, [currentPage, fetchReports]);
 
@@ -310,12 +323,14 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
       portName: report.portName ?? "",
       portType: report.portType ?? "load",
       documentType: report.documentType ?? "stowage_plan",
-      documentDate: report.documentDate ? new Date(report.documentDate).toISOString().split("T")[0] : "",
+      documentDate: report.documentDate
+        ? new Date(report.documentDate).toISOString().split("T")[0]
+        : "",
       remarks: report.remarks ?? "",
     });
     setOpenEdit(true);
   }
-  
+
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
@@ -337,8 +352,12 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
     : previewUrl?.toLowerCase().endsWith(".pdf");
 
   const isExcelPreview = newFile
-    ? (newFile.name.endsWith(".xls") || newFile.name.endsWith(".xlsx") || newFile.name.endsWith(".csv"))
-    : (previewUrl?.toLowerCase().endsWith(".xls") || previewUrl?.toLowerCase().endsWith(".xlsx") || previewUrl?.toLowerCase().endsWith(".csv"));
+    ? newFile.name.endsWith(".xls") ||
+      newFile.name.endsWith(".xlsx") ||
+      newFile.name.endsWith(".csv")
+    : previewUrl?.toLowerCase().endsWith(".xls") ||
+      previewUrl?.toLowerCase().endsWith(".xlsx") ||
+      previewUrl?.toLowerCase().endsWith(".csv");
 
   /* ================= RENDER ================= */
   const fileMeta = selectedReport?.file?.url
@@ -351,16 +370,6 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
 
   return (
     <>
-      <Filters
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-      />
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
@@ -401,26 +410,41 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
           {/* General Info */}
           <ComponentCard title="General Information">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
-
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Vessel Name</p>
-                <p className="font-medium">{selectedReport?.vesselName ?? "-"}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Vessel Name
+                </p>
+                <p className="font-medium">
+                  {selectedReport?.vesselName ?? "-"}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Voyage No</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Voyage No
+                </p>
                 <p className="font-medium">{selectedReport?.voyageNo ?? "-"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Port Name</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Port Name
+                </p>
                 <p className="font-medium">{selectedReport?.portName ?? "-"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Port Type</p>
-                <p className="font-medium capitalize">{selectedReport?.portType?.replace("_", " ") ?? "-"}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Port Type
+                </p>
+                <p className="font-medium capitalize">
+                  {selectedReport?.portType?.replace("_", " ") ?? "-"}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Report Date & Time (IST)</p>
-                <p className="font-medium">{formatDate(selectedReport?.reportDate)}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Report Date & Time (IST)
+                </p>
+                <p className="font-medium">
+                  {formatDate(selectedReport?.reportDate)}
+                </p>
               </div>
             </div>
           </ComponentCard>
@@ -429,12 +453,20 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
           <ComponentCard title="Document Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Document Type</p>
-                <p className="font-medium capitalize">{selectedReport?.documentType?.replace(/_/g, " ") ?? "-"}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Document Type
+                </p>
+                <p className="font-medium capitalize">
+                  {selectedReport?.documentType?.replace(/_/g, " ") ?? "-"}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Document Date</p>
-                <p className="font-medium">{formatDateOnly(selectedReport?.documentDate)}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">
+                  Document Date
+                </p>
+                <p className="font-medium">
+                  {formatDateOnly(selectedReport?.documentDate)}
+                </p>
               </div>
             </div>
 
@@ -450,10 +482,8 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                 </span>
               ) : (
                 <div className="flex flex-row gap-4 items-start">
-
                   {/* 🖼 THUMBNAIL */}
                   <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-white/[0.03] rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
-
                     {/* Image Preview */}
                     {fileMeta.isImage && (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -468,7 +498,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                     {fileMeta.isPdf && (
                       <div className="flex flex-col items-center justify-center text-center p-2">
                         <div className="w-10 h-12 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
-                          <span className="text-white font-bold text-[10px]">PDF</span>
+                          <span className="text-white font-bold text-[10px]">
+                            PDF
+                          </span>
                         </div>
                         <p className="text-[10px] text-gray-400 truncate max-w-[90px]">
                           Preview
@@ -480,7 +512,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                     {fileMeta.isExcel && (
                       <div className="flex flex-col items-center justify-center text-center p-2">
                         <div className="w-10 h-12 bg-green-600 rounded flex items-center justify-center shadow-sm mb-1">
-                          <span className="text-white font-bold text-[10px]">XLS</span>
+                          <span className="text-white font-bold text-[10px]">
+                            XLS
+                          </span>
                         </div>
                         <p className="text-[10px] text-gray-400 truncate max-w-[90px]">
                           Preview
@@ -491,14 +525,17 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
 
                   {/* ⚙️ INFO & BUTTONS */}
                   <div className="flex flex-col justify-center h-32 gap-2">
-
                     {/* File Meta */}
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[200px]">
                         {fileMeta.name}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {fileMeta.isPdf ? "PDF Document" : fileMeta.isExcel ? "Excel Spreadsheet" : "Image File"}
+                        {fileMeta.isPdf
+                          ? "PDF Document"
+                          : fileMeta.isExcel
+                          ? "Excel Spreadsheet"
+                          : "Image File"}
                       </p>
                     </div>
 
@@ -527,7 +564,6 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       </a>
                     </div>
                   </div>
-
                 </div>
               )}
             </div>
@@ -535,7 +571,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
 
           {/* Remarks */}
           <ComponentCard title="Remarks">
-            <p className="break-words">{selectedReport?.remarks || "No remarks."}</p>
+            <p className="break-words">
+              {selectedReport?.remarks || "No remarks."}
+            </p>
           </ComponentCard>
         </div>
       </ViewModal>
@@ -558,10 +596,11 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                     <Select
                       options={statusOptions}
                       value={editData.status}
-                      onChange={(val) => setEditData({ ...editData, status: val })}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
                       className="dark:bg-dark-900"
                     />
-                  
                   </div>
                 </div>
                 <div>
@@ -569,28 +608,36 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}
-                    onChange={(e) => setEditData({ ...editData, reportDate: e.target.value })}
+                    onChange={(e) =>
+                      setEditData({ ...editData, reportDate: e.target.value })
+                    }
                   />
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
                   <Input
                     value={editData.vesselName}
-                    onChange={(e) => setEditData({ ...editData, vesselName: e.target.value })}
+                    onChange={(e) =>
+                      setEditData({ ...editData, vesselName: e.target.value })
+                    }
                   />
                 </div>
                 <div>
                   <Label>Voyage No</Label>
                   <Input
                     value={editData.voyageNo}
-                    onChange={(e) => setEditData({ ...editData, voyageNo: e.target.value })}
+                    onChange={(e) =>
+                      setEditData({ ...editData, voyageNo: e.target.value })
+                    }
                   />
                 </div>
                 <div>
                   <Label>Port Name</Label>
                   <Input
                     value={editData.portName}
-                    onChange={(e) => setEditData({ ...editData, portName: e.target.value })}
+                    onChange={(e) =>
+                      setEditData({ ...editData, portName: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -605,10 +652,11 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       options={portTypeOptions}
                       placeholder="Select Port Type"
                       value={editData.portType}
-                      onChange={(val) => setEditData({ ...editData, portType: val })}
+                      onChange={(val) =>
+                        setEditData({ ...editData, portType: val })
+                      }
                       className="dark:bg-dark-900"
                     />
-                
                   </div>
                 </div>
 
@@ -619,10 +667,11 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                       options={docTypeOptions}
                       placeholder="Select Document Type"
                       value={editData.documentType}
-                      onChange={(val) => setEditData({ ...editData, documentType: val })}
+                      onChange={(val) =>
+                        setEditData({ ...editData, documentType: val })
+                      }
                       className="dark:bg-dark-900"
                     />
-                
                   </div>
                 </div>
                 <div>
@@ -630,7 +679,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                   <Input
                     type="date"
                     value={editData.documentDate}
-                    onChange={(e) => setEditData({ ...editData, documentDate: e.target.value })}
+                    onChange={(e) =>
+                      setEditData({ ...editData, documentDate: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -640,7 +691,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
             <ComponentCard title="Document">
               <div className="mt-2">
                 <Label className="mb-2 block">
-                  {currentFileMeta ? "Replace File  - Max 500 KB" : "Upload File - Max 500 KB"}
+                  {currentFileMeta
+                    ? "Replace File  - Max 500 KB"
+                    : "Upload File - Max 500 KB"}
                 </Label>
 
                 {/* FILE INPUT CONTAINER */}
@@ -675,23 +728,29 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                   </Label>
 
                   <div className="flex flex-row gap-4 items-start">
-
                     {/* 🖼 THUMBNAIL */}
                     <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
-
                       {isPdfPreview ? (
                         <div className="flex flex-col items-center justify-center text-center p-2">
                           <div className="w-10 h-12 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
-                            <span className="text-white font-bold text-[10px]">PDF</span>
+                            <span className="text-white font-bold text-[10px]">
+                              PDF
+                            </span>
                           </div>
-                          <p className="text-[10px] text-gray-400 truncate max-w-[90px]">Document</p>
+                          <p className="text-[10px] text-gray-400 truncate max-w-[90px]">
+                            Document
+                          </p>
                         </div>
                       ) : isExcelPreview ? (
                         <div className="flex flex-col items-center justify-center text-center p-2">
                           <div className="w-10 h-12 bg-green-600 rounded flex items-center justify-center shadow-sm mb-1">
-                            <span className="text-white font-bold text-[10px]">XLS</span>
+                            <span className="text-white font-bold text-[10px]">
+                              XLS
+                            </span>
                           </div>
-                          <p className="text-[10px] text-gray-400 truncate max-w-[90px]">Spreadsheet</p>
+                          <p className="text-[10px] text-gray-400 truncate max-w-[90px]">
+                            Spreadsheet
+                          </p>
                         </div>
                       ) : (
                         /* eslint-disable-next-line @next/next/no-img-element */
@@ -707,10 +766,16 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
                     <div className="flex flex-col justify-center h-32 gap-2">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[200px]">
-                          {newFile ? newFile.name : currentFileMeta?.name || "Unknown File"}
+                          {newFile
+                            ? newFile.name
+                            : currentFileMeta?.name || "Unknown File"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {isPdfPreview ? "PDF Document" : isExcelPreview ? "Excel File" : "Image File"}
+                          {isPdfPreview
+                            ? "PDF Document"
+                            : isExcelPreview
+                            ? "Excel File"
+                            : "Image File"}
                         </p>
                       </div>
 
@@ -747,7 +812,9 @@ export default function CargoReportTable({ refresh }: CargoReportTableProps) {
               <TextArea
                 rows={4}
                 value={editData.remarks}
-                onChange={(e) => setEditData({ ...editData, remarks: e.target.value })}
+                onChange={(e) =>
+                  setEditData({ ...editData, remarks: e.target.value })
+                }
               />
             </ComponentCard>
           </div>

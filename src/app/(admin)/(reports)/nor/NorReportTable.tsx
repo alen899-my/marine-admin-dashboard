@@ -7,14 +7,11 @@ import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-// Removed unused Button import
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import Select from "@/components/form/Select";
-import Filters from "@/components/common/Filters";
-import { ChevronDownIcon } from "lucide-react";
 
 // --- Interfaces ---
 interface INorDetails {
@@ -50,9 +47,19 @@ interface IEditNorData {
 
 interface NORReportTableProps {
   refresh: number;
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
 }
 
-export default function NorReportTable({ refresh }: NORReportTableProps) {
+export default function NorReportTable({
+  refresh,
+  search,
+  status,
+  startDate,
+  endDate,
+}: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,11 +83,6 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  // ✅ Date Filter Addition: Main state for filters
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const LIMIT = 10;
 
@@ -151,32 +153,35 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
   /* ================= 2. API FUNCTIONS ================= */
 
   // Wrapped in useCallback to fix useEffect dependency
-  const fetchReports = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/nor?${query.toString()}`);
+        const res = await fetch(`/api/nor?${query.toString()}`);
 
-      if (!res.ok) throw new Error(`Error: ${res.status}`);
+        if (!res.ok) throw new Error(`Error: ${res.status}`);
 
-      const result = await res.json();
-      setReports(result.data || []);
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  }, [LIMIT, search, status, startDate, endDate]);
+        const result = await res.json();
+        setReports(result.data || []);
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [LIMIT, search, status, startDate, endDate]
+  );
 
   // UPDATED: Now sends FormData because the Backend PATCH route expects it
   async function handleUpdate() {
@@ -200,7 +205,7 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
         editData.norTenderTime ? `${editData.norTenderTime}+05:30` : ""
       );
       formData.append(
-        "etaPort", 
+        "etaPort",
         editData.etaPort ? `${editData.etaPort}+05:30` : ""
       );
 
@@ -232,7 +237,8 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
       setPreviewUrl(null);
     } catch (err: unknown) {
       console.error(err);
-      const msg = err instanceof Error ? err.message : "Failed to update record";
+      const msg =
+        err instanceof Error ? err.message : "Failed to update record";
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -333,16 +339,6 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
 
   return (
     <>
-      <Filters
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-      />
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
@@ -554,9 +550,7 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
                       }
                       className="dark:bg-dark-900"
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                    
-                    </span>
+                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400"></span>
                   </div>
                 </div>
                 <div>
@@ -607,7 +601,10 @@ export default function NorReportTable({ refresh }: NORReportTableProps) {
                     type="datetime-local"
                     value={editData.norTenderTime}
                     onChange={(e) =>
-                      setEditData({ ...editData, norTenderTime: e.target.value })
+                      setEditData({
+                        ...editData,
+                        norTenderTime: e.target.value,
+                      })
                     }
                   />
                 </div>
