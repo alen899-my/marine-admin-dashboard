@@ -319,11 +319,12 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
                 <div>
                   {/* Replaced Input type="date" with DatePicker */}
-                  <DatePicker
+                    <DatePicker
                     id="document-date"
                     label="Document Date"
                     placeholder="Select a date"
                     onChange={handleDateChange}
+                    className={errors.documentDate ? "border border-red-500 rounded-lg" : ""}
                   />
                   {errors.documentDate && <p className="text-xs text-red-500 mt-1">{errors.documentDate}</p>}
                 </div>
@@ -332,12 +333,11 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
               <div className="mt-4">
                 <Label>Upload File (PDF / Image / Excel) - Max 500 KB <span className="text-red-500">*</span></Label>
                 {/* Replaced manual file input div with FileInput component */}
-                <div className={errors.file ? "border border-red-500 rounded-lg" : ""}>
                    <FileInput 
-                     className="w-full"
+                     className={`w-full ${errors.file ? "border-red-500 focus:border-red-500"
+                        : ""}`}
                      onChange={handleFileChange} 
                    />
-                </div>
                 {errors.file && <p className="text-xs text-red-500 mt-1">{errors.file}</p>}
               </div>
             </ComponentCard>

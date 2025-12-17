@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 // Imports - Adjust paths to match your project structure
-import { useModal } from "@/hooks/useModal";
-import { Modal } from "@/components/ui/modal";
-import Button from "@/components/ui/button/Button";
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
+import FileInput from "@/components/form/input/FileInput";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
-import FileInput from "@/components/form/input/FileInput";
+import Button from "@/components/ui/button/Button";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
 // Import validation schema (adjust path as needed)
 import { norSchema } from "@/lib/validations/norSchema";
 
@@ -117,6 +117,11 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
 
     setIsSubmitting(true);
 
+    const validationData = {
+      ...formData,
+      norDocument: selectedFile, // Add the file state here
+    };
+
     // --- JOI VALIDATION START ---
     const { error } = norSchema.validate(formData, { abortEarly: false });
 
@@ -153,7 +158,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
         formData.norTenderTime ? `${formData.norTenderTime}+05:30` : ""
       );
       data.append(
-        "etaPort", 
+        "etaPort",
         formData.etaPort ? `${formData.etaPort}+05:30` : ""
       );
       data.append("remarks", formData.remarks);
@@ -352,15 +357,20 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
 
               <div className="mt-4">
                 <Label>NOR Document (PDF / Image) - Max 500 KB</Label>
-                {/* Replaced manual file input with FileInput component */}
-                <div
-                  className={
-                    errors.norDocument ? "border border-red-500 rounded-lg" : ""
-                  }
-                >
-                  <FileInput className="w-full" onChange={handleFileChange} />
+
+                {/* Pass the error class directly to FileInput */}
+                <div>
+                  <FileInput
+                    className={`w-full ${
+                      errors.norDocument
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
+                    onChange={handleFileChange}
+                  />
                 </div>
-                {/* Error message for file size */}
+
+                {/* Error message */}
                 {errors.norDocument && (
                   <p className="text-xs text-red-500 mt-1">
                     {errors.norDocument}

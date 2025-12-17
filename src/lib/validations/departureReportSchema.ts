@@ -20,8 +20,8 @@ export const departureReportSchema = Joi.object({
   }),
 
   eventTime: Joi.date().required().messages({
-    "date.base": "Event time must be a valid date",
-    "any.required": "Event time is required",
+    "date.base": "RFA time must be a valid date",
+    "any.required": "RFA time is required",
   }),
 
   reportDate: Joi.string().isoDate().required().messages({
@@ -38,6 +38,8 @@ export const departureReportSchema = Joi.object({
   }),
 
   etaNextPort: Joi.string().required().messages({
+    "string.base": "ETA next port must be a valid date string",
+    "string.isoDate": "ETA next port must be a valid ISO date",
     "string.empty": "ETA next port is required",
     "any.required": "ETA next port is required",
   }),

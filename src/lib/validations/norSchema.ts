@@ -34,6 +34,10 @@ export const norSchema = Joi.object({
     "string.empty": "ETA Port is required",
     "any.required": "ETA Port is required",
   }),
+  norDocument: Joi.object().required().label("NOR Document").messages({
+    "object.base": "NOR Document is required",
+    "any.required": "NOR Document is required",
+  }),
 
   // Remarks is optional / allowed to be empty
   remarks: Joi.string().allow("").optional().label("Remarks"),
