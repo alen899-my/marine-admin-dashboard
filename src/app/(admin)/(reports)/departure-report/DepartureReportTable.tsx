@@ -67,7 +67,7 @@ export default function DepartureReportTable({
   const [openEdit, setOpenEdit] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   /* ================= FORMAT DATE helper ================= */
   const formatDate = (date?: string) => {

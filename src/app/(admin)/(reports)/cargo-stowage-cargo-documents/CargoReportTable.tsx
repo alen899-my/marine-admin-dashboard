@@ -85,7 +85,7 @@ export default function CargoReportTable({
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {

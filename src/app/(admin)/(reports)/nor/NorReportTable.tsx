@@ -84,7 +84,7 @@ export default function NorReportTable({
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   /* ================= HELPER: DATE FORMATTER ================= */
   // Moved up so it can be used in columns

@@ -74,7 +74,7 @@ export default function ArrivalReportTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   

@@ -81,7 +81,7 @@ export default function DailyNoonReportTable({
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   // Local state for filters removed (now coming from props)
 
