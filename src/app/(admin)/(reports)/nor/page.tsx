@@ -21,7 +21,7 @@ export default function NoticeOfReadiness() {
       {/* Header Section: Title on left, Button on right */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          NOR
+          NOR (Notice of Readiness)
         </h2>
 
         {/* Button moved here */}

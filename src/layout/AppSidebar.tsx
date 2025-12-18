@@ -45,12 +45,12 @@ const navItems: NavItem[] = [
   },
   {
     icon: <Flag size={25} />,
-    name: "NOR (Notice of Readiness)",
+    name: "NOR Report",
     path: "/nor",
   },
   {
     icon: <Boxes size={25} />,
-    name: "Cargo Stowage",
+    name: "Cargo Stowage Report",
     path: "/cargo-stowage-cargo-documents",
   },
 ];

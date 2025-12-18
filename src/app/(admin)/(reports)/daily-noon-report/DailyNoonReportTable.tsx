@@ -114,17 +114,17 @@ export default function DailyNoonReportTable({
       render: (r: IDailyNoonReport) => r?.vesselName ?? "-",
     },
     {
+      // ***** CHANGE: Force IST Label *****
+      header: "Report Date & Time",
+      render: (r: IDailyNoonReport) => formatDate(r.reportDate),
+    },
+    {
       header: "Voyage No / ID",
       render: (r: IDailyNoonReport) => r?.voyageId ?? "-",
     },
     {
       header: "Next Port",
       render: (r: IDailyNoonReport) => r?.navigation?.nextPort ?? "-",
-    },
-    {
-      // ***** CHANGE: Force IST Label *****
-      header: "Report Date & Time",
-      render: (r: IDailyNoonReport) => formatDate(r.reportDate),
     },
     {
       header: "Status",
