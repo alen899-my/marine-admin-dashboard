@@ -13,7 +13,6 @@ export default function AdminLayout({
 }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
 
-  // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen
     ? "ml-0"
     : isExpanded || isHovered
@@ -22,17 +21,27 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen xl:flex">
-      {/* Sidebar and Backdrop */}
       <AppSidebar />
       <Backdrop />
-      {/* Main Content Area */}
+      
+      {/* 1. flex-1: Fills remaining space.
+          2. min-w-0: CRITICAL. This allows the flex child to shrink smaller than its content.
+          3. overflow-hidden: Prevents child elements from leaking outside.
+      */}
       <div
-        className={`flex-1 transition-all  duration-300 ease-in-out ${mainContentMargin}`}
+        className={`flex-1 min-w-0 relative flex flex-col transition-all duration-300 ease-in-out ${mainContentMargin}`}
       >
-        {/* Header */}
         <AppHeader />
-        {/* Page Content */}
-        <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">{children}</div>
+        
+        {/* Page Content: 
+            Added 'w-full' and 'max-w-full' to ensure the inner container 
+            never exceeds the calculated width of the flex parent.
+        */}
+        <main className="flex-1 w-full max-w-full p-4 mx-auto md:p-6 overflow-y-auto">
+          <div className="max-w-(--breakpoint-2xl) mx-auto w-full">
+             {children}
+          </div>
+        </main>
       </div>
     </div>
   );
