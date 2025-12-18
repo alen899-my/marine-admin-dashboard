@@ -110,11 +110,11 @@ export default function DepartureReportTable({
       render: (r: IDepartureReport) => r?.portName ?? "-",
     },
     {
-      header: "Departure Time (IST)",
+      header: "Departure Time",
       render: (r: IDepartureReport) => formatDate(r.eventTime),
     },
     {
-      header: "Report Date (IST)",
+      header: "Report Date",
       render: (r: IDepartureReport) => formatDate(r?.reportDate),
     },
     {
@@ -346,14 +346,14 @@ export default function DepartureReportTable({
               </div>
 
               <div>
-                <p className="text-gray-500">Departure Time (IST)</p>
+                <p className="text-gray-500">Departure Time</p>
                 <p className="font-medium">
                   {formatDate(selectedReport?.eventTime)}
                 </p>
               </div>
 
               <div>
-                <p className="text-gray-500">Report Date & Time (IST)</p>
+                <p className="text-gray-500">Report Date & Time</p>
                 <p className="font-medium">
                   {formatDate(selectedReport?.reportDate)}
                 </p>
@@ -371,7 +371,7 @@ export default function DepartureReportTable({
               </div>
 
               <div>
-                <p className="text-gray-500">ETA Next Port (IST)</p>
+                <p className="text-gray-500">ETA Next Port</p>
                 <p className="font-medium">
                   {formatDate(selectedReport?.navigation?.etaNextPort)}
                 </p>
@@ -439,7 +439,7 @@ export default function DepartureReportTable({
                   </div>
                 </div>
                 <div>
-                  <Label>Report Date & Time (IST)</Label>
+                  <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}
@@ -479,7 +479,7 @@ export default function DepartureReportTable({
                 </div>
 
                 <div>
-                  <Label>Departure Time (IST)</Label>
+                  <Label>Departure Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.eventTime}
@@ -512,7 +512,7 @@ export default function DepartureReportTable({
                 </div>
 
                 <div>
-                  <Label>ETA Next Port (IST)</Label>
+                  <Label>ETA Next Port</Label>
                   <Input
                     type="datetime-local"
                     value={editData.navigation?.etaNextPort ?? ""}

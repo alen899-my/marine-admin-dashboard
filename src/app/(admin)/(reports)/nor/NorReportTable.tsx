@@ -134,7 +134,7 @@ export default function NorReportTable({
       render: (r: INorReport) => formatDate(r.norDetails?.tenderTime),
     },
     {
-      header: "Report Date & Time(IST) ",
+      header: "Report Date & Time ",
       render: (r: INorReport) => formatDate(r.reportDate),
     },
     {
@@ -554,7 +554,7 @@ export default function NorReportTable({
                   </div>
                 </div>
                 <div>
-                  <Label>Report Date & Time(IST)</Label>
+                  <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}
@@ -596,7 +596,7 @@ export default function NorReportTable({
             <ComponentCard title="Timings & Location">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>NOR Tender Time (IST)</Label>
+                  <Label>NOR Tender Time </Label>
                   <Input
                     type="datetime-local"
                     value={editData.norTenderTime}
@@ -609,7 +609,7 @@ export default function NorReportTable({
                   />
                 </div>
                 <div>
-                  <Label>ETA Port (IST)</Label>
+                  <Label>ETA Port </Label>
                   <Input
                     type="datetime-local"
                     value={editData.etaPort}

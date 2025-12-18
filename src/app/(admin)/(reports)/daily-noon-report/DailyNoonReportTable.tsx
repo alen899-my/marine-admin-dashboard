@@ -123,7 +123,7 @@ export default function DailyNoonReportTable({
     },
     {
       // ***** CHANGE: Force IST Label *****
-      header: "Report Date & Time (IST)",
+      header: "Report Date & Time",
       render: (r: IDailyNoonReport) => formatDate(r.reportDate),
     },
     {
@@ -369,7 +369,7 @@ export default function DailyNoonReportTable({
               </div>
 
               <div>
-                <p className="text-gray-500">Report Date & Time (IST)</p>
+                <p className="text-gray-500">Report Date & Time</p>
                 <p className="font-medium">
                   {formatDate(selectedReport?.reportDate)}
                 </p>
@@ -502,7 +502,7 @@ export default function DailyNoonReportTable({
                   </div>
                 </div>
                 <div>
-                  <Label>Report Date & Time (IST)</Label>
+                  <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}

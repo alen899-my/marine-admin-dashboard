@@ -319,7 +319,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
-                    NOR Tender Time (IST){" "}
+                    NOR Tender Time
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -338,7 +338,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
 
                 <div>
                   <Label>
-                    ETA Port (IST) <span className="text-red-500">*</span>
+                    ETA Port <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="datetime-local"

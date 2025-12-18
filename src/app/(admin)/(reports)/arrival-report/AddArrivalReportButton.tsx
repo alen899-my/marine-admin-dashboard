@@ -146,7 +146,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 
                 <div>
-                  <Label>Reporting Date & Time (IST)<span className="text-red-500">*</span></Label>
+                  <Label>Reporting Date & Time<span className="text-red-500">*</span></Label>
                   <Input
                     type="datetime-local"
                     name="reportDate"
@@ -199,7 +199,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                 </div>
 
                 <div>
-                  <Label>Arrival Time (IST) <span className="text-red-500">*</span></Label>
+                  <Label>Arrival Time <span className="text-red-500">*</span></Label>
                   <Input
                     type="datetime-local"
                     name="arrivalTime"

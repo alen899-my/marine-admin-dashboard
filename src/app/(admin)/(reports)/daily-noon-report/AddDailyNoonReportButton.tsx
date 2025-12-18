@@ -172,7 +172,7 @@ export default function AddDailyNoonReportButton({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
-                    Report Date & Time (IST){" "}
+                    Report Date & Time{" "}
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input

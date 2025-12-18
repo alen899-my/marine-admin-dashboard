@@ -148,7 +148,7 @@ export default function CargoReportTable({
       render: (r: ICargoReport) => formatDateOnly(r.documentDate),
     },
     {
-      header: "Report Date & Time (IST)",
+      header: "Report Date & Time",
       render: (r: ICargoReport) => formatDate(r.reportDate),
     },
     {
@@ -440,7 +440,7 @@ export default function CargoReportTable({
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold">
-                  Report Date & Time (IST)
+                  Report Date & Time
                 </p>
                 <p className="font-medium">
                   {formatDate(selectedReport?.reportDate)}
@@ -604,7 +604,7 @@ export default function CargoReportTable({
                   </div>
                 </div>
                 <div>
-                  <Label>Report Date & Time (IST)</Label>
+                  <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}

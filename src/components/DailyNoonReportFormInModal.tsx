@@ -58,7 +58,7 @@ export default function DailyNoonReportFormInModal() {
                 </div>
 
                 <div>
-                  <Label>Report Date & Time (IST)</Label>
+                  <Label>Report Date & Time </Label>
                   <Input type="datetime-local" />
                 </div>
 

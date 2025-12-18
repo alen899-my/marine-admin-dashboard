@@ -120,11 +120,11 @@ export default function ArrivalReportTable({
       render: (r: ArrivalReport) => r?.portName ?? "-",
     },
     {
-      header: "Arrival Time (IST)",
+      header: "Arrival Time",
       render: (r: ArrivalReport) => formatDate(r.eventTime),
     },
     {
-      header: "Report Date & Time (IST)",
+      header: "Report Date & Time",
       render: (r: ArrivalReport) => formatDate(r?.reportDate),
     },
     {
@@ -330,11 +330,11 @@ export default function ArrivalReportTable({
               <Info label="Port Name" value={selectedReport?.portName} />
 
               <Info
-                label="Arrival Time (IST)"
+                label="Arrival Time"
                 value={formatDate(selectedReport?.eventTime)}
               />
               <Info
-                label="Report Date & Time (IST)"
+                label="Report Date & Time"
                 value={formatDate(selectedReport?.reportDate)}
               />
             </div>
@@ -385,7 +385,7 @@ export default function ArrivalReportTable({
                 </div>
 
                 <div>
-                  <Label>Report Date & Time (IST)</Label>
+                  <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}
@@ -420,7 +420,7 @@ export default function ArrivalReportTable({
                 />
 
                 <div>
-                  <Label>Arrival Time (IST)</Label>
+                  <Label>Arrival Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.eventTime}

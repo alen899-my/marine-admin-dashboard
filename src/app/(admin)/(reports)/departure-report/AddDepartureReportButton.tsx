@@ -271,7 +271,7 @@ export default function AddDepartureReportButton({
 
                 <div>
                   <Label>
-                    RFA Time (IST) <span className="text-red-500">*</span>
+                    RFA Time <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="datetime-local"
@@ -312,7 +312,7 @@ export default function AddDepartureReportButton({
 
                 <div>
                   <Label>
-                    ETA Next Port (IST) <span className="text-red-500">*</span>
+                    ETA Next Port <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="datetime-local"
