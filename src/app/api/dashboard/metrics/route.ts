@@ -28,7 +28,7 @@ export async function GET() {
       // 3) Arrival
       ReportOperational.countDocuments({ eventType: "arrival", status: "active" }),
       
-      // 4) NOR
+      // 4) NOR 
       ReportOperational.countDocuments({ eventType: "nor", status: "active" }),
       
       // 5) Cargo Stowage
