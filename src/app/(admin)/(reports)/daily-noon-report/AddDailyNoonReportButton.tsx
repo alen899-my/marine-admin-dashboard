@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
@@ -11,6 +11,7 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
+import Select from "@/components/form/Select";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
@@ -29,6 +30,8 @@ export default function AddDailyNoonReportButton({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // ***** NEW: State for Vessels List *****
+  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
   // ***** CHANGE: Get Current Time in IST for default value *****
   const getCurrentDateTime = () => {
@@ -39,7 +42,7 @@ export default function AddDailyNoonReportButton({
   };
 
   const [form, setForm] = useState({
-    vesselName: "",
+    vesselName: "AN16",
     voyageNo: "",
     reportDate: getCurrentDateTime(),
     nextPort: "",
@@ -56,22 +59,22 @@ export default function AddDailyNoonReportButton({
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => {
+  const { name, value } = e.target;
+  setForm((prev) => ({ ...prev, [name]: value }));
 
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-  };
+  if (errors[name]) {
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+  }
+};
 
   const resetForm = () => {
     setForm({
-      vesselName: "",
+      vesselName: "AN16",
       voyageNo: "",
       reportDate: getCurrentDateTime(),
       nextPort: "",
@@ -139,6 +142,32 @@ export default function AddDailyNoonReportButton({
     }
   };
 
+  // ***** NEW: Fetch Vessels on Mount *****
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const data = await res.json();
+          setVessels(data);
+        }
+      } catch (err) {
+        console.error("Error loading vessels:", err);
+      }
+    }
+    fetchVessels();
+  }, []);
+
+  // Handler for custom Select component
+  const handleVesselChange = (value: string) => {
+    setForm((prev) => ({ ...prev, vesselName: value }));
+    
+    // Clear error if it exists
+    if (errors.vesselName) {
+      setErrors((prev) => ({ ...prev, vesselName: "" }));
+    }
+  };
+
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>
@@ -189,14 +218,19 @@ export default function AddDailyNoonReportButton({
                   )}
                 </div>
 
+                {/* ***** CHANGED: Vessel Name Select ***** */}
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    name="vesselName"
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name, // Using name as value since your form state expects string name
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vessel"
                     value={form.vesselName}
-                    onChange={handleChange}
+                    onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && (

@@ -5,10 +5,11 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select"; // Added Select Import
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 interface AddDepartureReportButtonProps {
@@ -29,6 +30,25 @@ export default function AddDepartureReportButton({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ***** NEW: State for Vessels List *****
+  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+
+  // ***** NEW: Fetch Vessels from DB *****
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const data = await res.json();
+          setVessels(data);
+        }
+      } catch (err) {
+        console.error("Error loading vessels:", err);
+      }
+    }
+    fetchVessels();
+  }, []);
+
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -36,8 +56,9 @@ export default function AddDepartureReportButton({
       .slice(0, 16);
   };
 
+  // ***** CHANGE: Initial state vesselName set to "AN16" *****
   const [formData, setFormData] = useState({
-    vesselName: "",
+    vesselName: "AN16",
     voyageId: "",
     portName: "",
     eventTime: "",
@@ -55,6 +76,41 @@ export default function AddDepartureReportButton({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear error for the field being edited
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // ***** NEW: Specific handler for the custom Select component *****
+  const handleVesselChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, vesselName: value }));
+    if (errors.vesselName) {
+      setErrors((prev) => ({ ...prev, vesselName: "" }));
+    }
+  };
+
+  const handleClose = () => {
+    setErrors({});
+    setIsSubmitting(false);
+
+    // ***** CHANGE: Reset logic reverts to "AN16" *****
+    setFormData({
+      vesselName: "AN16",
+      voyageId: "",
+      portName: "",
+      eventTime: "",
+      reportDate: getCurrentDateTime(),
+      distanceToGo: "",
+      etaNextPort: "",
+      robVlsfo: "",
+      robLsmgo: "",
+      cargoSummary: "",
+      remarks: "",
+    });
+
+    closeModal();
   };
 
   const handleSubmit = async () => {
@@ -120,46 +176,12 @@ export default function AddDepartureReportButton({
       toast.success("Departure report submitted successfully");
       onSuccess();
       handleClose();
-      setFormData({
-        vesselName: "",
-        voyageId: "",
-        portName: "",
-        eventTime: "",
-        reportDate: getCurrentDateTime(),
-        distanceToGo: "",
-        etaNextPort: "",
-        robVlsfo: "",
-        robLsmgo: "",
-        cargoSummary: "",
-        remarks: "",
-      });
     } catch (error) {
       console.error("Failed to submit departure report", error);
       toast.error("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleClose = () => {
-    setErrors({});
-    setIsSubmitting(false);
-
-    setFormData({
-      vesselName: "",
-      voyageId: "",
-      portName: "",
-      eventTime: "",
-      reportDate: getCurrentDateTime(),
-      distanceToGo: "",
-      etaNextPort: "",
-      robVlsfo: "",
-      robLsmgo: "",
-      cargoSummary: "",
-      remarks: "",
-    });
-
-    closeModal();
   };
 
   return (
@@ -215,15 +237,20 @@ export default function AddDepartureReportButton({
                     </p>
                   )}
                 </div>
+                
+                {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    type="text"
-                    name="vesselName"
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vessel"
                     value={formData.vesselName}
-                    onChange={handleChange}
+                    onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && (

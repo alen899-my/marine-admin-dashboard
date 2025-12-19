@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 // Imports - Adjust paths to match your project structure
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select"; // Added Select Import
 import FileInput from "@/components/form/input/FileInput";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
@@ -27,6 +28,26 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ***** NEW: State for Vessels List *****
+  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+
+  // ***** NEW: Fetch Vessels from DB *****
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const data = await res.json();
+          setVessels(data);
+        }
+      } catch (err) {
+        console.error("Error loading vessels:", err);
+      }
+    }
+    fetchVessels();
+  }, []);
+
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -35,8 +56,9 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   };
 
   // Form State
+  // ***** CHANGE: Initial state vesselName set to "AN16" *****
   const [formData, setFormData] = useState({
-    vesselName: "",
+    vesselName: "AN16",
     voyageNo: "",
     portName: "",
     reportDate: getCurrentDateTime(),
@@ -61,6 +83,18 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       setErrors((prev) => {
         const newErr = { ...prev };
         delete newErr[name];
+        return newErr;
+      });
+    }
+  };
+
+  // ***** NEW: Specific handler for the custom Select component *****
+  const handleVesselChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, vesselName: value }));
+    if (errors.vesselName) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.vesselName;
         return newErr;
       });
     }
@@ -95,8 +129,9 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   const handleClose = () => {
     setErrors({});
     setIsSubmitting(false);
+    // ***** CHANGE: Reset logic reverts to "AN16" *****
     setFormData({
-      vesselName: "",
+      vesselName: "AN16",
       voyageNo: "",
       portName: "",
       reportDate: getCurrentDateTime(),
@@ -123,7 +158,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     };
 
     // --- JOI VALIDATION START ---
-    const { error } = norSchema.validate(formData, { abortEarly: false });
+    const { error } = norSchema.validate(validationData, { abortEarly: false });
 
     if (error) {
       const newErrors: Record<string, string> = {};
@@ -243,14 +278,20 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
                     </p>
                   )}
                 </div>
+                
+                {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    name="vesselName"
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vessel"
                     value={formData.vesselName}
-                    onChange={handleChange}
+                    onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && (

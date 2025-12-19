@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
@@ -24,15 +24,35 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
+  // ***** NEW: State for Vessels List *****
+  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+
+  // ***** NEW: Fetch Vessels from DB *****
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const data = await res.json();
+          setVessels(data);
+        }
+      } catch (err) {
+        console.error("Error loading vessels:", err);
+      }
+    }
+    fetchVessels();
+  }, []);
+
   // Form State
- const getCurrentDateTime: () => string = () => {
+  const getCurrentDateTime: () => string = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
       .replace(" ", "T")
       .slice(0, 16);
   };
+
   const [formData, setFormData] = useState({
-    vesselName: "",
+    vesselName: "AN16", // ✅ CHANGE: Default to AN16
     voyageNo: "",
     portName: "",
     reportDate: getCurrentDateTime(),
@@ -85,6 +105,18 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
     }
   };
 
+  // ***** NEW: Specific handler for the Vessel Select component *****
+  const handleVesselChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, vesselName: value }));
+    if (errors.vesselName) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.vesselName;
+        return newErr;
+      });
+    }
+  };
+
   // Handler for DatePicker
   const handleDateChange = (dates: Date[], currentDateString: string) => {
     setFormData((prev) => ({ ...prev, documentDate: currentDateString }));
@@ -127,10 +159,10 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
     setErrors({});
     setIsSubmitting(false);
     setFormData({
-      vesselName: "",
+      vesselName: "AN16", // ✅ CHANGE: Reset to AN16
       voyageNo: "",
       portName: "",
-       reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
+      reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
       portType: "",
       documentType: "",
       documentDate: "",
@@ -235,24 +267,30 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                                 <Label>Reporting Date & Time <span className="text-red-500">*</span></Label>
-                                 <Input
-                                   type="datetime-local"
-                                   name="reportDate"
-                                   value={formData.reportDate}
-                                   onChange={handleChange}
-                                   className={errors.reportDate ? "border-red-500" : ""}
-                                 />
-                                 {errors.reportDate && (
-                                   <p className="text-xs text-red-500 mt-1">{errors.reportDate}</p>
-                                 )}
-                               </div>
+                  <Label>Reporting Date & Time <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="datetime-local"
+                    name="reportDate"
+                    value={formData.reportDate}
+                    onChange={handleChange}
+                    className={errors.reportDate ? "border-red-500" : ""}
+                  />
+                  {errors.reportDate && (
+                    <p className="text-xs text-red-500 mt-1">{errors.reportDate}</p>
+                  )}
+                </div>
+
+                {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
                   <Label>Vessel Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    name="vesselName"
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vessel"
                     value={formData.vesselName}
-                    onChange={handleChange}
+                    onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && <p className="text-xs text-red-500 mt-1">{errors.vesselName}</p>}
@@ -282,7 +320,6 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
                 <div>
                   <Label>Port Type <span className="text-red-500">*</span></Label>
-                  {/* Select Structure preserved with external Chevron */}
                   <div className="relative">
                     <Select
                       options={portTypeOptions}
@@ -291,7 +328,6 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                       onChange={(val) => handleSelectChange("portType", val)}
                       className={`${errors.portType ? "border-red-500" : ""} dark:bg-dark-900`}
                     />
-                    
                   </div>
                   {errors.portType && <p className="text-xs text-red-500 mt-1">{errors.portType}</p>}
                 </div>
@@ -303,7 +339,6 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Document Type <span className="text-red-500">*</span></Label>
-                  {/* Select Structure preserved with external Chevron */}
                   <div className="relative">
                     <Select
                       options={docTypeOptions}
@@ -312,13 +347,11 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                       onChange={(val) => handleSelectChange("documentType", val)}
                       className={`${errors.documentType ? "border-red-500" : ""} dark:bg-dark-900`}
                     />
-                   
                   </div>
                   {errors.documentType && <p className="text-xs text-red-500 mt-1">{errors.documentType}</p>}
                 </div>
 
                 <div>
-                  {/* Replaced Input type="date" with DatePicker */}
                     <DatePicker
                     id="document-date"
                     label="Document Date"
@@ -332,7 +365,6 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
               <div className="mt-4">
                 <Label>Upload File (PDF / Image / Excel) - Max 500 KB <span className="text-red-500">*</span></Label>
-                {/* Replaced manual file input div with FileInput component */}
                    <FileInput 
                      className={`w-full ${errors.file ? "border-red-500 focus:border-red-500"
                         : ""}`}

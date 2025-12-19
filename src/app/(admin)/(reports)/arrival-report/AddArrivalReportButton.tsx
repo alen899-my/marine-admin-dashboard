@@ -5,10 +5,11 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select"; // Added Select Import
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 interface AddArrivalReportButtonProps {
@@ -20,6 +21,25 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // ***** NEW: State for Vessels List *****
+  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+
+  // ***** NEW: Fetch Vessels from DB *****
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const data = await res.json();
+          setVessels(data);
+        }
+      } catch (err) {
+        console.error("Error loading vessels:", err);
+      }
+    }
+    fetchVessels();
+  }, []);
+
   // ✅ HELPER: Get Current Date/Time in 'YYYY-MM-DDThh:mm' format
   const getCurrentDateTime = () => {
     return new Date()
@@ -29,7 +49,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   };
 
   const [formData, setFormData] = useState({
-    vesselName: "",
+    vesselName: "AN16", // ✅ CHANGE: Default to AN16
     voyageId: "",
     portName: "",
     reportDate: getCurrentDateTime(), // ✅ NEW: Auto-populate default
@@ -44,13 +64,26 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error for the field being edited
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // ***** NEW: Specific handler for the custom Select component *****
+  const handleVesselChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, vesselName: value }));
+    if (errors.vesselName) {
+      setErrors((prev) => ({ ...prev, vesselName: "" }));
+    }
   };
 
   const handleClose = () => {
     setErrors({});
     setIsSubmitting(false);
     setFormData({
-      vesselName: "",
+      vesselName: "AN16", // ✅ CHANGE: Reset to AN16
       voyageId: "",
       portName: "",
       reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
@@ -74,7 +107,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
           vesselName: formData.vesselName,
           voyageId: formData.voyageId,
           portName: formData.portName,
-         reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
+          reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
           arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
           robVlsfo:
             formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
@@ -159,12 +192,17 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                   )}
                 </div>
 
+                {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
                   <Label>Vessel Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    name="vesselName"
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vessel"
                     value={formData.vesselName}
-                    onChange={handleChange}
+                    onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && (
