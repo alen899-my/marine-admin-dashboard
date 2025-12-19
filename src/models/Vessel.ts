@@ -32,7 +32,10 @@ export interface IVessel extends Document {
 
 const VesselSchema = new Schema<IVessel>(
   {
-    name: String,
+    name: {
+      type: String,
+      default: "AN16",
+    },
     imo: String,
     fleet: String,
     status: {

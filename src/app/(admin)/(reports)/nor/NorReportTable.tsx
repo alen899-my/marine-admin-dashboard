@@ -539,21 +539,6 @@ export default function NorReportTable({
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      placeholder="Select Status"
-                      value={editData.status}
-                      onChange={(val) =>
-                        setEditData({ ...editData, status: val })
-                      }
-                      className="dark:bg-dark-900"
-                    />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400"></span>
-                  </div>
-                </div>
-                <div>
                   <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
@@ -589,6 +574,21 @@ export default function NorReportTable({
                       setEditData({ ...editData, portName: e.target.value })
                     }
                   />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="relative">
+                    <Select
+                      options={statusOptions}
+                      placeholder="Select Status"
+                      value={editData.status}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
+                      className="dark:bg-dark-900"
+                    />
+                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400"></span>
+                  </div>
                 </div>
               </div>
             </ComponentCard>

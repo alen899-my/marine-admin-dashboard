@@ -591,19 +591,6 @@ export default function CargoReportTable({
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      value={editData.status}
-                      onChange={(val) =>
-                        setEditData({ ...editData, status: val })
-                      }
-                      className="dark:bg-dark-900"
-                    />
-                  </div>
-                </div>
-                <div>
                   <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
@@ -639,6 +626,19 @@ export default function CargoReportTable({
                       setEditData({ ...editData, portName: e.target.value })
                     }
                   />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="relative">
+                    <Select
+                      options={statusOptions}
+                      value={editData.status}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
+                      className="dark:bg-dark-900"
+                    />
+                  </div>
                 </div>
               </div>
             </ComponentCard>

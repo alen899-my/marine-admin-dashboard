@@ -58,10 +58,12 @@ export default function DepartureReportTable({
   const [loading, setLoading] = useState(true);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  
-  const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(null);
+
+  const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(
+    null
+  );
   const [editData, setEditData] = useState<IDepartureReport | null>(null);
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [openEdit, setOpenEdit] = useState(false);
@@ -78,8 +80,8 @@ export default function DepartureReportTable({
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: true, 
-      timeZone: "Asia/Kolkata", 
+      hour12: true,
+      timeZone: "Asia/Kolkata",
     });
   };
 
@@ -132,39 +134,42 @@ export default function DepartureReportTable({
 
   /* ================= FETCH DATA ================= */
   // Wrap in useCallback to fix useEffect dependency
-  const fetchReports = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/departure-report?${query.toString()}`);
+        const res = await fetch(`/api/departure-report?${query.toString()}`);
 
-      if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error();
 
-      const result = await res.json();
+        const result = await res.json();
 
-      setReports(result.data || []);
-      
-      if (!result.data || result.data.length === 0) {
-        setTotalPages(1);
-      } else {
-        setTotalPages(result.pagination?.totalPages || 1);
+        setReports(result.data || []);
+
+        if (!result.data || result.data.length === 0) {
+          setTotalPages(1);
+        } else {
+          setTotalPages(result.pagination?.totalPages || 1);
+        }
+      } catch (err) {
+        console.error(err);
+        setReports([]);
+        toast.error("Failed to load departure reports");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      setReports([]);
-      toast.error("Failed to load departure reports");
-    } finally {
-      setLoading(false);
-    }
-  }, [LIMIT, search, status, startDate, endDate]);
+    },
+    [LIMIT, search, status, startDate, endDate]
+  );
 
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -225,7 +230,6 @@ export default function DepartureReportTable({
     setCurrentPage(1);
   }, [refresh, fetchReports]);
 
-
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
@@ -250,7 +254,7 @@ export default function DepartureReportTable({
       reportDate: formatForInput(report.reportDate),
       status: report.status ?? "active",
       remarks: report.remarks ?? "",
-      
+
       navigation: {
         distanceToGo: report.navigation?.distanceToGo ?? 0,
         etaNextPort: formatForInput(report.navigation?.etaNextPort),
@@ -423,22 +427,6 @@ export default function DepartureReportTable({
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      value={editData.status}
-                      onChange={(val) =>
-                        setEditData({ ...editData, status: val })
-                      }
-                      className="dark:bg-dark-900"
-                    />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                  
-                    </span>
-                  </div>
-                </div>
-                <div>
                   <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
@@ -487,6 +475,20 @@ export default function DepartureReportTable({
                       setEditData({ ...editData, eventTime: e.target.value })
                     }
                   />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="relative">
+                    <Select
+                      options={statusOptions}
+                      value={editData.status}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
+                      className="dark:bg-dark-900"
+                    />
+                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400"></span>
+                  </div>
                 </div>
               </div>
             </ComponentCard>

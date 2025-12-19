@@ -73,7 +73,9 @@ export default function DailyNoonReportTable({
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
-  const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(null);
+  const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(
+    null
+  );
 
   // Edit data requires a structure similar to the report but mutable for form inputs
   const [editData, setEditData] = useState<IDailyNoonReport | null>(null);
@@ -107,7 +109,8 @@ export default function DailyNoonReportTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: IDailyNoonReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: IDailyNoonReport, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Vessel Name",
@@ -146,38 +149,41 @@ export default function DailyNoonReportTable({
   };
 
   // Wrap fetchReports in useCallback to fix dependency warnings
-  const fetchReports = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
 
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/noon-report?${query.toString()}`);
+        const res = await fetch(`/api/noon-report?${query.toString()}`);
 
-      if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error();
 
-      const result = await res.json();
+        const result = await res.json();
 
-      setReports(result.data || []);
-      if (!result.data || result.data.length === 0) {
-        setTotalPages(1);
-      } else {
-        setTotalPages(result.pagination?.totalPages || 1);
+        setReports(result.data || []);
+        if (!result.data || result.data.length === 0) {
+          setTotalPages(1);
+        } else {
+          setTotalPages(result.pagination?.totalPages || 1);
+        }
+      } catch (err) {
+        console.error(err);
+        setReports([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      setReports([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [LIMIT, search, status, startDate, endDate]);
+    },
+    [LIMIT, search, status, startDate, endDate]
+  );
 
   // Filter Trigger (Search, Status, Dates) - using props now
   useEffect(() => {
@@ -195,7 +201,6 @@ export default function DailyNoonReportTable({
   useEffect(() => {
     fetchReports(currentPage);
   }, [currentPage, fetchReports]);
-
 
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
@@ -254,9 +259,7 @@ export default function DailyNoonReportTable({
       // ***** CHANGE: Append +05:30 to payload *****
       const payload = {
         ...editData,
-        reportDate: editData.reportDate
-          ? `${editData.reportDate}+05:30`
-          : null,
+        reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
       };
 
       const res = await fetch(`/api/noon-report/${selectedReport._id}`, {
@@ -489,19 +492,6 @@ export default function DailyNoonReportTable({
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      value={editData.status}
-                      onChange={(val) =>
-                        setEditData({ ...editData, status: val })
-                      }
-                      className="dark:bg-dark-900"
-                    />
-                  </div>
-                </div>
-                <div>
                   <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
@@ -546,6 +536,19 @@ export default function DailyNoonReportTable({
                     }
                   />
                 </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="relative">
+                    <Select
+                      options={statusOptions}
+                      value={editData.status}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
+                      className="dark:bg-dark-900"
+                    />
+                  </div>
+                </div>
               </div>
             </ComponentCard>
 
@@ -559,7 +562,10 @@ export default function DailyNoonReportTable({
                     onChange={(e) =>
                       setEditData({
                         ...editData,
-                        position: { ...(editData.position as IPosition), lat: e.target.value },
+                        position: {
+                          ...(editData.position as IPosition),
+                          lat: e.target.value,
+                        },
                       })
                     }
                   />
@@ -666,7 +672,10 @@ export default function DailyNoonReportTable({
                     onChange={(e) =>
                       setEditData({
                         ...editData,
-                        weather: { ...(editData.weather as IWeather), wind: e.target.value },
+                        weather: {
+                          ...(editData.weather as IWeather),
+                          wind: e.target.value,
+                        },
                       })
                     }
                   />

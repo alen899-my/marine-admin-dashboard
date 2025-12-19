@@ -7,13 +7,11 @@ import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import Select from "@/components/form/Select";
-import Filters from "@/components/common/Filters";
-import { ChevronDownIcon } from "lucide-react";
 
 // --- Types ---
 interface ArrivalStats {
@@ -53,23 +51,25 @@ interface ArrivalReportTableProps {
   endDate: string;
 }
 
-export default function ArrivalReportTable({ 
+export default function ArrivalReportTable({
   refresh,
   search,
   status,
   startDate,
   endDate,
- }: ArrivalReportTableProps) {
+}: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  
-  const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(null);
+
+  const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
+    null
+  );
   const [editData, setEditData] = useState<EditFormData | null>(null);
-  
+
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -77,7 +77,7 @@ export default function ArrivalReportTable({
   const LIMIT = 20;
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
-  
+
   // Display Helper forced to IST
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -139,52 +139,55 @@ export default function ArrivalReportTable({
 
   /* ================= FETCH ================= */
   // useCallback fixes the missing dependency warning
-  const fetchReports = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/arrival-report?${query.toString()}`);
+        const res = await fetch(`/api/arrival-report?${query.toString()}`);
 
-      if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error();
 
-      const result = await res.json();
+        const result = await res.json();
 
-      setReports(result.data);
+        setReports(result.data);
 
-      if (!result.data || result.data.length === 0) {
+        if (!result.data || result.data.length === 0) {
+          setTotalPages(1);
+        } else {
+          setTotalPages(result.pagination.totalPages);
+        }
+      } catch {
+        setReports([]);
         setTotalPages(1);
-      } else {
-        setTotalPages(result.pagination.totalPages);
+        toast.error("Failed to load arrival reports");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setReports([]);
-      setTotalPages(1);
-      toast.error("Failed to load arrival reports");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, status, startDate, endDate]); // Dependencies for fetchReports
+    },
+    [search, status, startDate, endDate]
+  ); // Dependencies for fetchReports
 
   // Trigger fetch when filters change (Reset to page 1)
   useEffect(() => {
     fetchReports(1);
     setCurrentPage(1);
-  }, [fetchReports]); 
+  }, [fetchReports]);
 
   // Trigger fetch when page changes
   useEffect(() => {
-    // We strictly check currentPage > 1 to avoid double fetching 
+    // We strictly check currentPage > 1 to avoid double fetching
     // because the first useEffect handles the initial load (page 1)
     if (currentPage > 1) {
-        fetchReports(currentPage);
+      fetchReports(currentPage);
     }
   }, [currentPage, fetchReports]);
 
@@ -233,10 +236,10 @@ export default function ArrivalReportTable({
     setSaving(true);
 
     try {
-     const payload = {
+      const payload = {
         ...editData,
         reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
-        arrivalTime: editData.eventTime ? `${editData.eventTime}+05:30` : null, 
+        arrivalTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
       };
 
       const res = await fetch(`/api/arrival-report/${selectedReport._id}`, {
@@ -267,10 +270,9 @@ export default function ArrivalReportTable({
     if (!selectedReport) return;
 
     try {
-      const res = await fetch(
-        `/api/arrival-report/${selectedReport._id}`,
-        { method: "DELETE" }
-      );
+      const res = await fetch(`/api/arrival-report/${selectedReport._id}`, {
+        method: "DELETE",
+      });
 
       if (!res.ok) throw new Error();
 
@@ -372,19 +374,6 @@ export default function ArrivalReportTable({
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      value={editData.status}
-                      onChange={(val) => setEditData({ ...editData, status: val })}
-                      className="dark:bg-dark-900"
-                    />
-                   
-                  </div>
-                </div>
-
-                <div>
                   <Label>Report Date & Time</Label>
                   <Input
                     type="datetime-local"
@@ -431,6 +420,19 @@ export default function ArrivalReportTable({
                       })
                     }
                   />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="relative">
+                    <Select
+                      options={statusOptions}
+                      value={editData.status}
+                      onChange={(val) =>
+                        setEditData({ ...editData, status: val })
+                      }
+                      className="dark:bg-dark-900"
+                    />
+                  </div>
                 </div>
               </div>
             </ComponentCard>
