@@ -3,11 +3,10 @@ import mongoose, { Schema, models } from "mongoose";
 const userSchema = new Schema(
   {
     fullName: { type: String, required: true },
-
     email: { type: String, required: true, unique: true },
-
-    password: { type: String, required: true }, // hashed password
-
+    phone: { type: String, required: false }, 
+    password: { type: String, required: true }, 
+    
     role: {
       type: String,
       enum: [
@@ -17,6 +16,7 @@ const userSchema = new Schema(
         "vessel_user",
         "admin"
       ],
+      default: "crew_manager", 
       required: true,
     },
 
@@ -32,11 +32,7 @@ const userSchema = new Schema(
       default: "active",
     },
 
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
-
+    lastLogin: { type: Date, default: null },
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Number, default: null },
   },

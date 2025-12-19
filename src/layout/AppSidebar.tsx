@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   SquareArrowDownRight,
   SquareArrowUpLeft,
+
+  Users2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -53,6 +55,11 @@ const navItems: NavItem[] = [
     name: "Cargo Stowage Report",
     path: "/cargo-stowage-cargo-documents",
   },
+  {
+    icon:<Users2 size={25}/>,
+    name:"Manage Users",
+    path:"/manage-users",
+  }
 ];
 
 const AppSidebar: React.FC = () => {
