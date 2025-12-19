@@ -14,7 +14,7 @@ import Select from "@/components/form/Select";
 import DatePicker from "@/components/form/date-picker";
 import FileInput from "@/components/form/input/FileInput";
 import { ChevronDownIcon } from "lucide-react";
-
+import { cargoSchema } from "@/lib/validations/cargoValidation";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
 }
@@ -132,29 +132,35 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
   // Handler for FileInput with 500KB Validation
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+    // 1. Check if the file list is empty (User removed the file)
+    if (!e.target.files || e.target.files.length === 0) {
+      setSelectedFile(null);
+      setErrors((prev) => ({ ...prev, file: "File is required" }));
+      return;
+    }
 
-      // Check size (500 KB)
-      if (file.size > 500 * 1024) {
-        setErrors((prev) => ({ ...prev, file: "File size must be below 500 KB." }));
-        setSelectedFile(null);
-        e.target.value = ""; // Reset input
-        return;
-      }
+    const file = e.target.files[0];
 
-      setSelectedFile(file);
-      
-      if (errors.file) {
-        setErrors((prev) => {
-          const newErr = { ...prev };
-          delete newErr.file;
-          return newErr;
-        });
-      }
+    // 2. Check size (500 KB)
+    if (file.size > 500 * 1024) {
+      setErrors((prev) => ({ ...prev, file: "File size must be below 500 KB." }));
+      setSelectedFile(null);
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    // 3. Valid File Selected
+    setSelectedFile(file);
+    
+    // Clear error if it exists
+    if (errors.file) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.file;
+        return newErr;
+      });
     }
   };
-
   const handleClose = () => {
     setErrors({});
     setIsSubmitting(false);
@@ -178,22 +184,37 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
     setErrors({});
 
     // --- Validation ---
+    // 2. Joi Validation Logic
+    
+    // Validate the text fields using Joi
+    const { error } = cargoSchema.validate(formData, { abortEarly: false });
+    
+    // Create an object to hold any found errors
     const newErrors: Record<string, string> = {};
-    if (!formData.vesselName) newErrors.vesselName = "Vessel Name is required";
-    if (!formData.voyageNo) newErrors.voyageNo = "Voyage No is required";
-    if (!formData.portName) newErrors.portName = "Port Name is required";
-    if (!formData.portType) newErrors.portType = "Port Type is required";
-    if (!formData.documentType) newErrors.documentType = "Document Type is required";
-    if (!formData.documentDate) newErrors.documentDate = "Date is required";
-    if (!selectedFile) newErrors.file = "File is required";
 
+    // If Joi found errors, map them to your newErrors object
+    if (error) {
+      error.details.forEach((err) => {
+        // err.path[0] is the field name (e.g., 'vesselName')
+        if(err.path[0]) {
+           newErrors[err.path[0] as string] = err.message;
+        }
+      });
+    }
+
+    // 3. Manual Check for File
+    // (Joi is best for JSON data, so we keep the file check manual to ensure logic doesn't break)
+    if (!selectedFile) {
+      newErrors.file = "File is required";
+    }
+
+    // 4. Block submission if there are any errors
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
       toast.error("Please fill in all required fields.");
       return;
     }
-
     try {
       // --- Payload Preparation ---
       const payload = new FormData();
