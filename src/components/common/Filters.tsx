@@ -68,7 +68,7 @@ export default function Filters({
           Search
         </label>
         <Input
-          placeholder="Search by Vessel Name..."
+          placeholder="Search by Vessel Name or Voyage ID"
           className="w-full"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}

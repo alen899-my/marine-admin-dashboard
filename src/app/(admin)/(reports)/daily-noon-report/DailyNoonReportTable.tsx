@@ -146,7 +146,7 @@ export default function DailyNoonReportTable({
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col text-xs">
           <span className="text-blue-600 dark:text-blue-400 font-bold">
-            Next: {r?.navigation?.nextPort ?? "-"}
+            Next Port: {r?.navigation?.nextPort ?? "-"}
           </span>
           <span className="text-gray-500">
             Last 24h: {r?.navigation?.distLast24h ?? 0} NM
