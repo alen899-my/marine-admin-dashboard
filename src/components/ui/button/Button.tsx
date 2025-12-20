@@ -9,7 +9,8 @@ interface ButtonProps {
   startIcon?: ReactNode;
   endIcon?: ReactNode;
 
-  onClick?: () => void;
+  // Updated to accept the MouseEvent argument
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 
   type?: "button" | "submit" | "reset"; // ✅ ADD THIS
   disabled?: boolean;
@@ -48,8 +49,8 @@ const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition
-        ${sizeClasses[size]}
-        ${variantClasses[variant]}
+        ${sizeClasses[size]} 
+        ${variantClasses[variant]} 
         ${disabled ? "cursor-not-allowed opacity-50" : ""}
         ${className}
       `}

@@ -10,6 +10,7 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
+import { File, FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -117,25 +118,82 @@ export default function NorReportTable({
         (currentPage - 1) * LIMIT + index + 1,
     },
     {
-      header: "Vessel Name",
-      render: (r: INorReport) => r?.vesselName ?? "-",
+      header: "Vessel & Voyage ID",
+      render: (r: INorReport) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {r?.vesselName ?? "-"}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            ID: {r?.voyageId ?? "-"}
+          </span>
+        </div>
+      ),
     },
     {
-      header: "Voyage No",
-      render: (r: INorReport) => r?.voyageId ?? "-",
+      header: "Report & Tender Time",
+      render: (r: INorReport) => (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
+            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
+          </div>
+          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Tendered</span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.norDetails?.tenderTime)}</span>
+          </div>
+        </div>
+      ),
     },
     {
-      header: "Port",
-      render: (r: INorReport) => r?.portName ?? "-",
+      header: "Port & Station",
+      render: (r: INorReport) => (
+        <div className="flex flex-col text-xs">
+          <span className="text-blue-600 dark:text-blue-400 font-bold truncate max-w-[150px]">
+            {r?.portName ?? "-"}
+          </span>
+          <span className="text-gray-500 italic">
+            Station: {r?.norDetails?.pilotStation || "N/A"}
+          </span>
+        </div>
+      ),
     },
+    {
+      header: "ETA & Document",
+      render: (r: INorReport) => {
+        const meta = getFileMeta(r?.norDetails?.documentUrl);
+        
+        return (
+          <div className="flex flex-col text-xs gap-1">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-400 uppercase font-bold">ETA Port</span>
+              <span className="text-gray-700 dark:text-gray-300">{formatDate(r?.norDetails?.etaPort)}</span>
+            </div>
 
-    {
-      header: "NOR Tender Time",
-      render: (r: INorReport) => formatDate(r.norDetails?.tenderTime),
-    },
-    {
-      header: "Report Date & Time ",
-      render: (r: INorReport) => formatDate(r.reportDate),
+            {r?.norDetails?.documentUrl ? (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {/* Dynamic Icon based on type */}
+                {meta.isPdf ? (
+                  <FileText className="w-3.5 h-3.5 text-red-500" />
+                ) : meta.isImage ? (
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                ) : (
+                  <FileCheck className="w-3.5 h-3.5 text-green-500" />
+                )}
+                
+                <span className="font-medium text-gray-600 dark:text-gray-400">
+                  {meta.isPdf ? "PDF Attached" : meta.isImage ? "Image Attached" : "Doc Attached"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-gray-400 italic mt-0.5">
+                <FileWarning className="w-3.5 h-3.5 opacity-50" />
+                <span>No document</span>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Status",
@@ -355,6 +413,7 @@ export default function NorReportTable({
                 setSelectedReport(r);
                 setOpenDelete(true);
               }}
+              onRowClick={handleView}
             />
           </div>
         </div>
@@ -362,169 +421,160 @@ export default function NorReportTable({
 
       {/* ================= VIEW MODAL ================= */}
       <ViewModal
-        isOpen={openView}
-        onClose={() => setOpenView(false)}
-        title="Notice of Readiness (NOR) Details"
-      >
-        <div className="space-y-6 text-sm">
-          {/* Status */}
-          <ComponentCard title="Status">
-            <Badge
-              color={selectedReport?.status === "active" ? "success" : "error"}
-            >
-              {selectedReport?.status === "active" ? "Active" : "Inactive"}
-            </Badge>
-          </ComponentCard>
+  isOpen={openView}
+  onClose={() => setOpenView(false)}
+  title="Notice of Readiness (NOR) Details"
+>
+  <div className="text-[13px] py-1">
+    {/* ================= MAIN CONTENT GRID ================= */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+      
+      {/* ================= GENERAL INFORMATION ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          General Information
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Vessel Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.vesselName ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Voyage No</span>
+          <span className="font-medium text-right">
+            {selectedReport?.voyageId ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Port Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.portName ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">NOR Tender Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.norDetails?.tenderTime)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Report Date & Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.reportDate)}
+          </span>
+        </div>
+      </section>
 
-          {/* General Info */}
-          <ComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">
-                  Vessel Name
-                </p>
-                <p className="font-medium">
-                  {selectedReport?.vesselName ?? "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">
-                  Voyage No
-                </p>
-                <p className="font-medium">{selectedReport?.voyageId ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">
-                  Port Name
-                </p>
-                <p className="font-medium">{selectedReport?.portName ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">
-                  NOR Tender Time
-                </p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.norDetails?.tenderTime)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-semibold">
-                  Report Date & Time
-                </p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.reportDate)}
-                </p>
-              </div>
-            </div>
-          </ComponentCard>
+      {/* ================= LOCATION DETAILS ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          Location Details
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Pilot Station</span>
+          <span className="font-medium text-right">
+            {selectedReport?.norDetails?.pilotStation ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">ETA Port</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.norDetails?.etaPort)}
+          </span>
+        </div>
+      </section>
 
-          {/* Location & Documents */}
-          <ComponentCard title="Location & Documents">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">
-                  Pilot Station
-                </p>
-                <p className="font-medium">
-                  {selectedReport?.norDetails?.pilotStation ?? "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500  font-semibold">ETA Port</p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.norDetails?.etaPort)}
-                </p>
-              </div>
-            </div>
+      {/* ================= ATTACHED DOCUMENTS ================= */}
+      <section className="md:col-span-2 space-y-3 pt-2">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+          Attached Document
+        </h3>
+        
+        {!fileMeta || !selectedReport?.norDetails?.documentUrl ? (
+          <span className="text-gray-400 text-xs italic">
+            No file attached
+          </span>
+        ) : (
+          <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+            {/* 🖼 THUMBNAIL */}
+            <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+              {fileMeta.isImage && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={selectedReport.norDetails.documentUrl}
+                  alt="Preview"
+                  className="w-full h-full object-contain p-1"
+                />
+              )}
 
-            {/* DOCUMENT SECTION */}
-            <div className="mt-6 border-t pt-4 border-gray-200 dark:border-white/10">
-              <p className="text-xs text-gray-500 dark:text-gray-400  font-semibold mb-3">
-                Attached Document
-              </p>
-
-              {!fileMeta || !selectedReport?.norDetails?.documentUrl ? (
-                <span className="text-gray-400 dark:text-gray-500 text-xs italic">
-                  No file attached
-                </span>
-              ) : (
-                <div className="flex flex-row gap-4 items-start">
-                  {/* 🖼 THUMBNAIL (Fixed Small Square) */}
-                  <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-white/[0.03] rounded-lg  dark: flex items-center justify-center overflow-hidden">
-                    {fileMeta.isImage && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={selectedReport.norDetails.documentUrl}
-                        alt="Preview"
-                        className="w-full h-full object-contain p-1"
-                      />
-                    )}
-
-                    {fileMeta.isPdf && (
-                      <div className="flex flex-col items-center justify-center text-center p-2">
-                        {/* PDF Icon */}
-                        <div className="w-10 h-12 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
-                          <span className="text-white font-bold text-[10px]">
-                            PDF
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-gray-400 truncate max-w-[90px]">
-                          Preview
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ⚙️ INFO & BUTTONS (Side Panel) */}
-                  <div className="flex flex-col justify-center h-32 gap-2">
-                    {/* File Meta */}
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[200px]">
-                        {fileMeta.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {fileMeta.isPdf ? "PDF Document" : "Image File"}
-                      </p>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 mt-1">
-                      <a
-                        href={selectedReport.norDetails.documentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-1.5 text-xs font-medium 
-                                   text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
-                                   rounded-md transition shadow-sm
-                                   dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
-                      >
-                        Open
-                      </a>
-
-                      <a
-                        href={selectedReport.norDetails.documentUrl}
-                        download
-                        className="px-4 py-1.5 text-xs font-medium 
-                                   text-white bg-brand-500 hover:bg-brand-600
-                                   rounded-md transition shadow-sm border border-transparent"
-                      >
-                        Download
-                      </a>
-                    </div>
+              {fileMeta.isPdf && (
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
+                    <span className="text-white font-bold text-[8px]">PDF</span>
                   </div>
                 </div>
               )}
             </div>
-          </ComponentCard>
 
-          {/* Remarks */}
-          <ComponentCard title="Remarks">
-            <p className="break-words">
-              {selectedReport?.remarks || "No remarks."}
-            </p>
-          </ComponentCard>
-        </div>
-      </ViewModal>
+            {/* ⚙️ INFO & ACTIONS */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                {fileMeta.name}
+              </p>
+              <p className="text-xs text-gray-500 mb-2">
+                {fileMeta.isPdf ? "PDF Document" : "Image File"}
+              </p>
+              
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedReport.norDetails.documentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition shadow-sm dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                >
+                  Open
+                </a>
+                <a
+                  href={selectedReport.norDetails.documentUrl}
+                  download
+                  className="px-3 py-1 text-[11px] font-medium text-white bg-brand-500 hover:bg-brand-600 rounded transition shadow-sm"
+                >
+                  Download
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ================= REMARKS ================= */}
+      <section className="md:col-span-2">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+          Remarks
+        </h3>
+        <p className="text-gray-700 leading-relaxed py-1 font-medium">
+          {selectedReport?.remarks || "No remarks provided."}
+        </p>
+      </section>
+    </div>
+
+    {/* ================= FOOTER: STATUS (Aligned with Col 1) ================= */}
+    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+          Status
+        </span>
+        <Badge
+          color={selectedReport?.status === "active" ? "success" : "error"}
+        >
+          {selectedReport?.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      </div>
+      <div className="hidden md:block"></div>
+    </div>
+  </div>
+</ViewModal>
 
       {/* ================= EDIT MODAL ================= */}
       <EditModal
@@ -535,7 +585,7 @@ export default function NorReportTable({
         onSubmit={handleUpdate}
       >
         {editData && (
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>

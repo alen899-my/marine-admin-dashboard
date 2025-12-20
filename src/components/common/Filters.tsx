@@ -60,7 +60,7 @@ export default function Filters({
     /* CHANGE 1: Removed 'm-4' which causes double-spacing inside a card.
       CHANGE 2: Added 'flex-wrap' so items drop to the next line when zoomed.
     */
-    <div className="flex flex-wrap items-end gap-4 p-4 w-full ms-2">
+    <div className="flex flex-wrap items-end gap-4 p-4 w-full">
       
       {/* SEARCH: Changed md:w-74 to flex-grow with a max-width */}
       <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">

@@ -282,7 +282,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">

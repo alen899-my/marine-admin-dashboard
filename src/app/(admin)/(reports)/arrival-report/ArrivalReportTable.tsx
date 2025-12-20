@@ -105,27 +105,61 @@ export default function ArrivalReportTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: ArrivalReport, index: number) => index + 1,
+      render: (_: ArrivalReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
     },
     {
-      header: "Vessel Name",
-      render: (r: ArrivalReport) => r?.vesselName ?? "-",
+      header: "Vessel & Voyage ID",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {r?.vesselName ?? "-"}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            ID: {r?.voyageId ?? "-"}
+          </span>
+        </div>
+      ),
     },
     {
-      header: "Voyage No / ID",
-      render: (r: ArrivalReport) => r?.voyageId ?? "-",
+      header: "Report & Arrival",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
+            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
+          </div>
+          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Arrival Time</span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.eventTime)}</span>
+          </div>
+        </div>
+      ),
     },
     {
       header: "Port",
-      render: (r: ArrivalReport) => r?.portName ?? "-",
+      render: (r: ArrivalReport) => (
+        <div className="font-bold text-blue-600 dark:text-blue-400">
+          {r?.portName ?? "-"}
+        </div>
+      ),
     },
     {
-      header: "Arrival Time",
-      render: (r: ArrivalReport) => formatDate(r.eventTime),
-    },
-    {
-      header: "Report Date & Time",
-      render: (r: ArrivalReport) => formatDate(r?.reportDate),
+      header: "ROB & Remarks",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col text-xs gap-1">
+          <div className="flex gap-2">
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              VLSFO: <b>{r?.arrivalStats?.robVlsfo ?? 0} MT</b>
+            </span>
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              LSMGO: <b>{r?.arrivalStats?.robLsmgo ?? 0} MT</b>
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-500 line-clamp-1 max-w-[200px]" title={r?.remarks}>
+            {r?.remarks || "No remarks"}
+          </p>
+        </div>
+      ),
     },
     {
       header: "Status",
@@ -305,6 +339,7 @@ export default function ArrivalReportTable({
                 setSelectedReport(r);
                 setOpenDelete(true);
               }}
+              onRowClick={handleView}
             />
           </div>
         </div>
@@ -312,54 +347,98 @@ export default function ArrivalReportTable({
 
       {/* ================= VIEW ================= */}
       <ViewModal
-        isOpen={openView}
-        onClose={() => setOpenView(false)}
-        title="Arrival Report Details"
-      >
-        <div className="space-y-6 text-sm">
-          <ComponentCard title="Status">
-            <Badge
-              color={selectedReport?.status === "active" ? "success" : "error"}
-            >
-              {selectedReport?.status === "active" ? "Active" : "Inactive"}
-            </Badge>
-          </ComponentCard>
-
-          <ComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Info label="Vessel Name" value={selectedReport?.vesselName} />
-              <Info label="Voyage No / ID" value={selectedReport?.voyageId} />
-              <Info label="Port Name" value={selectedReport?.portName} />
-
-              <Info
-                label="Arrival Time"
-                value={formatDate(selectedReport?.eventTime)}
-              />
-              <Info
-                label="Report Date & Time"
-                value={formatDate(selectedReport?.reportDate)}
-              />
-            </div>
-          </ComponentCard>
-
-          <ComponentCard title="ROB on Arrival">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Info
-                label="Arrival ROB - VLSFO (MT)"
-                value={`${selectedReport?.arrivalStats?.robVlsfo ?? 0}`}
-              />
-              <Info
-                label="Arrival ROB - LSMGO (MT)"
-                value={`${selectedReport?.arrivalStats?.robLsmgo ?? 0}`}
-              />
-            </div>
-          </ComponentCard>
-
-          <ComponentCard title="Remarks">
-            <p className="break-words">{selectedReport?.remarks ?? "-"}</p>
-          </ComponentCard>
+  isOpen={openView}
+  onClose={() => setOpenView(false)}
+  title="Arrival Report Details"
+>
+  <div className="text-[13px] py-1">
+    {/* ================= MAIN CONTENT GRID ================= */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+      
+      {/* ================= GENERAL INFORMATION ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          General Information
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Vessel Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.vesselName ?? "-"}
+          </span>
         </div>
-      </ViewModal>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Voyage No / ID</span>
+          <span className="font-medium text-right">
+            {selectedReport?.voyageId ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Port Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.portName ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Arrival Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.eventTime)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Report Date & Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.reportDate)}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= ROB ON ARRIVAL ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          ROB on Arrival
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Arrival ROB - VLSFO (MT)</span>
+          <span className="font-medium text-right">
+            {selectedReport?.arrivalStats?.robVlsfo ?? 0}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Arrival ROB - LSMGO (MT)</span>
+          <span className="font-medium text-right">
+            {selectedReport?.arrivalStats?.robLsmgo ?? 0}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= REMARKS ================= */}
+      <section className="md:col-span-2">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+          Remarks
+        </h3>
+        <p className="text-gray-700 leading-relaxed py-1 font-medium">
+          {selectedReport?.remarks || "No Remarks"}
+        </p>
+      </section>
+    </div>
+
+    {/* ================= FOOTER: STATUS (Aligned with Col 1) ================= */}
+    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+          Status
+        </span>
+        <Badge
+          color={selectedReport?.status === "active" ? "success" : "error"}
+        >
+          {selectedReport?.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      </div>
+      {/* Empty column for alignment on desktop */}
+      <div className="hidden md:block"></div>
+    </div>
+  </div>
+</ViewModal>
 
       {/* ================= EDIT ================= */}
       <EditModal
@@ -370,9 +449,9 @@ export default function ArrivalReportTable({
         onSubmit={handleUpdate}
       >
         {editData && (
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             <ComponentCard title="General Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label>Report Date & Time</Label>
                   <Input

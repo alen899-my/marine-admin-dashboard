@@ -109,25 +109,73 @@ export default function DailyNoonReportTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: IDailyNoonReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+      render: (_: IDailyNoonReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
     },
     {
-      header: "Vessel Name",
-      render: (r: IDailyNoonReport) => r?.vesselName ?? "-",
+      header: "Vessel & Voyage ID",
+      render: (r: IDailyNoonReport) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {r?.vesselName ?? "-"}
+          </span>
+          <span className="text-xs text-gray-500 uppercase">
+            ID: {r?.voyageId ?? "-"}
+          </span>
+        </div>
+      ),
     },
     {
-      // ***** CHANGE: Force IST Label *****
-      header: "Report Date & Time",
-      render: (r: IDailyNoonReport) => formatDate(r.reportDate),
+      header: "Report Date",
+      render: (r: IDailyNoonReport) => (
+        <div className="text-[13px] leading-tight text-gray-700 dark:text-gray-300">
+          {formatDate(r.reportDate)}
+        </div>
+      ),
     },
     {
-      header: "Voyage No / ID",
-      render: (r: IDailyNoonReport) => r?.voyageId ?? "-",
+      header: "Position",
+      render: (r: IDailyNoonReport) => (
+        <div className="flex flex-col text-xs font-mono">
+          <span>Lat: {r?.position?.lat ?? "-"}</span>
+          <span>Long: {r?.position?.long ?? "-"}</span>
+        </div>
+      ),
     },
     {
-      header: "Next Port",
-      render: (r: IDailyNoonReport) => r?.navigation?.nextPort ?? "-",
+      header: "Navigation",
+      render: (r: IDailyNoonReport) => (
+        <div className="flex flex-col text-xs">
+          <span className="text-blue-600 dark:text-blue-400 font-bold">
+            Next: {r?.navigation?.nextPort ?? "-"}
+          </span>
+          <span className="text-gray-500">
+            Last 24h: {r?.navigation?.distLast24h ?? 0} NM
+          </span>
+          <span className="text-gray-500">
+            To Go: {r?.navigation?.distToGo ?? 0} NM
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Consumption",
+      render: (r: IDailyNoonReport) => (
+        <div className="flex flex-col text-xs">
+          <span>VLSFO: <b className="font-medium text-gray-700 dark:text-gray-200">{r?.consumption?.vlsfo ?? 0}</b> MT</span>
+          <span>LSMGO: <b className="font-medium text-gray-700 dark:text-gray-200">{r?.consumption?.lsmgo ?? 0}</b> MT</span>
+        </div>
+      ),
+    },
+    {
+      header: "Weather",
+      render: (r: IDailyNoonReport) => (
+        <div className="flex flex-col text-xs max-w-[150px]">
+          <span className="truncate">Wind: {r?.weather?.wind ?? "-"}</span>
+          <span className="truncate text-gray-500 italic">
+            Sea: {r?.weather?.seaState ?? "-"}
+          </span>
+        </div>
+      ),
     },
     {
       header: "Status",
@@ -329,6 +377,7 @@ export default function DailyNoonReportTable({
                 setSelectedReport(r);
                 setOpenDelete(true);
               }}
+              onRowClick={handleView}
             />
           </div>
         </div>
@@ -339,143 +388,175 @@ export default function DailyNoonReportTable({
         onClose={() => setOpenView(false)}
         title="Noon Report Details"
       >
-        <div className="space-y-6 text-sm">
-          {/* ================= STATUS ================= */}
-          <ComponentCard title="Status">
-            <Badge
-              color={selectedReport?.status === "active" ? "success" : "error"}
-            >
-              {selectedReport?.status === "active" ? "Active" : "Inactive"}
-            </Badge>
-          </ComponentCard>
-
-          {/* ================= GENERAL INFORMATION ================= */}
-          <ComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Vessel Name</p>
-                <p className="font-medium">
+        <div className="text-[13px] py-1">
+          {/* ================= MAIN CONTENT GRID ================= */}
+          {/* gap-x-12 is the key for alignment */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            {/* ================= GENERAL INFORMATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                General Information
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Vessel Name</span>
+                <span className="font-medium text-right">
                   {selectedReport?.vesselName ?? "-"}
-                </p>
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Voyage No / ID</p>
-                <p className="font-medium">{selectedReport?.voyageId ?? "-"}</p>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Voyage No / ID</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.voyageId ?? "-"}
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Report Type</p>
-                <p className="font-medium capitalize">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Report Type</span>
+                <span className="font-medium capitalize text-right">
                   {selectedReport?.type ?? "-"}
-                </p>
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Report Date & Time</p>
-                <p className="font-medium">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Report Date & Time
+                </span>
+                <span className="font-medium text-right">
                   {formatDate(selectedReport?.reportDate)}
-                </p>
+                </span>
               </div>
-            </div>
-          </ComponentCard>
+            </section>
 
-          {/* ================= POSITION ================= */}
-          <ComponentCard title="Position">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Latitude</p>
-                <p className="font-medium">
+            {/* ================= POSITION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Position
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Latitude</span>
+                <span className="font-mono font-medium text-right">
                   {selectedReport?.position?.lat ?? "-"}
-                </p>
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Longitude</p>
-                <p className="font-medium">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Longitude</span>
+                <span className="font-mono font-medium text-right">
                   {selectedReport?.position?.long ?? "-"}
-                </p>
+                </span>
               </div>
-            </div>
-          </ComponentCard>
+            </section>
 
-          {/* ================= NAVIGATION ================= */}
-          <ComponentCard title="Navigation">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">
+            {/* ================= NAVIGATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Navigation
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">
                   Distance Travelled (last 24 hrs, NM)
-                </p>
-                <p className="font-medium">
+                </span>
+                <span className="font-medium text-right">
                   {selectedReport?.navigation?.distLast24h ?? 0} NM
-                </p>
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Distance To Go (NM)</p>
-                <p className="font-medium">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Distance To Go (NM)
+                </span>
+                <span className="font-medium text-right">
                   {selectedReport?.navigation?.distToGo ?? 0} NM
-                </p>
+                </span>
               </div>
-
-              <div className="sm:col-span-2">
-                <p className="text-gray-500">Next Port</p>
-                <p className="font-medium">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Next Port</span>
+                <span className="font-medium text-right">
                   {selectedReport?.navigation?.nextPort ?? "-"}
-                </p>
+                </span>
               </div>
-            </div>
-          </ComponentCard>
+            </section>
 
-          {/* ================= CONSUMPTION ================= */}
-          <ComponentCard title="Fuel Consumption">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Fuel Consumed - VLSFO (MT)</p>
-                <p className="font-medium">
+            {/* ================= CONSUMPTION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Fuel Consumption
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">
+                  Fuel Consumed - VLSFO (MT)
+                </span>
+                <span className="font-medium text-right">
                   {selectedReport?.consumption?.vlsfo ?? 0}
-                </p>
+                </span>
               </div>
-
-              <div>
-                <p className="text-gray-500">Fuel Consumed - LSMGO (MT)</p>
-                <p className="font-medium">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">
+                  Fuel Consumed - LSMGO (MT)
+                </span>
+                <span className="font-medium text-right">
                   {selectedReport?.consumption?.lsmgo ?? 0}
-                </p>
+                </span>
               </div>
-            </div>
-          </ComponentCard>
+            </section>
 
-          {/* ================= WEATHER ================= */}
-          <ComponentCard title="Weather Conditions">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Wind / Beaufort Scale</p>
-                <p className="font-medium">
-                  {selectedReport?.weather?.wind ?? "-"}
-                </p>
+            {/* ================= WEATHER ================= */}
+            <section className="md:col-span-2 space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Weather Conditions
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500 shrink-0">
+                    Wind / Beaufort Scale
+                  </span>
+                  <span className="font-medium text-right">
+                    {selectedReport?.weather?.wind ?? "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500 shrink-0">
+                    Sea State / Swell
+                  </span>
+                  <span className="font-medium text-right">
+                    {selectedReport?.weather?.seaState ?? "-"}
+                  </span>
+                </div>
               </div>
-
-              <div>
-                <p className="text-gray-500">Sea State / Swell</p>
-                <p className="font-medium">
-                  {selectedReport?.weather?.seaState ?? "-"}
-                </p>
-              </div>
-
-              <div className="sm:col-span-2">
-                <p className="text-gray-500">Weather Remarks</p>
-                <p className="font-medium break-words">
+              <div className="pt-1">
+                <span className="text-gray-500 shrink-0">Weather Remarks</span>
+                <p className="text-gray-600 leading-snug font-medium">
                   {selectedReport?.weather?.remarks ?? "-"}
                 </p>
               </div>
-            </div>
-          </ComponentCard>
+            </section>
 
-          {/* ================= REMARKS ================= */}
-          <ComponentCard title="Remarks">
-            <p className="break-words">{selectedReport?.remarks ?? "-"}</p>
-          </ComponentCard>
+            {/* ================= REMARKS ================= */}
+            <section className="md:col-span-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Remarks
+              </h3>
+              <p className="text-gray-700 leading-relaxed py-1">
+                {selectedReport?.remarks ?? "-"}
+              </p>
+            </section>
+          </div>
+
+          {/* ================= FOOTER: STATUS (Aligned with columns above) ================= */}
+          {/* We use the same gap-x-12 here to ensure alignment */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+
+            {/* Empty div for the second column on desktop */}
+            <div className="hidden md:block"></div>
+          </div>
         </div>
       </ViewModal>
 
@@ -487,10 +568,10 @@ export default function DailyNoonReportTable({
         onSubmit={handleUpdate}
       >
         {editData && (
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             {/* ================= GENERAL INFORMATION ================= */}
             <ComponentCard title="General Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label>Report Date & Time</Label>
                   <Input

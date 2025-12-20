@@ -27,6 +27,7 @@ interface CommonReportTableProps<T> {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onRowClick?: (row: T) => void;
 }
 
 export default function CommonReportTable<T>({
@@ -39,18 +40,13 @@ export default function CommonReportTable<T>({
   onView,
   onEdit,
   onDelete,
+  onRowClick,
 }: CommonReportTableProps<T>) {
   return (
     <div className="bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200">
-
-      {/* WRAPPER WITH ROUNDED CORNERS */}
       <div className="max-w-full rounded-xl overflow-hidden shadow-sm">
-
-        {/* ***** CHANGE 1: Added max-h-[65vh], overflow-y-auto, and relative to enable scrolling ***** */}
         <div className="min-w-[1200px] max-h-[65vh] overflow-y-auto relative">
           <Table>
-
-            {/* HEADER */}
             <TableHeader className="bg-gray-100 dark:bg-white/10">
               <TableRow>
                 {columns.map((col) => (
@@ -58,11 +54,10 @@ export default function CommonReportTable<T>({
                     key={col.header}
                     isHeader
                     className="
-                      /* ***** CHANGE 2: Added sticky, top-0, z-20 to freeze header ***** */
                       sticky top-0 z-20
                       px-5 py-3 
                       bg-brand-500 text-white 
-                      font-semibold text-center
+                      font-semibold text-left 
                       dark:bg-brand-500
                     "
                   >
@@ -74,11 +69,10 @@ export default function CommonReportTable<T>({
                   <TableCell
                     isHeader
                     className="
-                      /* ***** CHANGE 3: Added sticky, top-0,  to freeze action header ***** */
                       sticky top-0 z-20
                       px-5 py-3 
                       bg-brand-500 text-white 
-                      font-semibold text-center
+                      font-semibold text-left
                       dark:bg-brand-500
                     "
                   >
@@ -89,7 +83,6 @@ export default function CommonReportTable<T>({
             </TableHeader>
 
             <TableBody>
-              {/* LOADING */}
               {loading && (
                 <TableRow>
                   <TableCell
@@ -104,7 +97,6 @@ export default function CommonReportTable<T>({
                 </TableRow>
               )}
 
-              {/* EMPTY */}
               {!loading && data.length === 0 && (
                 <TableRow>
                   <TableCell
@@ -116,13 +108,13 @@ export default function CommonReportTable<T>({
                 </TableRow>
               )}
 
-              {/* DATA */}
               {!loading &&
                 data.map((row, index) => (
                   <TableRow
-                    // Fixed: Use explicit type instead of any
                     key={(row as { _id?: string })._id ?? index}
+                    onClick={() => onRowClick?.(row)}
                     className={`
+                      cursor-pointer
                       transition-colors
                       ${
                         index % 2 === 0
@@ -137,7 +129,7 @@ export default function CommonReportTable<T>({
                       <TableCell
                         key={col.header}
                         className="
-                          px-5 py-3 text-center 
+                          px-5 py-3 text-left 
                           text-gray-800 dark:text-gray-200
                         "
                       >
@@ -146,14 +138,17 @@ export default function CommonReportTable<T>({
                     ))}
 
                     {(onView || onEdit || onDelete) && (
-                      <TableCell className="px-5 py-3 text-center">
-                        <div className="flex gap-2 justify-center">
+                      <TableCell className="px-5 py-3">
+                        <div className="flex gap-2 justify-start">
                           {onView && (
                             <Button
                               size="sm"
                               variant="outline"
                               className="dark:border-gray-600"
-                              onClick={() => onView(row)}
+                              onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click
+                        onView(row);
+                      }}
                             >
                               <Eye className="h-4 w-4 text-blue-500" />
                             </Button>
@@ -164,7 +159,10 @@ export default function CommonReportTable<T>({
                               size="sm"
                               variant="outline"
                               className="dark:border-gray-600"
-                              onClick={() => onEdit(row)}
+                              onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click
+                        onEdit(row);
+                      }}
                             >
                               <PenBox className="h-4 w-4 text-yellow-500" />
                             </Button>
@@ -175,7 +173,10 @@ export default function CommonReportTable<T>({
                               size="sm"
                               variant="outline"
                               className="dark:border-gray-600"
-                              onClick={() => onDelete(row)}
+                              onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click
+                        onDelete(row);
+                      }}
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
@@ -188,7 +189,6 @@ export default function CommonReportTable<T>({
             </TableBody>
           </Table>
 
-          {/* PAGINATION */}
           <div className="sticky bottom-0 z-20 border-t dark:border-gray-700 bg-brand-50 dark:bg-slate-900 p-2 flex justify-center rounded-b-xl">
             <Pagination
               currentPage={currentPage}
@@ -196,7 +196,6 @@ export default function CommonReportTable<T>({
               onPageChange={onPageChange}
             />
           </div>
-
         </div>
       </div>
     </div>

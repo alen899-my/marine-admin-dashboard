@@ -13,7 +13,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   title,
   children,
   className = "",
-  headerClassName = "px-6 py-5", // Default padding (preserves old behavior)
+  headerClassName = "px-4 py-3", // Reduced by 1 step from previous px-5 py-4
   desc = "",
   action,
 }) => {
@@ -54,7 +54,8 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
       )}
 
       {/* Card Body */}
-      <div className="p-4 border-t border-gray-100 dark:border-gray-800 sm:p-6">
+      <div className="p-2 border-t border-gray-100 dark:border-gray-800 sm:p-4">
+        {/* Padding reduced: p-3 -> p-2 and sm:p-5 -> sm:p-4 */}
         <div className="space-y-6">{children}</div>
       </div>
     </div>

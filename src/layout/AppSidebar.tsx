@@ -55,11 +55,11 @@ const navItems: NavItem[] = [
     name: "Cargo Stowage Report",
     path: "/cargo-stowage-cargo-documents",
   },
-  {
-    icon:<Users2 size={25}/>,
-    name:"Manage Users",
-    path:"/manage-users",
-  }
+  // {
+  //   icon:<Users2 size={25}/>,
+  //   name:"Manage Users",
+  //   path:"/manage-users",
+  // }
 ];
 
 const AppSidebar: React.FC = () => {

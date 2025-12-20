@@ -256,7 +256,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

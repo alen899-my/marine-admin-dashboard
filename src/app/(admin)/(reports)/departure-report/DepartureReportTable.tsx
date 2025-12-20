@@ -97,38 +97,75 @@ export default function DepartureReportTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: IDepartureReport, index: number) => index + 1,
+      render: (_: IDepartureReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
     },
     {
-      header: "Vessel Name",
-      render: (r: IDepartureReport) => r?.vesselName ?? "-",
+      header: "Vessel & Voyage ID",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {r?.vesselName ?? "-"}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            ID: {r?.voyageId ?? "-"}
+          </span>
+        </div>
+      ),
     },
     {
-      header: "Voyage No / ID",
-      render: (r: IDepartureReport) => r?.voyageId ?? "-",
+      header: "Report & Departure",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
+            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
+          </div>
+          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Departure</span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.eventTime)}</span>
+          </div>
+        </div>
+      ),
     },
     {
-      header: "Port",
-      render: (r: IDepartureReport) => r?.portName ?? "-",
+      header: "Port & Navigation",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs">
+          <span className="text-blue-600 dark:text-blue-400 font-bold truncate max-w-[140px]">
+            {r?.portName ?? "-"}
+          </span>
+          <span className="text-gray-500">To Go: {r?.navigation?.distanceToGo ?? 0} NM</span>
+          <span className="text-[11px] mt-1 text-gray-600 dark:text-gray-400 italic">
+            ETA: {formatDate(r?.navigation?.etaNextPort)}
+          </span>
+        </div>
+      ),
     },
     {
-      header: "Departure Time",
-      render: (r: IDepartureReport) => formatDate(r.eventTime),
-    },
-    {
-      header: "Report Date",
-      render: (r: IDepartureReport) => formatDate(r?.reportDate),
+      header: "ROB & Cargo",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs gap-1">
+          <div className="flex gap-2">
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0} MT</b>
+            </span>
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0} MT</b>
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]" title={r?.departureStats?.cargoSummary}>
+            {r?.departureStats?.cargoSummary || "No cargo details"}
+          </p>
+        </div>
+      ),
     },
     {
       header: "Status",
-      render: (r: IDepartureReport) => {
-        const isActive = r.status === "active";
-        return (
-          <Badge color={isActive ? "success" : "error"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        );
-      },
+      render: (r: IDepartureReport) => (
+        <Badge color={r.status === "active" ? "success" : "error"}>
+          {r.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      ),
     },
   ];
 
@@ -310,6 +347,7 @@ export default function DepartureReportTable({
                 setSelectedReport(r);
                 setOpenDelete(true);
               }}
+              onRowClick={handleView}
             />
           </div>
         </div>
@@ -317,102 +355,129 @@ export default function DepartureReportTable({
 
       {/* ================= VIEW MODAL ================= */}
       <ViewModal
-        isOpen={openView}
-        onClose={() => setOpenView(false)}
-        title="Departure Report Details"
-      >
-        <div className="space-y-6 text-sm">
-          <ComponentCard title="Status">
-            <Badge
-              color={selectedReport?.status === "active" ? "success" : "error"}
-            >
-              {selectedReport?.status === "active" ? "Active" : "Inactive"}
-            </Badge>
-          </ComponentCard>
-
-          <ComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Vessel Name</p>
-                <p className="font-medium">
-                  {selectedReport?.vesselName ?? "-"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Voyage No / ID</p>
-                <p className="font-medium">{selectedReport?.voyageId ?? "-"}</p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Port Name</p>
-                <p className="font-medium">{selectedReport?.portName ?? "-"}</p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Departure Time</p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.eventTime)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Report Date & Time</p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.reportDate)}
-                </p>
-              </div>
-            </div>
-          </ComponentCard>
-
-          <ComponentCard title="Voyage Details">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Distance to Go (NM)</p>
-                <p className="font-medium">
-                  {selectedReport?.navigation?.distanceToGo ?? 0} NM
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">ETA Next Port</p>
-                <p className="font-medium">
-                  {formatDate(selectedReport?.navigation?.etaNextPort)}
-                </p>
-              </div>
-            </div>
-          </ComponentCard>
-
-          <ComponentCard title="ROB at Departure">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">ROB - VLSFO (MT)</p>
-                <p className="font-medium">
-                  {selectedReport?.departureStats?.robVlsfo ?? 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">ROB - LSMGO (MT)</p>
-                <p className="font-medium">
-                  {selectedReport?.departureStats?.robLsmgo ?? 0}
-                </p>
-              </div>
-            </div>
-          </ComponentCard>
-
-          <ComponentCard title="Cargo Details">
-            <p className="text-gray-500">Cargo Loaded / Unloaded</p>
-            <p className="break-words">
-              {selectedReport?.departureStats?.cargoSummary ?? "-"}
-            </p>
-          </ComponentCard>
-
-          <ComponentCard title="Remarks">
-            <p className="break-words">{selectedReport?.remarks ?? "-"}</p>
-          </ComponentCard>
+  isOpen={openView}
+  onClose={() => setOpenView(false)}
+  title="Departure Report Details"
+>
+  <div className="text-[13px] py-1">
+    {/* ================= MAIN CONTENT GRID ================= */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+      
+      {/* ================= GENERAL INFORMATION ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          General Information
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Vessel Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.vesselName ?? "-"}
+          </span>
         </div>
-      </ViewModal>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Voyage No / ID</span>
+          <span className="font-medium text-right">
+            {selectedReport?.voyageId ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Port Name</span>
+          <span className="font-medium text-right">
+            {selectedReport?.portName ?? "-"}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Departure Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.eventTime)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Report Date & Time</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.reportDate)}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= VOYAGE DETAILS ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          Voyage Details
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">Distance to Go (NM)</span>
+          <span className="font-medium text-right">
+            {selectedReport?.navigation?.distanceToGo ?? 0} NM
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">ETA Next Port</span>
+          <span className="font-medium text-right">
+            {formatDate(selectedReport?.navigation?.etaNextPort)}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= ROB AT DEPARTURE ================= */}
+      <section className="space-y-1.5">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          ROB at Departure
+        </h3>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">ROB - VLSFO (MT)</span>
+          <span className="font-medium text-right">
+            {selectedReport?.departureStats?.robVlsfo ?? 0}
+          </span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500 shrink-0">ROB - LSMGO (MT)</span>
+          <span className="font-medium text-right">
+            {selectedReport?.departureStats?.robLsmgo ?? 0}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= CARGO DETAILS ================= */}
+      <section className="space-y-1.5 md:col-span-1">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+          Cargo Details
+        </h3>
+        <div className="pt-1">
+          <span className="text-gray-500 shrink-0">Cargo Loaded / Unloaded</span>
+          <p className="text-gray-700 font-medium leading-relaxed">
+            {selectedReport?.departureStats?.cargoSummary ?? "-"}
+          </p>
+        </div>
+      </section>
+
+      {/* ================= REMARKS ================= */}
+      <section className="md:col-span-2">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+          Remarks
+        </h3>
+        <p className="text-gray-700 leading-relaxed py-1 font-medium">
+          {selectedReport?.remarks || "No Remarks"}
+        </p>
+      </section>
+    </div>
+
+    {/* ================= FOOTER: STATUS (Aligned with col 1) ================= */}
+    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+          Status
+        </span>
+        <Badge
+          color={selectedReport?.status === "active" ? "success" : "error"}
+        >
+          {selectedReport?.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      </div>
+      <div className="hidden md:block"></div>
+    </div>
+  </div>
+</ViewModal>
 
       <EditModal
         isOpen={openEdit}
@@ -422,10 +487,10 @@ export default function DepartureReportTable({
         onSubmit={handleUpdate}
       >
         {editData && (
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
+          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label>Report Date & Time</Label>
                   <Input
