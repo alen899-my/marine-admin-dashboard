@@ -8,10 +8,10 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import Select from "@/components/form/Select";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import Select from "@/components/form/Select";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
@@ -48,18 +48,35 @@ export default function AddDailyNoonReportButton({
     nextPort: "",
     latitude: "",
     longitude: "",
-    distanceTravelled: "",
+    distanceTravelled: "", // This is Observed Distance (nm)
+    engineDistance: "", // ***** NEW FIELD *****
+    slip: "", // ***** NEW FIELD (Auto-calculated) *****
     distanceToGo: "",
-    vlsfoConsumed: "",
-    lsmgoConsumed: "",
+    vlsfoConsumed: "", // Last 24h VLSFO
+    lsmgoConsumed: "", // Last 24h LSMGO
     windForce: "",
     seaState: "",
     weatherRemarks: "",
     generalRemarks: "",
   });
 
+  // ***** NEW: Auto-calculate Slip whenever distances change *****
+  useEffect(() => {
+    const engineDist = parseFloat(form.engineDistance);
+    const obsDist = parseFloat(form.distanceTravelled);
+
+    if (!isNaN(engineDist) && engineDist !== 0 && !isNaN(obsDist)) {
+      const calculatedSlip = ((engineDist - obsDist) / engineDist) * 100;
+      setForm((prev) => ({ ...prev, slip: calculatedSlip.toFixed(2) }));
+    } else if (engineDist === 0 || isNaN(engineDist)) {
+      setForm((prev) => ({ ...prev, slip: "" }));
+    }
+  }, [form.engineDistance, form.distanceTravelled]);
+
   const handleChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
 ) => {
   const { name, value } = e.target;
   setForm((prev) => ({ ...prev, [name]: value }));
@@ -81,6 +98,8 @@ export default function AddDailyNoonReportButton({
       latitude: "",
       longitude: "",
       distanceTravelled: "",
+      engineDistance: "",
+      slip: "",
       distanceToGo: "",
       vlsfoConsumed: "",
       lsmgoConsumed: "",
@@ -195,14 +214,13 @@ export default function AddDailyNoonReportButton({
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
+          <div className="max-h-[70dvh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
-                    Report Date & Time{" "}
-                    <span className="text-red-500">*</span>
+                    Report Date & Time <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="datetime-local"
@@ -276,7 +294,7 @@ export default function AddDailyNoonReportButton({
               </div>
             </ComponentCard>
 
-            {/* POSITION */}
+            {/* POSITION & DISTANCE */}
             <ComponentCard title="Position & Distance">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -317,12 +335,13 @@ export default function AddDailyNoonReportButton({
 
                 <div>
                   <Label>
-                    Distance Travelled (last 24 hrs, NM){" "}
+                    Observed Distance (NM){" "}
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="number"
                     name="distanceTravelled"
+                    placeholder="Distance over ground"
                     value={form.distanceTravelled}
                     onChange={handleChange}
                     className={errors.distanceTravelled ? "border-red-500" : ""}
@@ -333,6 +352,42 @@ export default function AddDailyNoonReportButton({
                     </p>
                   )}
                 </div>
+
+                <div>
+                  <Label>
+                    Engine Distance (NM) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="engineDistance"
+                    placeholder="Log distance through water"
+                    value={form.engineDistance}
+                    onChange={handleChange}
+                    className={errors.engineDistance ? "border-red-500" : ""}
+                  />
+                  {errors.engineDistance && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.engineDistance}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+  <Label>Slip (%) <span className="text-red-500">*</span></Label>
+  <Input
+    type="number" // Changed to number for manual entry
+    name="slip"
+    placeholder="Calculated or manual"
+    value={form.slip}
+    onChange={handleChange} // Added handler to allow manual typing
+    className={errors.slip ? "border-red-500" : ""} // Added error styling if needed
+  />
+  {errors.slip && (
+    <p className="text-red-500 text-xs mt-1">
+      {errors.slip}
+    </p>
+  )}
+</div>
 
                 <div>
                   <Label>
@@ -355,11 +410,11 @@ export default function AddDailyNoonReportButton({
             </ComponentCard>
 
             {/* FUEL */}
-            <ComponentCard title="Fuel Consumption">
+            <ComponentCard title="Last 24 hrs fuel consumed">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
-                    Fuel Consumed - VLSFO (MT){" "}
+                    Fuel 24h - VLSFO (MT){" "}
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -378,7 +433,7 @@ export default function AddDailyNoonReportButton({
 
                 <div>
                   <Label>
-                    Fuel Consumed - LSMGO (MT){" "}
+                    Fuel 24h - LSMGO (MT){" "}
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input
