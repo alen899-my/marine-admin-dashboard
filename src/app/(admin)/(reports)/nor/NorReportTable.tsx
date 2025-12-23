@@ -121,7 +121,7 @@ export default function NorReportTable({
       header: "Vessel & Voyage ID",
       render: (r: INorReport) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold text-gray-900 dark:text-white">
             {r?.vesselName ?? "-"}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
@@ -149,10 +149,10 @@ export default function NorReportTable({
       header: "Port & Station",
       render: (r: INorReport) => (
         <div className="flex flex-col text-xs">
-          <span className="text-blue-600 dark:text-blue-400 font-bold truncate max-w-[150px]">
+          <span className="font-bold truncate max-w-[150px]">
             {r?.portName ?? "-"}
           </span>
-          <span className="text-gray-500 italic">
+          <span className="text-gray-500">
             Station: {r?.norDetails?.pilotStation || "N/A"}
           </span>
         </div>
@@ -424,6 +424,17 @@ export default function NorReportTable({
   isOpen={openView}
   onClose={() => setOpenView(false)}
   title="Notice of Readiness (NOR) Details"
+  headerRight={
+          selectedReport && (
+            <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <span className="font-bold">
+                {selectedReport.vesselName}
+              </span>
+              <span>|</span>
+              <span>{selectedReport.voyageId}</span>
+            </div>
+          )
+        }
 >
   <div className="text-[13px] py-1">
     {/* ================= MAIN CONTENT GRID ================= */}

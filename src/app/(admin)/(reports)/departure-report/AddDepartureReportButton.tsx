@@ -9,7 +9,7 @@ import Select from "@/components/form/Select"; // Added Select Import
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { useState, useEffect } from "react"; // Added useEffect
+import { useEffect, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 interface AddDepartureReportButtonProps {
@@ -61,12 +61,17 @@ export default function AddDepartureReportButton({
     vesselName: "AN16",
     voyageId: "",
     portName: "",
+    lastPort: "", // New Field
     eventTime: "",
     reportDate: getCurrentDateTime(),
-    distanceToGo: "",
+    distanceToNextPortNm: "", // Renamed
     etaNextPort: "",
     robVlsfo: "",
     robLsmgo: "",
+    bunkersReceivedVlsfo: "", // New Field
+    bunkersReceivedLsmgo: "", // New Field
+    cargoQtyLoadedMt: "", // New Field
+    cargoQtyUnloadedMt: "", // New Field
     cargoSummary: "",
     remarks: "",
   });
@@ -76,7 +81,7 @@ export default function AddDepartureReportButton({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // Clear error for the field being edited
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -100,12 +105,17 @@ export default function AddDepartureReportButton({
       vesselName: "AN16",
       voyageId: "",
       portName: "",
+      lastPort: "",
       eventTime: "",
       reportDate: getCurrentDateTime(),
-      distanceToGo: "",
+      distanceToNextPortNm: "",
       etaNextPort: "",
       robVlsfo: "",
       robLsmgo: "",
+      bunkersReceivedVlsfo: "",
+      bunkersReceivedLsmgo: "",
+      cargoQtyLoadedMt: "",
+      cargoQtyUnloadedMt: "",
       cargoSummary: "",
       remarks: "",
     });
@@ -126,19 +136,20 @@ export default function AddDepartureReportButton({
           vesselName: formData.vesselName,
           voyageId: formData.voyageId,
           portName: formData.portName,
+          lastPort: formData.lastPort,
 
           // ***** CHANGE: Append +05:30 to tell server this is IST *****
-          eventTime: formData.eventTime ? `${formData.eventTime}+05:30` : null,
+          eventTime: formData.eventTime ? `${formData.eventTime}+05:30` : undefined,
 
           // ***** CHANGE: Append +05:30 to tell server this is IST *****
           reportDate: formData.reportDate
             ? `${formData.reportDate}+05:30`
             : null,
 
-          distanceToGo:
-            formData.distanceToGo === ""
+          distance_to_next_port_nm:
+            formData.distanceToNextPortNm === ""
               ? undefined
-              : Number(formData.distanceToGo),
+              : Number(formData.distanceToNextPortNm),
 
           // ***** CHANGE: Append +05:30 to tell server this is IST *****
           etaNextPort: formData.etaNextPort
@@ -150,6 +161,26 @@ export default function AddDepartureReportButton({
           robLsmgo:
             formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
 
+          bunkers_received_vlsfo_mt:
+      formData.bunkersReceivedVlsfo === ""
+        ? undefined
+        : Number(formData.bunkersReceivedVlsfo),
+        
+    bunkers_received_lsmgo_mt:
+      formData.bunkersReceivedLsmgo === ""
+        ? undefined
+        : Number(formData.bunkersReceivedLsmgo),
+
+          // We pass undefined if empty so Joi can trigger the .or() check
+          cargo_qty_loaded_mt:
+            formData.cargoQtyLoadedMt === ""
+              ? undefined
+              : Number(formData.cargoQtyLoadedMt),
+          cargo_qty_unloaded_mt:
+            formData.cargoQtyUnloadedMt === ""
+              ? undefined
+              : Number(formData.cargoQtyUnloadedMt),
+
           cargoSummary: formData.cargoSummary,
           remarks: formData.remarks,
         }),
@@ -160,9 +191,10 @@ export default function AddDepartureReportButton({
       if (!res.ok) {
         if (data?.details) {
           const fieldErrors: Record<string, string> = {};
-          // Fixed: Use typed interface instead of any
           data.details.forEach((e: APIErrorDetail) => {
-            fieldErrors[e.field] = e.message;
+            // Map empty field path (root error from .or()) to "object"
+            const key = e.field === "" ? "object" : e.field;
+            fieldErrors[key] = e.message;
           });
           setErrors(fieldErrors);
 
@@ -215,7 +247,7 @@ export default function AddDepartureReportButton({
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
+          <div className="max-h-[70dvh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -237,8 +269,7 @@ export default function AddDepartureReportButton({
                     </p>
                   )}
                 </div>
-                
-                {/* ***** CHANGED: Using Select for Vessel Name ***** */}
+
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
@@ -280,7 +311,26 @@ export default function AddDepartureReportButton({
 
                 <div>
                   <Label>
-                    Port Name <span className="text-red-500">*</span>
+                    Last Port <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    name="lastPort"
+                    value={formData.lastPort}
+                    onChange={handleChange}
+                    placeholder="Enter last port"
+                    className={errors.lastPort ? "border-red-500" : ""}
+                  />
+                  {errors.lastPort && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.lastPort}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Current Port Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -321,18 +371,21 @@ export default function AddDepartureReportButton({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
-                    Distance to Go (NM) <span className="text-red-500">*</span>
+                    Distance to Next Port (NM){" "}
+                    <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="number"
-                    name="distanceToGo"
-                    value={formData.distanceToGo}
+                    name="distanceToNextPortNm"
+                    value={formData.distanceToNextPortNm}
                     onChange={handleChange}
-                    className={errors.distanceToGo ? "border-red-500" : ""}
+                    className={
+                      errors.distance_to_next_port_nm ? "border-red-500" : ""
+                    }
                   />
-                  {errors.distanceToGo && (
+                  {errors.distance_to_next_port_nm && (
                     <p className="text-xs text-red-500 mt-1">
-                      {errors.distanceToGo}
+                      {errors.distance_to_next_port_nm}
                     </p>
                   )}
                 </div>
@@ -357,8 +410,8 @@ export default function AddDepartureReportButton({
               </div>
             </ComponentCard>
 
-            {/* ROB */}
-            <ComponentCard title="ROB at Departure">
+            {/* BUNKER & ROB */}
+            <ComponentCard title="Bunkers & ROB at Departure">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>
@@ -395,19 +448,108 @@ export default function AddDepartureReportButton({
                     </p>
                   )}
                 </div>
+                <div>
+                  <Label>
+                    Bunkers Received - VLSFO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="bunkersReceivedVlsfo"
+                    value={formData.bunkersReceivedVlsfo}
+                    onChange={handleChange}
+                    className={
+                      errors.bunkers_received_vlsfo_mt ? "border-red-500" : ""
+                    }
+                  />
+                  {errors.bunkers_received_vlsfo_mt && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.bunkers_received_vlsfo_mt}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label>
+                    Bunkers Received - LSMGO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="bunkersReceivedLsmgo"
+                    value={formData.bunkersReceivedLsmgo}
+                    onChange={handleChange}
+                    className={
+                      errors.bunkers_received_lsmgo_mt ? "border-red-500" : ""
+                    }
+                  />
+                  {errors.bunkers_received_lsmgo_mt && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.bunkers_received_lsmgo_mt}
+                    </p>
+                  )}
+                </div>
               </div>
             </ComponentCard>
 
             {/* CARGO */}
             <ComponentCard title="Cargo Details">
+              {/* OBJECT LEVEL ERROR DISPLAY */}
+              {errors["object"] && (
+                <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                  {errors["object"]}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                <div>
+                  <Label>Qty Loaded (MT)</Label>
+                  <Input
+                    type="number"
+                    name="cargoQtyLoadedMt"
+                    value={formData.cargoQtyLoadedMt}
+                    onChange={handleChange}
+                    // If the object error exists, we highlight both inputs
+                    className={
+                      errors.cargo_qty_loaded_mt || errors["object"]
+                        ? "border-red-500"
+                        : ""
+                    }
+                  />
+                  {errors.cargo_qty_loaded_mt && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.cargo_qty_loaded_mt}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label>Qty Unloaded (MT)</Label>
+                  <Input
+                    type="number"
+                    name="cargoQtyUnloadedMt"
+                    value={formData.cargoQtyUnloadedMt}
+                    onChange={handleChange}
+                    className={
+                      errors.cargo_qty_unloaded_mt || errors["object"]
+                        ? "border-red-500"
+                        : ""
+                    }
+                  />
+                  {errors.cargo_qty_unloaded_mt && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.cargo_qty_unloaded_mt}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <Label>
-                Cargo Loaded / Unloaded <span className="text-red-500">*</span>
+                Cargo Summary <span className="text-red-500">*</span>
               </Label>
               <TextArea
                 name="cargoSummary"
                 rows={4}
                 className={errors.cargoSummary ? "border-red-500" : ""}
-                placeholder="Brief description of cargo loaded/ unloaded, grades and quantities if required."
+                placeholder="Brief description of cargo loaded/unloaded, grades and quantities."
                 value={formData.cargoSummary}
                 onChange={handleChange}
               />
@@ -425,7 +567,7 @@ export default function AddDepartureReportButton({
                 name="remarks"
                 rows={4}
                 className={errors.remarks ? "border-red-500" : ""}
-                placeholder="Any additional notes related to departure, pilotage, delays, instructions, etc."
+                placeholder="Any additional notes..."
                 value={formData.remarks}
                 onChange={handleChange}
               />

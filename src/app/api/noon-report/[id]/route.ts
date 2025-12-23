@@ -19,29 +19,30 @@ export async function PATCH(
         voyageId: body.voyageId,
         type: body.type,
         status: body.status,
-        // ***** CHANGE: Update Date Object *****
         reportDate: new Date(body.reportDate),
 
         position: {
-          lat: body.position.lat,
-          long: body.position.long,
+          lat: body.position?.lat,
+          long: body.position?.long,
         },
 
         navigation: {
-          distLast24h: body.navigation.distLast24h,
-          distToGo: body.navigation.distToGo,
-          nextPort: body.navigation.nextPort,
+          distLast24h: body.navigation?.distLast24h, // Observed Distance
+          engineDist: body.navigation?.engineDist,   // ***** NEW FIELD *****
+          slip: body.navigation?.slip,               // ***** NEW FIELD *****
+          distToGo: body.navigation?.distToGo,
+          nextPort: body.navigation?.nextPort,
         },
 
         consumption: {
-          vlsfo: body.consumption.vlsfo,
-          lsmgo: body.consumption.lsmgo,
+          vlsfo: body.consumption?.vlsfo, // Fuel 24h - VLSFO
+          lsmgo: body.consumption?.lsmgo, // Fuel 24h - LSMGO
         },
 
         weather: {
-          wind: body.weather.wind,
-          seaState: body.weather.seaState,
-          remarks: body.weather.remarks,
+          wind: body.weather?.wind,
+          seaState: body.weather?.seaState,
+          remarks: body.weather?.remarks,
         },
 
         remarks: body.remarks,

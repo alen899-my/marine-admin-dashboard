@@ -156,7 +156,9 @@ export async function POST(req: NextRequest) {
       nextPort,
       latitude,
       longitude,
-      distanceTravelled,
+      distanceTravelled, // Observed Distance
+      engineDistance,    // ***** NEW FIELD *****
+      slip,              // ***** NEW FIELD *****
       distanceToGo,
       vlsfoConsumed,
       lsmgoConsumed,
@@ -170,10 +172,10 @@ export async function POST(req: NextRequest) {
     const parsedReportDate = parseDateString(reportDate);
 
     if (!parsedReportDate) {
-        return NextResponse.json(
-            { error: "Invalid Date Format. Please use dd/mm/yyyy" }, 
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { error: "Invalid Date Format. Please use dd/mm/yyyy" },
+        { status: 400 }
+      );
     }
 
     // SAVE REPORT
@@ -183,7 +185,7 @@ export async function POST(req: NextRequest) {
 
       type: "noon",
       status: "active",
-      
+
       // ✅ Use the parsed date object
       reportDate: parsedReportDate,
 
@@ -194,6 +196,8 @@ export async function POST(req: NextRequest) {
 
       navigation: {
         distLast24h: Number(distanceTravelled ?? 0),
+        engineDist: Number(engineDistance ?? 0), // ***** NEW FIELD *****
+        slip: slip !== "" ? Number(slip) : null,  // ***** NEW FIELD (Handles empty slip) *****
         distToGo: Number(distanceToGo ?? 0),
         nextPort: nextPort,
       },

@@ -20,7 +20,9 @@ interface IPosition {
 }
 
 interface INavigation {
-  distLast24h: number | string;
+  distLast24h: number | string; // Observed Distance (nm)
+  engineDist: number | string; // Engine Distance (nm)
+  slip: number | string; // Slip (%)
   distToGo: number | string;
   nextPort: string;
 }
@@ -92,6 +94,42 @@ export default function DailyNoonReportTable({
     { value: "inactive", label: "Inactive" },
   ];
 
+  // ***** SYNC LOGIC: Auto-calculate Slip in Edit Modal if distances are edited *****
+  useEffect(() => {
+    if (!editData?.navigation) return;
+
+    const engineDist = parseFloat(editData.navigation.engineDist as string);
+    const obsDist = parseFloat(editData.navigation.distLast24h as string);
+
+    if (!isNaN(engineDist) && engineDist !== 0 && !isNaN(obsDist)) {
+      const calculatedSlip = ((engineDist - obsDist) / engineDist) * 100;
+      const slipVal = calculatedSlip.toFixed(2);
+
+      if (editData.navigation.slip !== slipVal) {
+        setEditData((prev) =>
+          prev
+            ? {
+                ...prev,
+                navigation: { ...prev.navigation!, slip: slipVal },
+              }
+            : null
+        );
+      }
+    } else if (engineDist === 0 || isNaN(engineDist)) {
+      // Match your Add component logic: If engine distance is 0 → slip is blank.
+      if (editData.navigation.slip !== "") {
+        setEditData((prev) =>
+          prev
+            ? {
+                ...prev,
+                navigation: { ...prev.navigation!, slip: "" },
+              }
+            : null
+        );
+      }
+    }
+  }, [editData?.navigation?.engineDist, editData?.navigation?.distLast24h]);
+
   // Helper functions moved up to be available for render
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -109,13 +147,14 @@ export default function DailyNoonReportTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: IDailyNoonReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: IDailyNoonReport, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Vessel & Voyage ID",
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold text-gray-900 dark:text-white">
             {r?.vesselName ?? "-"}
           </span>
           <span className="text-xs text-gray-500 uppercase">
@@ -144,25 +183,40 @@ export default function DailyNoonReportTable({
     {
       header: "Navigation",
       render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col text-xs">
-          <span className="text-blue-600 dark:text-blue-400 font-bold">
+        <div className="flex flex-col text-xs leading-relaxed">
+          <span className="font-bold">
             Next Port: {r?.navigation?.nextPort ?? "-"}
           </span>
-          <span className="text-gray-500">
-            Last 24h: {r?.navigation?.distLast24h ?? 0} NM
+          <span>
+            Observed Distance: <b>{r?.navigation?.distLast24h ?? 0}</b> NM
           </span>
-          <span className="text-gray-500">
-            To Go: {r?.navigation?.distToGo ?? 0} NM
+          <span>
+            Engine Distance: <b>{r?.navigation?.engineDist ?? 0}</b> NM
+          </span>
+          <span>
+            Slip: <b>{r?.navigation?.slip ? `${r.navigation.slip}%` : "-"}</b>
           </span>
         </div>
       ),
     },
     {
-      header: "Consumption",
+      header: "Fuel Consumed (24h)",
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col text-xs">
-          <span>VLSFO: <b className="font-medium text-gray-700 dark:text-gray-200">{r?.consumption?.vlsfo ?? 0}</b> MT</span>
-          <span>LSMGO: <b className="font-medium text-gray-700 dark:text-gray-200">{r?.consumption?.lsmgo ?? 0}</b> MT</span>
+          <span>
+            VLSFO:{" "}
+            <b className="text-gray-900 dark:text-gray-100">
+              {r?.consumption?.vlsfo ?? 0}
+            </b>{" "}
+            MT
+          </span>
+          <span>
+            LSMGO:{" "}
+            <b className="text-gray-900 dark:text-gray-100">
+              {r?.consumption?.lsmgo ?? 0}
+            </b>{" "}
+            MT
+          </span>
         </div>
       ),
     },
@@ -171,7 +225,7 @@ export default function DailyNoonReportTable({
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col text-xs max-w-[150px]">
           <span className="truncate">Wind: {r?.weather?.wind ?? "-"}</span>
-          <span className="truncate text-gray-500 italic">
+          <span className="truncate text-gray-500">
             Sea: {r?.weather?.seaState ?? "-"}
           </span>
         </div>
@@ -276,8 +330,10 @@ export default function DailyNoonReportTable({
       },
 
       navigation: {
-        distLast24h: report.navigation?.distLast24h ?? 0,
-        distToGo: report.navigation?.distToGo ?? 0,
+        distLast24h: report.navigation?.distLast24h ?? "",
+        engineDist: report.navigation?.engineDist ?? "",
+        slip: report.navigation?.slip ?? "",
+        distToGo: report.navigation?.distToGo ?? "",
         nextPort: report.navigation?.nextPort ?? "",
       },
 
@@ -387,6 +443,17 @@ export default function DailyNoonReportTable({
         isOpen={openView}
         onClose={() => setOpenView(false)}
         title="Noon Report Details"
+        headerRight={
+          selectedReport && (
+            <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <span className="font-bold">
+                {selectedReport.vesselName}
+              </span>
+              <span>|</span>
+              <span>{selectedReport.voyageId}</span>
+            </div>
+          )
+        }
       >
         <div className="text-[13px] py-1">
           {/* ================= MAIN CONTENT GRID ================= */}
@@ -446,29 +513,39 @@ export default function DailyNoonReportTable({
 
             {/* ================= NAVIGATION ================= */}
             <section className="space-y-1.5">
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-                Navigation
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase border-b mb-2">
+                Navigation & Distance
               </h3>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">
-                  Distance Travelled (last 24 hrs, NM)
-                </span>
+              <div className="flex justify-between">
+                <span>Observed Distance </span>
                 <span className="font-medium text-right">
-                  {selectedReport?.navigation?.distLast24h ?? 0} NM
+                  {selectedReport?.navigation?.distLast24h} NM
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500 shrink-0">
-                  Distance To Go (NM)
-                </span>
+              <div className="flex justify-between">
+                <span>Engine Distance </span>
                 <span className="font-medium text-right">
-                  {selectedReport?.navigation?.distToGo ?? 0} NM
+                  {selectedReport?.navigation?.engineDist} NM
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500 shrink-0">Next Port</span>
+              <div className="flex justify-between">
+                <span>Distance To Go</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.navigation?.nextPort ?? "-"}
+                  {selectedReport?.navigation?.distToGo} NM
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Slip (%)</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.navigation?.slip
+                    ? `${selectedReport.navigation.slip}%`
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Next Port</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.navigation?.nextPort}
                 </span>
               </div>
             </section>
@@ -476,22 +553,18 @@ export default function DailyNoonReportTable({
             {/* ================= CONSUMPTION ================= */}
             <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-                Fuel Consumption
+                Last 24 hrs Fuel Consumed
               </h3>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-500">
-                  Fuel Consumed - VLSFO (MT)
-                </span>
+                <span className="text-gray-500">VLSFO</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.consumption?.vlsfo ?? 0}
+                  {selectedReport?.consumption?.vlsfo ?? 0} MT
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-500">
-                  Fuel Consumed - LSMGO (MT)
-                </span>
+                <span className="text-gray-500">LSMGO</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.consumption?.lsmgo ?? 0}
+                  {selectedReport?.consumption?.lsmgo ?? 0} MT
                 </span>
               </div>
             </section>
@@ -669,15 +742,15 @@ export default function DailyNoonReportTable({
                 </div>
 
                 <div>
-                  <Label>Distance Travelled (last 24 hrs, NM)</Label>
+                  <Label>Observed Distance (NM)</Label>
                   <Input
                     type="number"
-                    value={editData.navigation?.distLast24h || 0}
+                    value={editData.navigation?.distLast24h}
                     onChange={(e) =>
                       setEditData({
                         ...editData,
                         navigation: {
-                          ...(editData.navigation as INavigation),
+                          ...editData.navigation!,
                           distLast24h: e.target.value,
                         },
                       })
@@ -685,6 +758,38 @@ export default function DailyNoonReportTable({
                   />
                 </div>
 
+                <div>
+                  <Label>Engine Distance (NM)</Label>
+                  <Input
+                    type="number"
+                    value={editData.navigation?.engineDist}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        navigation: {
+                          ...editData.navigation!,
+                          engineDist: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Slip (%)</Label>
+                  <Input
+                    type="number"
+                    value={editData.navigation?.slip}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        navigation: {
+                          ...editData.navigation!,
+                          slip: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
                 <div>
                   <Label>Distance To Go (NM)</Label>
                   <Input

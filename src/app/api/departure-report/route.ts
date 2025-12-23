@@ -164,19 +164,25 @@ export async function POST(req: NextRequest) {
       vesselName: value.vesselName,
       voyageId: value.voyageId,
       portName: value.portName,
+      lastPort: value.lastPort, // New Field
       eventTime: new Date(value.eventTime),
-      
-      // ✅ Use the parsed date object
       reportDate: parsedReportDate,
 
       navigation: {
-        distanceToGo: value.distanceToGo,
+        // Updated field name
+        distanceToNextPortNm: value.distance_to_next_port_nm, 
         etaNextPort: value.etaNextPort ? new Date(value.etaNextPort) : null,
       },
 
       departureStats: {
         robVlsfo: value.robVlsfo,
         robLsmgo: value.robLsmgo,
+        // New Bunkering fields
+        bunkersReceivedVlsfo: value.bunkers_received_vlsfo_mt || 0,
+        bunkersReceivedLsmgo: value.bunkers_received_lsmgo_mt || 0,
+        // New Cargo fields
+        cargoQtyLoadedMt: value.cargo_qty_loaded_mt || 0,
+        cargoQtyUnloadedMt: value.cargo_qty_unloaded_mt || 0,
         cargoSummary: value.cargoSummary,
       },
 

@@ -30,17 +30,22 @@ export async function PATCH(
     report.vesselName = body.vesselName;
     report.voyageId = body.voyageId;
     report.portName = body.portName;
+    report.lastPort = body.lastPort;
     report.eventTime = new Date(body.eventTime);
     report.reportDate = new Date(body.reportDate);
 
     report.navigation = {
-      distanceToGo: body.navigation?.distanceToGo,
+      distanceToNextPortNm: body.navigation?.distance_to_next_port_nm,
       etaNextPort: body.navigation?.etaNextPort ? new Date(body.navigation.etaNextPort) : null,
     };
 
     report.departureStats = {
       robVlsfo: body.departureStats?.robVlsfo,
       robLsmgo: body.departureStats?.robLsmgo,
+      bunkersReceivedVlsfo: body.departureStats?.bunkers_received_vlsfo_mt,
+      bunkersReceivedLsmgo: body.departureStats?.bunkers_received_lsmgo_mt,
+      cargoQtyLoadedMt: body.departureStats?.cargo_qty_loaded_mt,
+      cargoQtyUnloadedMt: body.departureStats?.cargo_qty_unloaded_mt,
       cargoSummary: body.departureStats?.cargoSummary,
     };
 

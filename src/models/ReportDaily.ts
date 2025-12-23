@@ -13,7 +13,9 @@ export interface IReportDaily extends Document {
   };
 
   navigation: {
-    distLast24h: number;
+    distLast24h: number;     // Observed Distance
+    engineDist: number;      // ***** NEW FIELD *****
+    slip: number;            // ***** NEW FIELD *****
     distToGo: number;
     nextPort: string;
   };
@@ -66,6 +68,8 @@ const ReportDailySchema = new Schema<IReportDaily>(
 
     navigation: {
       distLast24h: { type: Number, required: true },
+      engineDist: { type: Number, required: true }, // ***** NEW FIELD *****
+      slip: { type: Number },                        // ***** NEW FIELD *****
       distToGo: { type: Number, required: true },
       nextPort: { type: String, required: true },
     },

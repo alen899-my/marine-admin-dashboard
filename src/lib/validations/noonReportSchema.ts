@@ -47,9 +47,28 @@ export const noonReportSchema = Joi.object({
     .min(0)
     .required()
     .messages({
-      "number.base": "Distance Travelled must be a number",
-      "number.min": "Distance Travelled cannot be negative",
-      "any.required": "Distance Travelled is required",
+      "number.base": "Observed Distance must be a number",
+      "number.min": "Observed Distance cannot be negative",
+      "any.required": "Observed Distance is required",
+    }),
+
+  // ***** NEW FIELD: Engine Distance *****
+  engineDistance: Joi.number()
+    .min(0)
+    .required()
+    .messages({
+      "number.base": "Engine Distance must be a number",
+      "number.min": "Engine Distance cannot be negative",
+      "any.required": "Engine Distance is required",
+    }),
+
+  // ***** NEW FIELD: Slip (Calculated, so we allow it to be optional or number) *****
+  slip: Joi.number()
+    .required()
+    .messages({
+      "number.base": "Slip must be a number",
+      "any.required": "Slip percentage is required",
+      "number.empty": "Slip cannot be empty",
     }),
 
   distanceToGo: Joi.number()

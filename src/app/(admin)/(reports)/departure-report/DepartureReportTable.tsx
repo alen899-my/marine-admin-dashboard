@@ -15,13 +15,17 @@ import { toast } from "react-toastify";
 
 // --- Interfaces ---
 interface INavigation {
-  distanceToGo: number | string;
+  distanceToNextPortNm: number | string;
   etaNextPort: string;
 }
 
 interface IDepartureStats {
   robVlsfo: number | string;
   robLsmgo: number | string;
+  bunkersReceivedVlsfo: number | string; // New
+  bunkersReceivedLsmgo: number | string; // New
+  cargoQtyLoadedMt: number | string; // New
+  cargoQtyUnloadedMt: number | string; // New
   cargoSummary: string;
 }
 
@@ -30,6 +34,7 @@ interface IDepartureReport {
   vesselName: string;
   voyageId: string;
   portName: string;
+  lastPort: string;
   eventTime: string;
   reportDate: string;
   status: string;
@@ -95,79 +100,103 @@ export default function DepartureReportTable({
 
   /* ================= TABLE COLUMNS ================= */
   const columns = [
-    {
-      header: "S.No",
-      render: (_: IDepartureReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
-    },
-    {
-      header: "Vessel & Voyage ID",
-      render: (r: IDepartureReport) => (
+  {
+    header: "S.No",
+    render: (_: IDepartureReport, index: number) =>
+      (currentPage - 1) * LIMIT + index + 1,
+  },
+  {
+    header: "Vessel & Voyage ID",
+    render: (r: IDepartureReport) => (
+      <div className="flex flex-col">
+        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+          {r?.vesselName ?? "-"}
+        </span>
+        <span className="text-xs text-gray-500 uppercase tracking-tighter">
+          ID: {r?.voyageId ?? "-"}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: "Report & Departure",
+    render: (r: IDepartureReport) => (
+      <div className="flex flex-col text-xs space-y-0.5">
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 dark:text-white">
-            {r?.vesselName ?? "-"}
+          <span className="text-[10px] text-gray-400 uppercase font-bold">
+            Reported
           </span>
-          <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            ID: {r?.voyageId ?? "-"}
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Report & Departure",
-      render: (r: IDepartureReport) => (
-        <div className="flex flex-col text-xs space-y-0.5">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
-            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
-          </div>
-          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Departure</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.eventTime)}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: "Port & Navigation",
-      render: (r: IDepartureReport) => (
-        <div className="flex flex-col text-xs">
-          <span className="text-blue-600 dark:text-blue-400 font-bold truncate max-w-[140px]">
-            {r?.portName ?? "-"}
-          </span>
-          <span className="text-gray-500">To Go: {r?.navigation?.distanceToGo ?? 0} NM</span>
-          <span className="text-[11px] mt-1 text-gray-600 dark:text-gray-400 italic">
-            ETA: {formatDate(r?.navigation?.etaNextPort)}
+          <span className="text-gray-700 dark:text-gray-300">
+            {formatDate(r.reportDate)}
           </span>
         </div>
-      ),
-    },
-    {
-      header: "ROB & Cargo",
-      render: (r: IDepartureReport) => (
-        <div className="flex flex-col text-xs gap-1">
-          <div className="flex gap-2">
-            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-              VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0} MT</b>
-            </span>
-            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-              LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0} MT</b>
-            </span>
-          </div>
-          <p className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]" title={r?.departureStats?.cargoSummary}>
-            {r?.departureStats?.cargoSummary || "No cargo details"}
-          </p>
+        <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+          <span className="text-[10px] text-gray-400 uppercase font-bold">
+            Departure
+          </span>
+          <span className="text-gray-700 dark:text-gray-300 font-medium">
+            {formatDate(r.eventTime)}
+          </span>
         </div>
-      ),
-    },
-    {
-      header: "Status",
-      render: (r: IDepartureReport) => (
-        <Badge color={r.status === "active" ? "success" : "error"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
-    },
-  ];
+      </div>
+    ),
+  },
+  {
+    header: "Port & Navigation",
+    render: (r: IDepartureReport) => (
+      <div className="flex flex-col text-xs">
+        <div className="flex items-center gap-1 font-bold truncate max-w-[140px]">
+          <span className="text-gray-400 font-normal">{r?.lastPort ?? "N/A"}</span>
+          <span className="text-blue-500">→</span>
+          <span>{r?.portName ?? "-"}</span>
+        </div>
+        <span className="text-gray-500">
+          To Go: {r?.navigation?.distanceToNextPortNm ?? 0} NM
+        </span>
+        <span className="text-[11px] mt-1 text-gray-600 dark:text-gray-400">
+          ETA: {formatDate(r?.navigation?.etaNextPort)}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: "ROB & Cargo",
+    render: (r: IDepartureReport) => (
+      <div className="flex flex-col text-xs gap-1">
+        {/* ROB & Bunkers Received */}
+        <div className="flex gap-2">
+          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+            VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0}</b> 
+            <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedVlsfo ?? 0}</b>
+          </span>
+          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+            LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0}</b>
+            <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedLsmgo ?? 0}</b>
+          </span>
+        </div>
+        {/* Cargo Loaded/Unloaded Quantities */}
+        <div className="flex gap-2 text-[10px]">
+          <span className="uppercase">Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT</span>
+          <span className="uppercase">Unloaded: {r?.departureStats?.cargoQtyUnloadedMt ?? 0} MT</span>
+        </div>
+        <p
+          className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]"
+          title={r?.departureStats?.cargoSummary}
+        >
+          {r?.departureStats?.cargoSummary || "No cargo details"}
+        </p>
+      </div>
+    ),
+  },
+  {
+    header: "Status",
+    render: (r: IDepartureReport) => (
+      <Badge color={r.status === "active" ? "success" : "error"}>
+        {r.status === "active" ? "Active" : "Inactive"}
+      </Badge>
+    ),
+  },
+];
 
   /* ================= FETCH DATA ================= */
   // Wrap in useCallback to fix useEffect dependency
@@ -215,16 +244,33 @@ export default function DepartureReportTable({
 
     try {
       const payload = {
-        ...editData,
-        eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
-        reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
-        navigation: {
-          ...editData.navigation,
-          etaNextPort: editData.navigation?.etaNextPort
-            ? `${editData.navigation.etaNextPort}+05:30`
-            : null,
-        },
-      };
+      vesselName: editData.vesselName,
+      voyageId: editData.voyageId,
+      portName: editData.portName,
+      lastPort: editData.lastPort,
+      eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
+      reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
+      status: editData.status,
+      remarks: editData.remarks,
+
+      // NEST THESE correctly for the backend
+      navigation: {
+        distance_to_next_port_nm: Number(editData.navigation?.distanceToNextPortNm),
+        etaNextPort: editData.navigation?.etaNextPort
+          ? `${editData.navigation.etaNextPort}+05:30`
+          : null,
+      },
+
+      departureStats: {
+        robVlsfo: Number(editData.departureStats?.robVlsfo),
+        robLsmgo: Number(editData.departureStats?.robLsmgo),
+        bunkers_received_vlsfo_mt: Number(editData.departureStats?.bunkersReceivedVlsfo),
+        bunkers_received_lsmgo_mt: Number(editData.departureStats?.bunkersReceivedLsmgo),
+        cargo_qty_loaded_mt: Number(editData.departureStats?.cargoQtyLoadedMt),
+        cargo_qty_unloaded_mt: Number(editData.departureStats?.cargoQtyUnloadedMt),
+        cargoSummary: editData.departureStats?.cargoSummary,
+      },
+    };
 
       const res = await fetch(`/api/departure-report/${selectedReport._id}`, {
         method: "PATCH",
@@ -287,19 +333,24 @@ export default function DepartureReportTable({
       vesselName: report.vesselName ?? "",
       voyageId: report.voyageId ?? "",
       portName: report.portName ?? "",
+      lastPort: report.lastPort ?? "",
       eventTime: formatForInput(report.eventTime),
       reportDate: formatForInput(report.reportDate),
       status: report.status ?? "active",
       remarks: report.remarks ?? "",
 
       navigation: {
-        distanceToGo: report.navigation?.distanceToGo ?? 0,
+        distanceToNextPortNm: report.navigation?.distanceToNextPortNm ?? 0,
         etaNextPort: formatForInput(report.navigation?.etaNextPort),
       },
 
       departureStats: {
         robVlsfo: report.departureStats?.robVlsfo ?? 0,
         robLsmgo: report.departureStats?.robLsmgo ?? 0,
+        bunkersReceivedVlsfo: report.departureStats?.bunkersReceivedVlsfo ?? 0,
+        bunkersReceivedLsmgo: report.departureStats?.bunkersReceivedLsmgo ?? 0,
+        cargoQtyLoadedMt: report.departureStats?.cargoQtyLoadedMt ?? 0,
+        cargoQtyUnloadedMt: report.departureStats?.cargoQtyUnloadedMt ?? 0,
         cargoSummary: report.departureStats?.cargoSummary ?? "",
       },
     });
@@ -355,129 +406,192 @@ export default function DepartureReportTable({
 
       {/* ================= VIEW MODAL ================= */}
       <ViewModal
-  isOpen={openView}
-  onClose={() => setOpenView(false)}
-  title="Departure Report Details"
->
-  <div className="text-[13px] py-1">
-    {/* ================= MAIN CONTENT GRID ================= */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-      
-      {/* ================= GENERAL INFORMATION ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          General Information
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Vessel Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.vesselName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Voyage No / ID</span>
-          <span className="font-medium text-right">
-            {selectedReport?.voyageId ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Port Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.portName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Departure Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.eventTime)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Report Date & Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.reportDate)}
-          </span>
-        </div>
-      </section>
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title={`Departure – ${selectedReport?.portName ?? "Port"} Report`}
+        headerRight={
+          selectedReport && (
+            <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <span className="font-bold">
+                {selectedReport.vesselName}
+              </span>
+              <span>|</span>
+              <span>{selectedReport.voyageId}</span>
+            </div>
+          )
+        }
+      >
+        <div className="text-[13px] py-1">
+          {/* ================= MAIN CONTENT GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            {/* ================= GENERAL INFORMATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                General Information
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Vessel Name</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.vesselName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Voyage No / ID</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.voyageId ?? "-"}
+                </span>
+              </div>
+              {/* NEW FIELD: Last Port */}
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Last Port</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.lastPort ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Current Port Name
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.portName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Departure Time</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.eventTime)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Report Date & Time
+                </span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.reportDate)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= VOYAGE DETAILS ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          Voyage Details
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Distance to Go (NM)</span>
-          <span className="font-medium text-right">
-            {selectedReport?.navigation?.distanceToGo ?? 0} NM
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">ETA Next Port</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.navigation?.etaNextPort)}
-          </span>
-        </div>
-      </section>
+            {/* ================= VOYAGE DETAILS ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Voyage Details
+              </h3>
+              <div className="flex justify-between gap-4">
+                {/* UPDATED LABEL */}
+                <span className="text-gray-500 shrink-0">
+                  Distance to Next Port (NM)
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.navigation?.distanceToNextPortNm ?? 0} NM
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">ETA Next Port</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.navigation?.etaNextPort)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= ROB AT DEPARTURE ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          ROB at Departure
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">ROB - VLSFO (MT)</span>
-          <span className="font-medium text-right">
-            {selectedReport?.departureStats?.robVlsfo ?? 0}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">ROB - LSMGO (MT)</span>
-          <span className="font-medium text-right">
-            {selectedReport?.departureStats?.robLsmgo ?? 0}
-          </span>
-        </div>
-      </section>
+            {/* ================= ROB AT DEPARTURE ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Bunkers & ROB at Departure
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">ROB - VLSFO </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.departureStats?.robVlsfo ?? 0} MT
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">ROB - LSMGO </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.departureStats?.robLsmgo ?? 0} MT
+                </span>
+              </div>
+              {/* NEW FIELD: Bunkers Received VLSFO */}
+              <div className="flex justify-between gap-4 pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
+                <span className="text-gray-500 shrink-0">
+                  Bunkers Received (VLSFO)
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.departureStats?.bunkersReceivedVlsfo ?? 0} MT
+                </span>
+              </div>
+              {/* NEW FIELD: Bunkers Received LSMGO */}
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Bunkers Received (LSMGO)
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.departureStats?.bunkersReceivedLsmgo ?? 0} MT
+                </span>
+              </div>
+            </section>
 
-      {/* ================= CARGO DETAILS ================= */}
-      <section className="space-y-1.5 md:col-span-1">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          Cargo Details
-        </h3>
-        <div className="pt-1">
-          <span className="text-gray-500 shrink-0">Cargo Loaded / Unloaded</span>
-          <p className="text-gray-700 font-medium leading-relaxed">
-            {selectedReport?.departureStats?.cargoSummary ?? "-"}
-          </p>
+            {/* ================= CARGO DETAILS ================= */}
+            <section className="space-y-1.5 md:col-span-1">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Cargo Details
+              </h3>
+              {/* NEW FIELDS: Loaded / Unloaded Quantities */}
+              <div className="grid grid-cols-2 gap-4 py-1 mb-1 bg-gray-50 dark:bg-white/5 p-2 rounded">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 uppercase">
+                    Qty Loaded
+                  </span>
+                  <span className="font-bold">
+                    {selectedReport?.departureStats?.cargoQtyLoadedMt ?? 0} MT
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 uppercase">
+                    Qty Unloaded
+                  </span>
+                  <span className="font-bold">
+                    {selectedReport?.departureStats?.cargoQtyUnloadedMt ?? 0} MT
+                  </span>
+                </div>
+              </div>
+              <div className="pt-1">
+                <span className="text-gray-500 shrink-0">Cargo Summary</span>
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                  {selectedReport?.departureStats?.cargoSummary ?? "-"}
+                </p>
+              </div>
+            </section>
+
+            {/* ================= REMARKS ================= */}
+            <section className="md:col-span-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Remarks
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed py-1 font-medium">
+                {selectedReport?.remarks || "No Remarks"}
+              </p>
+            </section>
+          </div>
+
+          {/* ================= FOOTER: STATUS ================= */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+            <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+            <div className="hidden md:block"></div>
+          </div>
         </div>
-      </section>
-
-      {/* ================= REMARKS ================= */}
-      <section className="md:col-span-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Remarks
-        </h3>
-        <p className="text-gray-700 leading-relaxed py-1 font-medium">
-          {selectedReport?.remarks || "No Remarks"}
-        </p>
-      </section>
-    </div>
-
-    {/* ================= FOOTER: STATUS (Aligned with col 1) ================= */}
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-          Status
-        </span>
-        <Badge
-          color={selectedReport?.status === "active" ? "success" : "error"}
-        >
-          {selectedReport?.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      </div>
-      <div className="hidden md:block"></div>
-    </div>
-  </div>
-</ViewModal>
+      </ViewModal>
 
       <EditModal
         isOpen={openEdit}
@@ -521,8 +635,20 @@ export default function DepartureReportTable({
                   />
                 </div>
 
+                {/* NEW FIELD: Last Port */}
                 <div>
-                  <Label>Port Name</Label>
+                  <Label>Last Port</Label>
+                  <Input
+                    value={editData.lastPort}
+                    placeholder="Enter last port"
+                    onChange={(e) =>
+                      setEditData({ ...editData, lastPort: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>Current Port Name</Label>
                   <Input
                     value={editData.portName}
                     onChange={(e) =>
@@ -552,7 +678,6 @@ export default function DepartureReportTable({
                       }
                       className="dark:bg-dark-900"
                     />
-                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400"></span>
                   </div>
                 </div>
               </div>
@@ -562,16 +687,17 @@ export default function DepartureReportTable({
             <ComponentCard title="Voyage Details">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Distance to Go (NM)</Label>
+                  {/* RENAMED LABEL */}
+                  <Label>Distance to Next Port (NM)</Label>
                   <Input
                     type="number"
-                    value={editData.navigation?.distanceToGo ?? 0}
+                    value={editData.navigation?.distanceToNextPortNm ?? 0}
                     onChange={(e) =>
                       setEditData({
                         ...editData,
                         navigation: {
                           ...(editData.navigation as INavigation),
-                          distanceToGo: e.target.value,
+                          distanceToNextPortNm: e.target.value,
                         },
                       })
                     }
@@ -597,8 +723,8 @@ export default function DepartureReportTable({
               </div>
             </ComponentCard>
 
-            {/* ROB */}
-            <ComponentCard title="ROB at Departure">
+            {/* ROB & BUNKERS */}
+            <ComponentCard title="Bunkers & ROB at Departure">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>ROB - VLSFO (MT)</Label>
@@ -633,15 +759,89 @@ export default function DepartureReportTable({
                     }
                   />
                 </div>
+
+                {/* NEW FIELD: Bunkers Received VLSFO */}
+                <div>
+                  <Label>Bunkers Received - VLSFO (MT)</Label>
+                  <Input
+                    type="number"
+                    value={editData.departureStats?.bunkersReceivedVlsfo ?? 0}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        departureStats: {
+                          ...(editData.departureStats as IDepartureStats),
+                          bunkersReceivedVlsfo: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                {/* NEW FIELD: Bunkers Received LSMGO */}
+                <div>
+                  <Label>Bunkers Received - LSMGO (MT)</Label>
+                  <Input
+                    type="number"
+                    value={editData.departureStats?.bunkersReceivedLsmgo ?? 0}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        departureStats: {
+                          ...(editData.departureStats as IDepartureStats),
+                          bunkersReceivedLsmgo: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
               </div>
             </ComponentCard>
 
             {/* CARGO */}
             <ComponentCard title="Cargo Details">
-              <Label>Cargo Loaded / Unloaded</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                {/* NEW FIELD: Qty Loaded */}
+                <div>
+                  <Label>Qty Loaded (MT)</Label>
+                  <Input
+                    type="number"
+                    value={editData.departureStats?.cargoQtyLoadedMt ?? 0}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        departureStats: {
+                          ...(editData.departureStats as IDepartureStats),
+                          cargoQtyLoadedMt: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+                {/* NEW FIELD: Qty Unloaded */}
+                <div>
+                  <Label>Qty Unloaded (MT)</Label>
+                  <Input
+                    type="number"
+                    value={editData.departureStats?.cargoQtyUnloadedMt ?? 0}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        departureStats: {
+                          ...(editData.departureStats as IDepartureStats),
+                          cargoQtyUnloadedMt: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <Label>Cargo Summary</Label>
               <TextArea
                 rows={4}
                 value={editData.departureStats?.cargoSummary ?? ""}
+                placeholder="Summary of cargo operations..."
                 onChange={(e) =>
                   setEditData({
                     ...editData,
@@ -653,6 +853,7 @@ export default function DepartureReportTable({
                 }
               />
             </ComponentCard>
+
             {/* REMARKS */}
             <div className="lg:col-span-2">
               <ComponentCard title="Remarks">

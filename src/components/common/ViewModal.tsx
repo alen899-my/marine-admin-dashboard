@@ -7,6 +7,7 @@ interface ViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -14,6 +15,7 @@ export default function ViewModal({
   isOpen,
   onClose,
   title,
+  headerRight,
   children,
 }: ViewModalProps) {
   return (
@@ -31,10 +33,20 @@ export default function ViewModal({
         lg:p-8
       `}
     >
-      {/* HEADER */}
-      <h4 className="mb-5 text-base sm:text-lg font-semibold text-gray-800 dark:text-white/90">
-        {title}
-      </h4>
+      {/* HEADER SECTION */}
+      <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h4 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white/90">
+          {title}
+        </h4>
+        
+        {/* RIGHT SIDE SECTION */}
+        {headerRight && (
+          <div className="flex items-center gap-2 me-15">
+            {headerRight}
+          </div>
+        )}
+      </div>
+
 
       {/* BODY */}
       <div

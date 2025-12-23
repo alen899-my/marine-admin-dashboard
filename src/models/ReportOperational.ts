@@ -6,6 +6,7 @@ export interface IReportOperational extends Document {
 
   vesselName?: string;
   portName?: string;
+  lastPort?: string; // NEW FIELD
 
   // Generic root event time (kept for sorting compatibility)
   eventTime?: Date;
@@ -14,13 +15,18 @@ export interface IReportOperational extends Document {
   reportDate?: Date;
 
   navigation?: {
-    distanceToGo?: number;
+    distanceToGo?: number; // Kept for compatibility
+    distanceToNextPortNm?: number; // UPDATED FIELD
     etaNextPort?: Date;
   };
 
   departureStats?: {
     robVlsfo?: number;
     robLsmgo?: number;
+    bunkersReceivedVlsfo?: number; // NEW FIELD
+    bunkersReceivedLsmgo?: number; // NEW FIELD
+    cargoQtyLoadedMt?: number; // NEW FIELD
+    cargoQtyUnloadedMt?: number; // NEW FIELD
     cargoSummary?: string;
   };
 
@@ -56,6 +62,7 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
 
     vesselName: String,
     portName: String,
+    lastPort: String, // NEW FIELD
     eventTime: Date,
 
     reportDate: {
@@ -64,12 +71,17 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
 
     navigation: {
       distanceToGo: Number,
+      distanceToNextPortNm: Number, // UPDATED FIELD
       etaNextPort: Date,
     },
 
     departureStats: {
       robVlsfo: Number,
       robLsmgo: Number,
+      bunkersReceivedVlsfo: { type: Number, default: 0 }, // NEW FIELD
+      bunkersReceivedLsmgo: { type: Number, default: 0 }, // NEW FIELD
+      cargoQtyLoadedMt: { type: Number, default: 0 }, // NEW FIELD
+      cargoQtyUnloadedMt: { type: Number, default: 0 }, // NEW FIELD
       cargoSummary: String,
     },
 

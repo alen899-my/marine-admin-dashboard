@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Added useEffect
-import { toast } from "react-toastify";
-import { useModal } from "@/hooks/useModal";
-import { Modal } from "@/components/ui/modal";
-import Button from "@/components/ui/button/Button";
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
-import Input from "@/components/form/input/InputField";
-import TextArea from "@/components/form/input/TextArea";
 import Select from "@/components/form/Select";
 import DatePicker from "@/components/form/date-picker";
 import FileInput from "@/components/form/input/FileInput";
-import { ChevronDownIcon } from "lucide-react";
+import Input from "@/components/form/input/InputField";
+import TextArea from "@/components/form/input/TextArea";
+import Button from "@/components/ui/button/Button";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
 import { cargoSchema } from "@/lib/validations/cargoValidation";
+import { useEffect, useState } from "react"; // Added useEffect
+import { toast } from "react-toastify";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
 }
 
-export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
+export default function AddCargoButton({
+  onSuccess,
+}: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
@@ -80,10 +81,12 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
   // --- Handlers ---
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     if (errors[name]) {
       setErrors((prev) => {
         const newErr = { ...prev };
@@ -95,7 +98,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     if (errors[name]) {
       setErrors((prev) => {
         const newErr = { ...prev };
@@ -120,7 +123,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
   // Handler for DatePicker
   const handleDateChange = (dates: Date[], currentDateString: string) => {
     setFormData((prev) => ({ ...prev, documentDate: currentDateString }));
-    
+
     if (errors.documentDate) {
       setErrors((prev) => {
         const newErr = { ...prev };
@@ -143,7 +146,10 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
     // 2. Check size (500 KB)
     if (file.size > 500 * 1024) {
-      setErrors((prev) => ({ ...prev, file: "File size must be below 500 KB." }));
+      setErrors((prev) => ({
+        ...prev,
+        file: "File size must be below 500 KB.",
+      }));
       setSelectedFile(null);
       e.target.value = ""; // Reset input
       return;
@@ -151,7 +157,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
     // 3. Valid File Selected
     setSelectedFile(file);
-    
+
     // Clear error if it exists
     if (errors.file) {
       setErrors((prev) => {
@@ -185,10 +191,10 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
 
     // --- Validation ---
     // 2. Joi Validation Logic
-    
+
     // Validate the text fields using Joi
     const { error } = cargoSchema.validate(formData, { abortEarly: false });
-    
+
     // Create an object to hold any found errors
     const newErrors: Record<string, string> = {};
 
@@ -196,8 +202,8 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
     if (error) {
       error.details.forEach((err) => {
         // err.path[0] is the field name (e.g., 'vesselName')
-        if(err.path[0]) {
-           newErrors[err.path[0] as string] = err.message;
+        if (err.path[0]) {
+          newErrors[err.path[0] as string] = err.message;
         }
       });
     }
@@ -220,13 +226,16 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
       const payload = new FormData();
       payload.append("vesselName", formData.vesselName);
       payload.append("voyageNo", formData.voyageNo);
-      payload.append("reportDate", formData.reportDate ? `${formData.reportDate}+05:30` : "");
+      payload.append(
+        "reportDate",
+        formData.reportDate ? `${formData.reportDate}+05:30` : ""
+      );
       payload.append("portName", formData.portName);
       payload.append("portType", formData.portType);
       payload.append("documentType", formData.documentType);
       payload.append("documentDate", formData.documentDate);
       payload.append("remarks", formData.remarks);
-      
+
       if (selectedFile) {
         payload.append("file", selectedFile);
       }
@@ -234,7 +243,7 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
       // --- API Call ---
       const res = await fetch("/api/cargo", {
         method: "POST",
-        body: payload, 
+        body: payload,
       });
 
       const data = await res.json();
@@ -248,7 +257,8 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
       handleClose();
     } catch (error: unknown) {
       console.error(error);
-      const errorMessage = error instanceof Error ? error.message : "Something went wrong.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Something went wrong.";
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -261,10 +271,10 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
         Add Cargo Doc
       </Button>
 
-      <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
-      className={`
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        className={`
         w-full
         max-w-[95vw]
         sm:max-w-[90vw]
@@ -282,13 +292,15 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
-            
+          <div className="max-h-[70dvh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Reporting Date & Time <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Reporting Date & Time{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     type="datetime-local"
                     name="reportDate"
@@ -297,13 +309,17 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                     className={errors.reportDate ? "border-red-500" : ""}
                   />
                   {errors.reportDate && (
-                    <p className="text-xs text-red-500 mt-1">{errors.reportDate}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.reportDate}
+                    </p>
                   )}
                 </div>
 
                 {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
-                  <Label>Vessel Name <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Vessel Name <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     options={vessels.map((v) => ({
                       value: v.name,
@@ -314,43 +330,67 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                     onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
-                  {errors.vesselName && <p className="text-xs text-red-500 mt-1">{errors.vesselName}</p>}
+                  {errors.vesselName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vesselName}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <Label>Voyage No / ID <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Voyage No / ID <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     name="voyageNo"
                     value={formData.voyageNo}
                     onChange={handleChange}
                     className={errors.voyageNo ? "border-red-500" : ""}
                   />
-                  {errors.voyageNo && <p className="text-xs text-red-500 mt-1">{errors.voyageNo}</p>}
+                  {errors.voyageNo && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.voyageNo}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <Label>Port Name <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Port Name <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     name="portName"
                     value={formData.portName}
                     onChange={handleChange}
                     className={errors.portName ? "border-red-500" : ""}
                   />
-                  {errors.portName && <p className="text-xs text-red-500 mt-1">{errors.portName}</p>}
+                  {errors.portName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.portName}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <Label>Port Type <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Port Type <span className="text-red-500">*</span>
+                  </Label>
                   <div className="relative">
                     <Select
                       options={portTypeOptions}
                       placeholder="Select Port Type"
                       value={formData.portType}
                       onChange={(val) => handleSelectChange("portType", val)}
-                      className={`${errors.portType ? "border-red-500" : ""} dark:bg-dark-900`}
+                      className={`${
+                        errors.portType ? "border-red-500" : ""
+                      } dark:bg-dark-900`}
                     />
                   </div>
-                  {errors.portType && <p className="text-xs text-red-500 mt-1">{errors.portType}</p>}
+                  {errors.portType && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.portType}
+                    </p>
+                  )}
                 </div>
               </div>
             </ComponentCard>
@@ -359,39 +399,63 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
             <ComponentCard title="Document Type & Upload">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Document Type <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Document Type <span className="text-red-500">*</span>
+                  </Label>
                   <div className="relative">
                     <Select
                       options={docTypeOptions}
                       placeholder="Select Type"
                       value={formData.documentType}
-                      onChange={(val) => handleSelectChange("documentType", val)}
-                      className={`${errors.documentType ? "border-red-500" : ""} dark:bg-dark-900`}
+                      onChange={(val) =>
+                        handleSelectChange("documentType", val)
+                      }
+                      className={`${
+                        errors.documentType ? "border-red-500" : ""
+                      } dark:bg-dark-900`}
                     />
                   </div>
-                  {errors.documentType && <p className="text-xs text-red-500 mt-1">{errors.documentType}</p>}
+                  {errors.documentType && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.documentType}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                    <DatePicker
+                  <DatePicker
                     id="document-date"
                     label="Document Date"
                     placeholder="Select a date"
                     onChange={handleDateChange}
-                    className={errors.documentDate ? "border border-red-500 rounded-lg" : ""}
+                    className={
+                      errors.documentDate
+                        ? "border border-red-500 rounded-lg"
+                        : ""
+                    }
                   />
-                  {errors.documentDate && <p className="text-xs text-red-500 mt-1">{errors.documentDate}</p>}
+                  {errors.documentDate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.documentDate}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="mt-4">
-                <Label>Upload File (PDF / Image / Excel) - Max 500 KB <span className="text-red-500">*</span></Label>
-                   <FileInput 
-                     className={`w-full ${errors.file ? "border-red-500 focus:border-red-500"
-                        : ""}`}
-                     onChange={handleFileChange} 
-                   />
-                {errors.file && <p className="text-xs text-red-500 mt-1">{errors.file}</p>}
+                <Label>
+                  Upload File (PDF / Image / Excel) - Max 500 KB{" "}
+                  <span className="text-red-500">*</span>
+                </Label>
+                <FileInput
+                  className={`w-full ${
+                    errors.file ? "border-red-500 focus:border-red-500" : ""
+                  }`}
+                  onChange={handleFileChange}
+                />
+                {errors.file && (
+                  <p className="text-xs text-red-500 mt-1">{errors.file}</p>
+                )}
               </div>
             </ComponentCard>
 
@@ -406,7 +470,6 @@ export default function AddCargoButton({onSuccess}: AddCargoReportButtonProps) {
                 onChange={handleChange}
               />
             </ComponentCard>
-
           </div>
         </AddForm>
       </Modal>
