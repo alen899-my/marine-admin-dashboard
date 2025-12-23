@@ -77,17 +77,17 @@ export default function AddDailyNoonReportButton({
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
-) => {
-  const { name, value } = e.target;
-  setForm((prev) => ({ ...prev, [name]: value }));
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
 
-  if (errors[name]) {
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  }
-};
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+  };
 
   const resetForm = () => {
     setForm({
@@ -180,7 +180,7 @@ export default function AddDailyNoonReportButton({
   // Handler for custom Select component
   const handleVesselChange = (value: string) => {
     setForm((prev) => ({ ...prev, vesselName: value }));
-    
+
     // Clear error if it exists
     if (errors.vesselName) {
       setErrors((prev) => ({ ...prev, vesselName: "" }));
