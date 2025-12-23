@@ -111,7 +111,7 @@ export default function ArrivalReportTable({
       header: "Vessel & Voyage ID",
       render: (r: ArrivalReport) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold text-gray-900 dark:text-white">
             {r?.vesselName ?? "-"}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
@@ -138,7 +138,7 @@ export default function ArrivalReportTable({
     {
       header: "Port",
       render: (r: ArrivalReport) => (
-        <div className="font-bold text-blue-600 dark:text-blue-400">
+        <div className="font-bold text-xs">
           {r?.portName ?? "-"}
         </div>
       ),
@@ -350,6 +350,17 @@ export default function ArrivalReportTable({
   isOpen={openView}
   onClose={() => setOpenView(false)}
   title="Arrival Report Details"
+  headerRight={
+          selectedReport && (
+            <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <span className="font-bold ">
+                {selectedReport.vesselName}
+              </span>
+              <span>|</span>
+              <span>{selectedReport.voyageId}</span>
+            </div>
+          )
+        }
 >
   <div className="text-[13px] py-1">
     {/* ================= MAIN CONTENT GRID ================= */}
