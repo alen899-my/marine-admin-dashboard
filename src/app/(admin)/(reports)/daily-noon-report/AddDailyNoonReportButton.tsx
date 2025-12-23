@@ -195,7 +195,7 @@ export default function AddDailyNoonReportButton({
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[60dvh] md:max-h-[70dvh] overflow-y-auto p-1 space-y-3">
+          <div className="max-h-[70dvh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
