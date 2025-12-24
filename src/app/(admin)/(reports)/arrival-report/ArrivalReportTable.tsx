@@ -506,7 +506,7 @@ export default function ArrivalReportTable({
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
                 Remarks
               </h3>
-              <p className="text-gray-700 leading-relaxed py-1 font-medium italic">
+              <p className="leading-relaxed py-1 font-medium">
                 {selectedReport?.remarks || "No Remarks"}
               </p>
             </section>

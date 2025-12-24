@@ -606,7 +606,7 @@ if (!isReady) return null;
               </div>
               <div className="pt-1">
                 <span className="text-gray-500 shrink-0">Weather Remarks</span>
-                <p className="text-gray-600 leading-snug font-medium">
+                <p className=" leading-snug font-medium">
                   {selectedReport?.weather?.remarks ?? "-"}
                 </p>
               </div>
@@ -617,7 +617,7 @@ if (!isReady) return null;
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
                 Remarks
               </h3>
-              <p className="text-gray-700 leading-relaxed py-1">
+              <p className=" leading-relaxed py-1">
                 {selectedReport?.remarks ?? "-"}
               </p>
             </section>
