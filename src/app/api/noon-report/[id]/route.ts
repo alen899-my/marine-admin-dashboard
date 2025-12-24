@@ -1,12 +1,16 @@
 import { dbConnect } from "@/lib/db";
 import ReportDaily from "@/models/ReportDaily";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth"; 
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await authorizeRequest("noon.edit");
+if (!authz.ok) return authz.response;
     await dbConnect();
 
     const { id } = await params;
@@ -72,6 +76,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await authorizeRequest("noon.delete");
+if (!authz.ok) return authz.response;
     await dbConnect();
 
     const { id } = await params;

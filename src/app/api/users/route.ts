@@ -1,19 +1,34 @@
-import { dbConnect } from "@/lib/db"; // ✅ Using your existing connection
+import { dbConnect } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import User from "@/models/User";
+import Role from "@/models/Role"; 
 import bcrypt from "bcryptjs";
-
-// CREATE USER
+import { authorizeRequest } from "@/lib/authorizeRequest";
 export async function POST(req: NextRequest) {
   try {
-    // 1. Connect to DB
+    const authz = await authorizeRequest("users.create");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
-    // 2. Parse Body
     const body = await req.json();
-    const { name, email, phone, password } = body;
+    let { name, email, phone, password, role, additionalPermissions, excludedPermissions } = body;
 
-    // 3. Basic Validation (Backend fallback)
+    // ✅ Fallback: If no role provided, default to 'op-staff'
+    if (!role) {
+      const defaultRole = await Role.findOne({ 
+        $or: [{ name: "op-staff" }, { slug: "op-staff" }] 
+      });
+      
+      if (defaultRole) {
+        role = defaultRole._id;
+      } else {
+        return NextResponse.json(
+          { error: "Default 'op-staff' role not found. Please select a role." },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Missing required fields: name, email, or password" },
@@ -21,53 +36,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Check if User Exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return NextResponse.json(
-        { error: "User with this email already exists" },
-        { status: 409 } // 409 Conflict
-      );
+      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 });
     }
 
-    // 5. Hash Password
+    const validRole = await Role.findById(role);
+    if (!validRole) {
+      return NextResponse.json({ error: "Invalid Role ID provided" }, { status: 400 });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 6. Create User
-    // Mapping frontend 'name' -> DB 'fullName'
     const newUser = await User.create({
       fullName: name, 
       email: email,
       phone: phone,
       password: hashedPassword,
-      role: "crew_manager", // Default role for this form
+      role: role, 
+      additionalPermissions: additionalPermissions || [], 
+      excludedPermissions: excludedPermissions || [],
       status: "active",
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "User created successfully",
-        userId: newUser._id,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, userId: newUser._id ,roleId: newUser.role}, { status: 201 });
 
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("CREATE USER ERROR →", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Internal server error";
-      
-    return NextResponse.json(
-      { error: errorMessage }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-export async function GET(req: NextRequest) {
-  try {
-    await dbConnect();
 
+// ... GET function remains unchanged
+export async function GET(req: NextRequest) {
+   // ... (existing code)
+   try {
+    await dbConnect();
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page")) || 1;
@@ -75,31 +79,23 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
     
-    // Optional: Filter by creation date
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
     const skip = (page - 1) * limit;
 
-    // --- Build Query ---
     const query: any = {};
 
-    // 1. Status Filter
-    if (status !== "all") {
-      query.status = status;
-    }
+    if (status !== "all") query.status = status;
 
-    // 2. Search Filter (Name, Email, Phone)
     if (search) {
       query.$or = [
         { fullName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
-        { role: { $regex: search, $options: "i" } },
       ];
     }
 
-    // 3. Date Filter (on createdAt)
     if (startDate || endDate) {
       const dateQuery: any = {};
       if (startDate) dateQuery.$gte = new Date(startDate);
@@ -108,16 +104,14 @@ export async function GET(req: NextRequest) {
         end.setHours(23, 59, 59, 999);
         dateQuery.$lte = end;
       }
-      if (Object.keys(dateQuery).length > 0) {
-        query.createdAt = dateQuery;
-      }
+      if (Object.keys(dateQuery).length > 0) query.createdAt = dateQuery;
     }
 
-    // --- Fetch Data ---
     const total = await User.countDocuments(query);
 
     const users = await User.find(query)
-      .select("-password") // ❌ Exclude password
+      .select("-password")
+      .populate("role", "name") 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -134,9 +128,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("GET USERS ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }

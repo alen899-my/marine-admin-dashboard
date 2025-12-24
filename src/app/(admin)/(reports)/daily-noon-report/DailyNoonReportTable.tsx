@@ -12,6 +12,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 // --- Types ---
 interface IPosition {
@@ -86,6 +87,12 @@ export default function DailyNoonReportTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
+  const { can, isReady } = useAuthorization();
+
+
+
+const canEdit = can("noon.edit");
+const canDelete = can("noon.delete");
 
   // Local state for filters removed (now coming from props)
 
@@ -410,7 +417,7 @@ export default function DailyNoonReportTable({
       setSelectedReport(null);
     }
   }
-
+if (!isReady) return null;
   return (
     <>
       {/* Filters Removed from here */}
@@ -420,21 +427,26 @@ export default function DailyNoonReportTable({
       >
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
-            <CommonReportTable
-              data={reports}
-              columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={(r: IDailyNoonReport) => {
-                setSelectedReport(r);
-                setOpenDelete(true);
-              }}
-              onRowClick={handleView}
-            />
+           <CommonReportTable
+  data={reports}
+  columns={columns}
+  loading={loading}
+  currentPage={currentPage}
+  totalPages={totalPages}
+  onPageChange={setCurrentPage}
+  onView={handleView}
+  onEdit={canEdit ? handleEdit : undefined}
+  onDelete={
+    canDelete
+      ? (r: IDailyNoonReport) => {
+          setSelectedReport(r);
+          setOpenDelete(true);
+        }
+      : undefined
+  }
+  onRowClick={handleView}
+/>
+
           </div>
         </div>
       </div>

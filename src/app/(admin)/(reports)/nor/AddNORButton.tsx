@@ -15,6 +15,7 @@ import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
+import { useAuthorization } from "@/hooks/useAuthorization";
 // Import validation schema (adjust path as needed)
 import { norSchema } from "@/lib/validations/norSchema";
 
@@ -31,7 +32,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
 
   // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
-
+   const { can, isReady } = useAuthorization();
   // ***** NEW: Fetch Vessels from DB *****
   useEffect(() => {
     async function fetchVessels() {
@@ -228,7 +229,16 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       setIsSubmitting(false);
     }
   };
+  const canCreate = isReady && can("nor.create");
 
+ 
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>

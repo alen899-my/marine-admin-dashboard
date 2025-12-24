@@ -4,20 +4,26 @@ const userSchema = new Schema(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    phone: { type: String, required: false }, 
-    password: { type: String, required: true }, 
-    
+    phone: { type: String, required: false },
+    password: { type: String, required: true },
+
+  
     role: {
-      type: String,
-      enum: [
-        "superintendent",
-        "ops_manager",
-        "crew_manager",
-        "vessel_user",
-        "admin"
-      ],
-      default: "crew_manager", 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role", 
       required: true,
+    },
+
+
+    additionalPermissions: {
+      type: [String],
+      default: [],
+    },
+
+  
+    excludedPermissions: {
+      type: [String],
+      default: [],
     },
 
     assignedVesselId: {
@@ -28,11 +34,11 @@ const userSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["active", "inactive"],
+      enum: ["inactive", "active", "banned"], // Updated to match your requirements
       default: "active",
     },
 
-    lastLogin: { type: Date, default: null },
+    lastLoginAt: { type: Date, default: null }, // Renamed to match your requested 'last_login_at'
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Number, default: null },
   },

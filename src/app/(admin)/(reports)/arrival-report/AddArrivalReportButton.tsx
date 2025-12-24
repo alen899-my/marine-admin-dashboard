@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useState, useEffect } from "react"; // Added useEffect
 import { toast } from "react-toastify";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
@@ -20,7 +21,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const { can, isReady } = useAuthorization();
   // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
@@ -143,7 +144,16 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
       setIsSubmitting(false);
     }
   };
+  const canCreate = isReady && can("arrival.create");
 
+  // 3️⃣ EARLY RETURNS (AFTER ALL HOOKS)
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>

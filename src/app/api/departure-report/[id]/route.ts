@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
 import { NextRequest, NextResponse } from "next/server";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 /* ======================================
    UPDATE DEPARTURE REPORT (EDIT)
 ====================================== */
@@ -10,6 +10,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+      const authz = await authorizeRequest("departure.edit");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await context.params;
     const body = await req.json();
@@ -77,6 +79,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+        const authz = await authorizeRequest("departure.delete");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await context.params;
     const deleted = await ReportOperational.findOneAndDelete({

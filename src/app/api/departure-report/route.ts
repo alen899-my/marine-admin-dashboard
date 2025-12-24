@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 
-// MODEL
 import ReportOperational from "@/models/ReportOperational";
 
 // VALIDATION
 import { departureReportSchema } from "@/lib/validations/departureReportSchema";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -126,7 +125,10 @@ export async function GET(req: NextRequest) {
    CREATE DEPARTURE REPORT
 ====================================== */
 export async function POST(req: NextRequest) {
+  
   try {
+    const authz = await authorizeRequest("departure.create");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const body = await req.json();
 

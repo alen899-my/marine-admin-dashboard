@@ -11,7 +11,7 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useEffect, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
 }
@@ -27,7 +27,7 @@ export default function AddDepartureReportButton({
 }: AddDepartureReportButtonProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { isOpen, openModal, closeModal } = useModal();
-
+   const { can, isReady } = useAuthorization();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ***** NEW: State for Vessels List *****
@@ -216,6 +216,16 @@ export default function AddDepartureReportButton({
     }
   };
 
+  const canCreate = isReady && can("departure.create");
+
+
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
   return (
     <>
       {/* OPEN MODAL BUTTON */}

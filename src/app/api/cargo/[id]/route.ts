@@ -5,7 +5,7 @@ import { dbConnect } from "@/lib/db";
 import Document from "@/models/Document";
 import { put, del } from "@vercel/blob";
 import { existsSync } from "fs";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
@@ -57,6 +57,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await authorizeRequest("cargo.edit");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await params;
 
@@ -163,6 +165,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+        const authz = await authorizeRequest("cargo.delete");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await params;
 

@@ -58,6 +58,7 @@ export default function CommonReportTable<T>({
                       px-5 py-3 
                       bg-brand-500 text-white 
                       font-semibold text-left 
+               
                       dark:bg-brand-500
                     "
                   >

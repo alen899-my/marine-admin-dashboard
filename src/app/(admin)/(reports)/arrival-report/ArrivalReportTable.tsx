@@ -12,7 +12,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -75,6 +75,9 @@ export default function ArrivalReportTable({
   const [totalPages, setTotalPages] = useState(1);
 
   const LIMIT = 20;
+  const { can, isReady } = useAuthorization();
+    const canEdit = can("arrival.edit");
+    const canDelete = can("arrival.delete");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
 
@@ -319,28 +322,33 @@ export default function ArrivalReportTable({
       setSelectedReport(null);
     }
   }
-
+    if (!isReady) return null;
   /* ================= RENDER ================= */
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
-            <CommonReportTable
-              data={reports}
-              columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={(r: ArrivalReport) => {
-                setSelectedReport(r);
-                setOpenDelete(true);
-              }}
-              onRowClick={handleView}
-            />
+           <CommonReportTable
+  data={reports}
+  columns={columns}
+  loading={loading}
+  currentPage={currentPage}
+  totalPages={totalPages}
+  onPageChange={setCurrentPage}
+  onView={handleView}
+  onEdit={canEdit ? handleEdit : undefined}
+  onDelete={
+    canDelete
+      ? (r: ArrivalReport) => {
+          setSelectedReport(r);
+          setOpenDelete(true);
+        }
+      : undefined
+  }
+  onRowClick={handleView}
+/>
+
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // MODEL
 import ReportOperational from "@/models/ReportOperational";
 
@@ -14,6 +14,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+     const authz = await authorizeRequest("arrival.edit");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await context.params;
 

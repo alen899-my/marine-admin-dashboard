@@ -1,12 +1,11 @@
-// src/app/api/noon-report/route.ts
+
 import { dbConnect } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-
-// MODEL
+import { auth } from "@/auth"; 
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
 import ReportDaily from "@/models/ReportDaily";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
-// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
 
@@ -15,7 +14,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
     const parts = dateStr.split("/");
     if (parts.length === 3) {
       const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
+      const month = parseInt(parts[1], 10) - 1; 
       const year = parseInt(parts[2], 10);
       
       const date = new Date(year, month, day);
@@ -126,6 +125,9 @@ export async function GET(req: NextRequest) {
 // CREATE NOON REPORT
 export async function POST(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("noon.create");
+    if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const body = await req.json();
 
