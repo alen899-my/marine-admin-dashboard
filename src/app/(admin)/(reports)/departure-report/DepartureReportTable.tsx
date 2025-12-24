@@ -12,7 +12,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -75,6 +75,9 @@ export default function DepartureReportTable({
   const [saving, setSaving] = useState(false);
 
   const LIMIT = 20;
+  const { can, isReady } = useAuthorization();
+  const canEdit = can("departure.edit");
+  const canDelete = can("departure.delete");
 
   /* ================= FORMAT DATE helper ================= */
   const formatDate = (date?: string) => {
@@ -378,28 +381,33 @@ export default function DepartureReportTable({
       setSelectedReport(null);
     }
   }
-
+  if (!isReady) return null;
   /* ================= RENDER ================= */
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900  rounded-xl">
         <div className="max-w-full overflow-x-auto overflow-hidden">
           <div className="min-w-[1200px]">
-            <CommonReportTable
-              data={reports}
-              columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={(r: IDepartureReport) => {
-                setSelectedReport(r);
-                setOpenDelete(true);
-              }}
-              onRowClick={handleView}
-            />
+           <CommonReportTable
+  data={reports}
+  columns={columns}
+  loading={loading}
+  currentPage={currentPage}
+  totalPages={totalPages}
+  onPageChange={setCurrentPage}
+  onView={handleView}
+  onEdit={canEdit ? handleEdit : undefined}
+  onDelete={
+    canDelete
+      ? (r: IDepartureReport) => {
+          setSelectedReport(r);
+          setOpenDelete(true);
+        }
+      : undefined
+  }
+  onRowClick={handleView}
+/>
+
           </div>
         </div>
       </div>

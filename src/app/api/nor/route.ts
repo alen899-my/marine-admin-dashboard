@@ -5,6 +5,7 @@ import path from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put } from "@vercel/blob";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
@@ -32,6 +33,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 export async function POST(req: Request) {
   try {
+    const authz = await authorizeRequest("nor.create");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const formData = await req.formData();
 

@@ -4,7 +4,7 @@ import { dbConnect } from "@/lib/db";
 
 // MODEL
 import ReportOperational from "@/models/ReportOperational";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // VALIDATION
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
 
@@ -129,7 +129,10 @@ export async function GET(req: NextRequest) {
    CREATE ARRIVAL REPORT
 ====================================== */
 export async function POST(req: NextRequest) {
+  
   try {
+    const authz = await authorizeRequest("arrival.create");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const body = await req.json();
 

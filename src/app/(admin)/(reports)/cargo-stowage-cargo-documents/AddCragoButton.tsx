@@ -14,6 +14,7 @@ import { useModal } from "@/hooks/useModal";
 import { cargoSchema } from "@/lib/validations/cargoValidation";
 import { useEffect, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
+import { useAuthorization } from "@/hooks/useAuthorization";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
 }
@@ -25,6 +26,7 @@ export default function AddCargoButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const { can, isReady } = useAuthorization();
   // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
@@ -263,7 +265,16 @@ export default function AddCargoButton({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }; const canCreate = isReady && can("cargo.create");
+
+
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
 
   return (
     <>

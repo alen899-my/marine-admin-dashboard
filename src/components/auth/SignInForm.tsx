@@ -4,20 +4,23 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import Link from "next/link";
-import Image from "next/image"; // Import Next.js Image
-import { useState, ChangeEvent, FormEvent } from "react"; // Import Event types
+import Image from "next/image";
+import { useState, ChangeEvent, FormEvent } from "react";
 import Alert from "../ui/alert/Alert";
-import { EyeClosedIcon, EyeIcon, EyeOff } from "lucide-react";
-
-// Define the shape of your error object
+import { EyeIcon, EyeOff } from "lucide-react";
+// 1. Import NextAuth Client
+import { signIn } from "next-auth/react"; 
+import { useRouter } from "next/navigation";
+import { signinValidation } from "@/lib/validations/signinValidation";
 interface FieldErrors {
   email?: string;
   password?: string;
   general?: string;
-  [key: string]: string | undefined; // Allows for dynamic error keys
+  [key: string]: string | undefined;
 }
 
 export default function SignInForm() {
+  const router = useRouter(); // For redirection
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,84 +31,77 @@ export default function SignInForm() {
     password: "",
   });
 
-  // Fix 1: Typed the state instead of using <any>
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  // Fix 2: Typed the input change event
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
   };
 
-  // Fix 3: Typed the form submit event
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setFieldErrors({});
-    setSuccessMessage("");
-    setLoading(true);
+const handleSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  setFieldErrors({});
+  setSuccessMessage("");
 
-    try {
-      const res = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, remember: isChecked }),
-      });
+  // ✅ RUN JOI VALIDATION
+  const { error } = signinValidation.validate(
+    {
+      email: form.email,
+      password: form.password,
+      remember: isChecked,
+    },
+    { abortEarly: false } // 🔥 collect all errors
+  );
 
-      const data = await res.json();
+  if (error) {
+    const errors: FieldErrors = {};
 
-      if (!res.ok) {
-        // Fix 4: Typed the local error object
-        const newErrors: FieldErrors = {};
+    error.details.forEach((detail) => {
+      const key = detail.path[0] as string;
+      errors[key] = detail.message;
+    });
 
-        if (data.errors) {
-          data.errors.forEach((msg: string) => {
-            const lower = msg.toLowerCase();
-            if (lower.includes("email")) newErrors.email = msg;
-            if (lower.includes("password")) newErrors.password = msg;
-          });
-        } else {
-          newErrors.general = data.message || "Login failed";
-        }
+    setFieldErrors(errors);
+    return; // ⛔ STOP HERE (do not call signIn)
+  }
 
-        setFieldErrors(newErrors);
-        setLoading(false);
-        return;
-      }
+  setLoading(true);
 
-      // SUCCESS
-      setFieldErrors({});
-      setSuccessMessage("Login successful! Redirecting...");
+  try {
+    const result = await signIn("credentials", {
+      redirect: false,
+      email: form.email,
+      password: form.password,
+    });
 
-      // Save token + user in localStorage
-      if (data.token) {
-        localStorage.setItem("auth_token", data.token);
-      }
-
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-      // Redirect AFTER showing success alert
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 1000);
-    } catch (error) {
-      console.error(error);
-      setFieldErrors({ general: "Something went wrong" });
+    if (result?.error) {
+      setFieldErrors({ general: "Invalid email or password" });
       setLoading(false);
+      return;
     }
-  };
+
+    setSuccessMessage("Login successful! Redirecting...");
+
+    setTimeout(() => {
+      router.push("/");
+      router.refresh();
+    }, 1000);
+
+  } catch (err) {
+    setFieldErrors({ general: "Something went wrong" });
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full">
-      <div className="w-full max-w- sm:pt-10 mx-auto mb-5"></div>
+      {/* ... (Rest of your UI/JSX remains exactly the same) ... */}
+       <div className="w-full max-w- sm:pt-10 mx-auto mb-5"></div>
 
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-          {/* LOGO */}
           <div className="flex justify-center mb-6">
-            {/* Fix 5: Replaced <img> with <Image /> */}
-            {/* Ensure width/height matches your image aspect ratio */}
             <Image 
               src="/images/logo/p.png" 
               alt="Logo" 
@@ -116,7 +112,6 @@ export default function SignInForm() {
             />
           </div>
 
-          {/* Heading */}
           <div className="mb-5 sm:mb-8 text-center">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Sign In
@@ -144,7 +139,6 @@ export default function SignInForm() {
                 />
               )}
 
-              {/* EMAIL */}
               <div>
                 <Label>
                   Email <span className="text-error-500">*</span>
@@ -164,7 +158,6 @@ export default function SignInForm() {
                 )}
               </div>
 
-              {/* PASSWORD */}
               <div>
                 <Label>
                   Password <span className="text-error-500">*</span>
@@ -179,27 +172,16 @@ export default function SignInForm() {
                     className={fieldErrors.password ? "border-red-500" : ""}
                   />
                <button
-  type="button"
-  onClick={() => setShowPassword((prev) => !prev)}
-  aria-label={showPassword ? "Hide password" : "Show password"}
-  className="
-    absolute right-3 top-1/2 z-30
-    -translate-y-1/2
-    flex items-center justify-center
-    h-9 w-9 rounded-full
-    text-gray-500 dark:text-gray-400
-  
-  
-    
-    transition-all
-  "
->
-  {showPassword ? (
-    <EyeIcon className="h-5 w-5" />
-  ) : (
-    <EyeOff className="h-5 w-5" />
-  )}
-</button>
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full text-gray-500 dark:text-gray-400"
+                >
+                  {showPassword ? (
+                    <EyeIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeOff className="h-5 w-5" />
+                  )}
+                </button>
 
                 </div>
                 {fieldErrors.password && (
@@ -209,7 +191,6 @@ export default function SignInForm() {
                 )}
               </div>
 
-              {/* CHECKBOX */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Checkbox checked={isChecked} onChange={setIsChecked} />
@@ -226,16 +207,14 @@ export default function SignInForm() {
                 </Link>
               </div>
 
-              {/* SUBMIT */}
               <div>
-                <Button className="w-full" size="sm" disabled={loading}>
+                <Button type="submit" className="w-full" size="sm" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
             </div>
           </form>
 
-          {/* SIGN UP LINK */}
           <div className="mt-5 flex justify-center">
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}

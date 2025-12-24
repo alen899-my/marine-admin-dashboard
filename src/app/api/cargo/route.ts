@@ -6,7 +6,7 @@ import { dbConnect } from "@/lib/db";
 import Document from "@/models/Document"; // Adjust path to your model
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -33,6 +33,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 export async function POST(req: Request) {
   try {
+    const authz = await authorizeRequest("cargo.create");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
     // Parse FormData

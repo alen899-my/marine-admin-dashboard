@@ -98,7 +98,7 @@ export default function UserFilters({
         />
       </div>
 
-      {/* JOINED DATE FROM */}
+      {/* JOINED DATE FROM
       <div className="w-full sm:w-auto min-w-[180px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Joined Date From
@@ -112,7 +112,7 @@ export default function UserFilters({
         />
       </div>
 
-      {/* JOINED DATE TO */}
+      
       <div className="w-full sm:w-auto min-w-[180px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Joined Date To
@@ -124,7 +124,7 @@ export default function UserFilters({
           defaultDate={localEndDate}
           onChange={(_, dateStr) => setLocalEndDate(dateStr)}
         />
-      </div>
+      </div> */}
 
       {/* ACTION BUTTONS */}
       <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">

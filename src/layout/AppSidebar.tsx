@@ -8,20 +8,29 @@ import {
   LayoutDashboard,
   SquareArrowDownRight,
   SquareArrowUpLeft,
-
+  ShieldCheck,
   Users2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
+// 2. Update Type Definition
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  requiredPermission?: string; // New field for RBAC
+  subItems?: { 
+    name: string; 
+    path: string; 
+    pro?: boolean; 
+    new?: boolean;
+    requiredPermission?: string; // Sub-items can also have permissions
+  }[];
 };
 
 const navItems: NavItem[] = [
@@ -29,49 +38,159 @@ const navItems: NavItem[] = [
     icon: <LayoutDashboard size={25} />,
     name: "Dashboard",
     path: "/",
+    requiredPermission: "dashboard.view",
   },
+
+
+
+
   {
     icon: <FileText size={25} />,
     name: "Daily Noon Report",
     path: "/daily-noon-report",
+    requiredPermission: "noon.view",
   },
   {
     icon: <SquareArrowUpLeft size={25} />,
     name: "Departure Report",
     path: "/departure-report",
+    requiredPermission: "departure.view",
   },
   {
     icon: <SquareArrowDownRight size={25} />,
     name: "Arrival Report",
     path: "/arrival-report",
+    requiredPermission: "arrival.view",
   },
   {
     icon: <Flag size={25} />,
     name: "NOR Report",
     path: "/nor",
+    requiredPermission: "nor.view",
   },
   {
     icon: <Boxes size={25} />,
     name: "Cargo Stowage Report",
     path: "/cargo-stowage-cargo-documents",
+    requiredPermission: "cargo.view",
   },
-  // {
-  //   icon:<Users2 size={25}/>,
-  //   name:"Manage Users",
-  //   path:"/manage-users",
-  // }
+ 
+  {
+    icon:<Users2 size={25}/>,
+    name:" Users",
+    path:"/manage-users",
+    requiredPermission: "users.view",
+  },
+
+  {
+    icon:<ShieldCheck size={25}/>,
+    name:" Roles And Permissions",
+    path:"/roles-and-permissions",
+    requiredPermission: "roles.view", 
+  },
 ];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  
+  const { can, isReady, isAuthenticated } = useAuthorization();
+
+  const filteredNavItems = useMemo(() => {
+  if (!isReady || !isAuthenticated) return [];
+
+  return navItems.reduce<NavItem[]>((acc, item) => {
+    // 🔐 Parent permission
+    if (item.requiredPermission && !can(item.requiredPermission)) {
+      return acc;
+    }
+
+    // 🔐 Sub-items
+    if (item.subItems) {
+      const visibleSubItems = item.subItems.filter(
+        (sub) => !sub.requiredPermission || can(sub.requiredPermission)
+      );
+
+      if (visibleSubItems.length > 0) {
+        acc.push({ ...item, subItems: visibleSubItems });
+      }
+    } else {
+      acc.push(item);
+    }
+
+    return acc;
+  }, []);
+}, [can, isReady, isAuthenticated]);
+
+
+  const [openSubmenu, setOpenSubmenu] = useState<{
+    type: "main" | "others";
+    index: number;
+  } | null>(null);
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
+    {}
+  );
+  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+
+
+  useEffect(() => {
+    let submenuMatched = false;
+    ["main"].forEach((menuType) => {
+  
+      filteredNavItems.forEach((nav, index) => {
+        if (nav.subItems) {
+          nav.subItems.forEach((subItem) => {
+            if (isActive(subItem.path)) {
+              setOpenSubmenu({
+                type: menuType as "main" | "others",
+                index,
+              });
+              submenuMatched = true;
+            }
+          });
+        }
+      });
+    });
+
+    if (!submenuMatched) {
+      setOpenSubmenu(null);
+    }
+  }, [pathname, isActive, filteredNavItems]); // Add filteredNavItems dependency
+
+  // Height calculation effect remains the same
+  useEffect(() => {
+    if (openSubmenu !== null) {
+      const key = `${openSubmenu.type}-${openSubmenu.index}`;
+      if (subMenuRefs.current[key]) {
+        setSubMenuHeight((prevHeights) => ({
+          ...prevHeights,
+          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
+        }));
+      }
+    }
+  }, [openSubmenu]);
+
+  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+    setOpenSubmenu((prevOpenSubmenu) => {
+      if (
+        prevOpenSubmenu &&
+        prevOpenSubmenu.type === menuType &&
+        prevOpenSubmenu.index === index
+      ) {
+        return null;
+      }
+      return { type: menuType, index };
+    });
+  };
 
   const renderMenuItems = (
-    navItems: NavItem[],
+    items: NavItem[], // Changed arg name to generic 'items'
     menuType: "main" | "others"
   ) => (
     <ul className="flex flex-col gap-2">
-      {navItems.map((nav, index) => (
+      {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button
@@ -191,70 +310,9 @@ const AppSidebar: React.FC = () => {
       ))}
     </ul>
   );
-
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // const isActive = (path: string) => path === pathname;
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
-
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    ["main"].forEach((menuType) => {
-      const items = navItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
-
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [pathname, isActive]);
-
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
-  };
+  if (!isReady) {
+  return null; // or skeleton loader
+}
 
   return (
     <aside
@@ -321,28 +379,11 @@ const AppSidebar: React.FC = () => {
                   <Ellipsis />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {/* 7. Pass FILTERED items here */}
+              {renderMenuItems(filteredNavItems, "main")}
             </div>
-
-            {/* <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div> */}
           </div>
         </nav>
-        {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}
       </div>
     </aside>
   );

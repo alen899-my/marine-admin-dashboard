@@ -5,15 +5,15 @@ import path from "path";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put, del } from "@vercel/blob";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
 
   try {
+
     if (process.env.NODE_ENV === "development") {
-      // --- LOCAL DELETE ---
-      // Only delete if it starts with /uploads (local path)
+    
       if (fileUrl.startsWith("/uploads")) {
         const filePath = path.join(process.cwd(), "public", fileUrl);
         if (existsSync(filePath)) {
@@ -22,8 +22,7 @@ async function deleteFile(fileUrl: string) {
         }
       }
     } else {
-      // --- BLOB DELETE ---
-      // Only delete if it's a full URL (Blob URL)
+ 
       if (fileUrl.startsWith("http")) {
         await del(fileUrl);
         console.log(`Deleted blob file: ${fileUrl}`);
@@ -45,6 +44,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+     const authz = await authorizeRequest("nor.edit");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await params;
     const formData = await req.formData();
@@ -159,6 +160,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+        const authz = await authorizeRequest("nor.delete");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await params;
     // 1. Find record

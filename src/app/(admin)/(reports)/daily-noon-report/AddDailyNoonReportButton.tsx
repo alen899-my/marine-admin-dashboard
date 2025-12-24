@@ -13,6 +13,7 @@ import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 
+import { useAuthorization } from "@/hooks/useAuthorization";
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
 }
@@ -26,7 +27,10 @@ interface APIErrorDetail {
 export default function AddDailyNoonReportButton({
   onSuccess,
 }: AddDailyNoonReportButtonProps) {
+  
   const { isOpen, openModal, closeModal } = useModal();
+ const { can, isReady } = useAuthorization();
+
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -160,6 +164,7 @@ export default function AddDailyNoonReportButton({
       setIsSubmitting(false);
     }
   };
+ 
 
   // ***** NEW: Fetch Vessels on Mount *****
   useEffect(() => {
@@ -186,7 +191,17 @@ export default function AddDailyNoonReportButton({
       setErrors((prev) => ({ ...prev, vesselName: "" }));
     }
   };
+  // 2️⃣ DERIVED VALUES (SAFE NOW)
+  const canCreate = isReady && can("noon.create");
 
+  // 3️⃣ EARLY RETURNS (AFTER ALL HOOKS)
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>

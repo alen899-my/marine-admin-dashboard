@@ -8,18 +8,23 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select"; // Added Select Import
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
-import { useState, useEffect } from "react"; // Added useEffect
+import { useEffect, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
 }
 
-export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButtonProps) {
+export default function AddArrivalReportButton({
+  onSuccess,
+}: AddArrivalReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { can, isReady } = useAuthorization();
+  // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
   const [norSameAsArrival, setNorSameAsArrival] = useState(true);
 
@@ -121,9 +126,14 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
           voyageId: formData.voyageId,
           portName: formData.portName,
           reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
-          arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
+          arrivalTime: formData.arrivalTime
+            ? `${formData.arrivalTime}+05:30`
+            : "",
           norTime: formData.norTime ? `${formData.norTime}+05:30` : "",
-          arrivalCargoQty: formData.arrivalCargoQty === "" ? undefined : Number(formData.arrivalCargoQty),
+          arrivalCargoQty:
+            formData.arrivalCargoQty === ""
+              ? undefined
+              : Number(formData.arrivalCargoQty),
           robVlsfo:
             formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
           robLsmgo:
@@ -158,7 +168,16 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
       setIsSubmitting(false);
     }
   };
+  const canCreate = isReady && can("arrival.create");
 
+  // 3️⃣ EARLY RETURNS (AFTER ALL HOOKS)
+  if (!isReady) {
+    return null; // or loader
+  }
+
+  if (!canCreate) {
+    return null;
+  }
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>
@@ -182,9 +201,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
         <AddForm
           title="Add Arrival Report"
           description="Simple data collection form for arrival time and ROB on arrival."
-          submitLabel={
-            isSubmitting ? "Submitting..." : "Submit Arrival Report"
-          }
+          submitLabel={isSubmitting ? "Submitting..." : "Submit Arrival Report"}
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
@@ -192,9 +209,10 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                
                 <div>
-                  <Label>Reporting Date & Time<span className="text-red-500">*</span></Label>
+                  <Label>
+                    Reporting Date & Time<span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     type="datetime-local"
                     name="reportDate"
@@ -203,13 +221,17 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                     className={errors.reportDate ? "border-red-500" : ""}
                   />
                   {errors.reportDate && (
-                    <p className="text-xs text-red-500 mt-1">{errors.reportDate}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.reportDate}
+                    </p>
                   )}
                 </div>
 
                 {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
-                  <Label>Vessel Name <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Vessel Name <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     options={vessels.map((v) => ({
                       value: v.name,
@@ -221,12 +243,16 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
                   {errors.vesselName && (
-                    <p className="text-xs text-red-500 mt-1">{errors.vesselName}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vesselName}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <Label>Voyage No / ID <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Voyage No / ID <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     name="voyageId"
                     value={formData.voyageId}
@@ -234,12 +260,16 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                     className={errors.voyageId ? "border-red-500" : ""}
                   />
                   {errors.voyageId && (
-                    <p className="text-xs text-red-500 mt-1">{errors.voyageId}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.voyageId}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <Label>Port Name <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Port Name <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     name="portName"
                     value={formData.portName}
@@ -247,7 +277,9 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                     className={errors.portName ? "border-red-500" : ""}
                   />
                   {errors.portName && (
-                    <p className="text-xs text-red-500 mt-1">{errors.portName}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.portName}
+                    </p>
                   )}
                 </div>
               </div>
@@ -257,58 +289,78 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
             <ComponentCard title="Arrival & NOR Details">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Arrival Time <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="datetime-local" 
-                    name="arrivalTime" 
-                    value={formData.arrivalTime} 
-                    onChange={handleChange} 
+                  <Label>
+                    Arrival Time <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    name="arrivalTime"
+                    value={formData.arrivalTime}
+                    onChange={handleChange}
                     className={errors.arrivalTime ? "border-red-500" : ""}
                   />
                   {errors.arrivalTime && (
-                    <p className="text-xs text-red-500 mt-1">{errors.arrivalTime}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.arrivalTime}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <Label>Cargo on Board at Arrival (MT) <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="number" 
-                    name="arrivalCargoQty" 
+                  <Label>
+                    Cargo on Board at Arrival (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="arrivalCargoQty"
                     placeholder="e.g. 25000"
-                    value={formData.arrivalCargoQty} 
-                    onChange={handleChange} 
+                    value={formData.arrivalCargoQty}
+                    onChange={handleChange}
                     className={errors.arrivalCargoQty ? "border-red-500" : ""}
                   />
                   {errors.arrivalCargoQty && (
-                    <p className="text-xs text-red-500 mt-1">{errors.arrivalCargoQty}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.arrivalCargoQty}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <Label>NOR Time <span className="text-red-500">*</span></Label>
+                    <Label>
+                      NOR Time <span className="text-red-500">*</span>
+                    </Label>
                     <div className="flex items-center gap-1.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        id="norSync" 
-                        checked={norSameAsArrival} 
+                      <input
+                        type="checkbox"
+                        id="norSync"
+                        checked={norSameAsArrival}
                         onChange={(e) => setNorSameAsArrival(e.target.checked)}
                         className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                       />
-                      <label htmlFor="norSync" className="text-xs text-gray-500 font-medium select-none">Same as Arrival</label>
+                      <label
+                        htmlFor="norSync"
+                        className="text-xs text-gray-500 font-medium select-none"
+                      >
+                        Same as Arrival
+                      </label>
                     </div>
                   </div>
-                  <Input 
-                    type="datetime-local" 
-                    name="norTime" 
-                    value={formData.norTime} 
-                    onChange={handleChange} 
+                  <Input
+                    type="datetime-local"
+                    name="norTime"
+                    value={formData.norTime}
+                    onChange={handleChange}
                     disabled={norSameAsArrival}
-                    className={`${errors.norTime ? "border-red-500" : ""} ${norSameAsArrival ? "bg-gray-50 opacity-80" : ""}`}
+                    className={`${errors.norTime ? "border-red-500" : ""} ${
+                      norSameAsArrival ? "bg-gray-50 opacity-80" : ""
+                    }`}
                   />
                   {errors.norTime && (
-                    <p className="text-xs text-red-500 mt-1">{errors.norTime}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.norTime}
+                    </p>
                   )}
                 </div>
               </div>
@@ -318,7 +370,10 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
             <ComponentCard title="ROB on Arrival">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Arrival ROB - VLSFO (MT) <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Arrival ROB - VLSFO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     type="number"
                     name="robVlsfo"
@@ -334,7 +389,10 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                 </div>
 
                 <div>
-                  <Label>Arrival ROB - LSMGO (MT) <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Arrival ROB - LSMGO (MT){" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     type="number"
                     name="robLsmgo"
