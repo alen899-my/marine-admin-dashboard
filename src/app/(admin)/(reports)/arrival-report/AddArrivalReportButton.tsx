@@ -20,9 +20,8 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // ***** NEW: State for Vessels List *****
   const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+  const [norSameAsArrival, setNorSameAsArrival] = useState(true);
 
   // ***** NEW: Fetch Vessels from DB *****
   useEffect(() => {
@@ -49,20 +48,32 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
   };
 
   const [formData, setFormData] = useState({
-    vesselName: "AN16", // ✅ CHANGE: Default to AN16
+    vesselName: "AN16",
     voyageId: "",
     portName: "",
-    reportDate: getCurrentDateTime(), // ✅ NEW: Auto-populate default
+    reportDate: getCurrentDateTime(),
     arrivalTime: "",
+    norTime: "", // NEW
+    arrivalCargoQty: "", // NEW
     robVlsfo: "",
     robLsmgo: "",
     remarks: "",
   });
 
+  // Effect to sync NOR Time with Arrival Time
+  useEffect(() => {
+    if (norSameAsArrival && formData.arrivalTime) {
+      setFormData((prev) => ({ ...prev, norTime: formData.arrivalTime }));
+    }
+  }, [norSameAsArrival, formData.arrivalTime]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Handle Checkbox separately if needed, though we use state here
     setFormData((prev) => ({ ...prev, [name]: value }));
 
     // Clear error for the field being edited
@@ -88,6 +99,8 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
       portName: "",
       reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
       arrivalTime: "",
+      norTime: "",
+      arrivalCargoQty: "",
       robVlsfo: "",
       robLsmgo: "",
       remarks: "",
@@ -109,6 +122,8 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
           portName: formData.portName,
           reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
           arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
+          norTime: formData.norTime ? `${formData.norTime}+05:30` : "",
+          arrivalCargoQty: formData.arrivalCargoQty === "" ? undefined : Number(formData.arrivalCargoQty),
           robVlsfo:
             formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
           robLsmgo:
@@ -173,7 +188,7 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
           onCancel={handleClose}
           onSubmit={handleSubmit}
         >
-          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
+          <div className="max-h-[70dvh] overflow-y-auto p-1 space-y-3">
             {/* GENERAL INFORMATION */}
             <ComponentCard title="General Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -235,20 +250,65 @@ export default function AddArrivalReportButton({onSuccess}: AddArrivalReportButt
                     <p className="text-xs text-red-500 mt-1">{errors.portName}</p>
                   )}
                 </div>
+              </div>
+            </ComponentCard>
 
+            {/* ARRIVAL TIMES & CARGO */}
+            <ComponentCard title="Arrival & NOR Details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Arrival Time <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="datetime-local"
-                    name="arrivalTime"
-                    value={formData.arrivalTime}
-                    onChange={handleChange}
+                  <Input 
+                    type="datetime-local" 
+                    name="arrivalTime" 
+                    value={formData.arrivalTime} 
+                    onChange={handleChange} 
                     className={errors.arrivalTime ? "border-red-500" : ""}
                   />
                   {errors.arrivalTime && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.arrivalTime}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{errors.arrivalTime}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Cargo on Board at Arrival (MT) <span className="text-red-500">*</span></Label>
+                  <Input 
+                    type="number" 
+                    name="arrivalCargoQty" 
+                    placeholder="e.g. 25000"
+                    value={formData.arrivalCargoQty} 
+                    onChange={handleChange} 
+                    className={errors.arrivalCargoQty ? "border-red-500" : ""}
+                  />
+                  {errors.arrivalCargoQty && (
+                    <p className="text-xs text-red-500 mt-1">{errors.arrivalCargoQty}</p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label>NOR Time <span className="text-red-500">*</span></Label>
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        id="norSync" 
+                        checked={norSameAsArrival} 
+                        onChange={(e) => setNorSameAsArrival(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                      />
+                      <label htmlFor="norSync" className="text-xs text-gray-500 font-medium select-none">Same as Arrival</label>
+                    </div>
+                  </div>
+                  <Input 
+                    type="datetime-local" 
+                    name="norTime" 
+                    value={formData.norTime} 
+                    onChange={handleChange} 
+                    disabled={norSameAsArrival}
+                    className={`${errors.norTime ? "border-red-500" : ""} ${norSameAsArrival ? "bg-gray-50 opacity-80" : ""}`}
+                  />
+                  {errors.norTime && (
+                    <p className="text-xs text-red-500 mt-1">{errors.norTime}</p>
                   )}
                 </div>
               </div>

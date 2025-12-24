@@ -17,6 +17,11 @@ import { toast } from "react-toastify";
 interface ArrivalStats {
   robVlsfo: number | string;
   robLsmgo: number | string;
+  arrivalCargoQtyMt?: number | string; // NEW
+}
+
+interface NorDetails {
+  norTime?: string; // NEW
 }
 
 interface ArrivalReport {
@@ -29,6 +34,7 @@ interface ArrivalReport {
   status: "active" | "inactive";
   remarks?: string;
   arrivalStats?: ArrivalStats;
+  norDetails?: NorDetails; // NEW
 }
 
 // Interface for the data structure used during editing
@@ -37,6 +43,8 @@ interface EditFormData {
   voyageId: string;
   portName: string;
   eventTime: string;
+  norTime: string; // NEW
+  arrivalCargoQty: number | string; // NEW
   reportDate: string;
   status: string;
   remarks: string;
@@ -69,7 +77,7 @@ export default function ArrivalReportTable({
     null
   );
   const [editData, setEditData] = useState<EditFormData | null>(null);
-
+  const [editNorSameAsArrival, setEditNorSameAsArrival] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -103,73 +111,100 @@ export default function ArrivalReportTable({
 
   /* ================= COLUMNS ================= */
   const columns = [
-    {
-      header: "S.No",
-      render: (_: ArrivalReport, index: number) => (currentPage - 1) * LIMIT + index + 1,
-    },
-    {
-      header: "Vessel & Voyage ID",
-      render: (r: ArrivalReport) => (
+  {
+    header: "S.No",
+    render: (_: ArrivalReport, index: number) =>
+      (currentPage - 1) * LIMIT + index + 1,
+  },
+  {
+    header: "Vessel & Voyage ID",
+    render: (r: ArrivalReport) => (
+      <div className="flex flex-col">
+        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+          {r?.vesselName ?? "-"}
+        </span>
+        <span className="text-xs text-gray-500 uppercase tracking-tighter">
+          ID: {r?.voyageId ?? "-"}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: "Report & Arrival",
+    render: (r: ArrivalReport) => (
+      <div className="flex flex-col text-xs space-y-0.5">
         <div className="flex flex-col">
-          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {r?.vesselName ?? "-"}
+          <span className="text-[10px] text-gray-400 uppercase font-bold">
+            Reported
           </span>
-          <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            ID: {r?.voyageId ?? "-"}
+          <span className="text-gray-700 dark:text-gray-300">
+            {formatDate(r.reportDate)}
           </span>
         </div>
-      ),
-    },
-    {
-      header: "Report & Arrival",
-      render: (r: ArrivalReport) => (
-        <div className="flex flex-col text-xs space-y-0.5">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
-            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
-          </div>
-          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Arrival Time</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.eventTime)}</span>
-          </div>
+        <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+          <span className="text-[10px] text-gray-400 uppercase font-bold">
+            Arrival Time
+          </span>
+          <span className="text-gray-700 dark:text-gray-300">
+            {formatDate(r.eventTime)}
+          </span>
         </div>
-      ),
-    },
-    {
-      header: "Port",
-      render: (r: ArrivalReport) => (
-        <div className="font-bold text-xs">
-          {r?.portName ?? "-"}
-        </div>
-      ),
-    },
-    {
-      header: "ROB & Remarks",
-      render: (r: ArrivalReport) => (
-        <div className="flex flex-col text-xs gap-1">
-          <div className="flex gap-2">
-            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-              VLSFO: <b>{r?.arrivalStats?.robVlsfo ?? 0} MT</b>
+        {/* ✅ NEW: NOR Time added below Arrival Time */}
+        {r?.norDetails?.norTime && (
+          <div className="flex flex-col pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              NOR Tendered
             </span>
-            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-              LSMGO: <b>{r?.arrivalStats?.robLsmgo ?? 0} MT</b>
+            <span className="text-gray-700 dark:text-gray-300">
+              {formatDate(r.norDetails.norTime)}
             </span>
           </div>
-          <p className="text-[11px] text-gray-500 line-clamp-1 max-w-[200px]" title={r?.remarks}>
-            {r?.remarks || "No remarks"}
-          </p>
+        )}
+      </div>
+    ),
+  },
+  {
+    header: "Port",
+    render: (r: ArrivalReport) => (
+      <div className="flex flex-col">
+        <div className="font-bold text-xs">{r?.portName ?? "-"}</div>
+        {/* ✅ NEW: Cargo Quantity added below Port Name */}
+        <div className="text-sm font-medium mt-1">
+          Cargo: {r?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ?? 0} MT
         </div>
-      ),
-    },
-    {
-      header: "Status",
-      render: (r: ArrivalReport) => (
-        <Badge color={r.status === "active" ? "success" : "error"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
-    },
-  ];
+      </div>
+    ),
+  },
+  {
+    header: "ROB & Remarks",
+    render: (r: ArrivalReport) => (
+      <div className="flex flex-col text-xs gap-1">
+        <div className="flex gap-2">
+          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+            VLSFO: <b>{r?.arrivalStats?.robVlsfo ?? 0} MT</b>
+          </span>
+          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+            LSMGO: <b>{r?.arrivalStats?.robLsmgo ?? 0} MT</b>
+          </span>
+        </div>
+        <p
+          className="text-[11px] text-gray-500 line-clamp-1 max-w-[200px]"
+          title={r?.remarks}
+        >
+          {r?.remarks || "No remarks"}
+        </p>
+      </div>
+    ),
+  },
+  {
+    header: "Status",
+    render: (r: ArrivalReport) => (
+      <Badge color={r.status === "active" ? "success" : "error"}>
+        {r.status === "active" ? "Active" : "Inactive"}
+      </Badge>
+    ),
+  },
+];
 
   /* ================= FETCH ================= */
   // useCallback fixes the missing dependency warning
@@ -247,11 +282,17 @@ export default function ArrivalReportTable({
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
 
+    // Check if Arrival and NOR are the same to toggle the checkbox
+    const isSame = report.eventTime === report.norDetails?.norTime;
+    setEditNorSameAsArrival(isSame);
+
     setEditData({
       vesselName: report.vesselName ?? "",
       voyageId: report.voyageId ?? "",
       portName: report.portName ?? "",
       eventTime: formatForInput(report.eventTime),
+      norTime: formatForInput(report.norDetails?.norTime), // NEW
+      arrivalCargoQty: report.arrivalStats?.arrivalCargoQtyMt ?? 0, // NEW
       reportDate: formatForInput(report.reportDate),
       arrivalStats: {
         robVlsfo: report.arrivalStats?.robVlsfo ?? 0,
@@ -272,8 +313,12 @@ export default function ArrivalReportTable({
     try {
       const payload = {
         ...editData,
+        robVlsfo: editData.arrivalStats.robVlsfo,
+        robLsmgo: editData.arrivalStats.robLsmgo,
         reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
         arrivalTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
+        norTime: editData.norTime ? `${editData.norTime}+05:30` : null, // NEW
+        arrivalCargoQty: Number(editData.arrivalCargoQty), // NEW
       };
 
       const res = await fetch(`/api/arrival-report/${selectedReport._id}`, {
@@ -347,109 +392,135 @@ export default function ArrivalReportTable({
 
       {/* ================= VIEW ================= */}
       <ViewModal
-  isOpen={openView}
-  onClose={() => setOpenView(false)}
-  title="Arrival Report Details"
-  headerRight={
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title="Arrival Report Details"
+        headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold ">
-                {selectedReport.vesselName}
-              </span>
+              <span className="font-bold">{selectedReport.vesselName}</span>
               <span>|</span>
               <span>{selectedReport.voyageId}</span>
             </div>
           )
         }
->
-  <div className="text-[13px] py-1">
-    {/* ================= MAIN CONTENT GRID ================= */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-      
-      {/* ================= GENERAL INFORMATION ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          General Information
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Vessel Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.vesselName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Voyage No / ID</span>
-          <span className="font-medium text-right">
-            {selectedReport?.voyageId ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Port Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.portName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Arrival Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.eventTime)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Report Date & Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.reportDate)}
-          </span>
-        </div>
-      </section>
+      >
+        <div className="text-[13px] py-1">
+          {/* ================= MAIN CONTENT GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            {/* ================= SECTION 1: GENERAL INFORMATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                General Information
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Vessel Name</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.vesselName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Voyage No / ID</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.voyageId ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Port Name</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.portName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Report Date & Time
+                </span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.reportDate)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= ROB ON ARRIVAL ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          ROB on Arrival
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Arrival ROB - VLSFO (MT)</span>
-          <span className="font-medium text-right">
-            {selectedReport?.arrivalStats?.robVlsfo ?? 0}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Arrival ROB - LSMGO (MT)</span>
-          <span className="font-medium text-right">
-            {selectedReport?.arrivalStats?.robLsmgo ?? 0}
-          </span>
-        </div>
-      </section>
+            {/* ================= SECTION 2: ARRIVAL & NOR DETAILS ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Arrival & NOR Details
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Arrival Time</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.eventTime)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">NOR Time</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.norDetails?.norTime)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Cargo on Board (MT)
+                </span>
+                <span className="font-bold text-right">
+                  {selectedReport?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ??
+                    0}{" "}
+                  MT
+                </span>
+              </div>
+            </section>
 
-      {/* ================= REMARKS ================= */}
-      <section className="md:col-span-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Remarks
-        </h3>
-        <p className="text-gray-700 leading-relaxed py-1 font-medium">
-          {selectedReport?.remarks || "No Remarks"}
-        </p>
-      </section>
-    </div>
+            {/* ================= SECTION 3: ROB ON ARRIVAL ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                ROB on Arrival
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Arrival ROB - VLSFO (MT)
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.arrivalStats?.robVlsfo ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Arrival ROB - LSMGO (MT)
+                </span>
+                <span className="font-medium text-right">
+                  {selectedReport?.arrivalStats?.robLsmgo ?? 0}
+                </span>
+              </div>
+            </section>
 
-    {/* ================= FOOTER: STATUS (Aligned with Col 1) ================= */}
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-          Status
-        </span>
-        <Badge
-          color={selectedReport?.status === "active" ? "success" : "error"}
-        >
-          {selectedReport?.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      </div>
-      {/* Empty column for alignment on desktop */}
-      <div className="hidden md:block"></div>
-    </div>
-  </div>
-</ViewModal>
+            {/* ================= SECTION 4: REMARKS ================= */}
+            <section className="md:col-span-1">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Remarks
+              </h3>
+              <p className="text-gray-700 leading-relaxed py-1 font-medium italic">
+                {selectedReport?.remarks || "No Remarks"}
+              </p>
+            </section>
+          </div>
+
+          {/* ================= FOOTER: STATUS ================= */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </ViewModal>
 
       {/* ================= EDIT ================= */}
       <EditModal
@@ -461,10 +532,11 @@ export default function ArrivalReportTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
+            {/* SECTION 1: GENERAL INFORMATION */}
             <ComponentCard title="General Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>Report Date & Time</Label>
+                  <Label>Reporting Date & Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.reportDate}
@@ -497,36 +569,95 @@ export default function ArrivalReportTable({
                     setEditData({ ...editData, portName: e.target.value })
                   }
                 />
+              </div>
+            </ComponentCard>
 
+            {/* SECTION 2: ARRIVAL & NOR DETAILS (Mirrors Add Modal) */}
+            <ComponentCard title="Arrival & NOR Details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Arrival Time</Label>
                   <Input
                     type="datetime-local"
                     value={editData.eventTime}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value;
                       setEditData({
                         ...editData,
-                        eventTime: e.target.value,
-                      })
+                        eventTime: val,
+                        norTime: editNorSameAsArrival ? val : editData.norTime,
+                      });
+                    }}
+                  />
+                </div>
+
+                <InputField
+                  label="Cargo on Board at Arrival (MT)"
+                  type="number"
+                  value={editData.arrivalCargoQty}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      arrivalCargoQty: e.target.value,
+                    })
+                  }
+                />
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label>NOR Time</Label>
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="editNorSync"
+                        checked={editNorSameAsArrival}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setEditNorSameAsArrival(checked);
+                          if (checked) {
+                            setEditData({
+                              ...editData,
+                              norTime: editData.eventTime,
+                            });
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                      />
+                      <label
+                        htmlFor="editNorSync"
+                        className="text-xs text-gray-500 font-medium select-none"
+                      >
+                        Same as Arrival
+                      </label>
+                    </div>
+                  </div>
+                  <Input
+                    type="datetime-local"
+                    value={editData.norTime}
+                    onChange={(e) =>
+                      setEditData({ ...editData, norTime: e.target.value })
+                    }
+                    disabled={editNorSameAsArrival}
+                    className={
+                      editNorSameAsArrival ? "bg-gray-50 opacity-80" : ""
                     }
                   />
                 </div>
+
                 <div>
                   <Label>Status</Label>
-                  <div className="relative">
-                    <Select
-                      options={statusOptions}
-                      value={editData.status}
-                      onChange={(val) =>
-                        setEditData({ ...editData, status: val })
-                      }
-                      className="dark:bg-dark-900"
-                    />
-                  </div>
+                  <Select
+                    options={statusOptions}
+                    value={editData.status}
+                    onChange={(val) =>
+                      setEditData({ ...editData, status: val })
+                    }
+                  />
                 </div>
               </div>
             </ComponentCard>
 
+            {/* SECTION 3: ROB ON ARRIVAL */}
             <ComponentCard title="ROB on Arrival">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <InputField
@@ -561,17 +692,16 @@ export default function ArrivalReportTable({
               </div>
             </ComponentCard>
 
-            <div className="lg:col-span-2">
-              <ComponentCard title="Remarks">
-                <TextArea
-                  rows={4}
-                  value={editData.remarks}
-                  onChange={(e) =>
-                    setEditData({ ...editData, remarks: e.target.value })
-                  }
-                />
-              </ComponentCard>
-            </div>
+            {/* SECTION 4: REMARKS */}
+            <ComponentCard title="Remarks">
+              <TextArea
+                rows={4}
+                value={editData.remarks}
+                onChange={(e) =>
+                  setEditData({ ...editData, remarks: e.target.value })
+                }
+              />
+            </ComponentCard>
           </div>
         )}
       </EditModal>

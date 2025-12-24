@@ -17,28 +17,55 @@ export async function PATCH(
     await dbConnect();
     const { id } = await context.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
+    }
+
     const body = await req.json();
+
+    // 1. Prepare the base update object
+    const updateData: any = {
+      vesselName: body.vesselName,
+      voyageId: body.voyageId,
+      portName: body.portName,
+      remarks: body.remarks,
+      status: body.status ?? "active",
+    };
+
+    // 2. Handle Dates
+    if (body.reportDate) updateData.reportDate = new Date(body.reportDate);
+    if (body.arrivalTime) updateData.eventTime = new Date(body.arrivalTime);
+
+    // 3. Extract ROB and Cargo safely
+    // We check both the root (body.robVlsfo) and the nested object (body.arrivalStats?.robVlsfo)
+    const robVlsfo = body.robVlsfo ?? body.arrivalStats?.robVlsfo;
+    const robLsmgo = body.robLsmgo ?? body.arrivalStats?.robLsmgo;
+    const cargoQty = body.arrivalCargoQty ?? body.arrivalStats?.arrivalCargoQtyMt;
+
+    // 4. Update Nested arrivalStats
+    updateData.arrivalStats = {
+      arrivalTime: body.arrivalTime ? new Date(body.arrivalTime) : undefined,
+      arrivalCargoQtyMt: cargoQty !== undefined ? Number(cargoQty) : 0,
+      robVlsfo: robVlsfo !== undefined ? Number(robVlsfo) : 0,
+      robLsmgo: robLsmgo !== undefined ? Number(robLsmgo) : 0,
+    };
+
+    // 5. Update Nested norDetails
+    if (body.norTime) {
+      updateData.norDetails = {
+        norTime: new Date(body.norTime),
+        tenderTime: new Date(body.norTime),
+      };
+    }
 
     const updatedReport = await ReportOperational.findOneAndUpdate(
       { _id: id, eventType: "arrival" },
-      {
-        vesselName: body.vesselName,
-        voyageId: body.voyageId,
-        portName: body.portName,
-        reportDate: body.reportDate ? new Date(body.reportDate) : undefined,
-        eventTime: body.arrivalTime ? new Date(body.arrivalTime) : undefined,
-        arrivalStats: body.arrivalStats,
-        remarks: body.remarks,
-        status: body.status ?? "active",
-      },
-      { new: true }
+      { $set: updateData },
+      { new: true, runValidators: true }
     );
 
     if (!updatedReport) {
-      return NextResponse.json(
-        { error: "Arrival report not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Arrival report not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -48,10 +75,7 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("UPDATE ARRIVAL REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

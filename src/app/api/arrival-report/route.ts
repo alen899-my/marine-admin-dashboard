@@ -167,16 +167,18 @@ export async function POST(req: NextRequest) {
       vesselName: value.vesselName,
       voyageId: value.voyageId,
       portName: value.portName,
-
-      // ✅ ADDED: Reporting Date (using parsed object)
       reportDate: parsedReportDate,
-
-      // ✅ shared field
       eventTime: new Date(value.arrivalTime),
 
       arrivalStats: {
         robVlsfo: value.robVlsfo,
         robLsmgo: value.robLsmgo,
+        arrivalCargoQtyMt: value.arrivalCargoQty,
+      },
+
+      norDetails: {
+        norTime: value.norTime ? new Date(value.norTime) : undefined, 
+        tenderTime: value.norTime ? new Date(value.norTime) : undefined, 
       },
 
       remarks: value.remarks,

@@ -33,6 +33,8 @@ export interface IReportOperational extends Document {
   arrivalStats?: {
     robVlsfo?: number;
     robLsmgo?: number;
+    arrivalTime?: Date; // Added to store actual arrival time
+    arrivalCargoQtyMt?: number; // NEW: Added for cargo on board at arrival
   };
 
   norDetails?: {
@@ -40,6 +42,7 @@ export interface IReportOperational extends Document {
     documentUrl?: string;
     etaPort?: Date;
     tenderTime?: Date;
+    norTime?: Date; // NEW: Explicit field for NOR Time
   };
 
   remarks?: string;
@@ -88,6 +91,8 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
     arrivalStats: {
       robVlsfo: Number,
       robLsmgo: Number,
+      arrivalTime: Date, // NEW
+      arrivalCargoQtyMt: { type: Number, default: 0 }, // NEW
     },
 
     norDetails: {
@@ -95,6 +100,7 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
       documentUrl: String,
       etaPort: Date,
       tenderTime: Date,
+      norTime: Date, // NEW
     },
 
     remarks: String,

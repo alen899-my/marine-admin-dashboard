@@ -38,15 +38,30 @@ export const arrivalReportSchema = Joi.object({
       "any.required": "Report date is required",
     }),
 
-  // ✅ datetime-local (ISO)
+  // ✅ Arrival Time (datetime-local from frontend)
   arrivalTime: Joi.string()
-    .isoDate()
     .required()
     .messages({
-      "string.base": "Arrival time must be a valid date",
-      "string.isoDate": "Arrival time must be a valid ISO date (YYYY-MM-DDTHH:mm)",
       "string.empty": "Arrival time is required",
       "any.required": "Arrival time is required",
+    }),
+
+  // ✅ NEW: NOR Time
+  norTime: Joi.string()
+    .required()
+    .messages({
+      "string.empty": "Notice of Readiness (NOR) time is required",
+      "any.required": "Notice of Readiness (NOR) time is required",
+    }),
+
+  // ✅ NEW: Cargo Quantity on Arrival
+  arrivalCargoQty: Joi.number()
+    .min(0)
+    .required()
+    .messages({
+      "number.base": "Cargo quantity must be a number",
+      "number.min": "Cargo quantity cannot be negative",
+      "any.required": "Arrival cargo quantity is required",
     }),
 
   robVlsfo: Joi.number()
