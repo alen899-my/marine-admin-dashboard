@@ -14,6 +14,7 @@ import { File, FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 // --- Interfaces ---
 interface INorDetails {
   tenderTime?: string;
@@ -38,6 +39,7 @@ interface IEditNorData {
   status: string;
   vesselName: string;
   voyageId: string;
+  vesselId?: string;
   portName: string;
   remarks: string;
   reportDate: string;
@@ -84,12 +86,24 @@ export default function NorReportTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
-
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const LIMIT = 20;
     const { can, isReady } = useAuthorization();
     const canEdit = can("nor.edit");
     const canDelete = can("nor.delete");
+const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId, 
+    editData?.reportDate
+  );
 
+  
+  useEffect(() => {
+    
+    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
+      
+       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+    }
+  }, [suggestedVoyageNo]);
   /* ================= HELPER: DATE FORMATTER ================= */
   // Moved up so it can be used in columns
   const formatDate = (date?: string) => {
@@ -112,6 +126,54 @@ export default function NorReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected
+      if (!editData?.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === editData.vesselId) ||
+              (v.vesselName && v.vesselName === editData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === editData.voyageId;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -362,10 +424,11 @@ export default function NorReportTable({
     setNewFile(null);
     // Set initial preview to existing document URL
     setPreviewUrl(report.norDetails?.documentUrl || null);
-
+    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     setEditData({
       status: report.status ?? "active",
       vesselName: report.vesselName ?? "",
+      vesselId: matchedVessel?._id || "",
       voyageId: report.voyageId ?? "",
       portName: report.portName ?? "",
       remarks: report.remarks ?? "",
@@ -619,21 +682,33 @@ export default function NorReportTable({
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
-                  <Input
-                    value={editData.vesselName}
-                    onChange={(e) =>
-                      setEditData({ ...editData, vesselName: e.target.value })
-                    }
-                  />
+                 <Select
+    options={vessels.map((v) => ({
+      value: v.name,
+      label: v.name,
+    }))}
+    value={editData.vesselName}
+    onChange={(val) => {
+      // ✅ 4. UPDATE ID ON CHANGE
+      const selected = vessels.find(v => v.name === val);
+      setEditData({ 
+          ...editData, 
+          vesselName: val, 
+          vesselId: selected?._id || "" // Update ID to trigger hook lookup
+      });
+    }}
+  />
                 </div>
-                <div>
+                <div className="relative">
                   <Label>Voyage No</Label>
-                  <Input
+                  <Select
+                  
+                    options={voyageList}
+                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
                     value={editData.voyageId}
-                    onChange={(e) =>
-                      setEditData({ ...editData, voyageId: e.target.value })
-                    }
+                    onChange={(val) => setEditData({ ...editData, voyageId: val })}
                   />
+                
                 </div>
                 <div>
                   <Label>Port Name</Label>

@@ -14,6 +14,7 @@ import { File, FileSpreadsheet, FileText, FileWarning, ImageIcon } from "lucide-
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
   url: string;
@@ -26,6 +27,7 @@ interface ICargoReport {
   portType: string;
   portName: string;
   documentDate: string;
+
   reportDate: string;
   status: string;
   voyageNo: string;
@@ -57,7 +59,7 @@ export default function CargoReportTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   // Selection States
   const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(
     null
@@ -68,6 +70,7 @@ export default function CargoReportTable({
   const [editData, setEditData] = useState<{
     status: string;
     vesselName: string;
+    vesselId?: string;
     voyageNo: string;
     reportDate: string;
     portName: string;
@@ -105,6 +108,7 @@ export default function CargoReportTable({
     });
   };
 
+
   const formatDateOnly = (date?: string) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("en-GB", {
@@ -122,6 +126,67 @@ export default function CargoReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId,
+    editData?.reportDate
+  );
+
+  // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
+  useEffect(() => {
+  
+    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageNo) {
+      
+       setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
+    }
+  }, [suggestedVoyageNo]);
+   useEffect(() => {
+      async function fetchAndFilterVoyages() {
+        // Stop if no vessel selected
+        if (!editData?.vesselId) {
+          setVoyageList([]);
+          return;
+        }
+  
+        try {
+          const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+  
+          if (res.ok) {
+            const result = await res.json();
+            const allVoyages = Array.isArray(result) ? result : result.data || [];
+  
+            // 🔒 STRICT FILTERING LOGIC
+            const filtered = allVoyages.filter((v: any) => {
+              // Rule 1: STRICTLY match the selected Vessel ID
+              const isCorrectVessel =
+                (v.vesselId && v.vesselId === editData.vesselId) ||
+                (v.vesselName && v.vesselName === editData.vesselName);
+  
+              if (!isCorrectVessel) return false;
+  
+              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+              const isRelevant =
+                v.status === "active" ||
+                v.voyageNo === suggestedVoyageNo ||
+                v.voyageNo === editData.voyageNo;
+  
+              return isRelevant;
+            });
+  
+            setVoyageList(
+              filtered.map((v: any) => ({
+                value: v.voyageNo,
+                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+              }))
+            );
+          }
+        } catch (error) {
+          console.error("Failed to load voyages", error);
+          setVoyageList([]);
+        }
+      }
+  
+      fetchAndFilterVoyages();
+    }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -371,11 +436,12 @@ export default function CargoReportTable({
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
-
+    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     setEditData({
       status: report.status ?? "active",
       vesselName: report.vesselName ?? "",
       voyageNo: report.voyageNo ?? "",
+      vesselId: matchedVessel?._id || "",
       reportDate: formatForInput(report.reportDate),
       portName: report.portName ?? "",
       portType: report.portType ?? "load",
@@ -650,21 +716,33 @@ export default function CargoReportTable({
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
-                  <Input
-                    value={editData.vesselName}
-                    onChange={(e) =>
-                      setEditData({ ...editData, vesselName: e.target.value })
-                    }
-                  />
+  <Select
+    options={vessels.map((v) => ({
+      value: v.name,
+      label: v.name,
+    }))}
+    value={editData.vesselName}
+    onChange={(val) => {
+      // ✅ 4. UPDATE ID ON CHANGE
+      const selected = vessels.find(v => v.name === val);
+      setEditData({ 
+          ...editData, 
+          vesselName: val, 
+          vesselId: selected?._id || "" // Update ID to trigger hook lookup
+      });
+    }}
+  />
                 </div>
-                <div>
+            <div className="relative">
                   <Label>Voyage No</Label>
-                  <Input
+                  <Select
+                  
+                    options={voyageList}
+                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
                     value={editData.voyageNo}
-                    onChange={(e) =>
-                      setEditData({ ...editData, voyageNo: e.target.value })
-                    }
+                    onChange={(val) => setEditData({ ...editData, voyageNo: val })}
                   />
+                
                 </div>
                 <div>
                   <Label>Port Name</Label>

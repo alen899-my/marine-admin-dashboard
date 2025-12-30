@@ -13,6 +13,7 @@ import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -27,6 +28,7 @@ interface NorDetails {
 interface ArrivalReport {
   _id: string;
   vesselName: string;
+  vesselId?: string;
   voyageId: string;
   portName: string;
   eventTime: string;
@@ -43,6 +45,7 @@ interface EditFormData {
   voyageId: string;
   portName: string;
   eventTime: string;
+  vesselId?: string;
   norTime: string; // NEW
   arrivalCargoQty: number | string; // NEW
   reportDate: string;
@@ -76,6 +79,7 @@ export default function ArrivalReportTable({
   const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
     null
   );
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [editNorSameAsArrival, setEditNorSameAsArrival] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -254,6 +258,7 @@ export default function ArrivalReportTable({
     setCurrentPage(1);
   }, [fetchReports]);
 
+
   // Trigger fetch when page changes
   useEffect(() => {
     // We strictly check currentPage > 1 to avoid double fetching
@@ -284,7 +289,7 @@ export default function ArrivalReportTable({
 
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
-
+    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     // Check if Arrival and NOR are the same to toggle the checkbox
     const isSame = report.eventTime === report.norDetails?.norTime;
     setEditNorSameAsArrival(isSame);
@@ -292,6 +297,7 @@ export default function ArrivalReportTable({
     setEditData({
       vesselName: report.vesselName ?? "",
       voyageId: report.voyageId ?? "",
+      vesselId: matchedVessel?._id || "",
       portName: report.portName ?? "",
       eventTime: formatForInput(report.eventTime),
       norTime: formatForInput(report.norDetails?.norTime), // NEW
@@ -307,7 +313,65 @@ export default function ArrivalReportTable({
 
     setOpenEdit(true);
   }
+    const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId, 
+    editData?.reportDate
+  );
+  useEffect(() => {
+    
+      if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
+       
+         setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+      }
+    }, [suggestedVoyageNo]);
+    useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected or not in edit mode
+      if (!editData?.vesselId) {
+        setVoyageList([]);
+        return;
+      }
 
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === editData.vesselId) ||
+              (v.vesselName && v.vesselName === editData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === 'active' ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === editData.voyageId;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== 'active' ? '' : ''}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -506,7 +570,7 @@ export default function ArrivalReportTable({
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
                 Remarks
               </h3>
-              <p className="text-gray-700 leading-relaxed py-1 font-medium italic">
+             <p className="leading-relaxed py-1 font-medium">
                 {selectedReport?.remarks || "No Remarks"}
               </p>
             </section>
@@ -554,21 +618,45 @@ export default function ArrivalReportTable({
                   />
                 </div>
 
-                <InputField
-                  label="Vessel Name"
-                  value={editData.vesselName}
-                  onChange={(e) =>
-                    setEditData({ ...editData, vesselName: e.target.value })
-                  }
-                />
+                            <div>
+                  <Label>Vessel Name</Label>
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    value={editData.vesselName}
+                    onChange={(val) => {
+                      // ✅ 4. UPDATE ID ON CHANGE
+                      const selected = vessels.find(v => v.name === val);
+                      setEditData({ 
+                          ...editData, 
+                          vesselName: val, 
+                          vesselId: selected?._id || "" // Update ID to trigger hook lookup
+                      });
+                    }}
+                  />
+                </div>
 
-                <InputField
-                  label="Voyage No / ID"
+               <div className="relative">
+                  <Label>Voyage No / ID</Label>
+                  <Select
+                  
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select a Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
                   value={editData.voyageId}
-                  onChange={(e) =>
-                    setEditData({ ...editData, voyageId: e.target.value })
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageId: val })
                   }
                 />
+                 
+                </div>
 
                 <InputField
                   label="Port Name"

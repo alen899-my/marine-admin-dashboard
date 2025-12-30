@@ -13,7 +13,7 @@ import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
-
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 // --- Types ---
 interface IPosition {
   lat: string;
