@@ -42,8 +42,8 @@ interface IWeather {
 interface IDailyNoonReport {
   _id: string;
   vesselName: string;
-  voyageId: string;
-  voyageNo: string;
+
+  voyageId: string | { voyageNo: string; _id: string };
   type: string;
   status: string;
   reportDate: string;
@@ -98,7 +98,16 @@ export default function DailyNoonReportTable({
 
 const canEdit = can("noon.edit");
 const canDelete = can("noon.delete");
-
+const getVoyageDisplay = (r: IDailyNoonReport | null) => {
+    if (!r) return "-";
+    // 1. Check if populated object
+    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
+      return r.voyageId.voyageNo;
+    }
+    // 2. Fallback to simple string ID (though readable is preferred)
+    if (typeof r.voyageId === "string") return r.voyageId;
+    return "-";
+  };
   // Local state for filters removed (now coming from props)
 
   const statusOptions = [
@@ -231,7 +240,7 @@ const canDelete = can("noon.delete");
           </span>
           <span className="text-xs text-gray-500 uppercase">
             {/* ✅ CHANGE THIS: Use voyageNo instead of voyageId */}
-            ID: {r?.voyageNo ?? "-"} 
+           ID: {getVoyageDisplay(r)}
           </span>
         </div>
       ),
@@ -391,7 +400,7 @@ function handleEdit(report: IDailyNoonReport) {
     
     // Find the vessel object so we can get its ID for the edit state
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
-
+    const displayVoyageId = getVoyageDisplay(report)
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
@@ -399,8 +408,7 @@ function handleEdit(report: IDailyNoonReport) {
      
       vesselId: report.vesselId || matchedVessel?._id || "", 
 
-      voyageId: report.voyageNo ?? "", 
-      voyageNo: report.voyageNo ?? "",
+      voyageId: displayVoyageId,
 
      
       type: report.type,
@@ -538,7 +546,7 @@ if (!isReady) return null;
                 {selectedReport.vesselName}
               </span>
               <span>|</span>
-              <span>{selectedReport.voyageNo}</span>
+             <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
           )
         }
@@ -561,7 +569,7 @@ if (!isReady) return null;
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.voyageNo ?? "-"}
+                  {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -765,25 +773,25 @@ if (!isReady) return null;
 
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
-                <Select
-  options={voyageList}
-  placeholder={
-    !editData.vesselId
-      ? ""
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Select Voyage"
-  }
-  value={editData.voyageNo} // Ensure this matches the options' values
-  onChange={(val) => 
-    setEditData({ 
-      ...editData, 
-      voyageNo: val, // ✅ Update the string so the dropdown reflects the change
-      voyageId: val  // Update this too if you send 'voyageId' as the string to the backend
-    })
-  }
-/>
-                 
+                  <Select
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? ""
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
+                    // ✅ FIX: STRICT STRING EXTRACTION
+                    value={
+                      typeof editData.voyageId === "object"
+                        ? editData.voyageId?.voyageNo ?? ""
+                        : editData.voyageId ?? ""
+                    }
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageId: val })
+                    }
+                  />
                 </div>
 
                 <div>

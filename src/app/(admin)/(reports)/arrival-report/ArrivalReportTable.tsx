@@ -29,7 +29,8 @@ interface ArrivalReport {
   _id: string;
   vesselName: string;
   vesselId?: string;
-  voyageId: string;
+  voyageId: string | { voyageNo: string; _id: string };
+  voyageNo?: string;
   portName: string;
   eventTime: string;
   reportDate: string;
@@ -42,7 +43,7 @@ interface ArrivalReport {
 // Interface for the data structure used during editing
 interface EditFormData {
   vesselName: string;
-  voyageId: string;
+  voyageId: string | { voyageNo: string; _id: string };
   portName: string;
   eventTime: string;
   vesselId?: string;
@@ -92,7 +93,18 @@ export default function ArrivalReportTable({
     const canDelete = can("arrival.delete");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
-
+  const getVoyageDisplay = (r: ArrivalReport | null) => {
+    if (!r) return "-";
+    // 1. If it's a populated object, grab the name
+    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
+      return r.voyageId.voyageNo;
+    }
+    // 2. If we have a snapshot string
+    if (r.voyageNo) return r.voyageNo;
+    // 3. Fallback to simple string
+    if (typeof r.voyageId === "string") return r.voyageId;
+    return "-";
+  };
   // Display Helper forced to IST
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -131,7 +143,7 @@ export default function ArrivalReportTable({
           {r?.vesselName ?? "-"}
         </span>
         <span className="text-xs text-gray-500 uppercase tracking-tighter">
-          ID: {r?.voyageId ?? "-"}
+          ID: {getVoyageDisplay(r)}
         </span>
       </div>
     ),
@@ -293,10 +305,10 @@ export default function ArrivalReportTable({
     // Check if Arrival and NOR are the same to toggle the checkbox
     const isSame = report.eventTime === report.norDetails?.norTime;
     setEditNorSameAsArrival(isSame);
-
+    const voyageIdString = getVoyageDisplay(report);
     setEditData({
       vesselName: report.vesselName ?? "",
-      voyageId: report.voyageId ?? "",
+     voyageId: voyageIdString,
       vesselId: matchedVessel?._id || "",
       portName: report.portName ?? "",
       eventTime: formatForInput(report.eventTime),
@@ -472,7 +484,7 @@ export default function ArrivalReportTable({
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">{selectedReport.vesselName}</span>
               <span>|</span>
-              <span>{selectedReport.voyageId}</span>
+             <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
           )
         }
@@ -494,7 +506,7 @@ export default function ArrivalReportTable({
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.voyageId ?? "-"}
+                 {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -640,20 +652,16 @@ export default function ArrivalReportTable({
 
                <div className="relative">
                   <Label>Voyage No / ID</Label>
-                  <Select
-                  
+                 <Select
                     options={voyageList}
-                    placeholder={
-                      !editData.vesselId
-                        ? "Select a Vessel first"
-                        : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Select Voyage"
+                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
+                    // ✅ FIX 8: STRICT STRING EXTRACTION for Dropdown
+                    value={
+                        typeof editData.voyageId === "object"
+                        ? editData.voyageId?.voyageNo ?? ""
+                        : editData.voyageId ?? ""
                     }
-                    value={editData.voyageId}
-                    onChange={(val) =>
-                      setEditData({ ...editData, voyageId: val })
-                    }
+                    onChange={(val) => setEditData({ ...editData, voyageId: val })}
                   />
                  
                 </div>

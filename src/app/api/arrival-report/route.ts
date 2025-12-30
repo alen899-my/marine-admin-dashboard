@@ -1,11 +1,12 @@
 // src/app/api/arrival-report/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
+import Voyage from "@/models/Voyage"; // ✅ Import Voyage model
+import mongoose from "mongoose";
 
-// MODEL
 import ReportOperational from "@/models/ReportOperational";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-// VALIDATION
+
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
 
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
@@ -64,7 +65,8 @@ export async function GET(req: NextRequest) {
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageId: { $regex: search, $options: "i" } },
+       
+        { voyageNo: { $regex: search, $options: "i" } }, 
         { portName: { $regex: search, $options: "i" } },
       ];
     }
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
     const total = await ReportOperational.countDocuments(query);
 
     const reports = await ReportOperational.find(query)
+      .populate("voyageId", "voyageNo") 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -129,7 +132,6 @@ export async function GET(req: NextRequest) {
    CREATE ARRIVAL REPORT
 ====================================== */
 export async function POST(req: NextRequest) {
-  
   try {
     const authz = await authorizeRequest("arrival.create");
     if (!authz.ok) return authz.response;
@@ -163,12 +165,50 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    // ==========================================
+    // ✅ 1. ADDED VOYAGE ID LOOKUP LOGIC
+    // ==========================================
+    const voyageNoString = value.voyageId; // Frontend sends string "OP-1225"
+    const vesselIdString = value.vesselId;
+    let voyageObjectId = null;
+
+    if (vesselIdString && voyageNoString) {
+       const vId = new mongoose.Types.ObjectId(vesselIdString);
+       
+       // Find the Voyage Document to get its _id
+       const foundVoyage = await Voyage.findOne({ 
+          vesselId: vId, 
+          // Case-insensitive match for the voyage number
+          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
+       }).select("_id");
+       
+       if (foundVoyage) {
+          voyageObjectId = foundVoyage._id;
+       } else {
+          return NextResponse.json(
+            { error: `Voyage ${voyageNoString} not found for this vessel.` },
+            { status: 404 }
+          );
+       }
+    } else {
+       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
+    }
+
+    // ==========================================
+    // ✅ 2. CREATE REPORT WITH MAPPED IDS
+    // ==========================================
     const report = await ReportOperational.create({
       eventType: "arrival",
       status: "active",
 
+      // IDs
+      vesselId: vesselIdString,
+      voyageId: voyageObjectId, // Saved as ObjectId (Link)
+
+      // Snapshots
       vesselName: value.vesselName,
-      voyageId: value.voyageId,
+      voyageNo: voyageNoString, // Saved as String (Snapshot)
+
       portName: value.portName,
       reportDate: parsedReportDate,
       eventTime: new Date(value.arrivalTime),

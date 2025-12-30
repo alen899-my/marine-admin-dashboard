@@ -43,65 +43,49 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get("limit")) || 10;
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-
-    // 1. Extract Date Params
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-
     const skip = (page - 1) * limit;
 
-    // -----------------------------
-    // BUILD QUERY OBJECT
-    // -----------------------------
     const query: Record<string, unknown> = {};
 
-    // STATUS FILTER
     if (status !== "all") {
       query.status = status;
     }
 
-    // SEARCH FILTER
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageId: { $regex: search, $options: "i" } },
+        // ❌ REMOVED: { voyageId: { $regex: search ... } } 
+        // Reason: voyageId is an ObjectId. Regex search on it will crash the API.
+        // To search by Voyage Number, you would need an aggregation pipeline.
         { "navigation.nextPort": { $regex: search, $options: "i" } },
       ];
     }
 
-    // 2. Apply Date Filter (Using Custom Parser)
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
-
       if (startDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedStart = parseDateString(startDate);
-        if (parsedStart) {
-          dateQuery.$gte = parsedStart;
-        }
+        if (parsedStart) dateQuery.$gte = parsedStart;
       }
-
       if (endDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedEnd = parseDateString(endDate);
         if (parsedEnd) {
-          // End of the selected day (23:59:59.999)
           parsedEnd.setHours(23, 59, 59, 999);
           dateQuery.$lte = parsedEnd;
         }
       }
-
-      // Only attach if we successfully parsed at least one date
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
     }
 
-    // COUNT
     const total = await ReportDaily.countDocuments(query);
 
-    // FETCH REPORTS
     const reports = await ReportDaily.find(query)
+      // ✅ FIX: Populate to get the readable Voyage No
+      .populate("voyageId", "voyageNo") 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

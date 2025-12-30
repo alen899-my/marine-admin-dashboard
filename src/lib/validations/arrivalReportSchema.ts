@@ -2,6 +2,13 @@
 import Joi from "joi";
 
 export const arrivalReportSchema = Joi.object({
+  vesselId: Joi.string()
+    .required()
+    .messages({
+      "string.base": "Vessel ID must be a text value",
+      "string.empty": "Vessel ID is required",
+      "any.required": "Vessel ID is required",
+    }),
   vesselName: Joi.string()
     .trim()
     .required()
