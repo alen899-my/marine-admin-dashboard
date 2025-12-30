@@ -1,9 +1,11 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IReportDaily extends Document {
+  
+  vesselId: mongoose.Types.ObjectId; 
+  voyageId: mongoose.Types.ObjectId;
   vesselName: string;
-  voyageId: string;
-
+  voyageNo: string;
   type: "noon";
   reportDate: Date;
 
@@ -38,17 +40,24 @@ export interface IReportDaily extends Document {
 
 const ReportDailySchema = new Schema<IReportDaily>(
   {
-    vesselName: {
-      type: String,
+   vesselId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vessel",
       required: true,
       index: true,
     },
 
+    // ✅ 2. LINK TO VOYAGE COLLECTION
     voyageId: {
-      type: String,
-      index: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Voyage",
       required: true,
+      index: true,
     },
+
+    // Snapshot Strings (Read-only copies)
+    vesselName: { type: String, required: true },
+    voyageNo: { type: String, required: true },
 
     type: {
       type: String,

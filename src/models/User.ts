@@ -31,6 +31,10 @@ const userSchema = new Schema(
       ref: "Vessel",
       default: null,
     },
+    profilePicture: { 
+      type: String, 
+      default: null 
+    },
 
     status: {
       type: String,

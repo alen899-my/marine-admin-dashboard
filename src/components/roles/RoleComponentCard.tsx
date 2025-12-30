@@ -19,11 +19,11 @@ const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ${className}`}
+      className={`rounded-xl  ${className}`}
     >
       {/* Card Header */}
       {(title || action || legend) && (
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+        <div className="px-4 py-3  dark:">
           {/* ✅ RESPONSIVE FIX: flex-col on mobile, flex-row on small screens and up */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             

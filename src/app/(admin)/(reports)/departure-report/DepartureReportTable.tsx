@@ -13,6 +13,7 @@ import Badge from "@/components/ui/badge/Badge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -32,11 +33,14 @@ interface IDepartureStats {
 interface IDepartureReport {
   _id: string;
   vesselName: string;
-  voyageId: string;
+  voyageId?: string | { voyageNo: string; _id: string }; 
+  voyageNo?: string;
   portName: string;
   lastPort: string;
+  
   eventTime: string;
   reportDate: string;
+  vesselId?: string;
   status: string;
   remarks: string;
   navigation?: INavigation;
@@ -63,7 +67,7 @@ export default function DepartureReportTable({
   const [loading, setLoading] = useState(true);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(
     null
   );
@@ -100,7 +104,22 @@ export default function DepartureReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
-
+  const getVoyageDisplay = (r: IDepartureReport | null) => {
+    if (!r) return "-";
+    
+    // 1. Check if it's a populated object (from backend .populate())
+    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
+      return r.voyageId.voyageNo;
+    }
+    
+    // 2. Check if it's saved as a root string
+    if (r.voyageNo) return r.voyageNo;
+    
+    // 3. Fallback to voyageId if it's a simple string
+    if (typeof r.voyageId === "string") return r.voyageId;
+    
+    return "-";
+  };
   /* ================= TABLE COLUMNS ================= */
   const columns = [
   {
@@ -115,9 +134,10 @@ export default function DepartureReportTable({
         <span className="text-xs font-semibold text-gray-900 dark:text-white">
           {r?.vesselName ?? "-"}
         </span>
-        <span className="text-xs text-gray-500 uppercase tracking-tighter">
-          ID: {r?.voyageId ?? "-"}
-        </span>
+       <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            {/* ✅ SHOW READABLE ID */}
+           ID: {getVoyageDisplay(r)}
+          </span>
       </div>
     ),
   },
@@ -239,41 +259,46 @@ export default function DepartureReportTable({
     },
     [LIMIT, search, status, startDate, endDate]
   );
-
-  async function handleUpdate() {
+async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
     setSaving(true);
 
     try {
       const payload = {
-      vesselName: editData.vesselName,
-      voyageId: editData.voyageId,
-      portName: editData.portName,
-      lastPort: editData.lastPort,
-      eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
-      reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
-      status: editData.status,
-      remarks: editData.remarks,
+        // ✅ FIX 3: Include vesselId. 
+        // The backend needs this to lookup the correct Voyage ObjectId.
+        vesselId: editData.vesselId,
+        
+        // This sends the readable string (e.g., "OP-1225") from the dropdown
+        voyageId: editData.voyageId, 
+        voyageNo: editData.voyageId, // Send explicitly for clarity if needed
 
-      // NEST THESE correctly for the backend
-      navigation: {
-        distance_to_next_port_nm: Number(editData.navigation?.distanceToNextPortNm),
-        etaNextPort: editData.navigation?.etaNextPort
-          ? `${editData.navigation.etaNextPort}+05:30`
-          : null,
-      },
+        vesselName: editData.vesselName,
+        portName: editData.portName,
+        lastPort: editData.lastPort,
+        eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
+        reportDate: editData.reportDate ? `${editData.reportDate}+05:30` : null,
+        status: editData.status,
+        remarks: editData.remarks,
 
-      departureStats: {
-        robVlsfo: Number(editData.departureStats?.robVlsfo),
-        robLsmgo: Number(editData.departureStats?.robLsmgo),
-        bunkers_received_vlsfo_mt: Number(editData.departureStats?.bunkersReceivedVlsfo),
-        bunkers_received_lsmgo_mt: Number(editData.departureStats?.bunkersReceivedLsmgo),
-        cargo_qty_loaded_mt: Number(editData.departureStats?.cargoQtyLoadedMt),
-        cargo_qty_unloaded_mt: Number(editData.departureStats?.cargoQtyUnloadedMt),
-        cargoSummary: editData.departureStats?.cargoSummary,
-      },
-    };
+        navigation: {
+          distance_to_next_port_nm: Number(editData.navigation?.distanceToNextPortNm),
+          etaNextPort: editData.navigation?.etaNextPort
+            ? `${editData.navigation.etaNextPort}+05:30`
+            : null,
+        },
+
+        departureStats: {
+          robVlsfo: Number(editData.departureStats?.robVlsfo),
+          robLsmgo: Number(editData.departureStats?.robLsmgo),
+          bunkers_received_vlsfo_mt: Number(editData.departureStats?.bunkersReceivedVlsfo),
+          bunkers_received_lsmgo_mt: Number(editData.departureStats?.bunkersReceivedLsmgo),
+          cargo_qty_loaded_mt: Number(editData.departureStats?.cargoQtyLoadedMt),
+          cargo_qty_unloaded_mt: Number(editData.departureStats?.cargoQtyUnloadedMt),
+          cargoSummary: editData.departureStats?.cargoSummary,
+        },
+      };
 
       const res = await fetch(`/api/departure-report/${selectedReport._id}`, {
         method: "PATCH",
@@ -298,6 +323,66 @@ export default function DepartureReportTable({
       setSaving(false);
     }
   }
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId, 
+    editData?.reportDate
+  );
+    useEffect(() => {
+      async function fetchAndFilterVoyages() {
+        // Stop if no vessel is selected (in edit data)
+        if (!editData?.vesselId) {
+          setVoyageList([]);
+          return;
+        }
+  
+        try {
+          const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+  
+          if (res.ok) {
+            const result = await res.json();
+            const allVoyages = Array.isArray(result) ? result : result.data || [];
+  
+            // 🔒 STRICT FILTERING LOGIC
+            const filtered = allVoyages.filter((v: any) => {
+              // Rule 1: STRICTLY match the selected Vessel ID
+              const isCorrectVessel =
+                (v.vesselId && v.vesselId === editData.vesselId) ||
+                (v.vesselName && v.vesselName === editData.vesselName);
+  
+              if (!isCorrectVessel) return false;
+  
+              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+              const isRelevant =
+                v.status === "active" ||
+                v.voyageNo === suggestedVoyageNo ||
+                v.voyageNo === editData.voyageId;
+  
+              return isRelevant;
+            });
+  
+            setVoyageList(
+              filtered.map((v: any) => ({
+                value: v.voyageNo,
+                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+              }))
+            );
+          }
+        } catch (error) {
+          console.error("Failed to load voyages", error);
+          setVoyageList([]);
+        }
+      }
+  
+      fetchAndFilterVoyages();
+    }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+ 
+  useEffect(() => {
+  
+    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
+     
+       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+    }
+  }, [suggestedVoyageNo]);
 
   // Filter Trigger
   useEffect(() => {
@@ -327,14 +412,25 @@ export default function DepartureReportTable({
     setOpenView(true);
   }
 
-  function handleEdit(report: IDepartureReport) {
+ function handleEdit(report: IDepartureReport) {
     setSelectedReport(report);
-
-    // Populate editData with defaults to ensure nested objects exist
+    
+    // Try to find vessel in the list as fallback
+    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
+    const voyageIdString = getVoyageDisplay(report);
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
-      voyageId: report.voyageId ?? "",
+      
+      // ✅ FIX 1: Prioritize the ID already in the report. 
+      // This ensures the "Voyage" dropdown options load immediately.
+      vesselId: report.vesselId || matchedVessel?._id || "", 
+
+      // ✅ FIX 2: Bind the dropdown to the readable string (voyageNo).
+      // Your dropdown options are Strings (e.g., "OP-1225"), so the value must match.
+      voyageId: voyageIdString, // Bind readable ID
+      voyageNo: voyageIdString, // Bind readable ID
+
       portName: report.portName ?? "",
       lastPort: report.lastPort ?? "",
       eventTime: formatForInput(report.eventTime),
@@ -360,7 +456,6 @@ export default function DepartureReportTable({
 
     setOpenEdit(true);
   }
-
   async function handleDelete() {
     if (!selectedReport) return;
 
@@ -424,7 +519,7 @@ export default function DepartureReportTable({
                 {selectedReport.vesselName}
               </span>
               <span>|</span>
-              <span>{selectedReport.voyageId}</span>
+             <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
           )
         }
@@ -446,7 +541,7 @@ export default function DepartureReportTable({
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.voyageId ?? "-"}
+                 {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               {/* NEW FIELD: Last Port */}
@@ -623,25 +718,47 @@ export default function DepartureReportTable({
                     }
                   />
                 </div>
-                <div>
-                  <Label>Vessel Name</Label>
-                  <Input
-                    value={editData.vesselName}
-                    onChange={(e) =>
-                      setEditData({ ...editData, vesselName: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label>Voyage No / ID</Label>
-                  <Input
-                    value={editData.voyageId}
-                    onChange={(e) =>
-                      setEditData({ ...editData, voyageId: e.target.value })
-                    }
-                  />
-                </div>
+              <div>
+  <Label>Vessel Name</Label>
+  <Select
+    options={vessels.map((v) => ({
+      value: v.name,
+      label: v.name,
+    }))}
+    value={editData.vesselName}
+    onChange={(val) => {
+      // ✅ 4. UPDATE ID ON CHANGE
+      const selected = vessels.find(v => v.name === val);
+      setEditData({ 
+          ...editData, 
+          vesselName: val, 
+          vesselId: selected?._id || "" // Update ID to trigger hook lookup
+      });
+    }}
+  />
+</div>
+<div className="relative">
+  <Label>Voyage No / ID</Label>
+  <Select
+    options={voyageList}
+    placeholder={
+      !editData.vesselId
+        ? ""
+        : voyageList.length === 0
+        ? "No active voyages found"
+        : "Select Voyage"
+    }
+    // ✅ FIX: Explicitly extract the string if it's an object, or default to ""
+    value={
+      typeof editData.voyageId === "object"
+        ? editData.voyageId?.voyageNo ?? ""
+        : editData.voyageId ?? ""
+    }
+    onChange={(val) =>
+      setEditData({ ...editData, voyageId: val })
+    }
+  />
+</div>
 
                 {/* NEW FIELD: Last Port */}
                 <div>

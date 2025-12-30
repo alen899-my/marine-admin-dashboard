@@ -5,7 +5,7 @@ export const departureReportSchema = Joi.object({
     "string.empty": "Vessel name is required",
     "any.required": "Vessel name is required",
   }),
-
+  vesselId: Joi.string().required().label("Vessel ID"),
   voyageId: Joi.string().trim().required().messages({
     "string.empty": "Voyage ID is required",
     "any.required": "Voyage ID is required",

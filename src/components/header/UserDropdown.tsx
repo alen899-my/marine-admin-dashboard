@@ -3,18 +3,19 @@ import Image from "next/image";
 import React, { useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import { signOut, useSession } from "next-auth/react"; // <--- 1. Import NextAuth hooks
+import { signOut, useSession } from "next-auth/react";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   
-  // 2. Get User Data from Session (Source of Truth)
   const { data: session } = useSession();
   const user = session?.user;
 
   // Fallback values
   const fullName = user?.fullName || "User";
   const email = user?.email || "";
+  // ✅ Use profile picture from session, or fallback to your default owner.jpg
+  const profilePicture = user?.profilePicture || "/images/user/owner.jpg"; 
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -25,9 +26,8 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-  // 3. Official NextAuth Logout
   function handleSignOut() {
-    signOut({ callbackUrl: "/signin" }); // Clears cookie & redirects
+    signOut({ callbackUrl: "/signin" });
   }
 
   return (
@@ -36,12 +36,14 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 border border-gray-200 dark:border-gray-700">
           <Image
             width={44}
             height={44}
-            src="/images/user/owner.jpg"
+            src={profilePicture} // ✅ Updated Source
             alt="User"
+            className="object-cover h-full w-full" // ✅ Ensures image fills circle
+            unoptimized // ✅ Critical for Blob/Local images
           />
         </span>
 

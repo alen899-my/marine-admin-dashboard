@@ -125,11 +125,12 @@ export default function AddRoleButton({ onSuccess }: AddRoleButtonProps) {
           submitLabel={isSubmitting ? "Creating..." : "Create Role"}
           onCancel={handleClose}
           onSubmit={handleSubmit}
+          
         >
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-8">
             
             {/* 1. Role Info */}
-            <RoleComponentCard title="Role Information">
+            <RoleComponentCard title=""  className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Role Name <span className="text-red-500">*</span></Label>
@@ -157,12 +158,10 @@ export default function AddRoleButton({ onSuccess }: AddRoleButtonProps) {
             </RoleComponentCard>
 
             {/* 2. Permissions & Widgets */}
-            <RoleComponentCard title="Assign Permissions" legend={<PermissionLegend />}>
+            <RoleComponentCard title="Assign Permissions" className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" legend={<PermissionLegend />}>
               <div className="space-y-8">
                  <div>
-                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                    Module Access Control
-                  </h3>
+                  
                   <PermissionGrid 
                     allPermissions={permissionsList}
                     selectedPermissions={formData.permissions}

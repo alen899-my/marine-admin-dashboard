@@ -11,12 +11,12 @@ interface DashboardWidgetSectionUserProps {
 
 // Ensure these match your seed data exactly
 const WIDGETS = [
-  { label: "Daily Noon Stats", slug: "stats.noon", description: "Show Noon Report Count" },
-  { label: "Departure Stats", slug: "stats.departure", description: "Show Departure Report Count" },
-  { label: "Arrival Stats", slug: "stats.arrival", description: "Show Arrival Report Count" },
-  { label: "NOR Stats", slug: "stats.nor", description: "Show NOR Report Count" },
-  { label: "Cargo Stowage Stats", slug: "stats.cargo_stowage", description: "Show Cargo Stowage Count" },
-  { label: "Cargo Docs Stats", slug: "stats.cargo_docs", description: "Show Cargo Documents Count" },
+  { label: "Daily Noon Stats", slug: "stats.noon", description: "Noon Report Count" },
+  { label: "Departure Stats", slug: "stats.departure", description: "Departure Report Count" },
+  { label: "Arrival Stats", slug: "stats.arrival", description: "Arrival Report Count" },
+  { label: "NOR Stats", slug: "stats.nor", description: "NOR Report Count" },
+  { label: "Cargo Stowage Stats", slug: "stats.cargo_stowage", description: "Cargo Stowage Count" },
+  { label: "Cargo Docs Stats", slug: "stats.cargo_docs", description: "Cargo Documents Count" },
 ];
 
 export default function DashboardWidgetSectionUser({ 
@@ -28,19 +28,13 @@ export default function DashboardWidgetSectionUser({
 }: DashboardWidgetSectionUserProps) {
 
   return (
-    <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6">
-      {/* Header */}
-      <div className="grid grid-cols-12 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-gray-700 py-2 px-4">
-        <div className="col-span-10 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
-          Dashboard Widget
-        </div>
-        <div className="col-span-2 text-center text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
-          Status
-        </div>
-      </div>
+    <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+      <h3 className="text-xs font-bold uppercase text-gray-800 dark:text-gray-200 mb-3 tracking-wider">
+        General Permissions
+      </h3>
 
-      {/* Body Rows */}
-      <div className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-transparent">
+      {/* CHANGED: Using Grid to make rows less (2 columns) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {WIDGETS.map((widget, index) => {
           const isInherited = rolePermissions.includes(widget.slug);
           const isAdditional = additionalPermissions.includes(widget.slug);
@@ -50,9 +44,7 @@ export default function DashboardWidgetSectionUser({
           let variant: CheckboxVariant = "default";
           let tooltip = "Click to Add";
           
-          const rowClass = "hover:bg-gray-50 dark:hover:bg-white/[0.02]";
-
-          // Checkbox Variant Logic
+          // Logic remains exactly the same
           if (isExcluded) {
             isChecked = true;
             variant = "danger"; 
@@ -74,33 +66,29 @@ export default function DashboardWidgetSectionUser({
               key={`${widget.slug}-${index}`}
               onClick={() => !isReadOnly && onToggle(widget.slug)}
               title={isReadOnly ? "" : tooltip}
-              className={`grid grid-cols-12 items-center py-3 px-4 transition-colors cursor-pointer select-none group ${rowClass}`}
+              className={`
+                flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800
+                hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none
+                ${isReadOnly ? 'opacity-80 cursor-default' : ''}
+              `}
             >
-              {/* Widget Name & Description */}
-              <div className="col-span-10 pr-4">
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                  {widget.label}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                  {widget.description}
-                </p>
+              {/* Checkbox Wrapper - pointer-events-none ensures click hits the div */}
+              <div className="mt-0.5 pointer-events-none">
+                <Checkbox 
+                  checked={isChecked} 
+                  onChange={() => {}} 
+                  variant={variant}
+                />
               </div>
 
-              {/* Checkbox Status - Centered in the last column */}
-              <div className="col-span-2 flex justify-center">
-                <div 
-                  // ✅ FIX: Added 'pointer-events-none' here. 
-                  // This forces clicks on the checkbox area to fall through to the parent row div.
-                  className={`relative flex items-center justify-center p-1 transition-transform pointer-events-none
-                    ${!isReadOnly ? 'active:scale-95' : 'cursor-default opacity-80'}
-                  `}
-                >
-                  <Checkbox 
-                    checked={isChecked} 
-                    onChange={() => {}} // Controlled by row click
-                    variant={variant}
-                  />
-                </div>
+              {/* Label & Description */}
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {widget.label}
+                </span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {widget.description}
+                </span>
               </div>
             </div>
           );

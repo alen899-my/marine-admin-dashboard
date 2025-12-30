@@ -9,7 +9,7 @@ export default function AddUserButton({ onSuccess }: { onSuccess: () => void }) 
   const [isOpen, setIsOpen] = useState(false);
   const { can, isReady } = useAuthorization();
 
-  // 🔒 Wait for session
+
   if (!isReady) return null;
 
   // 🔒 RBAC: only users.create

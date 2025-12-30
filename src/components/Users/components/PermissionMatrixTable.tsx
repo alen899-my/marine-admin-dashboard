@@ -39,7 +39,12 @@ export default function PermissionMatrixTable({
     return <div className="text-gray-400 text-sm italic py-2">Select a role to view its permissions.</div>;
   }
 
-  const grouped = groupPermissions(allPermissions);
+  // ✅ CHANGE: Filter out 'Dashboard Statistics' before grouping
+  const filteredPermissions = allPermissions.filter(p => p.group !== "Dashboard Statistics");
+  
+  // Group only the filtered permissions
+  const grouped = groupPermissions(filteredPermissions);
+  
   const actionColumns = ["create", "view", "edit", "delete"];
   const headerLabels: Record<string, string> = { create: "Create", view: "Read", edit: "Update", delete: "Delete" };
 

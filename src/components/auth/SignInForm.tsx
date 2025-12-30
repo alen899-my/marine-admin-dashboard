@@ -199,12 +199,12 @@ const handleSubmit = async (e: FormEvent) => {
                   </span>
                 </div>
 
-                <Link
+                {/* <Link
                   href="/forgot-password"
                   className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                 >
                   Forgot password?
-                </Link>
+                </Link> */}
               </div>
 
               <div>
@@ -215,7 +215,7 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
           </form>
 
-          <div className="mt-5 flex justify-center">
+          {/* <div className="mt-5 flex justify-center">
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}
               <Link
@@ -225,7 +225,7 @@ const handleSubmit = async (e: FormEvent) => {
                 Sign Up
               </Link>
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-// src/auth.config.ts
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
@@ -13,6 +12,7 @@ export const authConfig = {
         token.fullName = user.fullName;
         token.role = user.role;
         token.permissions = user.permissions;
+        token.profilePicture = user.profilePicture; // ✅ Added
       }
       return token;
     },
@@ -22,9 +22,10 @@ export const authConfig = {
         session.user.fullName = token.fullName as string;
         session.user.role = token.role as string;
         session.user.permissions = token.permissions as string[];
+        session.user.profilePicture = token.profilePicture as string | null; // ✅ Added
       }
       return session;
     },
   },
-  providers: [], // <--- THIS PREVENTS THE "MAP" ERROR
+  providers: [],
 } satisfies NextAuthConfig;

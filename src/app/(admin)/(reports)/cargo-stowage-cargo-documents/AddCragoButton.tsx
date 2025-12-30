@@ -15,6 +15,7 @@ import { cargoSchema } from "@/lib/validations/cargoValidation";
 import { useEffect, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
 }
@@ -24,27 +25,10 @@ export default function AddCargoButton({
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const  [errors, setErrors] = useState<Record<string, string>>({});
+    const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const { can, isReady } = useAuthorization();
-  // ***** NEW: State for Vessels List *****
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
-  // ***** NEW: Fetch Vessels from DB *****
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        const res = await fetch("/api/vessels");
-        if (res.ok) {
-          const data = await res.json();
-          setVessels(data);
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
-    }
-    fetchVessels();
-  }, []);
 
   // Form State
   const getCurrentDateTime: () => string = () => {
@@ -55,8 +39,9 @@ export default function AddCargoButton({
   };
 
   const [formData, setFormData] = useState({
-    vesselName: "AN16", // ✅ CHANGE: Default to AN16
+    vesselName: "", // ✅ CHANGE: Default to AN16
     voyageNo: "",
+    vesselId: "",
     portName: "",
     reportDate: getCurrentDateTime(),
     portType: "",
@@ -65,6 +50,68 @@ export default function AddCargoButton({
     remarks: "",
   });
 
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    formData.vesselId,
+    formData.reportDate
+  );
+
+  // ✅ 4. SYNC LOGIC (Auto-fill Voyage)
+  useEffect(() => {
+    // Check if suggestion exists (even empty string) and is different
+    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageNo) {
+    
+    
+      setFormData((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
+    }
+  }, [suggestedVoyageNo]);
+  useEffect(() => {
+      async function fetchAndFilterVoyages() {
+        // Stop if no vessel selected
+        if (!formData.vesselId) {
+          setVoyageList([]);
+          return;
+        }
+  
+        try {
+          const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
+  
+          if (res.ok) {
+            const result = await res.json();
+            const allVoyages = Array.isArray(result) ? result : result.data || [];
+  
+            // 🔒 STRICT FILTERING LOGIC
+            const filtered = allVoyages.filter((v: any) => {
+              // Rule 1: STRICTLY match the selected Vessel ID
+              const isCorrectVessel =
+                (v.vesselId && v.vesselId === formData.vesselId) ||
+                (v.vesselName && v.vesselName === formData.vesselName);
+  
+              if (!isCorrectVessel) return false;
+  
+              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+              const isRelevant =
+                v.status === "active" ||
+                v.voyageNo === suggestedVoyageNo ||
+                v.voyageNo === formData.voyageNo;
+  
+              return isRelevant;
+            });
+  
+            setVoyageList(
+              filtered.map((v: any) => ({
+                value: v.voyageNo,
+                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+              }))
+            );
+          }
+        } catch (error) {
+          console.error("Failed to load voyages", error);
+          setVoyageList([]);
+        }
+      }
+  
+      fetchAndFilterVoyages();
+    }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageNo]);
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -97,7 +144,16 @@ export default function AddCargoButton({
       });
     }
   };
-
+   const handleVoyageChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, voyageNo: val }));
+    if (errors.voyageNo) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.voyageNo;
+        return newErr;
+      });
+    }
+  };
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
 
@@ -110,9 +166,16 @@ export default function AddCargoButton({
     }
   };
 
-  // ***** NEW: Specific handler for the Vessel Select component *****
   const handleVesselChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, vesselName: value }));
+    // Find the ID based on the name from the HOOK's vessel list
+    const selectedVessel = vessels.find((v) => v.name === value);
+
+    setFormData((prev) => ({ 
+        ...prev, 
+        vesselName: value,
+        vesselId: selectedVessel?._id || "" // 👈 Save ID to trigger hook
+    }));
+
     if (errors.vesselName) {
       setErrors((prev) => {
         const newErr = { ...prev };
@@ -175,6 +238,7 @@ export default function AddCargoButton({
     setFormData({
       vesselName: "AN16", // ✅ CHANGE: Reset to AN16
       voyageNo: "",
+      vesselId: "",
       portName: "",
       reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
       portType: "",
@@ -331,7 +395,7 @@ export default function AddCargoButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Select
+                 <Select
                     options={vessels.map((v) => ({
                       value: v.name,
                       label: v.name,
@@ -348,22 +412,33 @@ export default function AddCargoButton({
                   )}
                 </div>
 
-                <div>
+               <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    name="voyageNo"
+                  <Select
+                 
+                    options={voyageList}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select a Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
                     value={formData.voyageNo}
-                    onChange={handleChange}
+                    onChange={handleVoyageChange}
                     className={errors.voyageNo ? "border-red-500" : ""}
                   />
+
+
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.voyageNo}
                     </p>
                   )}
                 </div>
+
 
                 <div>
                   <Label>

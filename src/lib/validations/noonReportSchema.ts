@@ -1,6 +1,7 @@
 import Joi from "joi";
 
 export const noonReportSchema = Joi.object({
+  vesselId: Joi.string().required().label("Vessel ID"),
   vesselName: Joi.string()
     .required()
     .messages({

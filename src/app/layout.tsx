@@ -1,11 +1,13 @@
-// src/app/layout.tsx
 import { Outfit } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/Providers"; // Import the new wrapper
+import { Providers } from "@/components/Providers";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NextTopLoader from 'nextjs-toploader';
 import type { Metadata } from "next";
+
+
+import { auth } from "@/auth"; 
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -16,11 +18,15 @@ export const metadata: Metadata = {
   description: "Professional Dashboard",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
+  // ✅ CHANGE 2: Fetch session using the v5 helper
+  const session = await auth();
+
   return (
     <html lang="en">
       <body className={`${outfit.className} dark:bg-gray-900`}>
@@ -37,8 +43,8 @@ export default function RootLayout({
           zIndex={1600}
         />
         
-        {/* Wrap everything in the single Providers component */}
-        <Providers>
+        {/* Pass session to providers for instant authentication */}
+        <Providers session={session}>
           {children}
           <ToastContainer
             position="top-right"

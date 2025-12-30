@@ -10,6 +10,8 @@ import {
   SquareArrowUpLeft,
   ShieldCheck,
   Users2,
+  Ship,
+  Map,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,10 +42,6 @@ const navItems: NavItem[] = [
     path: "/",
     requiredPermission: "dashboard.view",
   },
-
-
-
-
   {
     icon: <FileText size={25} />,
     name: "Daily Noon Report",
@@ -74,7 +72,18 @@ const navItems: NavItem[] = [
     path: "/cargo-stowage-cargo-documents",
     requiredPermission: "cargo.view",
   },
- 
+   {
+    icon: <Ship size={25} />,
+    name: "Vessels",
+    path: "/vessels",
+    requiredPermission: "vessels.view",
+  },
+  {
+    icon: <Map size={25} />,
+    name: "Voyage",
+    path: "/voyage",
+    requiredPermission: "voyage.view",
+  },
   {
     icon:<Users2 size={25}/>,
     name:" Users",
