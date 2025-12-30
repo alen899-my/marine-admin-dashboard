@@ -14,6 +14,8 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 
 import { useAuthorization } from "@/hooks/useAuthorization";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { Info } from "lucide-react";
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
 }
@@ -27,10 +29,8 @@ interface APIErrorDetail {
 export default function AddDailyNoonReportButton({
   onSuccess,
 }: AddDailyNoonReportButtonProps) {
-  
   const { isOpen, openModal, closeModal } = useModal();
- const { can, isReady } = useAuthorization();
-
+  const { can, isReady } = useAuthorization();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -164,7 +164,6 @@ export default function AddDailyNoonReportButton({
       setIsSubmitting(false);
     }
   };
- 
 
   // ***** NEW: Fetch Vessels on Mount *****
   useEffect(() => {
@@ -388,21 +387,33 @@ export default function AddDailyNoonReportButton({
                 </div>
 
                 <div>
-  <Label>Slip (%) <span className="text-red-500">*</span></Label>
+  <Label className="flex items-center gap-1">
+    Slip (%) <span className="text-red-500">*</span>
+
+    <Tooltip
+      position="right"
+      content="Slip (%) = ((Engine Distance − Observed Distance) / Engine Distance) × 100"
+    >
+      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-zinc-400 dark:text-gray-500">
+        <Info/>
+      </span>
+    </Tooltip>
+  </Label>
+
   <Input
-    type="number" // Changed to number for manual entry
+    type="number"
     name="slip"
     placeholder="Calculated or manual"
     value={form.slip}
-    onChange={handleChange} // Added handler to allow manual typing
-    className={errors.slip ? "border-red-500" : ""} // Added error styling if needed
+    onChange={handleChange}
+    className={errors.slip ? "border-red-500" : ""}
   />
+
   {errors.slip && (
-    <p className="text-red-500 text-xs mt-1">
-      {errors.slip}
-    </p>
+    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
   )}
 </div>
+
 
                 <div>
                   <Label>
