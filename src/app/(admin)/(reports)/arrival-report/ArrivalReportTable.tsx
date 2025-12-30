@@ -257,7 +257,7 @@ export default function ArrivalReportTable({
     fetchReports(1);
     setCurrentPage(1);
   }, [fetchReports]);
-
+  
 
   // Trigger fetch when page changes
   useEffect(() => {
@@ -650,11 +650,11 @@ export default function ArrivalReportTable({
                         ? "No active voyages found"
                         : "Select Voyage"
                     }
-                  value={editData.voyageId}
+                    value={editData.voyageId}
                     onChange={(val) =>
                       setEditData({ ...editData, voyageId: val })
-                  }
-                />
+                    }
+                  />
                  
                 </div>
 

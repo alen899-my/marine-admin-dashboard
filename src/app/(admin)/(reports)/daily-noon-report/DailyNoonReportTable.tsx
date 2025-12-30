@@ -43,6 +43,7 @@ interface IDailyNoonReport {
   _id: string;
   vesselName: string;
   voyageId: string;
+  voyageNo: string;
   type: string;
   status: string;
   reportDate: string;
@@ -51,6 +52,7 @@ interface IDailyNoonReport {
   consumption?: IConsumption;
   weather?: IWeather;
   remarks?: string;
+  vesselId?: string;
 }
 
 // Updated Props Interface
@@ -75,7 +77,7 @@ export default function DailyNoonReportTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(
     null
   );
@@ -89,7 +91,10 @@ export default function DailyNoonReportTable({
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
 
-
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId, 
+    editData?.reportDate
+  );
 
 const canEdit = can("noon.edit");
 const canDelete = can("noon.delete");
@@ -123,7 +128,7 @@ const canDelete = can("noon.delete");
         );
       }
     } else if (engineDist === 0 || isNaN(engineDist)) {
-      // Match your Add component logic: If engine distance is 0 → slip is blank.
+
       if (editData.navigation.slip !== "") {
         setEditData((prev) =>
           prev
@@ -137,6 +142,66 @@ const canDelete = can("noon.delete");
     }
   }, [editData?.navigation?.engineDist, editData?.navigation?.distLast24h]);
 
+
+  useEffect(() => {
+
+    // 1. Modal is open (editData exists)
+    // 2. We have a suggestion
+    // 3. The suggestion is DIFFERENT from what's currently there
+    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
+ 
+       
+       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+    }
+  }, [suggestedVoyageNo]);
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel is selected (in edit data)
+      if (!editData?.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === editData.vesselId) ||
+              (v.vesselName && v.vesselName === editData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === editData.voyageId;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
   // Helper functions moved up to be available for render
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -165,7 +230,8 @@ const canDelete = can("noon.delete");
             {r?.vesselName ?? "-"}
           </span>
           <span className="text-xs text-gray-500 uppercase">
-            ID: {r?.voyageId ?? "-"}
+            {/* ✅ CHANGE THIS: Use voyageNo instead of voyageId */}
+            ID: {r?.voyageNo ?? "-"} 
           </span>
         </div>
       ),
@@ -256,6 +322,9 @@ const canDelete = can("noon.delete");
       .replace(" ", "T")
       .slice(0, 16);
   };
+  
+
+ 
 
   // Wrap fetchReports in useCallback to fix dependency warnings
   const fetchReports = useCallback(
@@ -317,18 +386,25 @@ const canDelete = can("noon.delete");
     setOpenView(true);
   }
 
-  function handleEdit(report: IDailyNoonReport) {
+function handleEdit(report: IDailyNoonReport) {
     setSelectedReport(report);
+    
+    // Find the vessel object so we can get its ID for the edit state
+    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
 
-    // Initialize editData with existing values or defaults to avoid null access
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
-      voyageId: report.voyageId ?? "",
+      
+     
+      vesselId: report.vesselId || matchedVessel?._id || "", 
+
+      voyageId: report.voyageNo ?? "", 
+      voyageNo: report.voyageNo ?? "",
+
+     
       type: report.type,
       status: report.status,
-
-      // ***** CHANGE: Convert DB Time to IST Input format *****
       reportDate: formatForInput(report.reportDate),
 
       position: {
@@ -462,7 +538,7 @@ if (!isReady) return null;
                 {selectedReport.vesselName}
               </span>
               <span>|</span>
-              <span>{selectedReport.voyageId}</span>
+              <span>{selectedReport.voyageNo}</span>
             </div>
           )
         }
@@ -485,7 +561,7 @@ if (!isReady) return null;
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.voyageId ?? "-"}
+                  {selectedReport?.voyageNo ?? "-"}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -667,24 +743,47 @@ if (!isReady) return null;
                     }
                   />
                 </div>
-                <div>
-                  <Label>Vessel Name</Label>
-                  <Input
-                    value={editData.vesselName}
-                    onChange={(e) =>
-                      setEditData({ ...editData, vesselName: e.target.value })
-                    }
-                  />
-                </div>
+               <div>
+ <Label>Vessel Name</Label>
+<Select
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  value={editData.vesselName}
+  onChange={(val) => {
+    // 4️⃣ UPDATE ID ON CHANGE
+    const selected = vessels.find(v => v.name === val);
+    setEditData({ 
+        ...editData, 
+        vesselName: val,
+        vesselId: selected?._id || "" // Update ID to trigger hook lookup
+    });
+  }}
+/>
+</div>
 
-                <div>
+                <div className="relative">
                   <Label>Voyage No / ID</Label>
-                  <Input
-                    value={editData.voyageId}
-                    onChange={(e) =>
-                      setEditData({ ...editData, voyageId: e.target.value })
-                    }
-                  />
+                <Select
+  options={voyageList}
+  placeholder={
+    !editData.vesselId
+      ? ""
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Select Voyage"
+  }
+  value={editData.voyageNo} // Ensure this matches the options' values
+  onChange={(val) => 
+    setEditData({ 
+      ...editData, 
+      voyageNo: val, // ✅ Update the string so the dropdown reflects the change
+      voyageId: val  // Update this too if you send 'voyageId' as the string to the backend
+    })
+  }
+/>
+                 
                 </div>
 
                 <div>
