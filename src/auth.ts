@@ -5,12 +5,14 @@ import User from "@/models/User";
 import Role from "@/models/Role";
 import { dbConnect } from "@/lib/db";
 
+// 1. Update Interface
 interface AuthUser {
   id: string;
   email: string;
   fullName: string;
   role: string;
   permissions: string[];
+  profilePicture?: string | null; // ✅ Added this
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -25,18 +27,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials): Promise<AuthUser | null> {
         await dbConnect();
 
-        // 1. Check if fields exist
         if (!credentials?.email || !credentials?.password) return null;
 
-        // 2. Fetch user
         const user = await User.findOne({ email: credentials.email })
           .populate({ path: "role", model: Role })
           .lean();
 
         if (!user) return null;
 
-        // 3. Validate password
-        // 🔴 FIX: Cast credentials.password to string here
         const isValid = await bcrypt.compare(
           credentials.password as string, 
           user.password
@@ -44,7 +42,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isValid) return null;
 
-        // ✅ Build permissions
         const basePerms = user.role?.permissions || [];
         const additional = user.additionalPermissions || [];
         const excluded = user.excludedPermissions || [];
@@ -58,30 +55,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           fullName: user.fullName,
           role: user.role?.name || "user",
+          profilePicture: user.profilePicture, // ✅ Pass from DB to Auth User
           permissions,
         };
       },
     }),
   ],
-  // ✅ SESSION CONFIG (7 DAYS + IMMEDIATE UPDATE)
   session: {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60,
     updateAge: 0,
   },
   jwt: {
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60, 
   },
   callbacks: {
-    // 🔥 RUNS ON EVERY REQUEST
-    async jwt({ token, user }) {
-      // Save ID on first login
+    async jwt({ token, user, trigger, session }) {
+      // Save initial login data
       if (user) {
         token.id = user.id;
+        token.profilePicture = user.profilePicture; // ✅ Save initial image
+      }
+
+      // ✅ Handle Client-side Session Updates (when you edit profile)
+      if (trigger === "update" && session?.user) {
+         token.fullName = session.user.fullName;
+         token.profilePicture = session.user.profilePicture; // ✅ Update token immediately
       }
 
       if (!token.id) return token;
 
+      // 🔄 Re-fetch from DB on every request (Syncs data)
       await dbConnect();
       const dbUser = await User.findById(token.id).populate("role");
 
@@ -97,14 +101,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         new Set([...basePerms, ...additional])
       ).filter((p) => !excluded.includes(p));
 
-      // 🔄 Always overwrite token
+      // 🔄 Update Token with fresh DB data
       token.role = dbUser.role?.name || "user";
       token.permissions = permissions;
       token.email = dbUser.email;
       token.fullName = dbUser.fullName;
+      token.profilePicture = dbUser.profilePicture; // ✅ Sync image from DB
 
       return token;
     },
+    
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
@@ -112,6 +118,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.fullName = token.fullName as string;
         session.user.role = token.role as string;
         session.user.permissions = token.permissions as string[];
+        
+        // ✅ Pass from Token to Final Session
+        session.user.profilePicture = token.profilePicture as string | null; 
       }
       return session;
     },

@@ -30,6 +30,12 @@ export interface IVoyage extends Document {
     eta: Date;
     endDate?: Date | null;
   };
+
+  // ✅ ADDED THESE INTERFACE FIELDS
+  createdBy: mongoose.Types.ObjectId;
+  updatedBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const VoyageSchema = new Schema<IVoyage>(
@@ -69,9 +75,21 @@ const VoyageSchema = new Schema<IVoyage>(
       eta: Date,
       endDate: Date,
     },
+
+    // ✅ ADDED THESE SCHEMA FIELDS
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   { timestamps: true }
 );
-
+VoyageSchema.index({ vesselId: 1, voyageNo: 1 }, { unique: true });
 export default mongoose.models.Voyage ||
   mongoose.model<IVoyage>("Voyage", VoyageSchema);

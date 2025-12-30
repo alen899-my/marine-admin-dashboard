@@ -18,6 +18,7 @@ import { useModal } from "@/hooks/useModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 // Import validation schema (adjust path as needed)
 import { norSchema } from "@/lib/validations/norSchema";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 
 interface AddNORReportButtonProps {
   onSuccess: () => void;
@@ -31,23 +32,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ***** NEW: State for Vessels List *****
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
    const { can, isReady } = useAuthorization();
-  // ***** NEW: Fetch Vessels from DB *****
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        const res = await fetch("/api/vessels");
-        if (res.ok) {
-          const data = await res.json();
-          setVessels(data);
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
-    }
-    fetchVessels();
-  }, []);
 
   const getCurrentDateTime = () => {
     return new Date()
@@ -59,7 +44,8 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   // Form State
   // ***** CHANGE: Initial state vesselName set to "AN16" *****
   const [formData, setFormData] = useState({
-    vesselName: "AN16",
+    vesselName: "",
+    vesselId: "",
     voyageNo: "",
     portName: "",
     reportDate: getCurrentDateTime(),
@@ -68,6 +54,68 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     etaPort: "",
     remarks: "",
   });
+  // ✅ 1. CALL THE HOOK
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    formData.vesselId,
+    formData.reportDate
+  );
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageNo) {
+      setFormData((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
+    }
+  }, [suggestedVoyageNo]);
+
+  // ✅ 4. FETCH & FILTER VOYAGES (Client-Side Firewall)
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected
+      if (!formData.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === formData.vesselId) ||
+              (v.vesselName && v.vesselName === formData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === formData.voyageNo;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageNo]);
 
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -90,8 +138,16 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   };
 
   // ***** NEW: Specific handler for the custom Select component *****
-  const handleVesselChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, vesselName: value }));
+ const handleVesselChange = (selectedName: string) => {
+    // Find the ID based on the name from the HOOK's vessel list
+    const selectedVessel = vessels.find((v) => v.name === selectedName);
+
+    setFormData((prev) => ({ 
+        ...prev, 
+        vesselName: selectedName,
+        vesselId: selectedVessel?._id || "" // 👈 Save ID to trigger hook
+    }));
+
     if (errors.vesselName) {
       setErrors((prev) => {
         const newErr = { ...prev };
@@ -100,7 +156,16 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       });
     }
   };
-
+  const handleVoyageChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, voyageNo: val }));
+    if (errors.voyageNo) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr.voyageNo;
+        return newErr;
+      });
+    }
+  };
   // Handle File Change with 500KB Validation
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -132,8 +197,9 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     setIsSubmitting(false);
     // ***** CHANGE: Reset logic reverts to "AN16" *****
     setFormData({
-      vesselName: "AN16",
+      vesselName: "",
       voyageNo: "",
+      vesselId: "",
       portName: "",
       reportDate: getCurrentDateTime(),
       pilotStation: "",
@@ -229,6 +295,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       setIsSubmitting(false);
     }
   };
+  
   const canCreate = isReady && can("nor.create");
 
  
@@ -311,16 +378,26 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
                   )}
                 </div>
 
-                <div>
+                <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    name="voyageNo"
+                  <Select
+                 
+                    options={voyageList}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select a Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
                     value={formData.voyageNo}
-                    onChange={handleChange}
+                    onChange={handleVoyageChange}
                     className={errors.voyageNo ? "border-red-500" : ""}
                   />
+
+
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.voyageNo}

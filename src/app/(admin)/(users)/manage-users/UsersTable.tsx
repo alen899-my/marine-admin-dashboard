@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import Image from "next/image"; // ✅ Import Image
+import { User as UserIcon } from "lucide-react"; // ✅ Import Icon for fallback
 
 // --- Components ---
 import ComponentCard from "@/components/common/ComponentCard";
@@ -11,12 +13,13 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import UserFormModal from "@/components/Users/UserFormModal";
 
-// --- Permission Components (Adjust paths if necessary based on your folder structure) ---
+// --- Permission Components ---
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import PermissionMatrixTable from "@/components/Users/components/PermissionMatrixTable"; 
 import PermissionLegend from "@/components/Users/components/PermissionLegend";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
+
 // --- Types ---
 interface IPermission {
   _id: string;
@@ -36,11 +39,11 @@ interface IUser {
   fullName: string;
   email: string;
   phone: string;
-  role: any; // Can be string ID or Object
+  role: any;
   status: string;
+  profilePicture?: string; // ✅ Added this
   lastLogin?: string;
   createdAt: string;
-  // Permissions specific
   additionalPermissions?: string[];
   excludedPermissions?: string[];
 }
@@ -64,7 +67,7 @@ export default function UserTable({
   const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // --- Metadata State (Needed for View Permissions) ---
+  // --- Metadata State ---
   const [rolesList, setRolesList] = useState<RoleData[]>([]);
   const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
 
@@ -79,12 +82,12 @@ export default function UserTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
-  const { can, isReady } = useAuthorization();
+  const { can } = useAuthorization();
 
-const canEditUser = can("users.edit");
-const canDeleteUser = can("users.delete");
+  const canEditUser = can("users.edit");
+  const canDeleteUser = can("users.delete");
 
-  // --- 1. Fetch Metadata (Roles & Permissions) for View Modal ---
+  // --- 1. Fetch Metadata ---
   useEffect(() => {
     async function fetchMetadata() {
       try {
@@ -118,17 +121,11 @@ const canDeleteUser = can("users.delete");
     return "Unknown";
   };
 
-  // --- Helper: Get Permissions for Selected User ---
+  // --- Helper: Get Permissions ---
   const getSelectedUserRolePermissions = () => {
     if (!selectedUser) return [];
-    
-    // 1. Try to get role ID
     const roleId = typeof selectedUser.role === 'object' ? selectedUser.role._id : selectedUser.role;
-    
-    // 2. Find role in loaded list
     const roleObj = rolesList.find(r => r._id === roleId);
-    
-    // 3. Return permissions (fallback to empty)
     return roleObj?.permissions || (typeof selectedUser.role === 'object' ? selectedUser.role.permissions : []) || [];
   };
 
@@ -140,7 +137,27 @@ const canDeleteUser = can("users.delete");
     },
     {
       header: "Full Name",
-      render: (u: IUser) => <span className="font-medium text-gray-700 dark:text-gray-200">{u.fullName}</span>,
+      render: (u: IUser) => (
+        <div className="flex items-center gap-3">
+          {/* ✅ Avatar Display in Table */}
+          <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+            {u.profilePicture ? (
+              <Image 
+                src={u.profilePicture} 
+                alt={u.fullName} 
+                fill 
+                className="object-cover" 
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 text-gray-400" />
+              </div>
+            )}
+          </div>
+          <span className="font-medium text-gray-700 dark:text-gray-200">{u.fullName}</span>
+        </div>
+      ),
     },
     {
       header: "Email",
@@ -197,6 +214,7 @@ const canDeleteUser = can("users.delete");
     },
     [LIMIT, search, status, startDate, endDate]
   );
+
   const selectedUserRoleName =
   typeof selectedUser?.role === "object"
     ? selectedUser.role.name
@@ -254,11 +272,11 @@ const canDeleteUser = can("users.delete");
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               onView={handleView}
-               onEdit={canEditUser ? handleEdit : undefined}
-  onDelete={canDeleteUser ? (u: IUser) => {
-    setSelectedUser(u);
-    setOpenDelete(true);
-  } : undefined}
+              onEdit={canEditUser ? handleEdit : undefined}
+              onDelete={canDeleteUser ? (u: IUser) => {
+                setSelectedUser(u);
+                setOpenDelete(true);
+              } : undefined}
             />
           </div>
         </div>
@@ -272,75 +290,81 @@ const canDeleteUser = can("users.delete");
       >
         <div className="space-y-6 text-sm">
         
-
-         {/* 2. General Info */}
+         {/* 2. General Info with Avatar */}
           <ComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      
-              {/* Full Name */}
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Full Name</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {selectedUser?.fullName ?? "-"}
-                </p>
-              </div>
-                      
-              {/* Email */}
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Email Address</p>
-                <p className="font-medium text-gray-900 dark:text-white break-all">
-                  {selectedUser?.email ?? "-"}
-                </p>
-              </div>
-                      
-              {/* Phone */}
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Phone Number</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {selectedUser?.phone ?? "-"}
-                </p>
-              </div>
-                      
-              {/* Role */}
-              <div>
-                <p className="text-sm text-gray-500 mb-1">System Role</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {formatRole(selectedUser?.role || "")}
-                </p>
-              </div>
-                      
-              {/* Status (Fixed Alignment) */}
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Account Status</p>
-                <div className="flex items-center">
-                  <Badge color={selectedUser?.status === "active" ? "success" : "error"}>
-                    {selectedUser?.status === "active" ? "Active" : "Inactive"}
-                  </Badge>
+             <div className="flex flex-col sm:flex-row gap-20 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+               
+             {/* <div className="flex-shrink-0 flex flex-col items-center gap-2"> */}
+  {/* Image Container */}
+  {/* <div className="w-20 h-20 ml-5 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-700 shadow-sm">
+    {selectedUser?.profilePicture ? (
+      <Image 
+        src={selectedUser.profilePicture} 
+        alt="Profile" 
+        fill 
+        className="object-cover" 
+        unoptimized
+      />
+    ) : (
+      <div className="w-full h-full flex items-center justify-center">
+         <UserIcon className="w-8 h-8 text-gray-400" />
+      </div>
+    )}
+  </div> */}
+
+  {/* Label */}
+  {/* <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+    User Profile
+  </span> */}
+{/* </div> */}
+
+                <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Full Name</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedUser?.fullName ?? "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Email Address</p>
+                    <p className="font-medium text-gray-900 dark:text-white break-all">
+                      {selectedUser?.email ?? "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedUser?.phone ?? "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">System Role</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {formatRole(selectedUser?.role || "")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Account Status</p>
+                    <Badge color={selectedUser?.status === "active" ? "success" : "error"}>
+                      {selectedUser?.status === "active" ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
-                      
-            </div>
+             </div>
           </ComponentCard>
 
           {/* 3. Permissions Matrix (Read Only) */}
-{selectedUser && (
-  <RoleComponentCard
-    title="Permissions"
-    desc={
-      isSelectedUserSuperAdmin
-        ? "All permissions are automatically granted for Super Admin."
-        : "Current effective permissions for this user."
-    }
-    legend={
-      !isSelectedUserSuperAdmin ? (
-        <PermissionLegend showAll={true} />
-      ) : null
-    }
-  >
-    <div className="space-y-6">
-                
-              
-
+          {selectedUser && (
+            <RoleComponentCard
+              title="Permissions"
+              desc={
+                isSelectedUserSuperAdmin
+                  ? "All permissions are automatically granted for Super Admin."
+                  : "Current effective permissions for this user."
+              }
+              legend={!isSelectedUserSuperAdmin ? <PermissionLegend showAll={true} /> : null}
+            >
+              <div className="space-y-6">
                 <PermissionMatrixTable
                   allPermissions={allPermissions}
                   rolePermissions={getSelectedUserRolePermissions()}
@@ -353,27 +377,25 @@ const canDeleteUser = can("users.delete");
                   rolePermissions={getSelectedUserRolePermissions()}
                   additionalPermissions={selectedUser.additionalPermissions || []}
                   excludedPermissions={selectedUser.excludedPermissions || []}
-                  onToggle={() => {}} // Read-only: No-op
+                  onToggle={() => {}} // Read-only
                   isReadOnly={true}
                 />
               </div>
-  </RoleComponentCard>
-)}
+            </RoleComponentCard>
+          )}
 
         </div>
       </ViewModal>
 
+      <UserFormModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={() => {
+          fetchUsers(currentPage); // Refresh
+        }}
+        initialData={userToEdit} 
+      />
 
-<UserFormModal
-  isOpen={editModalOpen}
-  onClose={() => setEditModalOpen(false)}
-  onSuccess={() => {
-    fetchUsers(currentPage); // Just refresh the table in the background
-  }}
-  initialData={userToEdit} 
-/>
-
-      {/* --- DELETE CONFIRMATION --- */}
       <ConfirmDeleteModal
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}

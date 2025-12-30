@@ -258,7 +258,7 @@ export default function RolesTable({
             </div>
           </RoleComponentCard>
 
-          <RoleComponentCard title="Assigned Permissions" legend={<PermissionLegend />}>
+          <RoleComponentCard   title="Assigned Permissions" legend={<PermissionLegend />}>
             {selectedRole && (
               <div className="space-y-8">
                 
@@ -268,9 +268,7 @@ export default function RolesTable({
                 <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                 <div>
-                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                    Module Access Control
-                  </h3>
+                 
                   <PermissionGrid 
                     allPermissions={allPermissions}
                     selectedPermissions={selectedRole.permissions}
@@ -299,7 +297,7 @@ export default function RolesTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
-            <RoleComponentCard title="Role Information">
+            <RoleComponentCard title="Role Information" className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Role Name</Label>
@@ -323,7 +321,7 @@ export default function RolesTable({
               </div>
             </RoleComponentCard>
 
-            <RoleComponentCard title="Permissions" legend={<PermissionLegend />}>
+            <RoleComponentCard title="Permissions" className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" legend={<PermissionLegend />}>
                <div className="space-y-8">
                 
                 {/* 3. Dashboard Widgets (Editable) */}
@@ -332,9 +330,7 @@ export default function RolesTable({
                 <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                 <div>
-                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                    Module Access Control
-                  </h3>
+                
                   <PermissionGrid 
                     allPermissions={allPermissions}
                     selectedPermissions={editData.permissions}

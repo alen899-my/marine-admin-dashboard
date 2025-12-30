@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
-
+import Voyage from "@/models/Voyage"; // ✅ Import Voyage
 import ReportOperational from "@/models/ReportOperational";
-
+import mongoose from "mongoose"; // ✅ Import Mongoose
 // VALIDATION
 import { departureReportSchema } from "@/lib/validations/departureReportSchema";
 import { authorizeRequest } from "@/lib/authorizeRequest";
@@ -33,6 +33,9 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 /* ======================================
    GET ALL DEPARTURE REPORTS
 ====================================== */
+/* ======================================
+   GET ALL DEPARTURE REPORTS
+====================================== */
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
@@ -44,15 +47,13 @@ export async function GET(req: NextRequest) {
 
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-    
-    // ✅ Date Filter Addition: Extract Dates
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // 1. Initialize the query object
+    // 1. Initialize Query
     const query: Record<string, unknown> = { eventType: "departure" };
 
-    // 2. Apply Filters (BEFORE fetching data)
+    // 2. Apply Filters
     if (status !== "all") {
       query.status = status;
     }
@@ -60,44 +61,40 @@ export async function GET(req: NextRequest) {
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageId: { $regex: search, $options: "i" } },
+        // 🔴 FIX: Search 'voyageNo' (String), NOT 'voyageId' (ObjectId)
+        { voyageNo: { $regex: search, $options: "i" } }, 
         { portName: { $regex: search, $options: "i" } },
       ];
     }
     
-    // ✅ Date Filter Addition: Apply Date Range Query
+    // 3. Date Filter
     if (startDate || endDate) {
-      // Create typed date query object
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
 
       if (startDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedStart = parseDateString(startDate);
-        if (parsedStart) {
-          dateQuery.$gte = parsedStart;
-        }
+        if (parsedStart) dateQuery.$gte = parsedStart;
       }
 
       if (endDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedEnd = parseDateString(endDate);
         if (parsedEnd) {
-          // End of the selected day (23:59:59.999)
           parsedEnd.setHours(23, 59, 59, 999);
           dateQuery.$lte = parsedEnd;
         }
       }
       
-      // Only attach if we successfully parsed at least one date
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
     }
 
-    // 3. Fetch Data using the 'query' object
+    // 4. Fetch Data
     const total = await ReportOperational.countDocuments(query); 
 
-    const reports = await ReportOperational.find(query) 
+    const reports = await ReportOperational.find(query)
+      // ✅ FIX: Populate voyageId to get the original ID details
+      .populate("voyageId", "voyageNo") 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -125,12 +122,18 @@ export async function GET(req: NextRequest) {
    CREATE DEPARTURE REPORT
 ====================================== */
 export async function POST(req: NextRequest) {
-  
   try {
     const authz = await authorizeRequest("departure.create");
     if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const body = await req.json();
+
+    // Sanitize Empty Strings
+    if (body.cargo_qty_loaded_mt === "") body.cargo_qty_loaded_mt = 0;
+    if (body.cargo_qty_unloaded_mt === "") body.cargo_qty_unloaded_mt = 0;
+    if (body.bunkers_received_vlsfo_mt === "") body.bunkers_received_vlsfo_mt = 0;
+    if (body.bunkers_received_lsmgo_mt === "") body.bunkers_received_lsmgo_mt = 0;
 
     const { error, value } = departureReportSchema.validate(body, {
       abortEarly: false,
@@ -149,29 +152,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ PARSE DATE safely here
     const parsedReportDate = parseDateString(value.reportDate);
-
     if (!parsedReportDate) {
-        return NextResponse.json(
-            { error: "Invalid Date Format. Please use dd/mm/yyyy" }, 
-            { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid Date Format" }, { status: 400 });
     }
 
+    // ==========================================
+    // ✅ VOYAGE ID LOOKUP LOGIC
+    // ==========================================
+    const voyageNoString = value.voyageId; // Frontend sends string "OP-1225-IN" here
+    const vesselIdString = value.vesselId;
+    let voyageObjectId = null;
+
+    if (vesselIdString && voyageNoString) {
+       const vId = new mongoose.Types.ObjectId(vesselIdString);
+       
+       // Find the Voyage Document to get its _id
+       const foundVoyage = await Voyage.findOne({ 
+          vesselId: vId, 
+          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
+       }).select("_id");
+       
+       if (foundVoyage) {
+          voyageObjectId = foundVoyage._id;
+       } else {
+          return NextResponse.json(
+            { error: `Voyage ${voyageNoString} not found for this vessel.` },
+            { status: 404 }
+          );
+       }
+    } else {
+       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
+    }
+
+    // ==========================================
+    // CREATE REPORT
+    // ==========================================
     const report = await ReportOperational.create({
       eventType: "departure",
       status: "active",
 
+      // ✅ IDS (Linked)
+      vesselId: vesselIdString,
+      voyageId: voyageObjectId, // Saved as ObjectId (e.g. 65a...)
+
+      // ✅ SNAPSHOTS (Readable)
       vesselName: value.vesselName,
-      voyageId: value.voyageId,
+      voyageNo: voyageNoString, // Saved as String (e.g. "OP-1225-IN")
+      
       portName: value.portName,
-      lastPort: value.lastPort, // New Field
+      lastPort: value.lastPort,
       eventTime: new Date(value.eventTime),
       reportDate: parsedReportDate,
 
       navigation: {
-        // Updated field name
         distanceToNextPortNm: value.distance_to_next_port_nm, 
         etaNextPort: value.etaNextPort ? new Date(value.etaNextPort) : null,
       },
@@ -179,10 +213,8 @@ export async function POST(req: NextRequest) {
       departureStats: {
         robVlsfo: value.robVlsfo,
         robLsmgo: value.robLsmgo,
-        // New Bunkering fields
         bunkersReceivedVlsfo: value.bunkers_received_vlsfo_mt || 0,
         bunkersReceivedLsmgo: value.bunkers_received_lsmgo_mt || 0,
-        // New Cargo fields
         cargoQtyLoadedMt: value.cargo_qty_loaded_mt || 0,
         cargoQtyUnloadedMt: value.cargo_qty_unloaded_mt || 0,
         cargoSummary: value.cargoSummary,
@@ -201,9 +233,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: unknown) {
     console.error("CREATE DEPARTURE REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

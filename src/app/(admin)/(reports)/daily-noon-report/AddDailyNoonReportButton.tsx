@@ -12,13 +12,14 @@ import Select from "@/components/form/Select";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { useAuthorization } from "@/hooks/useAuthorization";
+
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
 }
 
-// Defined interface for the error details to avoid 'any'
+// Defined interface for the error details
 interface APIErrorDetail {
   field: string;
   message: string;
@@ -27,17 +28,15 @@ interface APIErrorDetail {
 export default function AddDailyNoonReportButton({
   onSuccess,
 }: AddDailyNoonReportButtonProps) {
-  
   const { isOpen, openModal, closeModal } = useModal();
- const { can, isReady } = useAuthorization();
-
+  const { can, isReady } = useAuthorization();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // ***** NEW: State for Vessels List *****
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
 
-  // ***** CHANGE: Get Current Time in IST for default value *****
+  // Dropdown State
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -46,25 +45,92 @@ export default function AddDailyNoonReportButton({
   };
 
   const [form, setForm] = useState({
-    vesselName: "AN16",
+    vesselName: "",
+    vesselId: "",
     voyageNo: "",
     reportDate: getCurrentDateTime(),
     nextPort: "",
     latitude: "",
     longitude: "",
-    distanceTravelled: "", // This is Observed Distance (nm)
-    engineDistance: "", // ***** NEW FIELD *****
-    slip: "", // ***** NEW FIELD (Auto-calculated) *****
+    distanceTravelled: "",
+    engineDistance: "",
+    slip: "",
     distanceToGo: "",
-    vlsfoConsumed: "", // Last 24h VLSFO
-    lsmgoConsumed: "", // Last 24h LSMGO
+    vlsfoConsumed: "",
+    lsmgoConsumed: "",
     windForce: "",
     seaState: "",
     weatherRemarks: "",
     generalRemarks: "",
   });
 
-  // ***** NEW: Auto-calculate Slip whenever distances change *****
+  // ✅ 1. Call the Hook
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    form.vesselId,
+    form.reportDate
+  );
+
+  // ✅ 2. Sync Logic (Auto-fill Voyage)
+  useEffect(() => {
+    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== form.voyageNo) {
+      if (suggestedVoyageNo) {
+        // Optional: toast.info(`Voyage updated to ${suggestedVoyageNo}`);
+      }
+      setForm((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
+    }
+  }, [suggestedVoyageNo]);
+
+  // ✅ 3. FETCH & FILTER VOYAGES (Client-Side Firewall)
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected
+      if (!form.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${form.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === form.vesselId) ||
+              (v.vesselName && v.vesselName === form.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === form.voyageNo;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [form.vesselId, form.vesselName, suggestedVoyageNo, form.voyageNo]);
+
+  // Auto-calculate Slip
   useEffect(() => {
     const engineDist = parseFloat(form.engineDistance);
     const obsDist = parseFloat(form.distanceTravelled);
@@ -86,16 +152,32 @@ export default function AddDailyNoonReportButton({
     setForm((prev) => ({ ...prev, [name]: value }));
 
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleVesselChange = (val: string) => {
+    const selected = vessels.find((v) => v.name === val);
+    setForm((prev) => ({
+      ...prev,
+      vesselName: val,
+      vesselId: selected?._id || "", // Save ID to trigger hook
+      voyageNo: "", // Clear voyage when vessel changes
+    }));
+  };
+
+  // ✅ New Handler for Voyage Select
+  const handleVoyageChange = (val: string) => {
+    setForm((prev) => ({ ...prev, voyageNo: val }));
+    if (errors.voyageNo) {
+      setErrors((prev) => ({ ...prev, voyageNo: "" }));
     }
   };
 
   const resetForm = () => {
     setForm({
-      vesselName: "AN16",
+      vesselName: "",
+      vesselId: "",
       voyageNo: "",
       reportDate: getCurrentDateTime(),
       nextPort: "",
@@ -125,12 +207,12 @@ export default function AddDailyNoonReportButton({
     setIsSubmitting(true);
 
     try {
-      // ***** CHANGE: Append +05:30 to reportDate to lock it to IST *****
+     
+
       const payload = {
-        ...form,
+        ...form, 
         reportDate: form.reportDate ? `${form.reportDate}+05:30` : null,
       };
-
       const res = await fetch("/api/noon-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -142,7 +224,6 @@ export default function AddDailyNoonReportButton({
       if (!res.ok) {
         if (data.details) {
           const fieldErrors: Record<string, string> = {};
-          // Fixed: Use APIErrorDetail interface instead of any
           data.details.forEach((err: APIErrorDetail) => {
             fieldErrors[err.field] = err.message;
           });
@@ -164,44 +245,12 @@ export default function AddDailyNoonReportButton({
       setIsSubmitting(false);
     }
   };
- 
 
-  // ***** NEW: Fetch Vessels on Mount *****
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        const res = await fetch("/api/vessels");
-        if (res.ok) {
-          const data = await res.json();
-          setVessels(data);
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
-    }
-    fetchVessels();
-  }, []);
-
-  // Handler for custom Select component
-  const handleVesselChange = (value: string) => {
-    setForm((prev) => ({ ...prev, vesselName: value }));
-
-    // Clear error if it exists
-    if (errors.vesselName) {
-      setErrors((prev) => ({ ...prev, vesselName: "" }));
-    }
-  };
-  // 2️⃣ DERIVED VALUES (SAFE NOW)
   const canCreate = isReady && can("noon.create");
 
-  // 3️⃣ EARLY RETURNS (AFTER ALL HOOKS)
-  if (!isReady) {
-    return null; // or loader
-  }
+  if (!isReady) return null;
+  if (!canCreate) return null;
 
-  if (!canCreate) {
-    return null;
-  }
   return (
     <>
       <Button size="md" variant="primary" onClick={openModal}>
@@ -212,14 +261,8 @@ export default function AddDailyNoonReportButton({
         isOpen={isOpen}
         onClose={handleClose}
         className={`
-        w-full
-        max-w-[95vw]
-        sm:max-w-[90vw]
-        md:max-w-[720px]
-        lg:max-w-[900px]
-        p-4
-        sm:p-6
-        lg:p-8
+        w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-[720px] lg:max-w-[900px]
+        p-4 sm:p-6 lg:p-8
       `}
       >
         <AddForm
@@ -251,14 +294,13 @@ export default function AddDailyNoonReportButton({
                   )}
                 </div>
 
-                {/* ***** CHANGED: Vessel Name Select ***** */}
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     options={vessels.map((v) => ({
-                      value: v.name, // Using name as value since your form state expects string name
+                      value: v.name,
                       label: v.name,
                     }))}
                     placeholder="Select Vessel"
@@ -273,16 +315,28 @@ export default function AddDailyNoonReportButton({
                   )}
                 </div>
 
-                <div>
+                {/* ✅ REPLACED INPUT WITH SMART SELECT */}
+                <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    name="voyageNo"
+                  <Select
+                 
+                    options={voyageList}
+                    placeholder={
+                      !form.vesselId
+                        ? ""
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
                     value={form.voyageNo}
-                    onChange={handleChange}
+                    onChange={handleVoyageChange}
                     className={errors.voyageNo ? "border-red-500" : ""}
                   />
+                  
+                 
+
                   {errors.voyageNo && (
                     <p className="text-red-500 text-xs mt-1">
                       {errors.voyageNo}
@@ -388,21 +442,21 @@ export default function AddDailyNoonReportButton({
                 </div>
 
                 <div>
-  <Label>Slip (%) <span className="text-red-500">*</span></Label>
-  <Input
-    type="number" // Changed to number for manual entry
-    name="slip"
-    placeholder="Calculated or manual"
-    value={form.slip}
-    onChange={handleChange} // Added handler to allow manual typing
-    className={errors.slip ? "border-red-500" : ""} // Added error styling if needed
-  />
-  {errors.slip && (
-    <p className="text-red-500 text-xs mt-1">
-      {errors.slip}
-    </p>
-  )}
-</div>
+                  <Label>
+                    Slip (%) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    name="slip"
+                    placeholder="Calculated or manual"
+                    value={form.slip}
+                    onChange={handleChange}
+                    className={errors.slip ? "border-red-500" : ""}
+                  />
+                  {errors.slip && (
+                    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
+                  )}
+                </div>
 
                 <div>
                   <Label>

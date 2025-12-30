@@ -60,6 +60,18 @@ export async function GET() {
       { slug: "roles.create", description: "Create Roles", group: "Role Management" },
       { slug: "roles.edit", description: "Edit Roles", group: "Role Management" },
       { slug: "roles.delete", description: "Delete Roles", group: "Role Management" },
+
+      //---8. vessel management
+      { slug: "vessels.view", description: "View Vessels", group: "Vessel Management" },
+      { slug: "vessels.create", description: "Create Vessels", group: "Vessel Management" },
+      { slug: "vessels.edit", description: "Edit Vessels", group: "Vessel Management" },
+      { slug: "vessels.delete", description: "Delete Vessels", group: "Vessel Management" },
+
+      //--9. voyage managment
+      { slug: "voyage.view", description: "View Voyages", group: "Voyage Management" },
+      { slug: "voyage.create", description: "Create Voyages", group: "Voyage Management" },
+      { slug: "voyage.edit", description: "Edit Voyages", group: "Voyage Management" },
+      { slug: "voyage.delete", description: "Delete Voyages", group: "Voyage Management" },
     ];
 
     // Upsert Permissions

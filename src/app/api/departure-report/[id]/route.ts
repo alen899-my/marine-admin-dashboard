@@ -2,6 +2,8 @@ import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import Voyage from "@/models/Voyage";
+import mongoose from "mongoose";
 /* ======================================
    UPDATE DEPARTURE REPORT (EDIT)
 ====================================== */
@@ -10,8 +12,9 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-      const authz = await authorizeRequest("departure.edit");
+    const authz = await authorizeRequest("departure.edit");
     if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const { id } = await context.params;
     const body = await req.json();
@@ -22,15 +25,31 @@ export async function PATCH(
     });
 
     if (!report) {
-      return NextResponse.json(
-        { error: "Departure report not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // ✅ Update fields (no schema re-validation needed here)
+    // ✅ VOYAGE LOOKUP LOGIC FOR EDIT
+    // Frontend might send the string in 'voyageId' or 'voyageNo'
+    const newVoyageNoString = body.voyageNo || body.voyageId; 
+    const vesselId = body.vesselId || report.vesselId; // Use existing if not sent
+
+    if (newVoyageNoString) {
+       // Look up new ID
+       const foundVoyage = await Voyage.findOne({
+          vesselId: vesselId,
+          voyageNo: { $regex: new RegExp(`^${newVoyageNoString}$`, "i") }
+       }).select("_id");
+
+       if (foundVoyage) {
+          report.voyageId = foundVoyage._id; // Update Link
+          report.voyageNo = newVoyageNoString; // Update String
+       }
+    }
+
+    // Update other fields
     report.vesselName = body.vesselName;
-    report.voyageId = body.voyageId;
+    if(body.vesselId) report.vesselId = body.vesselId;
+    
     report.portName = body.portName;
     report.lastPort = body.lastPort;
     report.eventTime = new Date(body.eventTime);
@@ -52,25 +71,20 @@ export async function PATCH(
     };
 
     report.remarks = body.remarks;
-
     report.status = body.status;
 
     await report.save();
 
     return NextResponse.json({
       success: true,
-      message: "Departure report updated successfully",
+      message: "Report updated",
       report,
     });
   } catch (error) {
-    console.error("UPDATE DEPARTURE REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to update departure report" },
-      { status: 500 }
-    );
+    console.error("UPDATE ERROR →", error);
+    return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
-
 /* ======================================
    DELETE DEPARTURE REPORT
 ====================================== */

@@ -5,6 +5,21 @@ import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
 
+// Define the Props Interface
+interface FilterProps {
+  search: string;
+  setSearch: (v: string) => void;
+  status: string;
+  setStatus: (v: string) => void;
+  startDate: string;
+  setStartDate: (v: string) => void;
+  endDate: string;
+  setEndDate: (v: string) => void;
+  searchVessel?: boolean; // Context: Vessel Management
+  searchVoyage?: boolean; // Context: Voyage Management
+  optionOff?: boolean;    // Hides date pickers
+}
+
 export default function Filters({
   search,
   setSearch,
@@ -14,16 +29,10 @@ export default function Filters({
   setStartDate,
   endDate,
   setEndDate,
-}: {
-  search: string;
-  setSearch: (v: string) => void;
-  status: string;
-  setStatus: (v: string) => void;
-  startDate: string;
-  setStartDate: (v: string) => void;
-  endDate: string;
-  setEndDate: (v: string) => void;
-}) {
+  searchVessel,
+  searchVoyage,
+  optionOff,
+}: FilterProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
   const [localStartDate, setLocalStartDate] = useState(startDate);
@@ -56,19 +65,50 @@ export default function Filters({
     if (e.key === "Enter") handleApplyFilters();
   };
 
+  // --- 1. DYNAMIC STATUS OPTIONS ---
+  const getStatusOptions = () => {
+    if (searchVessel) {
+      return [
+        { value: "all", label: "All Status" },
+        { value: "active", label: "Active" },
+        { value: "laid_up", label: "Laid Up" },
+        { value: "sold", label: "Sold" },
+        { value: "dry_dock", label: "Dry Dock" },
+      ];
+    }
+    if (searchVoyage) {
+      return [
+        { value: "all", label: "All Status" },
+        { value: "scheduled", label: "Scheduled" },
+        { value: "active", label: "Active" },
+        { value: "completed", label: "Completed" },
+      ];
+    }
+    // Default fallback
+    return [
+      { value: "all", label: "All Status" },
+      { value: "active", label: "Active" },
+      { value: "inactive", label: "Inactive" },
+    ];
+  };
+
+  // --- 2. DYNAMIC PLACEHOLDER ---
+  const getSearchPlaceholder = () => {
+    if (searchVessel) return "Search by Name, IMO or Fleet";
+    if (searchVoyage) return "Search by Voyage No, Port or Vessel";
+    return "Search...";
+  };
+
   return (
-    /* CHANGE 1: Removed 'm-4' which causes double-spacing inside a card.
-      CHANGE 2: Added 'flex-wrap' so items drop to the next line when zoomed.
-    */
     <div className="flex flex-wrap items-end gap-4 p-4 w-full">
       
-      {/* SEARCH: Changed md:w-74 to flex-grow with a max-width */}
+      {/* SEARCH INPUT */}
       <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search
         </label>
         <Input
-          placeholder="Search by Vessel Name or Voyage ID"
+          placeholder={getSearchPlaceholder()}
           className="w-full"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
@@ -76,7 +116,7 @@ export default function Filters({
         />
       </div>
 
-      {/* STATUS: Changed fixed width to a stable min-width */}
+      {/* STATUS SELECT */}
       <div className="w-full sm:w-auto min-w-[160px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Status
@@ -86,43 +126,42 @@ export default function Filters({
           value={localStatus}
           onChange={setLocalStatus}
           placeholder="Select status"
-          options={[
-            { value: "all", label: "All Status" },
-            { value: "active", label: "Active" },
-            { value: "inactive", label: "Inactive" },
-          ]}
+          options={getStatusOptions()}
         />
       </div>
 
-      {/* FROM DATE */}
-      <div className="w-full sm:w-auto min-w-[180px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Report Date From
-        </label>
-        <DatePicker
-          key={localStartDate}
-          id="filter-start-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localStartDate}
-          onChange={(_, dateStr) => setLocalStartDate(dateStr)}
-        />
-      </div>
+      {/* DATES: Only render if optionOff is FALSE */}
+      {!optionOff && (
+        <>
+          <div className="w-full sm:w-auto min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              {searchVoyage ? "ETA From" : "Date From"}
+            </label>
+            <DatePicker
+              key={localStartDate}
+              id="filter-start-date"
+              placeholder="dd/mm/yyyy"
+              defaultDate={localStartDate}
+              onChange={(_, dateStr) => setLocalStartDate(dateStr)}
+            />
+          </div>
 
-      {/* TO DATE */}
-      <div className="w-full sm:w-auto min-w-[180px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Report Date To
-        </label>
-        <DatePicker
-          key={localEndDate}
-          id="filter-end-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localEndDate}
-          onChange={(_, dateStr) => setLocalEndDate(dateStr)}
-        />
-      </div>
+          <div className="w-full sm:w-auto min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              {searchVoyage ? "ETA To" : "Date To"}
+            </label>
+            <DatePicker
+              key={localEndDate}
+              id="filter-end-date"
+              placeholder="dd/mm/yyyy"
+              defaultDate={localEndDate}
+              onChange={(_, dateStr) => setLocalEndDate(dateStr)}
+            />
+          </div>
+        </>
+      )}
 
-      {/* BUTTONS: Ensure they don't shrink and stay together */}
+      {/* BUTTONS */}
       <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
         <button
           onClick={handleApplyFilters}

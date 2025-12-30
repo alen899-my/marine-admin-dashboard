@@ -5,6 +5,9 @@ import { auth } from "@/auth";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
 import ReportDaily from "@/models/ReportDaily";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import Voyage from "@/models/Voyage";
+import mongoose from "mongoose";
+
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -130,9 +133,8 @@ export async function POST(req: NextRequest) {
     
     await dbConnect();
     const body = await req.json();
+    
 
-    // JOI VALIDATION
-    // Note: Ensure your Joi schema allows reportDate to be a string
     const { error, value } = noonReportSchema.validate(body, {
       abortEarly: false,
     });
@@ -150,17 +152,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // CLEAN DATA
     const {
       vesselName,
-      voyageNo,
+      vesselId, 
+      voyageNo, 
       reportDate,
       nextPort,
       latitude,
       longitude,
-      distanceTravelled, // Observed Distance
-      engineDistance,    // ***** NEW FIELD *****
-      slip,              // ***** NEW FIELD *****
+      distanceTravelled,
+      engineDistance,
+      slip,
       distanceToGo,
       vlsfoConsumed,
       lsmgoConsumed,
@@ -170,9 +172,7 @@ export async function POST(req: NextRequest) {
       generalRemarks,
     } = value;
 
-    // ✅ PARSE DATE safely here
     const parsedReportDate = parseDateString(reportDate);
-
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format. Please use dd/mm/yyyy" },
@@ -180,15 +180,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // SAVE REPORT
+    // 2. ✅ ROBUST VOYAGE LOOKUP
+    let voyageObjectId = null;
+    
+    if (vesselId && voyageNo) {
+      // Convert to ObjectId to ensure match
+      const vId = new mongoose.Types.ObjectId(vesselId);
+
+      const foundVoyage = await Voyage.findOne({ 
+        vesselId: vId, 
+        // Case-insensitive match for voyageNo
+        voyageNo: { $regex: new RegExp(`^${voyageNo}$`, "i") } 
+      }).select("_id");
+
+      if (foundVoyage) {
+        voyageObjectId = foundVoyage._id;
+      } else {
+        return NextResponse.json(
+          { error: `Voyage ${voyageNo} not found for this vessel.` },
+          { status: 404 }
+        );
+      }
+    } else {
+        return NextResponse.json(
+          { error: `Missing Vessel ID or Voyage Number` },
+          { status: 400 }
+        );
+    }
+
+    // 3. SAVE REPORT
     const report = await ReportDaily.create({
-      vesselName: vesselName,
-      voyageId: voyageNo,
+      vesselId: vesselId,       
+      voyageId: voyageObjectId, 
+      
+      vesselName: vesselName,   
+      voyageNo: voyageNo,       
 
       type: "noon",
       status: "active",
-
-      // ✅ Use the parsed date object
       reportDate: parsedReportDate,
 
       position: {
@@ -198,8 +227,8 @@ export async function POST(req: NextRequest) {
 
       navigation: {
         distLast24h: Number(distanceTravelled ?? 0),
-        engineDist: Number(engineDistance ?? 0), // ***** NEW FIELD *****
-        slip: slip !== "" ? Number(slip) : null,  // ***** NEW FIELD (Handles empty slip) *****
+        engineDist: Number(engineDistance ?? 0),
+        slip: slip !== "" ? Number(slip) : null,
         distToGo: Number(distanceToGo ?? 0),
         nextPort: nextPort,
       },

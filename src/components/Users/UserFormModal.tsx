@@ -25,6 +25,7 @@ interface IUser {
   status: string;
   additionalPermissions?: string[];
   excludedPermissions?: string[];
+  profilePicture?: string;
 }
 
 interface RoleData {
@@ -69,7 +70,8 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, initialData 
   const [selectedRolePermissions, setSelectedRolePermissions] = useState<string[]>([]);
   const [additionalPerms, setAdditionalPerms] = useState<string[]>([]);
   const [excludedPerms, setExcludedPerms] = useState<string[]>([]);
-
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const defaultState = {
     name: "",
     email: "",
@@ -147,7 +149,12 @@ const handleClose = () => {
   useEffect(() => {
     if (isOpen && initialData) {
       const roleId = typeof initialData.role === 'object' && initialData.role ? initialData.role._id : initialData.role;
-
+      if (initialData.profilePicture) {
+        setImagePreview(initialData.profilePicture);
+      } else {
+        setImagePreview(null);
+      }
+      setProfileImage(null); // Reset file input
       setFormData({
         name: initialData.fullName,
         email: initialData.email,
@@ -169,6 +176,8 @@ const handleClose = () => {
       }
     } else if (isOpen && !initialData && !createdUserId) {
       setFormData(defaultState);
+      setImagePreview(null);
+      setProfileImage(null);
       setAdditionalPerms([]);
       setExcludedPerms([]);
     }
@@ -225,13 +234,13 @@ const handleClose = () => {
 
     if (currentUserId) {
       try {
+        const formDataPayload = new FormData();
+      formDataPayload.append("additionalPermissions", JSON.stringify(newAdditional));
+      formDataPayload.append("excludedPermissions", JSON.stringify(newExcluded));
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            additionalPermissions: newAdditional,
-            excludedPermissions: newExcluded,
-          }),
+          
+          body: formDataPayload,
         });
         onSuccess?.();
       } catch (error) {
@@ -245,6 +254,12 @@ const handleClose = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+  const handleImageChange = (file: File) => {
+    setProfileImage(file);
+    // Create a local preview URL
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
   };
 const handleTabChange = (tab: "details" | "roles") => {
     // If trying to go to Roles tab, but user is NOT created/editing yet
@@ -286,14 +301,14 @@ const handleRoleChange = async (roleId: string) => {
     // 4. Send Cleaned Data to Backend
     if (currentUserId && newRoleId) {
       try {
+        const formDataPayload = new FormData();
+        formDataPayload.append("role", newRoleId);
+        formDataPayload.append("additionalPermissions", JSON.stringify(cleanedAdditional));
+        formDataPayload.append("excludedPermissions", JSON.stringify(cleanedExcluded));
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: newRoleId,
-            additionalPermissions: cleanedAdditional, // <--- Send cleaned array
-            excludedPermissions: cleanedExcluded,     // <--- Send cleaned array
-          }),
+         
+         body: formDataPayload,
         });
         onSuccess?.();
       } catch (error) {
@@ -303,93 +318,103 @@ const handleRoleChange = async (roleId: string) => {
   };
 
 const handleSubmit = async () => {
-  setErrors({});
-  setIsSubmitting(true);
-  const newErrors: Record<string, string> = {};
+    setErrors({});
+    setIsSubmitting(true);
+    const newErrors: Record<string, string> = {};
 
-  if (isEditMode) {
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-  } else {
-    if (!formData.password) newErrors.password = "Password is required";
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-  }
-
-  const { error } = userSchema.validate(formData, { abortEarly: false, allowUnknown: true });
-  if (error) {
-    error.details.forEach((err) => {
-      if (isEditMode && (err.path[0] === 'password' || err.path[0] === 'confirmPassword') && !formData.password) return;
-      if (!isEditMode && err.path[0] === 'role') return;
-      if (err.path[0]) newErrors[err.path[0] as string] = err.message;
-    });
-  }
-
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    setIsSubmitting(false);
-    if (newErrors.role) {
-      setActiveTab("roles");
-      toast.error("Please select a Role");
+    // --- 1. Validation Logic (Standard checks) ---
+    if (isEditMode) {
+      if (formData.password && formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match";
+      }
     } else {
-      setActiveTab("details");
-      toast.error("Please fix errors in User Details");
+      if (!formData.password) newErrors.password = "Password is required";
+      if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match";
+      }
     }
-    return;
-  }
 
-  try {
-    const payload: any = {
-      name: formData.name, 
-      email: formData.email,
-      phone: formData.phone,
-      role: formData.role, 
-      status: formData.status,
-      additionalPermissions: additionalPerms,
-      excludedPermissions: excludedPerms
-    };
+    const { error } = userSchema.validate(formData, { abortEarly: false, allowUnknown: true });
+    if (error) {
+      error.details.forEach((err) => {
+        if (isEditMode && (err.path[0] === 'password' || err.path[0] === 'confirmPassword') && !formData.password) return;
+        if (!isEditMode && err.path[0] === 'role') return;
+        if (err.path[0]) newErrors[err.path[0] as string] = err.message;
+      });
+    }
 
-    if (formData.password) payload.password = formData.password;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setIsSubmitting(false);
+      if (newErrors.role) {
+        setActiveTab("roles");
+        toast.error("Please select a Role");
+      } else {
+        setActiveTab("details");
+        toast.error("Please fix errors in User Details");
+      }
+      return;
+    }
 
-    const url = isEditMode ? `/api/users/${currentUserId}` : "/api/users";
-    const method = isEditMode ? "PATCH" : "POST";
+    try {
+      // ✅ 2. Construct FormData for File Upload
+      const formDataPayload = new FormData();
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      // Append standard text fields
+      formDataPayload.append("name", formData.name);
+      formDataPayload.append("email", formData.email);
+      formDataPayload.append("phone", formData.phone || "");
+      formDataPayload.append("role", formData.role);
+      formDataPayload.append("status", formData.status);
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Operation failed");
+      // Only append password if it was entered
+      if (formData.password) {
+        formDataPayload.append("password", formData.password);
+      }
 
-    // --- Success Logic ---
-    if (initialData || createdUserId) {
-      // ✅ EDIT MODE SUCCESS: Do not close, show Updated Alert
-      toast.success("User updated successfully!");
+      // Append Arrays (FormData requires strings, so we JSON.stringify arrays)
+      formDataPayload.append("additionalPermissions", JSON.stringify(additionalPerms));
+      formDataPayload.append("excludedPermissions", JSON.stringify(excludedPerms));
+
+      // ✅ 3. Append the File (if one was selected)
+      if (profileImage) {
+        formDataPayload.append("profilePicture", profileImage);
+      }
+
+      // Determine URL and Method
+      const url = isEditMode ? `/api/users/${currentUserId}` : "/api/users";
       
-onSuccess?.();
-  
-      
-      setAlertConfig({
-        title: "User Updated Successfully",
-        message: "Your changes have been saved."
+      // Note: Ensure your backend PATCH route handles FormData (req.formData()) just like POST does.
+      const method = isEditMode ? "PATCH" : "POST"; 
+
+      const res = await fetch(url, {
+        method,
+        // ❌ IMPORTANT: Do NOT set "Content-Type": "application/json" manually.
+        // The browser automatically sets the correct Multipart Boundary for FormData.
+        body: formDataPayload,
       });
 
-    } else {
-      // ✅ CREATE MODE SUCCESS: Show Created Alert
-      setCreatedUserId(data.userId); 
-      setAlertConfig({
-        title: "User Created Successfully",
-        message: "You can now edit permissions below."
-      });
-      setActiveTab("roles");         
-      
-    }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Operation failed");
 
-    if (data.roleId) {
+      // --- Success Logic ---
+      if (initialData || createdUserId) {
+        toast.success("User updated successfully!");
+        onSuccess?.();
+        setAlertConfig({
+          title: "User Updated Successfully",
+          message: "Your changes have been saved."
+        });
+      } else {
+        setCreatedUserId(data.userId); 
+        setAlertConfig({
+          title: "User Created Successfully",
+          message: "You can now edit permissions below."
+        });
+        setActiveTab("roles");         
+      }
+
+      if (data.roleId) {
         setFormData(prev => ({ ...prev, role: data.roleId }));
         const assignedRole = rolesList.find(r => r._id === data.roleId);
         if (assignedRole) {
@@ -397,13 +422,13 @@ onSuccess?.();
         }
       }
 
-  } catch (error: any) {
-    console.error(error);
-    toast.error(error.message || "Something went wrong");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const DetailsTab = (
     <UserDetailsForm 
@@ -412,12 +437,14 @@ onSuccess?.();
       isEditMode={isEditMode}
       onChange={handleChange}
       onStatusChange={(val) => setFormData(prev => ({...prev, status: val}))}
+      imagePreview={imagePreview}
+      onImageChange={handleImageChange}
     />
   );
 
   const RolesTab = (
-    <div className="space-y-8">
-      <RoleComponentCard title="Select Role">
+    <div className="">
+      <RoleComponentCard title="">
          <RoleSelectionList 
             rolesList={rolesList} 
             selectedRoleId={formData.role} 

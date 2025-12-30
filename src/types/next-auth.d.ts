@@ -9,6 +9,7 @@ declare module "next-auth" {
     fullName: string;
     role: string;
     permissions: string[];
+    profilePicture?: string | null; // ✅ Add this
   }
 
   interface Session {
@@ -18,6 +19,7 @@ declare module "next-auth" {
       fullName: string;
       role: string;
       permissions: string[];
+      profilePicture?: string | null;
     };
   }
 }
@@ -30,5 +32,6 @@ declare module "next-auth/jwt" {
     fullName: string;
     role: string;
     permissions: string[];
+    profilePicture?: string | null;
   }
 }

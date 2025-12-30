@@ -1,22 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select"; // Added Select Import
+import Select from "@/components/form/Select";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { useEffect, useState } from "react"; // Added useEffect
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic"; // ✅ Import Hook
+
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
 }
 
-// Define interface for API error details
 interface APIErrorDetail {
   field: string;
   message: string;
@@ -25,30 +27,12 @@ interface APIErrorDetail {
 export default function AddDepartureReportButton({
   onSuccess,
 }: AddDepartureReportButtonProps) {
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const { isOpen, openModal, closeModal } = useModal();
-   const { can, isReady } = useAuthorization();
+  const { can, isReady } = useAuthorization();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ***** NEW: State for Vessels List *****
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
-
-  // ***** NEW: Fetch Vessels from DB *****
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        const res = await fetch("/api/vessels");
-        if (res.ok) {
-          const data = await res.json();
-          setVessels(data);
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
-    }
-    fetchVessels();
-  }, []);
-
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -56,43 +40,71 @@ export default function AddDepartureReportButton({
       .slice(0, 16);
   };
 
-  // ***** CHANGE: Initial state vesselName set to "AN16" *****
+  // ✅ 1. STATE MUST BE DEFINED FIRST
   const [formData, setFormData] = useState({
-    vesselName: "AN16",
+    vesselName: "", // Changed from "AN16" to empty to force selection
+    vesselId: "",   // 👈 Crucial for the hook
     voyageId: "",
     portName: "",
-    lastPort: "", // New Field
+    lastPort: "",
     eventTime: "",
     reportDate: getCurrentDateTime(),
-    distanceToNextPortNm: "", // Renamed
+    distanceToNextPortNm: "",
     etaNextPort: "",
     robVlsfo: "",
     robLsmgo: "",
-    bunkersReceivedVlsfo: "", // New Field
-    bunkersReceivedLsmgo: "", // New Field
-    cargoQtyLoadedMt: "", // New Field
-    cargoQtyUnloadedMt: "", // New Field
+    bunkersReceivedVlsfo: "",
+    bunkersReceivedLsmgo: "",
+    cargoQtyLoadedMt: "",
+    cargoQtyUnloadedMt: "",
     cargoSummary: "",
     remarks: "",
   });
 
+  // ✅ 2. CALL HOOK (Now it can see formData)
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    formData.vesselId,
+    formData.reportDate
+  );
+
+  // ✅ 3. SYNC LOGIC (Auto-fill Voyage)
+  useEffect(() => {
+    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageId) {
+      if (suggestedVoyageNo) {
+        
+      }
+      setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
+    }
+  }, [suggestedVoyageNo]);
+
+  // Handle standard input changes
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error for the field being edited
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // ***** NEW: Specific handler for the custom Select component *****
-  const handleVesselChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, vesselName: value }));
+  // ✅ 4. VESSEL SELECTION HANDLER
+  const handleVesselChange = (selectedName: string) => {
+    // Find the ID based on the name from the HOOK's vessel list
+    const selectedVessel = vessels.find((v) => v.name === selectedName);
+
+    setFormData((prev) => ({
+      ...prev,
+      vesselName: selectedName,
+      vesselId: selectedVessel?._id || "", // 👈 Save ID to trigger hook
+    }));
+
     if (errors.vesselName) {
       setErrors((prev) => ({ ...prev, vesselName: "" }));
+    }
+  };
+  const handleVoyageChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, voyageId: val }));
+    if (errors.voyageId) {
+      setErrors((prev) => ({ ...prev, voyageId: "" }));
     }
   };
 
@@ -100,9 +112,9 @@ export default function AddDepartureReportButton({
     setErrors({});
     setIsSubmitting(false);
 
-    // ***** CHANGE: Reset logic reverts to "AN16" *****
     setFormData({
-      vesselName: "AN16",
+      vesselName: "",
+      vesselId: "",
       voyageId: "",
       portName: "",
       lastPort: "",
@@ -124,66 +136,35 @@ export default function AddDepartureReportButton({
   };
 
   const handleSubmit = async () => {
-    setErrors({}); // clear old errors
+    setErrors({});
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
+      // Clean payload
+      const payload = {
+        vesselId: formData.vesselId,
+        vesselName: formData.vesselName,
+        voyageId: formData.voyageId,
+        portName: formData.portName,
+        lastPort: formData.lastPort,
+        eventTime: formData.eventTime ? `${formData.eventTime}+05:30` : undefined,
+        reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : null,
+        distance_to_next_port_nm: formData.distanceToNextPortNm === "" ? undefined : Number(formData.distanceToNextPortNm),
+        etaNextPort: formData.etaNextPort ? `${formData.etaNextPort}+05:30` : null,
+        robVlsfo: formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
+        robLsmgo: formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
+        bunkers_received_vlsfo_mt: formData.bunkersReceivedVlsfo === "" ? undefined : Number(formData.bunkersReceivedVlsfo),
+        bunkers_received_lsmgo_mt: formData.bunkersReceivedLsmgo === "" ? undefined : Number(formData.bunkersReceivedLsmgo),
+        cargo_qty_loaded_mt: formData.cargoQtyLoadedMt === "" ? undefined : Number(formData.cargoQtyLoadedMt),
+        cargo_qty_unloaded_mt: formData.cargoQtyUnloadedMt === "" ? undefined : Number(formData.cargoQtyUnloadedMt),
+        cargoSummary: formData.cargoSummary,
+        remarks: formData.remarks,
+      };
 
       const res = await fetch("/api/departure-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vesselName: formData.vesselName,
-          voyageId: formData.voyageId,
-          portName: formData.portName,
-          lastPort: formData.lastPort,
-
-          // ***** CHANGE: Append +05:30 to tell server this is IST *****
-          eventTime: formData.eventTime ? `${formData.eventTime}+05:30` : undefined,
-
-          // ***** CHANGE: Append +05:30 to tell server this is IST *****
-          reportDate: formData.reportDate
-            ? `${formData.reportDate}+05:30`
-            : null,
-
-          distance_to_next_port_nm:
-            formData.distanceToNextPortNm === ""
-              ? undefined
-              : Number(formData.distanceToNextPortNm),
-
-          // ***** CHANGE: Append +05:30 to tell server this is IST *****
-          etaNextPort: formData.etaNextPort
-            ? `${formData.etaNextPort}+05:30`
-            : null,
-
-          robVlsfo:
-            formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
-          robLsmgo:
-            formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
-
-          bunkers_received_vlsfo_mt:
-      formData.bunkersReceivedVlsfo === ""
-        ? undefined
-        : Number(formData.bunkersReceivedVlsfo),
-        
-    bunkers_received_lsmgo_mt:
-      formData.bunkersReceivedLsmgo === ""
-        ? undefined
-        : Number(formData.bunkersReceivedLsmgo),
-
-          // We pass undefined if empty so Joi can trigger the .or() check
-          cargo_qty_loaded_mt:
-            formData.cargoQtyLoadedMt === ""
-              ? undefined
-              : Number(formData.cargoQtyLoadedMt),
-          cargo_qty_unloaded_mt:
-            formData.cargoQtyUnloadedMt === ""
-              ? undefined
-              : Number(formData.cargoQtyUnloadedMt),
-
-          cargoSummary: formData.cargoSummary,
-          remarks: formData.remarks,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -192,17 +173,14 @@ export default function AddDepartureReportButton({
         if (data?.details) {
           const fieldErrors: Record<string, string> = {};
           data.details.forEach((e: APIErrorDetail) => {
-            // Map empty field path (root error from .or()) to "object"
             const key = e.field === "" ? "object" : e.field;
             fieldErrors[key] = e.message;
           });
           setErrors(fieldErrors);
-
           toast.error("Please fix the highlighted errors");
         } else {
           toast.error(data?.error || "Failed to submit departure report");
         }
-
         return;
       }
       toast.success("Departure report submitted successfully");
@@ -215,17 +193,61 @@ export default function AddDepartureReportButton({
       setIsSubmitting(false);
     }
   };
+   
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // ❌ WAS: if (!form.vesselId)
+      // ✅ FIX: Use formData
+      if (!formData.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === formData.vesselId) ||
+              (v.vesselName && v.vesselName === formData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === formData.voyageId; // ✅ Fixed property name
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageId]);
+
 
   const canCreate = isReady && can("departure.create");
 
-
-  if (!isReady) {
-    return null; // or loader
-  }
-
-  if (!canCreate) {
-    return null;
-  }
+  if (!isReady || !canCreate) return null;
   return (
     <>
       {/* OPEN MODAL BUTTON */}
@@ -301,20 +323,30 @@ export default function AddDepartureReportButton({
                   )}
                 </div>
 
-                <div>
+                <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    type="text"
-                    name="voyageId"
-                    value={formData.voyageId}
-                    onChange={handleChange}
-                    className={errors.voyageId ? "border-red-500" : ""}
+                  <Select
+                 
+                    options={voyageList}
+                    placeholder={
+                      !formData.vesselId
+                        ? ""
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Select Voyage"
+                    }
+                   value={formData.voyageId}
+                    onChange={handleVoyageChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
                   />
-                  {errors.voyageId && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.voyageId}
+                  
+                 
+
+                  {errors.voyageNo && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.voyageNo}
                     </p>
                   )}
                 </div>

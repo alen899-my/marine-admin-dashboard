@@ -1,40 +1,41 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IReportOperational extends Document {
-  voyageId: string;
+  
+  voyageId: mongoose.Types.ObjectId; 
+  vesselId: mongoose.Types.ObjectId; // Added for consistency
+
+
+  voyageNo: string; 
+  vesselName: string;
+
   eventType: "departure" | "arrival" | "nor";
-
-  vesselName?: string;
   portName?: string;
-  lastPort?: string; // NEW FIELD
-
-  // Generic root event time (kept for sorting compatibility)
+  lastPort?: string;
   eventTime?: Date;
-
-  // NEW FIELD
   reportDate?: Date;
 
   navigation?: {
-    distanceToGo?: number; // Kept for compatibility
-    distanceToNextPortNm?: number; // UPDATED FIELD
+    distanceToGo?: number; 
+    distanceToNextPortNm?: number; 
     etaNextPort?: Date;
   };
 
   departureStats?: {
     robVlsfo?: number;
     robLsmgo?: number;
-    bunkersReceivedVlsfo?: number; // NEW FIELD
-    bunkersReceivedLsmgo?: number; // NEW FIELD
-    cargoQtyLoadedMt?: number; // NEW FIELD
-    cargoQtyUnloadedMt?: number; // NEW FIELD
+    bunkersReceivedVlsfo?: number;
+    bunkersReceivedLsmgo?: number;
+    cargoQtyLoadedMt?: number;
+    cargoQtyUnloadedMt?: number;
     cargoSummary?: string;
   };
 
   arrivalStats?: {
     robVlsfo?: number;
     robLsmgo?: number;
-    arrivalTime?: Date; // Added to store actual arrival time
-    arrivalCargoQtyMt?: number; // NEW: Added for cargo on board at arrival
+    arrivalTime?: Date;
+    arrivalCargoQtyMt?: number;
   };
 
   norDetails?: {
@@ -42,57 +43,68 @@ export interface IReportOperational extends Document {
     documentUrl?: string;
     etaPort?: Date;
     tenderTime?: Date;
-    norTime?: Date; // NEW: Explicit field for NOR Time
+    norTime?: Date;
   };
 
   remarks?: string;
-
   status: "active" | "inactive";
 }
 
 const ReportOperationalSchema = new Schema<IReportOperational>(
   {
+    // ✅ LINK TO VOYAGE COLLECTION
     voyageId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Voyage",
       required: true,
       index: true,
     },
+
+    // ✅ LINK TO VESSEL COLLECTION
+    vesselId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vessel",
+      required: true,
+      index: true,
+    },
+
+    // ✅ SNAPSHOT STRINGS
+    voyageNo: { type: String, required: true }, // "OP-1225-IN"
+    vesselName: { type: String, required: true },
+
     eventType: {
       type: String,
       enum: ["departure", "arrival", "nor"],
       required: true,
     },
 
-    vesselName: String,
     portName: String,
-    lastPort: String, // NEW FIELD
+    lastPort: String, 
     eventTime: Date,
 
-    reportDate: {
-      type: Date,
-    },
+    reportDate: { type: Date },
 
     navigation: {
       distanceToGo: Number,
-      distanceToNextPortNm: Number, // UPDATED FIELD
+      distanceToNextPortNm: Number, 
       etaNextPort: Date,
     },
 
     departureStats: {
       robVlsfo: Number,
       robLsmgo: Number,
-      bunkersReceivedVlsfo: { type: Number, default: 0 }, // NEW FIELD
-      bunkersReceivedLsmgo: { type: Number, default: 0 }, // NEW FIELD
-      cargoQtyLoadedMt: { type: Number, default: 0 }, // NEW FIELD
-      cargoQtyUnloadedMt: { type: Number, default: 0 }, // NEW FIELD
+      bunkersReceivedVlsfo: { type: Number, default: 0 },
+      bunkersReceivedLsmgo: { type: Number, default: 0 },
+      cargoQtyLoadedMt: { type: Number, default: 0 },
+      cargoQtyUnloadedMt: { type: Number, default: 0 },
       cargoSummary: String,
     },
 
     arrivalStats: {
       robVlsfo: Number,
       robLsmgo: Number,
-      arrivalTime: Date, // NEW
-      arrivalCargoQtyMt: { type: Number, default: 0 }, // NEW
+      arrivalTime: Date,
+      arrivalCargoQtyMt: { type: Number, default: 0 },
     },
 
     norDetails: {
@@ -100,7 +112,7 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
       documentUrl: String,
       etaPort: Date,
       tenderTime: Date,
-      norTime: Date, // NEW
+      norTime: Date,
     },
 
     remarks: String,
