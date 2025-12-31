@@ -5,6 +5,7 @@ import { dbConnect } from "@/lib/db";
 import Document from "@/models/Document";
 import { put, del } from "@vercel/blob";
 import { existsSync } from "fs";
+import Voyage from "@/models/Voyage";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
@@ -38,6 +39,8 @@ interface IUpdateData {
   voyageNo: string;
   portName: string;
   portType: string;
+   vesselId?: string; 
+    voyageId?: string;
   reportDate?: Date;
   documentType: string;
   documentDate: Date;
@@ -72,7 +75,7 @@ export async function PATCH(
         { status: 404 }
       );
     }
-
+    const vesselId = formData.get("vesselId") as string;
     // Extract Text Fields
     const reportDate = formData.get("reportDate") as string;
     const vesselName = formData.get("vesselName") as string;
@@ -83,6 +86,8 @@ export async function PATCH(
     const documentDate = formData.get("documentDate") as string;
     const status = formData.get("status") as string;
     const remarks = formData.get("remarks") as string;
+    // 🔥 IMPORTANT: Update vessel relation
+
 
     // Extract File
     const file = formData.get("file") as File | null;
@@ -99,6 +104,21 @@ export async function PATCH(
       status,
       remarks,
     };
+    if (vesselId) {
+  updateData.vesselId = vesselId;
+}
+
+// 🔥 CRITICAL: Re-resolve voyageId based on vessel + voyageNo
+if (vesselId && voyageNo) {
+  const voyage = await Voyage.findOne({
+    vesselId,
+    voyageNo,
+  });
+
+  if (voyage) {
+    updateData.voyageId = voyage._id;
+  }
+}
 
     // If new file uploaded, process it
     if (file) {

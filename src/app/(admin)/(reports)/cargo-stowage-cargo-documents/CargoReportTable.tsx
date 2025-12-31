@@ -386,7 +386,7 @@ const getVesselName = (r: ICargoReport | null) => {
 
       const { data } = await res.json();
 
-      setReports((prev) => prev.map((r) => (r._id === data._id ? data : r)));
+     await fetchReports(currentPage);
 
       toast.success("Record updated successfully");
       setOpenEdit(false);
@@ -414,7 +414,7 @@ const getVesselName = (r: ICargoReport | null) => {
 
       if (!res.ok) throw new Error("Delete failed");
 
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+    await fetchReports(currentPage);
       toast.success("Record deleted");
     } catch (err) {
       // Fix unused err by removing it or logging it
@@ -757,10 +757,11 @@ const getVesselName = (r: ICargoReport | null) => {
       // ✅ 4. UPDATE ID ON CHANGE
       const selected = vessels.find(v => v.name === val);
       setEditData({ 
-          ...editData, 
-          vesselName: val, 
-          vesselId: selected?._id || "" // Update ID to trigger hook lookup
-      });
+  ...editData, 
+  vesselName: val, 
+  vesselId: selected?._id || "",
+  voyageNo: ""   // 🔥 RESET voyage when vessel changes
+});
     }}
   />
                 </div>

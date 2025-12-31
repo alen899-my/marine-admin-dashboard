@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import SearchableSelect from "@/components/form/SearchableSelect";
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -639,22 +640,27 @@ export default function ArrivalReportTable({
 
                             <div>
                   <Label>Vessel Name</Label>
-                  <Select
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
-                    value={editData.vesselName}
-                    onChange={(val) => {
-                      // ✅ 4. UPDATE ID ON CHANGE
-                      const selected = vessels.find(v => v.name === val);
-                      setEditData({ 
-                          ...editData, 
-                          vesselName: val, 
-                          vesselId: selected?._id || "" // Update ID to trigger hook lookup
-                      });
-                    }}
-                  />
+                 <SearchableSelect
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  placeholder="Select or search Vessel"
+  value={editData.vesselName}
+  onChange={(selectedName) => {
+    const selectedVessel = vessels.find(
+      (v) => v.name === selectedName
+    );
+
+    setEditData({
+      ...editData,
+      vesselName: selectedName,
+      vesselId: selectedVessel?._id || "",
+      voyageId: "", // 🔥 RESET voyage when vessel changes
+    });
+  }}
+/>
+
                 </div>
 
                <div className="relative"><Label>Voyage No / ID</Label><Select options={voyageList} placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"} value={editData.voyageId} onChange={(val) => setEditData({ ...editData, voyageId: val })} /></div>
