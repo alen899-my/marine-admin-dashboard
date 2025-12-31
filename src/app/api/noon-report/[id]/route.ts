@@ -18,8 +18,8 @@ export async function PATCH(
     const body = await req.json();
 
     // 1. Prepare Snapshot Data
-    // Frontend sends 'voyageId' as the string (e.g., "V-001") inside the edit payload
-    const voyageNoString = body.voyageId || body.voyageNo; 
+    // Frontend sends 'voyageId' as a string (voyageNo) in the edit state
+    const voyageNoString = body.voyageNo || body.voyageId; 
     const vesselId = body.vesselId;
 
     // 2. Lookup the correct Voyage ObjectId (Linkage)
@@ -35,21 +35,22 @@ export async function PATCH(
       }
     }
 
-    // 3. Update
+    // 3. Update with Population
+    // .populate ensures the frontend receives the objects needed for display helpers
     const updated = await ReportDaily.findByIdAndUpdate(
       id,
       {
         // ✅ Relation Fields
         vesselId: vesselId, 
-        voyageId: voyageObjectId, // The ObjectId reference
+        voyageId: voyageObjectId, 
 
         // ✅ Snapshot Fields
         vesselName: body.vesselName,
-        voyageNo: voyageNoString, // The String (e.g., "V-001")
+        voyageNo: voyageNoString, 
 
         type: body.type,
         status: body.status,
-        reportDate: new Date(body.reportDate),
+        reportDate: body.reportDate ? new Date(body.reportDate) : undefined,
 
         position: {
           lat: body.position?.lat,
@@ -78,12 +79,15 @@ export async function PATCH(
         remarks: body.remarks,
       },
       { new: true, runValidators: true }
-    );
+    )
+    .populate("vesselId", "name")
+    .populate("voyageId", "voyageNo");
 
     if (!updated) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
+    // Return the populated report so the state update in React is seamless
     return NextResponse.json({ success: true, report: updated });
   } catch (error) {
     console.error("UPDATE ERROR →", error);

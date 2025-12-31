@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
+import Voyage from "@/models/Voyage"; // ✅ Import Voyage
+import mongoose from "mongoose"; // ✅ Import Mongoose
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put } from "@vercel/blob";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 
-// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+// ... (keep parseDateString helper exactly as is) ...
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
-
-  // Check if string matches dd/mm/yyyy format (simple check)
   if (typeof dateStr === "string" && dateStr.includes("/")) {
     const parts = dateStr.split("/");
     if (parts.length === 3) {
       const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
+      const month = parseInt(parts[1], 10) - 1;
       const year = parseInt(parts[2], 10);
-      
       const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
+      if (!isNaN(date.getTime())) return date;
     }
   }
-
-  // Fallback: Try standard parsing (for ISO strings or if Joi already converted it)
   const fallbackDate = new Date(dateStr);
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
@@ -34,13 +29,19 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 export async function POST(req: Request) {
   try {
     const authz = await authorizeRequest("nor.create");
-        if (!authz.ok) return authz.response;
+    if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const formData = await req.formData();
 
     // Extract Fields
+    // ✅ 1. Get vesselId from form data
+    const vesselIdString = formData.get("vesselId") as string;
     const vesselName = formData.get("vesselName") as string;
-    const voyageId = formData.get("voyageNo") as string;
+    
+    // This is the string (e.g. "OP-1225") from the frontend dropdown
+    const voyageNoString = formData.get("voyageNo") as string; 
+    
     const portName = formData.get("portName") as string;
     const remarks = formData.get("remarks") as string;
     const reportDate = formData.get("reportDate") as string;
@@ -50,62 +51,74 @@ export async function POST(req: Request) {
     const norTenderTime = formData.get("norTenderTime") as string;
     const etaPort = formData.get("etaPort") as string;
 
-    // Handle File
+    // Handle File (Keep your existing file upload logic)
     const file = formData.get("norDocument") as File | null;
     let finalDocumentUrl = "";
 
     if (file && file.size > 0) {
-      // 500KB Validation
       if (file.size > 500 * 1024) {
-        return NextResponse.json(
-          { error: "File size exceeds the 500 KB limit." },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "File size exceeds the 500 KB limit." }, { status: 400 });
       }
-
       const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
-      // --- CONDITIONAL UPLOAD LOGIC ---
       if (process.env.NODE_ENV === "development") {
-        // --- LOCAL STORAGE (Development) ---
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/nor");
-
-        if (!existsSync(uploadDir)) {
-          await mkdir(uploadDir, { recursive: true });
-        }
-
+        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
         await writeFile(path.join(uploadDir, filename), buffer);
         finalDocumentUrl = `/uploads/nor/${filename}`;
       } else {
-        // --- VERCEL BLOB (Production) ---
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
+        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
         finalDocumentUrl = blob.url;
       }
     }
 
-    // ✅ PARSE DATE safely here
     const parsedReportDate = parseDateString(reportDate);
-
     if (!parsedReportDate) {
-        return NextResponse.json(
-            { error: "Invalid Date Format. Please use dd/mm/yyyy" }, 
-            { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid Date Format." }, { status: 400 });
+    }
+
+    // ==========================================
+    // ✅ 2. VOYAGE ID LOOKUP LOGIC
+    // ==========================================
+    let voyageObjectId = null;
+
+    if (vesselIdString && voyageNoString) {
+       const vId = new mongoose.Types.ObjectId(vesselIdString);
+       
+       // Find the Voyage Document to get its _id
+       const foundVoyage = await Voyage.findOne({ 
+          vesselId: vId, 
+          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
+       }).select("_id");
+       
+       if (foundVoyage) {
+          voyageObjectId = foundVoyage._id;
+       } else {
+          return NextResponse.json(
+            { error: `Voyage ${voyageNoString} not found for this vessel.` },
+            { status: 404 }
+          );
+       }
+    } else {
+       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
     }
 
     // Create Record
     const newRecord = await ReportOperational.create({
-      voyageId,
       eventType: "nor",
+      status: "active",
+
+      // ✅ IDs
+      vesselId: vesselIdString,
+      voyageId: voyageObjectId, 
+
+      // ✅ Snapshots
       vesselName,
+      voyageNo: voyageNoString, // Save string for snapshot
+
       portName,
       eventTime: norTenderTime ? new Date(norTenderTime) : new Date(),
-      
-      // ✅ Use the parsed date object
       reportDate: parsedReportDate,
       
       norDetails: {
@@ -116,8 +129,6 @@ export async function POST(req: Request) {
       },
 
       remarks,
-      status: "active",
-
       navigation: {},
       departureStats: {},
       arrivalStats: {},
@@ -128,14 +139,9 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     console.error("Error saving NOR:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json(
-      { error: "Failed to save record", details: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ error: "Failed to save record", details: errorMessage }, { status: 500 });
   }
 }
 
@@ -149,65 +155,51 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    // 1. Get Search & Status Params
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-    
-    // ✅ Date Filter Addition: Extract Dates
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // 2. Build Query (Base: NOR)
-    // Fixed: Use Record<string, unknown> instead of 'any' to satisfy lint
     const query: Record<string, unknown> = { eventType: "nor" };
 
-    // 3. Apply Status Filter
     if (status !== "all") {
       query.status = status;
     }
 
-    // 4. Apply Search Filter
+    // 1. ✅ FIX SEARCH LOGIC
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageId: { $regex: search, $options: "i" } },
+        // Search 'voyageNo' (string), NOT 'voyageId' (ObjectId)
+        { voyageNo: { $regex: search, $options: "i" } }, 
         { portName: { $regex: search, $options: "i" } },
       ];
     }
     
-    // ✅ Date Filter Addition: Apply Date Range Query
     if (startDate || endDate) {
-      // Define a typed object for the date query
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
-
       if (startDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedStart = parseDateString(startDate);
-        if (parsedStart) {
-          dateQuery.$gte = parsedStart;
-        }
+        if (parsedStart) dateQuery.$gte = parsedStart;
       }
-
       if (endDate) {
-        // ✅ Parse dd/mm/yyyy
         const parsedEnd = parseDateString(endDate);
         if (parsedEnd) {
-          // End of the selected day (23:59:59.999)
           parsedEnd.setHours(23, 59, 59, 999);
           dateQuery.$lte = parsedEnd;
         }
       }
-
-      // Assign the typed object to the query
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
     }
 
-    // 5. Fetch Data
     const total = await ReportOperational.countDocuments(query);
 
+    // 2. ✅ POPULATE VOYAGE ID
     const reports = await ReportOperational.find(query)
+      .populate("voyageId", "voyageNo") 
+      .populate("vesselId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

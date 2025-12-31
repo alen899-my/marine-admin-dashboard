@@ -105,6 +105,7 @@ export async function GET(req: NextRequest) {
 
     const reports = await ReportOperational.find(query)
       .populate("voyageId", "voyageNo") 
+      .populate("vesselId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

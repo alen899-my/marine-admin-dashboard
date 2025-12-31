@@ -33,14 +33,15 @@ interface IDepartureStats {
 interface IDepartureReport {
   _id: string;
   vesselName: string;
-  voyageId?: string | { voyageNo: string; _id: string }; 
+  // ✅ FIX: Allow Populated Objects
+  vesselId: string | { _id: string; name: string } | null;
+  voyageId: string | { voyageNo: string; _id: string } | null;
   voyageNo?: string;
+  
   portName: string;
   lastPort: string;
-  
   eventTime: string;
   reportDate: string;
-  vesselId?: string;
   status: string;
   remarks: string;
   navigation?: INavigation;
@@ -104,21 +105,21 @@ export default function DepartureReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
-  const getVoyageDisplay = (r: IDepartureReport | null) => {
+ const getVoyageDisplay = (r: IDepartureReport | null) => {
     if (!r) return "-";
-    
-    // 1. Check if it's a populated object (from backend .populate())
-    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
+    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
       return r.voyageId.voyageNo;
     }
-    
-    // 2. Check if it's saved as a root string
-    if (r.voyageNo) return r.voyageNo;
-    
-    // 3. Fallback to voyageId if it's a simple string
-    if (typeof r.voyageId === "string") return r.voyageId;
-    
-    return "-";
+    return r.voyageNo || "-";
+  };
+
+  // ✅ NEW HELPER: Get Vessel Name
+  const getVesselName = (r: IDepartureReport | null) => {
+    if (!r) return "-";
+    if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
+      return r.vesselId.name;
+    }
+    return r.vesselName || "-";
   };
   /* ================= TABLE COLUMNS ================= */
   const columns = [
@@ -132,11 +133,12 @@ export default function DepartureReportTable({
     render: (r: IDepartureReport) => (
       <div className="flex flex-col">
         <span className="text-xs font-semibold text-gray-900 dark:text-white">
-          {r?.vesselName ?? "-"}
-        </span>
-       <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            {/* ✅ SHOW READABLE ID */}
-           ID: {getVoyageDisplay(r)}
+            {/* ✅ Use Helper */}
+            {getVesselName(r)}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            {/* ✅ Use Helper */}
+            ID: {getVoyageDisplay(r)}
           </span>
       </div>
     ),
@@ -268,13 +270,13 @@ async function handleUpdate() {
       const payload = {
         // ✅ FIX 3: Include vesselId. 
         // The backend needs this to lookup the correct Voyage ObjectId.
-        vesselId: editData.vesselId,
+        vesselId: typeof editData.vesselId === 'object' ? editData.vesselId?._id : editData.vesselId,
         
         // This sends the readable string (e.g., "OP-1225") from the dropdown
-        voyageId: editData.voyageId, 
+        voyageId: editData.voyageId, // This is the voyageNo string from dropdown
+      vesselName: editData.vesselName, 
         voyageNo: editData.voyageId, // Send explicitly for clarity if needed
 
-        vesselName: editData.vesselName,
         portName: editData.portName,
         lastPort: editData.lastPort,
         eventTime: editData.eventTime ? `${editData.eventTime}+05:30` : null,
@@ -323,13 +325,17 @@ async function handleUpdate() {
       setSaving(false);
     }
   }
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId, 
-    editData?.reportDate
-  );
+ const vesselIdForLookup = typeof editData?.vesselId === "object" 
+  ? editData?.vesselId?._id 
+  : editData?.vesselId;
+
+const { vessels, suggestedVoyageNo } = useVoyageLogic(
+  vesselIdForLookup || undefined, 
+  editData?.reportDate
+);
     useEffect(() => {
       async function fetchAndFilterVoyages() {
-        // Stop if no vessel is selected (in edit data)
+      
         if (!editData?.vesselId) {
           setVoyageList([]);
           return;
@@ -418,19 +424,15 @@ async function handleUpdate() {
     // Try to find vessel in the list as fallback
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     const voyageIdString = getVoyageDisplay(report);
+    const vesselIdStr = typeof report.vesselId === 'object' 
+    ? report.vesselId?._id 
+    : report.vesselId;
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
-      
-      // ✅ FIX 1: Prioritize the ID already in the report. 
-      // This ensures the "Voyage" dropdown options load immediately.
-      vesselId: report.vesselId || matchedVessel?._id || "", 
-
-      // ✅ FIX 2: Bind the dropdown to the readable string (voyageNo).
-      // Your dropdown options are Strings (e.g., "OP-1225"), so the value must match.
-      voyageId: voyageIdString, // Bind readable ID
-      voyageNo: voyageIdString, // Bind readable ID
-
+      vesselId: vesselIdStr || matchedVessel?._id || "",
+      voyageId: voyageIdString, 
+      voyageNo: voyageIdString,
       portName: report.portName ?? "",
       lastPort: report.lastPort ?? "",
       eventTime: formatForInput(report.eventTime),
@@ -535,7 +537,7 @@ async function handleUpdate() {
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Vessel Name</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.vesselName ?? "-"}
+                  {getVesselName(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">

@@ -24,16 +24,29 @@ interface ICargoReportFile {
 interface ICargoReport {
   _id: string;
   vesselName: string;
+  vesselId: string | { _id: string; name: string }; // Allow populated
   portType: string;
   portName: string;
   documentDate: string;
-
   reportDate: string;
   status: string;
-  voyageNo: string;
+ voyageNo : string; // This comes from schema (string)
+  voyageId: string | { _id: string; voyageNo: string }; // Link
   documentType: string;
   remarks: string;
   file?: ICargoReportFile;
+}
+interface IEditData {
+  status: string;
+  vesselName: string;
+  vesselId: string;
+  voyageNo: string; // We use this for the dropdown value
+  reportDate: string;
+  portName: string;
+  portType: string;
+  documentType: string;
+  documentDate: string;
+  remarks: string;
 }
 
 interface CargoReportTableProps {
@@ -93,7 +106,22 @@ export default function CargoReportTable({
   const { can, isReady } = useAuthorization();
     const canEdit = can("departure.edit");
     const canDelete = can("departure.delete");
+const getVesselName = (r: ICargoReport | null) => {
+    if (!r || !r.vesselId) return "-";
+    if (typeof r.vesselId === "object" && "name" in r.vesselId) {
+      return r.vesselId.name;
+    }
+    return "-";
+  };
 
+  // ✅ FIX: Handle null report and null voyageId safely
+  const getVoyageNo = (r: ICargoReport | null) => {
+    if (!r || !r.voyageId) return "-";
+    if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+      return r.voyageId.voyageNo;
+    }
+    return "-";
+  };
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -199,11 +227,13 @@ export default function CargoReportTable({
       header: "Vessel & Voyage ID",
       render: (r: ICargoReport) => (
         <div className="flex flex-col">
-          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {r?.vesselName ?? "-"}
+         <span className="text-xs font-semibold text-gray-900 dark:text-white">
+            {/* Dynamic Vessel Name */}
+            {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            ID: {r?.voyageNo ?? "-"}
+            {/* Dynamic Voyage No */}
+            ID: {getVoyageNo(r)}
           </span>
         </div>
       ),
@@ -328,13 +358,12 @@ export default function CargoReportTable({
       const formData = new FormData();
       formData.append("status", editData.status);
       formData.append("vesselName", editData.vesselName);
+      formData.append("vesselId", editData.vesselId || "");
+      
+      // ✅ FIX: Send voyageNo as string
+      formData.append("voyageNo", editData.voyageNo); 
 
-      formData.append(
-        "reportDate",
-        editData.reportDate ? `${editData.reportDate}+05:30` : ""
-      );
-
-      formData.append("voyageNo", editData.voyageNo);
+      formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
       formData.append("portName", editData.portName);
       formData.append("portType", editData.portType);
       formData.append("documentType", editData.documentType);
@@ -436,12 +465,14 @@ export default function CargoReportTable({
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
-    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
+   
+    const vesselIdStr = typeof report.vesselId === 'object' ? report.vesselId._id : report.vesselId;
+    const voyageIdStr = typeof report.voyageId === 'object' ? report.voyageId.voyageNo : ""; // Use Voyage No string for dropdown logic
     setEditData({
       status: report.status ?? "active",
-      vesselName: report.vesselName ?? "",
-      voyageNo: report.voyageNo ?? "",
-      vesselId: matchedVessel?._id || "",
+     vesselId: vesselIdStr,
+      voyageNo: voyageIdStr, 
+      vesselName: getVesselName(report),
       reportDate: formatForInput(report.reportDate),
       portName: report.portName ?? "",
       portType: report.portType ?? "load",
@@ -529,10 +560,10 @@ export default function CargoReportTable({
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">
-                {selectedReport.vesselName}
+               {getVesselName(selectedReport)}
               </span>
               <span>|</span>
-              <span>{selectedReport.voyageNo}</span>
+              <span>{getVoyageNo(selectedReport)}</span>
             </div>
           )
         }
@@ -549,13 +580,13 @@ export default function CargoReportTable({
         <div className="flex justify-between gap-4">
           <span className="text-gray-500 shrink-0">Vessel Name</span>
           <span className="font-medium text-right">
-            {selectedReport?.vesselName ?? "-"}
+            {getVesselName(selectedReport)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gray-500 shrink-0">Voyage No</span>
           <span className="font-medium text-right">
-            {selectedReport?.voyageNo ?? "-"}
+            {getVoyageNo(selectedReport)}
           </span>
         </div>
         <div className="flex justify-between gap-4">

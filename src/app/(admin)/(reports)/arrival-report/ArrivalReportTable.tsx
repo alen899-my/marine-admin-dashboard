@@ -28,8 +28,9 @@ interface NorDetails {
 interface ArrivalReport {
   _id: string;
   vesselName: string;
-  vesselId?: string;
-  voyageId: string | { voyageNo: string; _id: string };
+  // ✅ FIX: Allow Populated Object
+  vesselId: string | { _id: string; name: string } | null; 
+  voyageId: string | { voyageNo: string; _id: string } | null;
   voyageNo?: string;
   portName: string;
   eventTime: string;
@@ -37,18 +38,18 @@ interface ArrivalReport {
   status: "active" | "inactive";
   remarks?: string;
   arrivalStats?: ArrivalStats;
-  norDetails?: NorDetails; // NEW
+  norDetails?: NorDetails;
 }
 
-// Interface for the data structure used during editing
 interface EditFormData {
   vesselName: string;
-  voyageId: string | { voyageNo: string; _id: string };
+  // Use string for the form state (ID for logic, string for display)
+  voyageId: string; 
   portName: string;
   eventTime: string;
-  vesselId?: string;
-  norTime: string; // NEW
-  arrivalCargoQty: number | string; // NEW
+  vesselId: string;
+  norTime: string;
+  arrivalCargoQty: number | string;
   reportDate: string;
   status: string;
   remarks: string;
@@ -95,15 +96,19 @@ export default function ArrivalReportTable({
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   const getVoyageDisplay = (r: ArrivalReport | null) => {
     if (!r) return "-";
-    // 1. If it's a populated object, grab the name
-    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
+    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
       return r.voyageId.voyageNo;
     }
-    // 2. If we have a snapshot string
-    if (r.voyageNo) return r.voyageNo;
-    // 3. Fallback to simple string
-    if (typeof r.voyageId === "string") return r.voyageId;
-    return "-";
+    return r.voyageNo || "-";
+  };
+
+  // ✅ NEW HELPER: Get Vessel Name
+  const getVesselName = (r: ArrivalReport | null) => {
+    if (!r) return "-";
+    if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
+      return r.vesselId.name;
+    }
+    return r.vesselName || "-";
   };
   // Display Helper forced to IST
   const formatDate = (date?: string) => {
@@ -140,11 +145,13 @@ export default function ArrivalReportTable({
     render: (r: ArrivalReport) => (
       <div className="flex flex-col">
         <span className="text-xs font-semibold text-gray-900 dark:text-white">
-          {r?.vesselName ?? "-"}
-        </span>
-        <span className="text-xs text-gray-500 uppercase tracking-tighter">
-          ID: {getVoyageDisplay(r)}
-        </span>
+            {/* ✅ Use Helper */}
+            {getVesselName(r)}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            {/* ✅ Use Helper */}
+            ID: {getVoyageDisplay(r)}
+          </span>
       </div>
     ),
   },
@@ -500,13 +507,13 @@ export default function ArrivalReportTable({
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Vessel Name</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.vesselName ?? "-"}
+                 {getVesselName(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                 {getVoyageDisplay(selectedReport)}
+               {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -650,21 +657,7 @@ export default function ArrivalReportTable({
                   />
                 </div>
 
-               <div className="relative">
-                  <Label>Voyage No / ID</Label>
-                 <Select
-                    options={voyageList}
-                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
-                    // ✅ FIX 8: STRICT STRING EXTRACTION for Dropdown
-                    value={
-                        typeof editData.voyageId === "object"
-                        ? editData.voyageId?.voyageNo ?? ""
-                        : editData.voyageId ?? ""
-                    }
-                    onChange={(val) => setEditData({ ...editData, voyageId: val })}
-                  />
-                 
-                </div>
+               <div className="relative"><Label>Voyage No / ID</Label><Select options={voyageList} placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"} value={editData.voyageId} onChange={(val) => setEditData({ ...editData, voyageId: val })} /></div>
 
                 <InputField
                   label="Port Name"

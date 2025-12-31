@@ -61,7 +61,9 @@ export default function AddCargoButton({
     if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageNo) {
     
     
-      setFormData((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
+     if (suggestedVoyageNo) {
+  setFormData(prev => ({ ...prev, voyageNo: suggestedVoyageNo }));
+}
     }
   }, [suggestedVoyageNo]);
   useEffect(() => {
@@ -291,6 +293,7 @@ export default function AddCargoButton({
       // --- Payload Preparation ---
       const payload = new FormData();
       payload.append("vesselName", formData.vesselName);
+      payload.append("vesselId", formData.vesselId);
       payload.append("voyageNo", formData.voyageNo);
       payload.append(
         "reportDate",

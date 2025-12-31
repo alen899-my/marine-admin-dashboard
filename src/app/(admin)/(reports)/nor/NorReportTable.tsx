@@ -25,8 +25,13 @@ interface INorDetails {
 
 interface INorReport {
   _id: string;
-  vesselName: string;
-  voyageId: string;
+  // ✅ Allow Populated Objects
+  vesselId: string | { _id: string; name: string } | null;
+  voyageId: string | { _id: string; voyageNo: string } | null;
+  
+  vesselName?: string;
+  voyageNo?: string;
+  
   portName: string;
   reportDate: string;
   status: string;
@@ -38,8 +43,8 @@ interface INorReport {
 interface IEditNorData {
   status: string;
   vesselName: string;
-  voyageId: string;
-  vesselId?: string;
+  voyageNo: string; // ✅ String for Dropdown
+  vesselId: string; // ✅ ID for Logic
   portName: string;
   remarks: string;
   reportDate: string;
@@ -98,12 +103,27 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
 
   
   useEffect(() => {
-    
-    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
-      
-       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+    // ✅ FIX 2: Update 'voyageNo' in state
+    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageNo) {
+       setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
     }
   }, [suggestedVoyageNo]);
+  const getVesselName = (r: INorReport | null) => {
+    if (!r) return "-";
+    if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
+      return r.vesselId.name;
+    }
+    return r.vesselName || "-";
+  };
+
+  // ✅ HELPER: Get Voyage Number (Handles Object or String)
+  const getVoyageNo = (r: INorReport | null) => {
+    if (!r) return "-";
+    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+      return r.voyageId.voyageNo;
+    }
+    return r.voyageNo || "-";
+  };
   /* ================= HELPER: DATE FORMATTER ================= */
   // Moved up so it can be used in columns
   const formatDate = (date?: string) => {
@@ -154,7 +174,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
             const isRelevant =
               v.status === "active" ||
               v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === editData.voyageId;
+              v.voyageNo === editData.voyageNo;
 
             return isRelevant;
           });
@@ -173,7 +193,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     }
 
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo  ]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -187,10 +207,10 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
       render: (r: INorReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {r?.vesselName ?? "-"}
+            {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            ID: {r?.voyageId ?? "-"}
+            ID: {getVoyageNo(r)}
           </span>
         </div>
       ),
@@ -305,67 +325,54 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     },
     [LIMIT, search, status, startDate, endDate]
   );
+    function handleEdit(report: INorReport) {
+    setSelectedReport(report);
+    setNewFile(null);
+    // Set initial preview to existing document URL
+    setPreviewUrl(report.norDetails?.documentUrl || null);
+    const vId = (report.vesselId && typeof report.vesselId === 'object') ? report.vesselId._id : (report.vesselId as string);
+    const voyNo = getVoyageNo(report);
+    setEditData({
+      status: report.status ?? "active",
+      vesselName: getVesselName(report),
+      vesselId: vId || "",
+      voyageNo: voyNo === "-" ? "" : voyNo, // Use the string for dropdown
+      // Note: we removed the old 'voyageId' from editData as it was confusing. We use 'voyageNo' string for editing.
+      portName: report.portName ?? "",
+      remarks: report.remarks ?? "",
+      reportDate: formatForInput(report.reportDate),
+      pilotStation: report.norDetails?.pilotStation ?? "",
+      norTenderTime: formatForInput(report.norDetails?.tenderTime),
+      etaPort: formatForInput(report.norDetails?.etaPort),
+    });
+    setOpenEdit(true);
+  }
 
   // UPDATED: Now sends FormData because the Backend PATCH route expects it
-  async function handleUpdate() {
+async function handleUpdate() {
     if (!selectedReport || !editData) return;
     setSaving(true);
-
     try {
       const formData = new FormData();
       formData.append("status", editData.status);
       formData.append("vesselName", editData.vesselName);
-      formData.append("voyageNo", editData.voyageId);
-      formData.append(
-        "reportDate",
-        editData.reportDate ? `${editData.reportDate}+05:30` : ""
-      );
+      formData.append("vesselId", editData.vesselId || "");
+      formData.append("voyageNo", editData.voyageNo || ""); // ✅ Send String
+
+      formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
       formData.append("portName", editData.portName);
       formData.append("remarks", editData.remarks);
       formData.append("pilotStation", editData.pilotStation);
-      formData.append(
-        "norTenderTime",
-        editData.norTenderTime ? `${editData.norTenderTime}+05:30` : ""
-      );
-      formData.append(
-        "etaPort",
-        editData.etaPort ? `${editData.etaPort}+05:30` : ""
-      );
+      formData.append("norTenderTime", editData.norTenderTime ? `${editData.norTenderTime}+05:30` : "");
+      formData.append("etaPort", editData.etaPort ? `${editData.etaPort}+05:30` : "");
+      if (newFile) formData.append("norDocument", newFile);
 
-      // Append new file if selected
-      if (newFile) {
-        formData.append("norDocument", newFile);
-      }
-
-      const res = await fetch(`/api/nor/${selectedReport._id}`, {
-        method: "PATCH",
-        body: formData, // Sending FormData instead of JSON
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Update failed");
-      }
-
+      const res = await fetch(`/api/nor/${selectedReport._id}`, { method: "PATCH", body: formData });
+      if (!res.ok) throw new Error("Update failed");
       const { report } = await res.json();
-
-      setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r))
-      );
-
-      toast.success("Record updated successfully");
-      setOpenEdit(false);
-      setSelectedReport(null);
-      setNewFile(null); // Clear file state
-      setPreviewUrl(null);
-    } catch (err: unknown) {
-      console.error(err);
-      const msg =
-        err instanceof Error ? err.message : "Failed to update record";
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
+      setReports((prev) => prev.map((r) => (r._id === report._id ? report : r)));
+      toast.success("Updated"); setOpenEdit(false); setSelectedReport(null);
+    } catch { toast.error("Failed"); } finally { setSaving(false); }
   }
 
   async function handleDelete() {
@@ -419,29 +426,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     setOpenView(true);
   }
 
-  function handleEdit(report: INorReport) {
-    setSelectedReport(report);
-    setNewFile(null);
-    // Set initial preview to existing document URL
-    setPreviewUrl(report.norDetails?.documentUrl || null);
-    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
-    setEditData({
-      status: report.status ?? "active",
-      vesselName: report.vesselName ?? "",
-      vesselId: matchedVessel?._id || "",
-      voyageId: report.voyageId ?? "",
-      portName: report.portName ?? "",
-      remarks: report.remarks ?? "",
-      reportDate: formatForInput(report.reportDate),
 
-      pilotStation: report.norDetails?.pilotStation ?? "",
-
-      norTenderTime: formatForInput(report.norDetails?.tenderTime),
-
-      etaPort: formatForInput(report.norDetails?.etaPort),
-    });
-    setOpenEdit(true);
-  }
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
@@ -499,10 +484,10 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">
-                {selectedReport.vesselName}
+               {getVesselName(selectedReport)}
               </span>
               <span>|</span>
-              <span>{selectedReport.voyageId}</span>
+             {getVoyageNo(selectedReport)}
             </div>
           )
         }
@@ -519,13 +504,13 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         <div className="flex justify-between gap-4">
           <span className="text-gray-500 shrink-0">Vessel Name</span>
           <span className="font-medium text-right">
-            {selectedReport?.vesselName ?? "-"}
+            {getVesselName(selectedReport)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gray-500 shrink-0">Voyage No</span>
           <span className="font-medium text-right">
-            {selectedReport?.voyageId ?? "-"}
+          {getVoyageNo(selectedReport)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
@@ -699,17 +684,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     }}
   />
                 </div>
-                <div className="relative">
-                  <Label>Voyage No</Label>
-                  <Select
-                  
-                    options={voyageList}
-                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
-                    value={editData.voyageId}
-                    onChange={(val) => setEditData({ ...editData, voyageId: val })}
-                  />
-                
-                </div>
+                <div className="relative"><Label>Voyage No</Label><Select options={voyageList} placeholder={!editData.vesselId ? "Select Vessel First" : "Select Voyage"} value={editData.voyageNo} onChange={(val) => setEditData({...editData, voyageNo: val})} /></div>
                 <div>
                   <Label>Port Name</Label>
                   <Input

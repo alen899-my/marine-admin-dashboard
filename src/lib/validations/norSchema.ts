@@ -1,7 +1,11 @@
 import Joi from "joi";
 
 export const norSchema = Joi.object({
-  vesselName: Joi.string().required().label("Vessel Name").messages({
+  vesselId: Joi.string().required().label("Vessel ID").messages({
+    "string.empty": "Vessel ID is required",
+    "any.required": "Vessel ID is required",
+  }),
+ vesselName: Joi.string().required().label("Vessel Name").messages({
     "string.empty": "Vessel Name is required",
     "any.required": "Vessel Name is required",
   }),

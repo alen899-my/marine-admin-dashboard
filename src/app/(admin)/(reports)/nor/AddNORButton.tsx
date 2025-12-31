@@ -243,8 +243,9 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     // --- JOI VALIDATION END ---
 
     try {
-      // Create FormData object
+
       const data = new FormData();
+      data.append("vesselId", formData.vesselId);
       data.append("vesselName", formData.vesselName);
       data.append("voyageNo", formData.voyageNo);
       data.append("portName", formData.portName);

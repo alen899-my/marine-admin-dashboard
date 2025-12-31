@@ -5,8 +5,8 @@ export interface IDocument extends Document {
   voyageId?: mongoose.Types.ObjectId;
   uploadedBy?: mongoose.Types.ObjectId;
 
-  vesselName: string;
-  voyageNo: string;
+
+  
   portName: string;
 
   portType: "load" | "discharge" | "departure";
@@ -30,12 +30,12 @@ export interface IDocument extends Document {
 
 const DocumentSchema = new Schema<IDocument>(
   {
-    vesselId: { type: Schema.Types.ObjectId, ref: "Vessel", index: true },
-    voyageId: { type: Schema.Types.ObjectId, ref: "Voyage" },
+    vesselId: { type: Schema.Types.ObjectId, ref: "Vessel", required: true, index: true },
+    voyageId: { type: Schema.Types.ObjectId, ref: "Voyage", required: true, index: true },
     uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
 
-    vesselName: { type: String, required: true },
-    voyageNo: { type: String, required: true },
+    
+
     portName: { type: String, required: true },
 
     portType: {

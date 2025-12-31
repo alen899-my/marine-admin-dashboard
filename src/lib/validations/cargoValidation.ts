@@ -1,10 +1,15 @@
 import Joi from "joi";
 
 export const cargoSchema = Joi.object({
+  vesselId: Joi.string().required().label("Vessel ID").messages({
+    "string.empty": "Vessel ID is required",
+    "any.required": "Vessel ID is required",
+  }),
   vesselName: Joi.string().required().label("Vessel Name").messages({
     "string.empty": "Vessel Name is required",
     "any.required": "Vessel Name is required",
   }),
+
   voyageNo: Joi.string().required().label("Voyage No").messages({
     "string.empty": "Voyage No is required",
   }),

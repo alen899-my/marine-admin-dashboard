@@ -53,12 +53,10 @@ export async function GET(req: NextRequest) {
       query.status = status;
     }
 
-    if (search) {
+   if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        // ❌ REMOVED: { voyageId: { $regex: search ... } } 
-        // Reason: voyageId is an ObjectId. Regex search on it will crash the API.
-        // To search by Voyage Number, you would need an aggregation pipeline.
+        { voyageNo: { $regex: search, $options: "i" } }, // Search the snapshot string
         { "navigation.nextPort": { $regex: search, $options: "i" } },
       ];
     }
@@ -84,8 +82,9 @@ export async function GET(req: NextRequest) {
     const total = await ReportDaily.countDocuments(query);
 
     const reports = await ReportDaily.find(query)
-      // ✅ FIX: Populate to get the readable Voyage No
-      .populate("voyageId", "voyageNo") 
+  
+      .populate("vesselId", "name") 
+      .populate("voyageId", "voyageNo")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -157,6 +156,7 @@ export async function POST(req: NextRequest) {
     } = value;
 
     const parsedReportDate = parseDateString(reportDate);
+    
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format. Please use dd/mm/yyyy" },
@@ -194,11 +194,10 @@ export async function POST(req: NextRequest) {
 
     // 3. SAVE REPORT
     const report = await ReportDaily.create({
-      vesselId: vesselId,       
-      voyageId: voyageObjectId, 
-      
-      vesselName: vesselName,   
-      voyageNo: voyageNo,       
+     vesselId: new mongoose.Types.ObjectId(vesselId),       
+      voyageId: voyageObjectId,
+      vesselName,   
+      voyageNo,      
 
       type: "noon",
       status: "active",

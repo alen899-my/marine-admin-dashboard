@@ -68,10 +68,9 @@ export default function AddDailyNoonReportButton({
 
   // ✅ 1. Call the Hook
   const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    form.vesselId,
-    form.reportDate
-  );
-
+  form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
+  form.reportDate
+);
   // ✅ 2. Sync Logic (Auto-fill Voyage)
   useEffect(() => {
     if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== form.voyageNo) {

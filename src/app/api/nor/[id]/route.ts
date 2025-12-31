@@ -1,31 +1,28 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
+import Voyage from "@/models/Voyage"; // ✅ Import Voyage
+import mongoose from "mongoose"; 
 import path from "path";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put, del } from "@vercel/blob";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
-
   try {
-
     if (process.env.NODE_ENV === "development") {
-    
       if (fileUrl.startsWith("/uploads")) {
         const filePath = path.join(process.cwd(), "public", fileUrl);
         if (existsSync(filePath)) {
           await unlink(filePath);
-          console.log(`Deleted local file: ${filePath}`);
         }
       }
     } else {
- 
       if (fileUrl.startsWith("http")) {
         await del(fileUrl);
-        console.log(`Deleted blob file: ${fileUrl}`);
       }
     }
   } catch (error) {
@@ -33,9 +30,9 @@ async function deleteFile(fileUrl: string) {
   }
 }
 
-// Define interface for update data allowing dynamic keys for dot notation
+// Interface for dynamic update object
 interface IUpdateNorData {
-  [key: string]: string | Date | undefined;
+  [key: string]: string | Date | undefined | mongoose.Types.ObjectId;
 }
 
 // --- PATCH: UPDATE NOR ---
@@ -44,32 +41,57 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-     const authz = await authorizeRequest("nor.edit");
-        if (!authz.ok) return authz.response;
+    const authz = await authorizeRequest("nor.edit");
+    if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const { id } = await params;
     const formData = await req.formData();
 
-    // 1. Fetch Existing
+    // 1. Fetch Existing Record
     const existingRecord = await ReportOperational.findById(id);
     if (!existingRecord) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
     // 2. Prepare Update Data
-    // Fixed: Use typed interface instead of 'any'
     const updateData: IUpdateNorData = {};
 
-    // Basic Fields
+    // --- A. Basic Fields ---
     const reportDate = formData.get("reportDate") as string;
     if (reportDate) updateData.reportDate = new Date(reportDate);
 
     const vesselName = formData.get("vesselName") as string;
     if (vesselName) updateData.vesselName = vesselName;
 
-    const voyageId = formData.get("voyageNo") as string;
-    if (voyageId) updateData.voyageId = voyageId;
+    // --- B. VOYAGE & VESSEL LOOKUP LOGIC ---
+    const voyageNoString = formData.get("voyageNo") as string;
+    const formVesselId = formData.get("vesselId") as string;
 
+    // 🔴 FIX: Explicitly update vesselId if provided in form
+    if (formVesselId) {
+      updateData.vesselId = new mongoose.Types.ObjectId(formVesselId);
+    }
+
+    // Use form vesselId if available, otherwise fallback to existing record's ID for the lookup
+    const lookupVesselId = formVesselId || existingRecord.vesselId?.toString();
+
+    if (voyageNoString && lookupVesselId) {
+       // 1. Update the Snapshot String
+       updateData.voyageNo = voyageNoString;
+
+       // 2. Find and Link the real Voyage ObjectId
+       const foundVoyage = await Voyage.findOne({
+          vesselId: new mongoose.Types.ObjectId(lookupVesselId),
+          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") }
+       }).select("_id");
+
+       if (foundVoyage) {
+          updateData.voyageId = foundVoyage._id;
+       }
+    }
+
+    // --- C. Other Fields ---
     const portName = formData.get("portName") as string;
     if (portName) updateData.portName = portName;
 
@@ -79,7 +101,7 @@ export async function PATCH(
     const status = formData.get("status") as string;
     if (status) updateData.status = status;
 
-    // Nested Fields
+    // Nested Fields (Dot Notation for Mongoose)
     const pilotStation = formData.get("pilotStation") as string;
     if (pilotStation) updateData["norDetails.pilotStation"] = pilotStation;
 
@@ -89,47 +111,32 @@ export async function PATCH(
     const norTenderTime = formData.get("norTenderTime") as string;
     if (norTenderTime) {
       updateData["norDetails.tenderTime"] = new Date(norTenderTime);
-      updateData["eventTime"] = new Date(norTenderTime);
+      updateData["eventTime"] = new Date(norTenderTime); // Sync eventTime
     }
 
     // 3. Handle File Update
     const file = formData.get("norDocument") as File | null;
 
     if (file && file.size > 0) {
-      // 500 KB Validation
       if (file.size > 500 * 1024) {
-        return NextResponse.json(
-          { error: "File size exceeds the 500 KB limit." },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "File size exceeds the 500 KB limit." }, { status: 400 });
       }
 
-      // A. Delete old file
+      // Delete old file
       const oldUrl = existingRecord.norDetails?.documentUrl;
-      if (oldUrl) {
-        await deleteFile(oldUrl);
-      }
+      if (oldUrl) await deleteFile(oldUrl);
 
-      // B. Upload New File (Conditional)
+      // Upload New File
       const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
       if (process.env.NODE_ENV === "development") {
-        // --- LOCAL STORAGE ---
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/nor");
-
-        if (!existsSync(uploadDir)) {
-          await mkdir(uploadDir, { recursive: true });
-        }
-
+        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
         await writeFile(path.join(uploadDir, filename), buffer);
         updateData["norDetails.documentUrl"] = `/uploads/nor/${filename}`;
       } else {
-        // --- VERCEL BLOB ---
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
+        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
         updateData["norDetails.documentUrl"] = blob.url;
       }
     }
@@ -138,45 +145,41 @@ export async function PATCH(
     const report = await ReportOperational.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true }
-    );
+      { new: true, runValidators: true }
+    )
+    // ✅ POPULATE VOYAGE ID (Crucial for frontend display)
+    .populate("voyageId", "voyageNo");
 
     return NextResponse.json({ report });
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' and safe type narrowing
     console.error("Update Error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json(
-      { error: "Update failed", details: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ error: "Update failed", details: errorMessage }, { status: 500 });
   }
 }
 
-// --- DELETE: REMOVE NOR ---
+// --- DELETE: REMOVE NOR (Unchanged) ---
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-        const authz = await authorizeRequest("nor.delete");
-        if (!authz.ok) return authz.response;
+    const authz = await authorizeRequest("nor.delete");
+    if (!authz.ok) return authz.response;
+    
     await dbConnect();
     const { id } = await params;
-    // 1. Find record
+    
     const record = await ReportOperational.findById(id);
     if (!record) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // 2. Delete File (Conditional)
     const fileUrl = record.norDetails?.documentUrl;
     if (fileUrl) {
       await deleteFile(fileUrl);
     }
 
-    // 3. Delete Record
     await ReportOperational.findByIdAndDelete(id);
 
     return NextResponse.json({ message: "Deleted successfully" });

@@ -5,6 +5,7 @@ export interface IReportDaily extends Document {
   vesselId: mongoose.Types.ObjectId; 
   voyageId: mongoose.Types.ObjectId;
   vesselName: string;
+  voyageNo: string;
  
   type: "noon";
   reportDate: Date;
@@ -57,7 +58,7 @@ const ReportDailySchema = new Schema<IReportDaily>(
 
     // Snapshot Strings (Read-only copies)
     vesselName: { type: String, required: true },
-    
+    voyageNo: { type: String, required: true }, 
 
     type: {
       type: String,

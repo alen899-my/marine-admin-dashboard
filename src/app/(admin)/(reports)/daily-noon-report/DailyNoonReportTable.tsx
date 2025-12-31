@@ -42,17 +42,20 @@ interface IWeather {
 interface IDailyNoonReport {
   _id: string;
   vesselName: string;
-
-  voyageId: string | { voyageNo: string; _id: string };
+vesselId: string | { _id: string; name: string };
+ 
   type: string;
   status: string;
   reportDate: string;
+   voyageNo : string;
   position?: IPosition;
+   voyageId: string | { voyageNo: string; _id: string };
   navigation?: INavigation;
   consumption?: IConsumption;
   weather?: IWeather;
   remarks?: string;
-  vesselId?: string;
+  
+  
 }
 
 // Updated Props Interface
@@ -91,24 +94,36 @@ export default function DailyNoonReportTable({
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
 
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId, 
-    editData?.reportDate
-  );
+  // 1. Extract the string ID safely
+const currentVesselId = typeof editData?.vesselId === "object" 
+  ? editData?.vesselId._id 
+  : editData?.vesselId;
+
+// 2. Pass the resolved string to the hook
+const { vessels, suggestedVoyageNo } = useVoyageLogic(
+  currentVesselId, 
+  editData?.reportDate
+);
 
 const canEdit = can("noon.edit");
 const canDelete = can("noon.delete");
-const getVoyageDisplay = (r: IDailyNoonReport | null) => {
-    if (!r) return "-";
-    // 1. Check if populated object
-    if (typeof r.voyageId === "object" && r.voyageId?.voyageNo) {
-      return r.voyageId.voyageNo;
-    }
-    // 2. Fallback to simple string ID (though readable is preferred)
-    if (typeof r.voyageId === "string") return r.voyageId;
-    return "-";
-  };
-  // Local state for filters removed (now coming from props)
+const getVesselName = (r: IDailyNoonReport | null) => {
+  if (!r || !r.vesselId) return "-";
+  if (typeof r.vesselId === "object" && "name" in r.vesselId) {
+    return r.vesselId.name;
+  }
+  return r.vesselName || "-";
+};
+
+const getVoyageNo = (r: IDailyNoonReport | null) => {
+  if (!r || !r.voyageId) return "-";
+  // If it's the populated object from the hook or API
+  if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+    return r.voyageId.voyageNo;
+  }
+  // If it's the string stored directly
+  return typeof r.voyageId === "string" ? r.voyageId : "-";
+};
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -236,12 +251,11 @@ const getVoyageDisplay = (r: IDailyNoonReport | null) => {
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {r?.vesselName ?? "-"}
-          </span>
-          <span className="text-xs text-gray-500 uppercase">
-            {/* ✅ CHANGE THIS: Use voyageNo instead of voyageId */}
-           ID: {getVoyageDisplay(r)}
-          </span>
+        {getVesselName(r)}
+      </span>
+      <span className="text-xs text-gray-500 uppercase tracking-tighter">
+        ID: {getVoyageNo(r)}
+      </span>
         </div>
       ),
     },
@@ -400,15 +414,21 @@ function handleEdit(report: IDailyNoonReport) {
     
     // Find the vessel object so we can get its ID for the edit state
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
-    const displayVoyageId = getVoyageDisplay(report)
+   const vesselIdStr = typeof report.vesselId === 'object' 
+    ? report.vesselId._id 
+    : report.vesselId;
+
+  // 2. Safely extract the Voyage Number (string) using your helper
+  const voyageNoStr = getVoyageNo(report);
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
-      
-     
-      vesselId: report.vesselId || matchedVessel?._id || "", 
-
-      voyageId: displayVoyageId,
+      vesselId: vesselIdStr,
+     voyageNo: voyageNoStr, 
+    
+    // ✅ FIX 2: Map the voyageId (the reference field) to the string for the dropdown
+    voyageId: voyageNoStr,
+   
 
      
       type: report.type,
@@ -542,11 +562,9 @@ if (!isReady) return null;
         headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold">
-                {selectedReport.vesselName}
-              </span>
-              <span>|</span>
-             <span>{getVoyageDisplay(selectedReport)}</span>
+              <span className="font-bold">{getVesselName(selectedReport)}</span>
+        <span>|</span>
+        <span>{getVoyageNo(selectedReport)}</span>
             </div>
           )
         }
@@ -563,13 +581,13 @@ if (!isReady) return null;
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Vessel Name</span>
                 <span className="font-medium text-right">
-                  {selectedReport?.vesselName ?? "-"}
+                 {getVesselName(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                  {getVoyageDisplay(selectedReport)}
+                 {getVoyageNo(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">

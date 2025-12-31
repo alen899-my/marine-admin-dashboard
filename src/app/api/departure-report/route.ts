@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
     const reports = await ReportOperational.find(query)
       // ✅ FIX: Populate voyageId to get the original ID details
       .populate("voyageId", "voyageNo") 
+      .populate("vesselId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
