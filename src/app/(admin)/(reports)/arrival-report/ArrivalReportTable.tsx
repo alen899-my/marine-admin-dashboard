@@ -7,14 +7,15 @@ import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
+import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -30,7 +31,7 @@ interface ArrivalReport {
   _id: string;
   vesselName: string;
   // ✅ FIX: Allow Populated Object
-  vesselId: string | { _id: string; name: string } | null; 
+  vesselId: string | { _id: string; name: string } | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
   voyageNo?: string;
   portName: string;
@@ -45,7 +46,7 @@ interface ArrivalReport {
 interface EditFormData {
   vesselName: string;
   // Use string for the form state (ID for logic, string for display)
-  voyageId: string; 
+  voyageId: string;
   portName: string;
   eventTime: string;
   vesselId: string;
@@ -65,6 +66,14 @@ interface ArrivalReportTableProps {
   endDate: string;
 }
 
+interface VoyageMetrics {
+  totalTimeHours: number;
+  totalDistance: number;
+  avgSpeed: number;
+  consumedVlsfo: number;
+  consumedLsmgo: number;
+}
+
 export default function ArrivalReportTable({
   refresh,
   search,
@@ -82,22 +91,33 @@ export default function ArrivalReportTable({
   const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
     null
   );
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [editNorSameAsArrival, setEditNorSameAsArrival] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [voyageMetrics, setVoyageMetrics] = useState<VoyageMetrics | null>(
+    null
+  );
+  const [metricsLoading, setMetricsLoading] = useState(false);
+
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
-    const canEdit = can("arrival.edit");
-    const canDelete = can("arrival.delete");
+  const canEdit = can("arrival.edit");
+  const canDelete = can("arrival.delete");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   const getVoyageDisplay = (r: ArrivalReport | null) => {
     if (!r) return "-";
-    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+    if (
+      r.voyageId &&
+      typeof r.voyageId === "object" &&
+      "voyageNo" in r.voyageId
+    ) {
       return r.voyageId.voyageNo;
     }
     return r.voyageNo || "-";
@@ -136,16 +156,16 @@ export default function ArrivalReportTable({
 
   /* ================= COLUMNS ================= */
   const columns = [
-  {
-    header: "S.No",
-    render: (_: ArrivalReport, index: number) =>
-      (currentPage - 1) * LIMIT + index + 1,
-  },
-  {
-    header: "Vessel & Voyage ID",
-    render: (r: ArrivalReport) => (
-      <div className="flex flex-col">
-        <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
+    {
+      header: "S.No",
+      render: (_: ArrivalReport, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
+    },
+    {
+      header: "Vessel & Voyage ID",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col">
+          <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* ✅ Use Helper */}
             {getVesselName(r)}
           </span>
@@ -153,85 +173,86 @@ export default function ArrivalReportTable({
             {/* ✅ Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
-      </div>
-    ),
-  },
-  {
-    header: "Report & Arrival",
-    render: (r: ArrivalReport) => (
-      <div className="flex flex-col text-xs space-y-0.5">
-        <div className="flex flex-col">
-          <span className="text-[10px] text-gray-400 uppercase font-bold">
-            Reported
-          </span>
-          <span className="text-gray-700 dark:text-gray-300">
-            {formatDate(r.reportDate)}
-          </span>
         </div>
-        <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
-          <span className="text-[10px] text-gray-400 uppercase font-bold">
-            Arrival Time
-          </span>
-          <span className="text-gray-700 dark:text-gray-300">
-            {formatDate(r.eventTime)}
-          </span>
-        </div>
-        {/* ✅ NEW: NOR Time added below Arrival Time */}
-        {r?.norDetails?.norTime && (
-          <div className="flex flex-col pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
+      ),
+    },
+    {
+      header: "Report & Arrival",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <div className="flex flex-col">
             <span className="text-[10px] text-gray-400 uppercase font-bold">
-              NOR Tendered
+              Reported
             </span>
             <span className="text-gray-700 dark:text-gray-300">
-              {formatDate(r.norDetails.norTime)}
+              {formatDate(r.reportDate)}
             </span>
           </div>
-        )}
-      </div>
-    ),
-  },
-  {
-    header: "Port",
-    render: (r: ArrivalReport) => (
-      <div className="flex flex-col">
-        <div className="font-bold text-xs">{r?.portName ?? "-"}</div>
-        {/* ✅ NEW: Cargo Quantity added below Port Name */}
-        <div className="text-sm font-medium mt-1">
-          Cargo: {r?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ?? 0} MT
+          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              Arrival Time
+            </span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {formatDate(r.eventTime)}
+            </span>
+          </div>
+          {/* ✅ NEW: NOR Time added below Arrival Time */}
+          {r?.norDetails?.norTime && (
+            <div className="flex flex-col pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
+              <span className="text-[10px] text-gray-400 uppercase font-bold">
+                NOR Tendered
+              </span>
+              <span className="text-gray-700 dark:text-gray-300">
+                {formatDate(r.norDetails.norTime)}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-    ),
-  },
-  {
-    header: "ROB & Remarks",
-    render: (r: ArrivalReport) => (
-      <div className="flex flex-col text-xs gap-1">
-        <div className="flex gap-2">
-          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-            VLSFO: <b>{r?.arrivalStats?.robVlsfo ?? 0} MT</b>
-          </span>
-          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-            LSMGO: <b>{r?.arrivalStats?.robLsmgo ?? 0} MT</b>
-          </span>
+      ),
+    },
+    {
+      header: "Port",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col">
+          <div className="font-bold text-xs">{r?.portName ?? "-"}</div>
+          {/* ✅ NEW: Cargo Quantity added below Port Name */}
+          <div className="text-sm font-medium mt-1">
+            Cargo: {r?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ?? 0}{" "}
+            MT
+          </div>
         </div>
-        <p
-          className="text-[11px] text-gray-500 line-clamp-1 max-w-[200px]"
-          title={r?.remarks}
-        >
-          {r?.remarks || "No remarks"}
-        </p>
-      </div>
-    ),
-  },
-  {
-    header: "Status",
-    render: (r: ArrivalReport) => (
-      <Badge color={r.status === "active" ? "success" : "error"}>
-        {r.status === "active" ? "Active" : "Inactive"}
-      </Badge>
-    ),
-  },
-];
+      ),
+    },
+    {
+      header: "ROB & Remarks",
+      render: (r: ArrivalReport) => (
+        <div className="flex flex-col text-xs gap-1">
+          <div className="flex gap-2">
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              VLSFO: <b>{r?.arrivalStats?.robVlsfo ?? 0} MT</b>
+            </span>
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              LSMGO: <b>{r?.arrivalStats?.robLsmgo ?? 0} MT</b>
+            </span>
+          </div>
+          <p
+            className="text-[11px] text-gray-500 line-clamp-1 max-w-[200px]"
+            title={r?.remarks}
+          >
+            {r?.remarks || "No remarks"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: "Status",
+      render: (r: ArrivalReport) => (
+        <Badge color={r.status === "active" ? "success" : "error"}>
+          {r.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+  ];
 
   /* ================= FETCH ================= */
   // useCallback fixes the missing dependency warning
@@ -277,7 +298,6 @@ export default function ArrivalReportTable({
     fetchReports(1);
     setCurrentPage(1);
   }, [fetchReports]);
-  
 
   // Trigger fetch when page changes
   useEffect(() => {
@@ -302,9 +322,34 @@ export default function ArrivalReportTable({
   ];
 
   /* ================= ACTIONS ================= */
-  function handleView(report: ArrivalReport) {
+  async function handleView(report: ArrivalReport) {
     setSelectedReport(report);
     setOpenView(true);
+    setVoyageMetrics(null);
+
+    // Extract Voyage ID from potential object or string
+    let vId = "";
+    if (typeof report.voyageId === "object" && report.voyageId !== null) {
+      vId = (report.voyageId as any)._id;
+    } else if (typeof report.voyageId === "string") {
+      vId = report.voyageId;
+    }
+
+    if (vId) {
+      setMetricsLoading(true);
+      try {
+        const res = await fetch(`/api/reports/voyage-summary/${vId}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setVoyageMetrics(data.metrics);
+        }
+      } catch (err) {
+        // Logic for error state could go here if needed
+      } finally {
+        setMetricsLoading(false);
+      }
+    }
   }
 
   function handleEdit(report: ArrivalReport) {
@@ -316,7 +361,7 @@ export default function ArrivalReportTable({
     const voyageIdString = getVoyageDisplay(report);
     setEditData({
       vesselName: report.vesselName ?? "",
-     voyageId: voyageIdString,
+      voyageId: voyageIdString,
       vesselId: matchedVessel?._id || "",
       portName: report.portName ?? "",
       eventTime: formatForInput(report.eventTime),
@@ -333,18 +378,22 @@ export default function ArrivalReportTable({
 
     setOpenEdit(true);
   }
-    const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId, 
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId,
     editData?.reportDate
   );
   useEffect(() => {
-    
-      if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
-       
-         setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
-      }
-    }, [suggestedVoyageNo]);
-    useEffect(() => {
+    if (
+      editData &&
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== editData.voyageId
+    ) {
+      setEditData((prev) =>
+        prev ? { ...prev, voyageId: suggestedVoyageNo } : null
+      );
+    }
+  }, [suggestedVoyageNo]);
+  useEffect(() => {
     async function fetchAndFilterVoyages() {
       // Stop if no vessel selected or not in edit mode
       if (!editData?.vesselId) {
@@ -370,7 +419,7 @@ export default function ArrivalReportTable({
 
             // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
             const isRelevant =
-              v.status === 'active' ||
+              v.status === "active" ||
               v.voyageNo === suggestedVoyageNo ||
               v.voyageNo === editData.voyageId;
 
@@ -380,7 +429,7 @@ export default function ArrivalReportTable({
           setVoyageList(
             filtered.map((v: any) => ({
               value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== 'active' ? '' : ''}`,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
             }))
           );
         }
@@ -391,7 +440,12 @@ export default function ArrivalReportTable({
     }
 
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+  }, [
+    editData?.vesselId,
+    editData?.vesselName,
+    suggestedVoyageNo,
+    editData?.voyageId,
+  ]);
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -451,33 +505,32 @@ export default function ArrivalReportTable({
       setSelectedReport(null);
     }
   }
-    if (!isReady) return null;
+  if (!isReady) return null;
   /* ================= RENDER ================= */
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
-           <CommonReportTable
-  data={reports}
-  columns={columns}
-  loading={loading}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={setCurrentPage}
-  onView={handleView}
-  onEdit={canEdit ? handleEdit : undefined}
-  onDelete={
-    canDelete
-      ? (r: ArrivalReport) => {
-          setSelectedReport(r);
-          setOpenDelete(true);
-        }
-      : undefined
-  }
-  onRowClick={handleView}
-/>
-
+            <CommonReportTable
+              data={reports}
+              columns={columns}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r: ArrivalReport) => {
+                      setSelectedReport(r);
+                      setOpenDelete(true);
+                    }
+                  : undefined
+              }
+              onRowClick={handleView}
+            />
           </div>
         </div>
       </div>
@@ -492,7 +545,7 @@ export default function ArrivalReportTable({
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">{selectedReport.vesselName}</span>
               <span>|</span>
-             <span>{getVoyageDisplay(selectedReport)}</span>
+              <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
           )
         }
@@ -508,13 +561,13 @@ export default function ArrivalReportTable({
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Vessel Name</span>
                 <span className="font-medium text-right">
-                 {getVesselName(selectedReport)}
+                  {getVesselName(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-               {getVoyageDisplay(selectedReport)}
+                  {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -596,6 +649,137 @@ export default function ArrivalReportTable({
             </section>
           </div>
 
+          {/* --- VOYAGE PERFORMANCE SECTION --- */}
+          <section className="md:col-span-2 mt-8">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase">
+                Voyage Performance Summary
+              </h3>
+              <span className="text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-md font-medium uppercase tracking-tight">
+                Auto-Calculated
+              </span>
+            </div>
+
+            {metricsLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-20 bg-gray-100 dark:bg-white/5 animate-pulse rounded-xl"
+                  />
+                ))}
+              </div>
+            ) : voyageMetrics ? (
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
+                  {/* Time Metric */}
+                  <div className="p-5 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                      <Clock size={14} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        Steaming
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {voyageMetrics.totalTimeHours}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500">
+                        Hrs
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-blue-500 font-medium">
+                      ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days
+                    </p>
+                  </div>
+
+                  {/* Distance Metric */}
+                  <div className="p-5 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                      <Navigation size={14} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        Distance
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {voyageMetrics.totalDistance}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500">
+                        NM
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <InfoIcon size={10} /> Noon Sum
+                    </p>
+                  </div>
+
+                  {/* Speed Metric */}
+                  <div className="p-5 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                      <Gauge size={14} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        Avg Speed
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {voyageMetrics.avgSpeed}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500">
+                        Kts
+                      </span>
+                    </div>
+                    <div className="h-1 w-full bg-gray-100 dark:bg-white/10 rounded-full mt-2 overflow-hidden">
+                      <div className="h-full bg-emerald-500 w-[70%]" />{" "}
+                      {/* Decorative progress bar */}
+                    </div>
+                  </div>
+
+                  {/* Fuel Metric */}
+                  <div className="p-5 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                      <Fuel size={14} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        Consumption
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-medium text-gray-400">
+                          VLSFO
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.consumedVlsfo}{" "}
+                          <span className="text-[10px] font-normal">MT</span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-medium text-gray-400">
+                          LSMGO
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.consumedLsmgo}{" "}
+                          <span className="text-[10px] font-normal">MT</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-full mb-2">
+                  <InfoIcon size={16} className="text-slate-400" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-[240px]">
+                  No Departure Report found. Data will populate once reports are
+                  linked.
+                </p>
+              </div>
+            )}
+          </section>
+
           {/* ================= FOOTER: STATUS ================= */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
             <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
@@ -638,50 +822,47 @@ export default function ArrivalReportTable({
                   />
                 </div>
 
-                            <div>
+                <div>
                   <Label>Vessel Name</Label>
-                 <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Select or search Vessel"
-  value={editData.vesselName}
-  onChange={(selectedName) => {
-    const selectedVessel = vessels.find(
-      (v) => v.name === selectedName
-    );
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Select or search Vessel"
+                    value={editData.vesselName}
+                    onChange={(selectedName) => {
+                      const selectedVessel = vessels.find(
+                        (v) => v.name === selectedName
+                      );
 
-    setEditData({
-      ...editData,
-      vesselName: selectedName,
-      vesselId: selectedVessel?._id || "",
-      voyageId: "", // 🔥 RESET voyage when vessel changes
-    });
-  }}
-/>
-
+                      setEditData({
+                        ...editData,
+                        vesselName: selectedName,
+                        vesselId: selectedVessel?._id || "",
+                        voyageId: "", // 🔥 RESET voyage when vessel changes
+                      });
+                    }}
+                  />
                 </div>
 
-              <div className="relative">
-  <Label>Voyage No / ID</Label>
-  <SearchableSelect
-    options={voyageList}
-    placeholder={
-      !editData.vesselId
-        ? "Select Vessel first"
-        : voyageList.length === 0
-        ? "No active voyages found"
-        : "Search Voyage"
-    }
-    value={editData.voyageId}
-    onChange={(val) =>
-      setEditData({ ...editData, voyageId: val })
-    }
-  
-  />
-</div>
-
+                <div className="relative">
+                  <Label>Voyage No / ID</Label>
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Search Voyage"
+                    }
+                    value={editData.voyageId}
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageId: val })
+                    }
+                  />
+                </div>
 
                 <InputField
                   label="Port Name"
