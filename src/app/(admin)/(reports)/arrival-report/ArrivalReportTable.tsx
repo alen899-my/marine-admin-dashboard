@@ -4,6 +4,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
+import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
@@ -909,12 +910,12 @@ export default function ArrivalReportTable({
                   <div className="flex justify-between items-center mb-1">
                     <Label>NOR Time</Label>
                     <div className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="editNorSync"
+                        label="Same as Arrival"
                         checked={editNorSameAsArrival}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
+                        variant="default"
+                        onChange={(checked) => {
                           setEditNorSameAsArrival(checked);
                           if (checked) {
                             setEditData({
@@ -923,14 +924,7 @@ export default function ArrivalReportTable({
                             });
                           }
                         }}
-                        className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                       />
-                      <label
-                        htmlFor="editNorSync"
-                        className="text-xs text-gray-500 font-medium select-none"
-                      >
-                        Same as Arrival
-                      </label>
                     </div>
                   </div>
                   <Input
