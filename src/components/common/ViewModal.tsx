@@ -9,6 +9,7 @@ interface ViewModalProps {
   title: string;
   headerRight?: React.ReactNode;
   children: React.ReactNode;
+  
 }
 
 export default function ViewModal({

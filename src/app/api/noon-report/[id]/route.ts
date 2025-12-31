@@ -34,6 +34,13 @@ export async function PATCH(
         voyageObjectId = foundVoyage._id;
       }
     }
+    // 🔥 BLOCK INVALID UPDATE
+if (!voyageObjectId) {
+  return NextResponse.json(
+    { error: "Voyage not found for selected vessel" },
+    { status: 400 }
+  );
+}
 
     // 3. Update with Population
     // .populate ensures the frontend receives the objects needed for display helpers

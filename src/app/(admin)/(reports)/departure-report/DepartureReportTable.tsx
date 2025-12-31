@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import SearchableSelect from "@/components/form/SearchableSelect";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -132,7 +133,7 @@ export default function DepartureReportTable({
     header: "Vessel & Voyage ID",
     render: (r: IDepartureReport) => (
       <div className="flex flex-col">
-        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+        <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* ✅ Use Helper */}
             {getVesselName(r)}
           </span>
@@ -722,44 +723,47 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
                 </div>
               <div>
   <Label>Vessel Name</Label>
-  <Select
-    options={vessels.map((v) => ({
-      value: v.name,
-      label: v.name,
-    }))}
-    value={editData.vesselName}
-    onChange={(val) => {
-      // ✅ 4. UPDATE ID ON CHANGE
-      const selected = vessels.find(v => v.name === val);
-      setEditData({ 
-          ...editData, 
-          vesselName: val, 
-          vesselId: selected?._id || "" // Update ID to trigger hook lookup
-      });
-    }}
-  />
+ <SearchableSelect
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  placeholder="Search Vessel"
+  value={editData.vesselName}
+  onChange={(val) => {
+    const selected = vessels.find(v => v.name === val);
+    setEditData({
+      ...editData,
+      vesselName: val,
+      vesselId: selected?._id || "",
+      voyageId: "",   // 🔥 reset voyage on vessel change
+      voyageNo: ""
+    });
+  }}
+/>
 </div>
 <div className="relative">
   <Label>Voyage No / ID</Label>
-  <Select
-    options={voyageList}
-    placeholder={
-      !editData.vesselId
-        ? ""
-        : voyageList.length === 0
-        ? "No active voyages found"
-        : "Select Voyage"
-    }
-    // ✅ FIX: Explicitly extract the string if it's an object, or default to ""
-    value={
-      typeof editData.voyageId === "object"
-        ? editData.voyageId?.voyageNo ?? ""
-        : editData.voyageId ?? ""
-    }
-    onChange={(val) =>
-      setEditData({ ...editData, voyageId: val })
-    }
-  />
+<SearchableSelect
+  options={voyageList}
+  placeholder={
+    !editData.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Search Voyage"
+  }
+  value={
+    typeof editData.voyageId === "string"
+      ? editData.voyageId
+      : editData.voyageId?.voyageNo ?? ""
+  }
+  onChange={(val) =>
+    setEditData({ ...editData, voyageId: val })
+  }
+
+/>
+
 </div>
 
                 {/* NEW FIELD: Last Port */}

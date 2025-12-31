@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import SearchableSelect from "@/components/form/SearchableSelect";
+import SharePdfButton from "@/components/common/SharePdfButton";
 // --- Types ---
 interface IPosition {
   lat: string;
@@ -168,16 +170,16 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
 
 
   useEffect(() => {
-
-    // 1. Modal is open (editData exists)
-    // 2. We have a suggestion
-    // 3. The suggestion is DIFFERENT from what's currently there
-    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
- 
-       
-       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
-    }
-  }, [suggestedVoyageNo]);
+  if (
+    editData &&
+    !editData.voyageNo &&   // only when empty
+    suggestedVoyageNo
+  ) {
+    setEditData(prev =>
+      prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+    );
+  }
+}, [suggestedVoyageNo]);
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       // Stop if no vessel is selected (in edit data)
@@ -206,7 +208,7 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
             const isRelevant =
               v.status === "active" ||
               v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === editData.voyageId;
+              v.voyageNo === editData.voyageNo
 
             return isRelevant;
           });
@@ -250,7 +252,7 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
       header: "Vessel & Voyage ID",
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col">
-          <span className="text-xs font-semibold text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
         {getVesselName(r)}
       </span>
       <span className="text-xs text-gray-500 uppercase tracking-tighter">
@@ -559,6 +561,7 @@ if (!isReady) return null;
         isOpen={openView}
         onClose={() => setOpenView(false)}
         title="Noon Report Details"
+        
         headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
@@ -771,45 +774,45 @@ if (!isReady) return null;
                 </div>
                <div>
  <Label>Vessel Name</Label>
-<Select
+<SearchableSelect
   options={vessels.map((v) => ({
     value: v.name,
     label: v.name,
   }))}
+  placeholder="Search Vessel"
   value={editData.vesselName}
   onChange={(val) => {
-    // 4️⃣ UPDATE ID ON CHANGE
     const selected = vessels.find(v => v.name === val);
-    setEditData({ 
-        ...editData, 
-        vesselName: val,
-        vesselId: selected?._id || "" // Update ID to trigger hook lookup
+    setEditData({
+      ...editData,
+      vesselName: val,
+      vesselId: selected?._id || "",
+      voyageNo: "",   // reset voyage
+      voyageId: ""
     });
   }}
 />
+
 </div>
 
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
-                  <Select
-                    options={voyageList}
-                    placeholder={
-                      !editData.vesselId
-                        ? ""
-                        : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Select Voyage"
-                    }
-                    // ✅ FIX: STRICT STRING EXTRACTION
-                    value={
-                      typeof editData.voyageId === "object"
-                        ? editData.voyageId?.voyageNo ?? ""
-                        : editData.voyageId ?? ""
-                    }
-                    onChange={(val) =>
-                      setEditData({ ...editData, voyageId: val })
-                    }
-                  />
+                 <SearchableSelect
+  options={voyageList}
+  placeholder={
+    !editData.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Search Voyage"
+  }
+  value={editData.voyageNo}
+  onChange={(val) =>
+    setEditData({ ...editData, voyageNo: val })
+  }
+  disabled={!editData.vesselId}
+/>
+
                 </div>
 
                 <div>

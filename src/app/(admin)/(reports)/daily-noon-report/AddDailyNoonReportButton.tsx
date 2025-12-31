@@ -16,6 +16,7 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Info } from "lucide-react";
+import SearchableSelect from "@/components/form/SearchableSelect";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
@@ -299,16 +300,17 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
-                    placeholder="Select Vessel"
-                    value={form.vesselName}
-                    onChange={handleVesselChange}
-                    className={errors.vesselName ? "border-red-500" : ""}
-                  />
+                 <SearchableSelect
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  placeholder="Search Vessel"
+  value={form.vesselName}
+  onChange={handleVesselChange}
+  className={errors.vesselName ? "border-red-500" : ""}
+/>
+
                   {errors.vesselName && (
                     <p className="text-red-500 text-xs mt-1">
                       {errors.vesselName}
@@ -321,20 +323,20 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                 
-                    options={voyageList}
-                    placeholder={
-                      !form.vesselId
-                        ? ""
-                        : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Select Voyage"
-                    }
-                    value={form.voyageNo}
-                    onChange={handleVoyageChange}
-                    className={errors.voyageNo ? "border-red-500" : ""}
-                  />
+                 <SearchableSelect
+  options={voyageList}
+  placeholder={
+    !form.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Search Voyage"
+  }
+  value={form.voyageNo}
+  onChange={handleVoyageChange}
+
+  className={errors.voyageNo ? "border-red-500" : ""}
+/>
                   
                  
 

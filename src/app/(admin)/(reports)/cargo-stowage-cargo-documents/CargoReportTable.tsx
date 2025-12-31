@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import SearchableSelect from "@/components/form/SearchableSelect";
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
   url: string;
@@ -227,7 +228,7 @@ const getVesselName = (r: ICargoReport | null) => {
       header: "Vessel & Voyage ID",
       render: (r: ICargoReport) => (
         <div className="flex flex-col">
-         <span className="text-xs font-semibold text-gray-900 dark:text-white">
+         <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* Dynamic Vessel Name */}
             {getVesselName(r)}
           </span>
@@ -747,33 +748,41 @@ const getVesselName = (r: ICargoReport | null) => {
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
-  <Select
-    options={vessels.map((v) => ({
-      value: v.name,
-      label: v.name,
-    }))}
-    value={editData.vesselName}
-    onChange={(val) => {
-      // ✅ 4. UPDATE ID ON CHANGE
-      const selected = vessels.find(v => v.name === val);
-      setEditData({ 
-  ...editData, 
-  vesselName: val, 
-  vesselId: selected?._id || "",
-  voyageNo: ""   // 🔥 RESET voyage when vessel changes
-});
-    }}
-  />
+ <SearchableSelect
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  placeholder="Search Vessel"
+  value={editData.vesselName}
+  onChange={(val) => {
+    const selected = vessels.find(v => v.name === val);
+    setEditData({
+      ...editData,
+      vesselName: val,
+      vesselId: selected?._id || "",
+      voyageNo: "" // 🔥 reset voyage when vessel changes
+    });
+  }}
+/>
                 </div>
             <div className="relative">
                   <Label>Voyage No</Label>
-                  <Select
-                  
-                    options={voyageList}
-                    placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"}
-                    value={editData.voyageNo}
-                    onChange={(val) => setEditData({ ...editData, voyageNo: val })}
-                  />
+                  <SearchableSelect
+  options={voyageList}
+  placeholder={
+    !editData.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Search Voyage"
+  }
+  value={editData.voyageNo}
+  onChange={(val) =>
+    setEditData({ ...editData, voyageNo: val })
+  }
+
+/>
                 
                 </div>
                 <div>

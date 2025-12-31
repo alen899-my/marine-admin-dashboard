@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic"; // ✅ Import Hook
+import SearchableSelect from "@/components/form/SearchableSelect";
 
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
@@ -306,16 +307,17 @@ export default function AddDepartureReportButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
-                    placeholder="Select Vessel"
-                    value={formData.vesselName}
-                    onChange={handleVesselChange}
-                    className={errors.vesselName ? "border-red-500" : ""}
-                  />
+                  <SearchableSelect
+  options={vessels.map((v) => ({
+    value: v.name,
+    label: v.name,
+  }))}
+  placeholder="Search Vessel"
+  value={formData.vesselName}
+  onChange={handleVesselChange}
+  className={errors.vesselName ? "border-red-500" : ""}
+/>
+
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.vesselName}
@@ -327,20 +329,20 @@ export default function AddDepartureReportButton({
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                 
-                    options={voyageList}
-                    placeholder={
-                      !formData.vesselId
-                        ? ""
-                        : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Select Voyage"
-                    }
-                   value={formData.voyageId}
-                    onChange={handleVoyageChange}
-                    className={errors.voyageNo ? "border-red-500" : ""}
-                  />
+                  <SearchableSelect
+  options={voyageList}
+  placeholder={
+    !formData.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+      ? "No active voyages found"
+      : "Search Voyage"
+  }
+  value={formData.voyageId}
+  onChange={handleVoyageChange}
+
+  className={errors.voyageNo ? "border-red-500" : ""}
+/>
                   
                  
 

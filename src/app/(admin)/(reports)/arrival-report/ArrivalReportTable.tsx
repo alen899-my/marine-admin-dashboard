@@ -145,7 +145,7 @@ export default function ArrivalReportTable({
     header: "Vessel & Voyage ID",
     render: (r: ArrivalReport) => (
       <div className="flex flex-col">
-        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+        <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* ✅ Use Helper */}
             {getVesselName(r)}
           </span>
@@ -663,7 +663,25 @@ export default function ArrivalReportTable({
 
                 </div>
 
-               <div className="relative"><Label>Voyage No / ID</Label><Select options={voyageList} placeholder={!editData.vesselId ? "Select a Vessel first" : voyageList.length === 0 ? "No active voyages found" : "Select Voyage"} value={editData.voyageId} onChange={(val) => setEditData({ ...editData, voyageId: val })} /></div>
+              <div className="relative">
+  <Label>Voyage No / ID</Label>
+  <SearchableSelect
+    options={voyageList}
+    placeholder={
+      !editData.vesselId
+        ? "Select Vessel first"
+        : voyageList.length === 0
+        ? "No active voyages found"
+        : "Search Voyage"
+    }
+    value={editData.voyageId}
+    onChange={(val) =>
+      setEditData({ ...editData, voyageId: val })
+    }
+  
+  />
+</div>
+
 
                 <InputField
                   label="Port Name"

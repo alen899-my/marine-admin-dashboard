@@ -305,23 +305,26 @@ export default function AddArrivalReportButton({
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                  <Select
+                 <SearchableSelect
+  options={voyageList}
+  placeholder={
+    !formData.vesselId
+      ? "Select Vessel first"
+      : voyageList.length === 0
+        ? "No active voyages found"
+        : "Search Voyage"
+  }
+  value={formData.voyageId}
+  onChange={(val) => {
+    setFormData((prev) => ({ ...prev, voyageId: val }));
+    if (errors.voyageId) {
+      setErrors((prev) => ({ ...prev, voyageId: "" }));
+    }
+  }}
+ 
+  className={errors.voyageId ? "border-red-500" : ""}
+/>
 
-                    options={voyageList}
-                    placeholder={
-                      !formData.vesselId
-                        ? "Select a Vessel "
-                        : voyageList.length === 0
-                          ? "No active voyages found"
-                          : "Select Voyage"
-                    }
-                    value={formData.voyageId}
-                    onChange={(val) => {
-                      setFormData((prev) => ({ ...prev, voyageId: val }));
-                      if (errors.voyageId) setErrors((prev) => ({ ...prev, voyageId: "" }));
-                    }}
-                    className={errors.voyageId ? "border-red-500" : ""}
-                  />
 
 
 
