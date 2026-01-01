@@ -5,9 +5,14 @@ import Filters from "@/components/common/Filters";
 import { useState, useEffect } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
 import ArrivalReportTable from "./ArrivalReportTable";
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function ArrivalReport() {
   const [refresh, setRefresh] = useState(0);
+
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
 
   // --- Moved State from Table to Page ---
   const [search, setSearch] = useState("");
@@ -17,6 +22,7 @@ export default function ArrivalReport() {
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
   const [vessels, setVessels] = useState([]);
+
   useEffect(() => {
     async function fetchVessels() {
       try {
@@ -31,6 +37,7 @@ export default function ArrivalReport() {
     }
     fetchVessels();
   }, []);
+
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   return (
@@ -41,27 +48,36 @@ export default function ArrivalReport() {
           Arrival Report
         </h2>
 
-        {/* Button moved here */}
-        <AddArrivalReportButton onSuccess={handleRefresh} />
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton 
+            isVisible={isFilterVisible} 
+            onToggle={setIsFilterVisible} 
+          />
+          <AddArrivalReportButton onSuccess={handleRefresh} />
+        </div>
       </div>
+      
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          <Filters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            vesselId={vesselId}
-            setVesselId={setVesselId}
-            voyageId={voyageId}
-            setVoyageId={setVoyageId}
-            vessels={vessels}
-          />
+          isFilterVisible ? (
+            <Filters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              vesselId={vesselId}
+              setVesselId={setVesselId}
+              voyageId={voyageId}
+              setVoyageId={setVoyageId}
+              vessels={vessels}
+            />
+          ) : null
         }
       >
         <ArrivalReportTable

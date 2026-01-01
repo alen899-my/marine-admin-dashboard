@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 
 interface ButtonProps {
-  children: ReactNode;
+  children?: ReactNode;
 
   size?: "sm" | "md";
   variant?: "primary" | "outline";

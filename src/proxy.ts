@@ -22,22 +22,8 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/signin", nextUrl));
   }
 
- const routePermissions = [
-  { path: "/manage-users", perm: "users.view" },
-  { path: "/roles-and-permissions", perm: "roles.view" },
-  { path: "/daily-noon-report", perm: "noon.view" },
-  { path: "/departure-report", perm: "departure.view" },
-  { path: "/arrival-report", perm: "arrival.view" },
-  { path: "/nor", perm: "nor.view" },
-  { path: "/cargo-stowage-cargo-documents", perm: "cargo.view" },
-];
-
-for (const route of routePermissions) {
-  if (nextUrl.pathname.startsWith(route.path)) {
-    if (!user?.permissions?.includes(route.perm)) {
-      return NextResponse.redirect(new URL("/", nextUrl));
-    }
-  }
+if (!isLoggedIn && !publicRoutes.includes(nextUrl.pathname)) {
+  return NextResponse.redirect(new URL("/signin", nextUrl));
 }
 
   return NextResponse.next();

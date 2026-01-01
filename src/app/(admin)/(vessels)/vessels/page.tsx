@@ -4,10 +4,15 @@ import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters";
 import AddVesselButton from "./AddVesselButton";
-import VesselTable from "./VesselTable"; // Fixed typo from 'VessekTable'
+import VesselTable from "./VesselTable"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function VesselManagement() {
   const [refresh, setRefresh] = useState(0);
+
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -25,26 +30,35 @@ export default function VesselManagement() {
           Vessel Management
         </h2>
         
-        {/* Add Vessel Button triggers refresh on success */}
-        <AddVesselButton onSuccess={handleRefresh} />
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton 
+            isVisible={isFilterVisible} 
+            onToggle={setIsFilterVisible} 
+          />
+          {/* Add Vessel Button triggers refresh on success */}
+          <AddVesselButton onSuccess={handleRefresh} />
+        </div>
       </div>
 
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          <Filters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            // Custom props for Vessel context
-            searchVessel={true}
-            optionOff={true}
-          />
+          isFilterVisible ? (
+            <Filters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              // Custom props for Vessel context
+              searchVessel={true}
+              optionOff={true}
+            />
+          ) : null
         }
       >
         <VesselTable

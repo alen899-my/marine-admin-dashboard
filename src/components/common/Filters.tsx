@@ -19,11 +19,13 @@ interface FilterProps {
   searchVessel?: boolean;
   searchVoyage?: boolean;
   optionOff?: boolean;
-  vesselId: string;
-  setVesselId: (v: string) => void;
-  voyageId: string;
-  setVoyageId: (v: string) => void;
-  vessels: any[];         
+    vesselId?: string;
+  setVesselId?: (v: string) => void;
+
+  voyageId?: string;
+  setVoyageId?: (v: string) => void;
+
+  vessels?: any[];
 }
 
 export default function Filters({
@@ -38,11 +40,13 @@ export default function Filters({
   searchVessel,
   searchVoyage,
   optionOff,
-  vesselId,
-  setVesselId,
-  voyageId,
-  setVoyageId,
-  vessels = [], // Default to empty array here as well
+   vesselId = "",
+  setVesselId = () => {},
+
+  voyageId = "",
+  setVoyageId = () => {},
+
+  vessels = [],
 }: FilterProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
@@ -71,11 +75,11 @@ export default function Filters({
           const result = await res.json();
           const allVoyages = Array.isArray(result) ? result : result.data || [];
           setVoyageList(
-  allVoyages.map((v: any) => ({
-    value: v._id,
-    label: v.voyageNo,
-  }))
-);
+            allVoyages.map((v: any) => ({
+              value: v._id,
+              label: v.voyageNo,
+            }))
+          );
         }
       } catch (error) {
         setVoyageList([]);
@@ -151,46 +155,13 @@ export default function Filters({
         </label>
         <Input
           placeholder={getSearchPlaceholder()}
-          className="w-full"
+          className="w-"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-
-      {/* FIXED: Added fallback (vessels || []) to prevent map error */}
-      <div className="w-full sm:w-auto min-w-[200px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Vessel Name
-        </label>
-        <SearchableSelect
-          options={(vessels || []).map((v: any) => ({
-            value: v.name,
-            label: v.name,
-          }))}
-          placeholder="Select Vessel"
-          value={(vessels || []).find(v => v._id === localVesselId)?.name || ""}
-          onChange={(selectedName) => {
-            const selectedVessel = (vessels || []).find((v: any) => v.name === selectedName);
-            setLocalVesselId(selectedVessel?._id || "");
-            setLocalVoyageId("");
-          }}
-        />
-      </div>
-
-      <div className="w-full sm:w-auto min-w-[200px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Voyage ID
-        </label>
-        <SearchableSelect
-          options={voyageList}
-          placeholder={!localVesselId ? "Select Vessel first" : "Search Voyage"}
-          value={localVoyageId}
-          onChange={setLocalVoyageId}
-        />
-      </div>
-
-      <div className="w-full sm:w-auto min-w-[160px]">
+      <div className="w-full sm:w-auto min-w-[130px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Status
         </label>
@@ -202,9 +173,42 @@ export default function Filters({
           options={getStatusOptions()}
         />
       </div>
-
       {!optionOff && (
         <>
+          {/* FIXED: Added fallback (vessels || []) to prevent map error */}
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Vessel Name
+            </label>
+            <SearchableSelect
+              options={(vessels || []).map((v: any) => ({
+                value: v.name,
+                label: v.name,
+              }))}
+              placeholder="Select Vessel"
+              value={(vessels || []).find(v => v._id === localVesselId)?.name || ""}
+              onChange={(selectedName) => {
+                const selectedVessel = (vessels || []).find((v: any) => v.name === selectedName);
+                setLocalVesselId(selectedVessel?._id || "");
+                setLocalVoyageId("");
+              }}
+            />
+          </div>
+
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Voyage ID
+            </label>
+            <SearchableSelect
+              options={voyageList}
+              placeholder={!localVesselId ? "Select Vessel first" : "Search Voyage"}
+              value={localVoyageId}
+              onChange={setLocalVoyageId}
+            />
+          </div>
+
+
+
           <div className="w-full sm:w-auto min-w-[180px]">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
               {searchVoyage ? "ETA From" : "Date From"}

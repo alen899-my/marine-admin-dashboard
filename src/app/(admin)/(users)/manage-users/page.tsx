@@ -1,14 +1,18 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
-// 1. Change Import
 import UserFilters from "@/components/Users/UserFilters"; 
 import { useState } from "react";
 import AddUserButton from "./AddUserButton";
 import UsersTable from "./UsersTable"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function UserManagement() {
   const [refresh, setRefresh] = useState(0);
+
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -24,23 +28,32 @@ export default function UserManagement() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           User Management
         </h2>
-        <AddUserButton onSuccess={handleRefresh} />
+        
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton 
+            isVisible={isFilterVisible} 
+            onToggle={setIsFilterVisible} 
+          />
+          <AddUserButton onSuccess={handleRefresh} />
+        </div>
       </div>
 
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          // 2. Use the new UserFilters component
-          <UserFilters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-          />
+          isFilterVisible ? (
+            <UserFilters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+            />
+          ) : null
         }
       >
          <UsersTable
