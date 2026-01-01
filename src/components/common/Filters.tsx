@@ -96,7 +96,7 @@ export default function Filters({
   const getSearchPlaceholder = () => {
     if (searchVessel) return "Search by Name, IMO or Fleet";
     if (searchVoyage) return "Search by Voyage No, Port or Vessel";
-    return "Search...";
+    return "Search by Vessel Name or Voyage ID";
   };
 
   return (

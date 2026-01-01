@@ -2,18 +2,18 @@
 
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
+import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
 }
@@ -27,7 +27,9 @@ export default function AddArrivalReportButton({
   const { can, isReady } = useAuthorization();
   const [norSameAsArrival, setNorSameAsArrival] = useState(true);
 
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -37,7 +39,7 @@ export default function AddArrivalReportButton({
 
   const [formData, setFormData] = useState({
     vesselName: "AN16",
-    vesselId: "",   // 👈 Crucial for the hook
+    vesselId: "", // 👈 Crucial for the hook
     voyageId: "",
     portName: "",
     reportDate: getCurrentDateTime(),
@@ -56,9 +58,11 @@ export default function AddArrivalReportButton({
 
   // ✅ 3. SYNC LOGIC (Auto-fill Voyage)
   useEffect(() => {
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageId) {
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== formData.voyageId
+    ) {
       if (suggestedVoyageNo) {
-
       }
       setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
     }
@@ -94,7 +98,7 @@ export default function AddArrivalReportButton({
             // Check 2: Must be Active OR be the specific one we are looking for
             // (We keep the auto-suggested voyage even if it is inactive/closed)
             const isRelevant =
-              v.status === 'active' ||
+              v.status === "active" ||
               v.voyageNo === suggestedVoyageNo ||
               v.voyageNo === formData.voyageId;
 
@@ -106,7 +110,7 @@ export default function AddArrivalReportButton({
             filtered.map((v: any) => ({
               value: v.voyageNo,
               // Label shows status if it's not active
-              label: `${v.voyageNo} ${v.status !== 'active' ? '' : ''}`,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
             }))
           );
         }
@@ -117,7 +121,12 @@ export default function AddArrivalReportButton({
     }
 
     fetchAndFilterVoyages();
-  }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageId]);
+  }, [
+    formData.vesselId,
+    formData.vesselName,
+    suggestedVoyageNo,
+    formData.voyageId,
+  ]);
 
   // Effect to sync NOR Time with Arrival Time
   useEffect(() => {
@@ -140,7 +149,7 @@ export default function AddArrivalReportButton({
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
-  
+
   const handleVesselChange = (selectedName: string) => {
     const selectedVessel = vessels.find((v) => v.name === selectedName);
     setFormData((prev) => ({
@@ -287,7 +296,9 @@ export default function AddArrivalReportButton({
 
                 {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
-                  <Label>Vessel Name <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Vessel Name <span className="text-red-500">*</span>
+                  </Label>
                   <SearchableSelect
                     options={vessels.map((v) => ({
                       value: v.name,
@@ -298,38 +309,40 @@ export default function AddArrivalReportButton({
                     onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
                   />
-                  {errors.vesselName && <p className="text-xs text-red-500 mt-1">{errors.vesselName}</p>}
+                  {errors.vesselName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vesselName}
+                    </p>
+                  )}
                 </div>
 
                 <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !formData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-        ? "No active voyages found"
-        : "Search Voyage"
-  }
-  value={formData.voyageId}
-  onChange={(val) => {
-    setFormData((prev) => ({ ...prev, voyageId: val }));
-    if (errors.voyageId) {
-      setErrors((prev) => ({ ...prev, voyageId: "" }));
-    }
-  }}
- 
-  className={errors.voyageId ? "border-red-500" : ""}
-/>
-
-
-
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Search Voyage"
+                    }
+                    value={formData.voyageId}
+                    onChange={(val) => {
+                      setFormData((prev) => ({ ...prev, voyageId: val }));
+                      if (errors.voyageId) {
+                        setErrors((prev) => ({ ...prev, voyageId: "" }));
+                      }
+                    }}
+                    className={errors.voyageId ? "border-red-500" : ""}
+                  />
 
                   {errors.voyageId && (
-                    <p className="text-xs text-red-500 mt-1">{errors.voyageId}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.voyageId}
+                    </p>
                   )}
                 </div>
 
@@ -398,21 +411,13 @@ export default function AddArrivalReportButton({
                     <Label>
                       NOR Time <span className="text-red-500">*</span>
                     </Label>
-                    <div className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        id="norSync"
-                        checked={norSameAsArrival}
-                        onChange={(e) => setNorSameAsArrival(e.target.checked)}
-                        className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                      />
-                      <label
-                        htmlFor="norSync"
-                        className="text-xs text-gray-500 font-medium select-none"
-                      >
-                        Same as Arrival
-                      </label>
-                    </div>
+                    <Checkbox
+                      id="norSync"
+                      label="Same as Arrival"
+                      checked={norSameAsArrival}
+                      onChange={(checked) => setNorSameAsArrival(checked)}
+                      variant="default"
+                    />
                   </div>
                   <Input
                     type="datetime-local"
@@ -420,8 +425,9 @@ export default function AddArrivalReportButton({
                     value={formData.norTime}
                     onChange={handleChange}
                     disabled={norSameAsArrival}
-                    className={`${errors.norTime ? "border-red-500" : ""} ${norSameAsArrival ? "bg-gray-50 opacity-80" : ""
-                      }`}
+                    className={`${errors.norTime ? "border-red-500" : ""} ${
+                      norSameAsArrival ? "bg-gray-50 opacity-80" : ""
+                    }`}
                   />
                   {errors.norTime && (
                     <p className="text-xs text-red-500 mt-1">
