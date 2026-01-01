@@ -67,6 +67,9 @@ interface ArrivalReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  vesselId: string;  // Added this
+  voyageId: string;  // Added this
+  vesselList: any[];    // Added this
 }
 
 interface VoyageMetrics {
@@ -83,6 +86,9 @@ export default function ArrivalReportTable({
   status,
   startDate,
   endDate,
+  vesselId,
+  voyageId,
+  vesselList,
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,6 +276,8 @@ export default function ArrivalReportTable({
           status,
           startDate,
           endDate,
+          vesselId, // Added to query
+          voyageId, // Added to query
         });
 
         const res = await fetch(`/api/arrival-report?${query.toString()}`);
@@ -293,7 +301,7 @@ export default function ArrivalReportTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate]
+    [search, status, startDate, endDate, vesselId, voyageId]
   ); // Dependencies for fetchReports
 
   // Trigger fetch when filters change (Reset to page 1)
@@ -527,9 +535,9 @@ export default function ArrivalReportTable({
               onDelete={
                 canDelete
                   ? (r: ArrivalReport) => {
-                      setSelectedReport(r);
-                      setOpenDelete(true);
-                    }
+                    setSelectedReport(r);
+                    setOpenDelete(true);
+                  }
                   : undefined
               }
               onRowClick={handleView}
@@ -651,7 +659,7 @@ export default function ArrivalReportTable({
               </p>
             </section>
           </div>
-           {/* --- VOYAGE PERFORMANCE SECTION --- */}
+          {/* --- VOYAGE PERFORMANCE SECTION --- */}
           <section className="md:col-span-2 mt-8">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase">
@@ -779,43 +787,58 @@ export default function ArrivalReportTable({
             )}
           </section>
 
-         {/* FOOTER: STATUS & SHARE */}
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  {/* STATUS */}
-  <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
+          {/* FOOTER: STATUS & SHARE */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+            {/* STATUS */}
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
 
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Arrival Report - ${getVesselName(selectedReport)}`}
-        filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-        data={{
-              "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage ID": getVoyageDisplay(selectedReport),
-      
-          "Port Name": selectedReport.portName,
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Arrival Time": formatDate(selectedReport.eventTime),
-          "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
-          "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
-          "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
-          "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
-    )}
-  </div>
-</div>
-         
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Arrival Report - ${getVesselName(selectedReport)}`}
+                  filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+                  data={{
+                    // --- General Information ---
+                    "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage ID": getVoyageDisplay(selectedReport),
+                    "Port Name": selectedReport.portName,
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    "Arrival Time": formatDate(selectedReport.eventTime),
+                    "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
+
+                    // --- Arrival Stats ---
+                    "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
+                    "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
+                    "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
+
+                    // --- Voyage Performance Summary (Autocalculated Metrics) ---
+                    ...(voyageMetrics ? {
+                      "Total Steaming Time": `${voyageMetrics.totalTimeHours} Hrs (~${(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days)`,
+                      "Total Distance": `${voyageMetrics.totalDistance} NM`,
+                      "Average Speed": `${voyageMetrics.avgSpeed} Kts`,
+                      "Total VLSFO Consumed": `${voyageMetrics.consumedVlsfo} MT`,
+                      "Total LSMGO Consumed": `${voyageMetrics.consumedLsmgo} MT`,
+                    } : {
+                      "Performance Data": "No Departure Report linked"
+                    }),
+
+                    // --- Remarks ---
+                    "Remarks": selectedReport.remarks || "No Remarks",
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
 
         </div>
       </ViewModal>
@@ -876,8 +899,8 @@ export default function ArrivalReportTable({
                       !editData.vesselId
                         ? "Select Vessel first"
                         : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageId}
                     onChange={(val) =>
