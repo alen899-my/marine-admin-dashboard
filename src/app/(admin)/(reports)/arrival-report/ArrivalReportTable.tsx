@@ -16,6 +16,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 
 import SharePdfButton from "@/components/common/SharePdfButton";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -67,6 +68,7 @@ interface ArrivalReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: ArrivalReport[]) => void;
 }
 
 interface VoyageMetrics {
@@ -83,6 +85,7 @@ export default function ArrivalReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,6 +262,8 @@ export default function ArrivalReportTable({
 
   /* ================= FETCH ================= */
   // useCallback fixes the missing dependency warning
+  // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
+
   const fetchReports = useCallback(
     async (page = 1) => {
       try {
@@ -273,27 +278,54 @@ export default function ArrivalReportTable({
         });
 
         const res = await fetch(`/api/arrival-report?${query.toString()}`);
-
         if (!res.ok) throw new Error();
 
         const result = await res.json();
+        const rawReports = result.data || [];
 
-        setReports(result.data);
+        // 🔥 NEW: Fetch performance metrics for all reports in this list
+        const augmentedReports = await Promise.all(
+          rawReports.map(async (report: ArrivalReport) => {
+            let vId = "";
+            if (
+              typeof report.voyageId === "object" &&
+              report.voyageId !== null
+            ) {
+              vId = (report.voyageId as any)._id;
+            } else if (typeof report.voyageId === "string") {
+              vId = report.voyageId;
+            }
 
-        if (!result.data || result.data.length === 0) {
-          setTotalPages(1);
-        } else {
-          setTotalPages(result.pagination.totalPages);
-        }
+            if (vId) {
+              try {
+                const metricRes = await fetch(
+                  `/api/reports/voyage-summary/${vId}`
+                );
+                const metricData = await metricRes.json();
+                return {
+                  ...report,
+                  metrics: metricData.success ? metricData.metrics : null,
+                };
+              } catch {
+                return { ...report, metrics: null };
+              }
+            }
+            return { ...report, metrics: null };
+          })
+        );
+
+        setReports(augmentedReports);
+        if (onDataLoad) onDataLoad(augmentedReports); // Now sends metrics to parent for Excel
+
+        setTotalPages(result.pagination?.totalPages || 1);
       } catch {
         setReports([]);
-        setTotalPages(1);
         toast.error("Failed to load arrival reports");
       } finally {
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate]
+    [search, status, startDate, endDate, onDataLoad]
   ); // Dependencies for fetchReports
 
   // Trigger fetch when filters change (Reset to page 1)
@@ -676,11 +708,22 @@ export default function ArrivalReportTable({
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
                   {/* Time Metric */}
                   <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-                      <Clock size={14} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider">
-                        Steaming
-                      </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <Clock size={14} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                          Steaming
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Steaming Time = Arrival Time - Departure Time"
+                        position="right"
+                      >
+                        <InfoIcon
+                          size={12}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                        />
+                      </Tooltip>
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -697,11 +740,22 @@ export default function ArrivalReportTable({
 
                   {/* Distance Metric */}
                   <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-                      <Navigation size={14} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider">
-                        Distance
-                      </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <Navigation size={14} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                          Distance
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Total Distance = Σ (Distance Last 24h from all Noon Reports)"
+                        position="bottom"
+                      >
+                        <InfoIcon
+                          size={12}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                        />
+                      </Tooltip>
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -711,18 +765,26 @@ export default function ArrivalReportTable({
                         NM
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <InfoIcon size={10} /> Noon Sum
-                    </p>
                   </div>
 
                   {/* Speed Metric */}
                   <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-                      <Gauge size={14} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider">
-                        Avg Speed
-                      </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <Gauge size={14} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                          Avg Speed
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Avg Speed = Total Distance / Total Steaming Hours"
+                        position="bottom"
+                      >
+                        <InfoIcon
+                          size={12}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                        />
+                      </Tooltip>
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -732,19 +794,26 @@ export default function ArrivalReportTable({
                         Kts
                       </span>
                     </div>
-                    <div className="h-1 w-full bg-gray-100 dark:bg-white/10 rounded-full mt-2 overflow-hidden">
-                      <div className="h-full bg-emerald-500 w-[70%]" />{" "}
-                      {/* Decorative progress bar */}
-                    </div>
                   </div>
 
                   {/* Fuel Metric */}
                   <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-                      <Fuel size={14} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider">
-                        Consumption
-                      </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <Fuel size={14} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                          Consumption
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Consumed = (Dep ROB + Bunkers) - Arr ROB"
+                        position="left"
+                      >
+                        <InfoIcon
+                          size={12}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                        />
+                      </Tooltip>
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
@@ -772,7 +841,15 @@ export default function ArrivalReportTable({
             ) : (
               <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
                 <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-full mb-2">
-                  <InfoIcon size={16} className="text-slate-400" />
+                  <Tooltip
+                    content="A Departure Report is required to calculate performance baseline."
+                    position="top"
+                  >
+                    <InfoIcon
+                      size={16}
+                      className="text-slate-400 cursor-help"
+                    />
+                  </Tooltip>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-[240px]">
                   No Departure Report found. Data will populate once reports are

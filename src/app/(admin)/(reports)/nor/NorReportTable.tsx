@@ -61,6 +61,7 @@ interface NORReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: INorReport[]) => void;
 }
 
 export default function NorReportTable({
@@ -69,6 +70,7 @@ export default function NorReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
 }: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
@@ -316,7 +318,11 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         if (!res.ok) throw new Error(`Error: ${res.status}`);
 
         const result = await res.json();
+        const fetchedData = result.data || [];
+
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         console.error(err);
@@ -325,7 +331,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate]
+    [LIMIT, search, status, startDate, endDate, onDataLoad]
   );
     function handleEdit(report: INorReport) {
     setSelectedReport(report);

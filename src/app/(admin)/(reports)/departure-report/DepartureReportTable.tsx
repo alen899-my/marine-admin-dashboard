@@ -56,6 +56,7 @@ interface DepartureReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: IDepartureReport[]) => void;
 }
 
 export default function DepartureReportTable({
@@ -64,6 +65,7 @@ export default function DepartureReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
@@ -245,8 +247,10 @@ export default function DepartureReportTable({
         if (!res.ok) throw new Error();
 
         const result = await res.json();
+        const fetchedData = result.data || [];
 
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
 
         if (!result.data || result.data.length === 0) {
           setTotalPages(1);
@@ -261,7 +265,7 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate]
+    [LIMIT, search, status, startDate, endDate, onDataLoad]
   );
 async function handleUpdate() {
     if (!selectedReport || !editData) return;

@@ -57,6 +57,7 @@ interface CargoReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: ICargoReport[]) => void;
 }
 
 export default function CargoReportTable({
@@ -65,6 +66,7 @@ export default function CargoReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
@@ -339,7 +341,11 @@ const getVesselName = (r: ICargoReport | null) => {
         if (!res.ok) throw new Error(`Error: ${res.status}`);
 
         const result = await res.json();
+        const fetchedData = result.data || [];
+
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         // Fix 'err' unused: Log it or use a typed catch
@@ -349,7 +355,7 @@ const getVesselName = (r: ICargoReport | null) => {
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate]
+    [LIMIT, search, status, startDate, endDate, onDataLoad]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
