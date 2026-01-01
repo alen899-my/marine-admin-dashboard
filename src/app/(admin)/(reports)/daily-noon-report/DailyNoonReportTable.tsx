@@ -564,7 +564,9 @@ if (!isReady) return null;
         
         headerRight={
           selectedReport && (
+            
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+          
               <span className="font-bold">{getVesselName(selectedReport)}</span>
         <span>|</span>
         <span>{getVoyageNo(selectedReport)}</span>
@@ -728,25 +730,49 @@ if (!isReady) return null;
             </section>
           </div>
 
-          {/* ================= FOOTER: STATUS (Aligned with columns above) ================= */}
-          {/* We use the same gap-x-12 here to ensure alignment */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                Status
-              </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
-            </div>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+  
+  {/* STATUS */}
+  <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+      Status
+    </span>
+    <Badge
+      color={selectedReport?.status === "active" ? "success" : "error"}
+    >
+      {selectedReport?.status === "active" ? "Active" : "Inactive"}
+    </Badge>
+  </div>
 
-            {/* Empty div for the second column on desktop */}
-            <div className="hidden md:block"></div>
-          </div>
+  {/* SHARE BUTTON */}
+  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+    {selectedReport && (
+      <SharePdfButton
+        title={`Noon Report - ${getVesselName(selectedReport)}`}
+        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+       data={{
+        "Vessel Name": getVesselName(selectedReport),
+        "Voyage Number": getVoyageNo(selectedReport),
+        "Report Date": formatDate(selectedReport.reportDate),
+        "Latitude": selectedReport.position?.lat || "-",
+        "Longitude": selectedReport.position?.long || "-",
+        "Next Port": selectedReport.navigation?.nextPort || "-",
+        "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+        "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+        "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+        "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+        "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+        "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+        "Wind Condition": selectedReport.weather?.wind || "-",
+        "Sea State": selectedReport.weather?.seaState || "-",
+        "Weather Remarks": selectedReport.weather?.remarks || "-",
+        "General Remarks": selectedReport.remarks || "-"
+      }}
+      />
+    )}
+  </div>
+
+</div>
         </div>
       </ViewModal>
 

@@ -16,6 +16,7 @@ import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
+import SharePdfButton from "@/components/common/SharePdfButton";
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
   url: string;
@@ -707,20 +708,41 @@ const getVesselName = (r: ICargoReport | null) => {
       </section>
     </div>
 
-    {/* ================= FOOTER: STATUS (Aligned with Col 1) ================= */}
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-          Status
-        </span>
-        <Badge
-          color={selectedReport?.status === "active" ? "success" : "error"}
-        >
-          {selectedReport?.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      </div>
-      <div className="hidden md:block"></div>
-    </div>
+    {/* ================= FOOTER: STATUS & SHARE ================= */}
+<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+  <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+      Status
+    </span>
+    <Badge
+      color={selectedReport?.status === "active" ? "success" : "error"}
+    >
+      {selectedReport?.status === "active" ? "Active" : "Inactive"}
+    </Badge>
+  </div>
+
+  {/* SHARE BUTTON */}
+  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+    {selectedReport && (
+      <SharePdfButton
+        title={`Cargo Document - ${getVesselName(selectedReport)}`}
+        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage No": getVoyageNo(selectedReport),
+          "Port Name": selectedReport.portName,
+          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
+          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
+          "Document Date": formatDateOnly(selectedReport.documentDate),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Remarks": selectedReport.remarks || "No Remarks",
+      
+        }}
+      />
+    )}
+  </div>
+</div>
   </div>
 </ViewModal>
 

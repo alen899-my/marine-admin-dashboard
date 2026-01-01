@@ -3,68 +3,124 @@
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { IoLogoWhatsapp } from "react-icons/io"; // Install react-icons if needed
+import { IoLogoWhatsapp } from "react-icons/io";
 
-interface SharePdfButtonProps {
+export interface SharePdfButtonProps {
   title: string;
   filename: string;
-  data: Record<string, any>; // The object containing report details
+  data: Record<string, any>;
+  buttonLabel?: string;
 }
 
-export default function SharePdfButton({ title, filename, data }: SharePdfButtonProps) {
+export default function SharePdfButton({
+  title,
+  filename,
+  data,
+  buttonLabel = "Share via WhatsApp",
+}: SharePdfButtonProps) {
   const [loading, setLoading] = useState(false);
+
+  // Helper to load the logo
+  const loadImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => resolve(img);
+      img.onerror = (err) => reject(err);
+    });
+  };
 
   const generateAndShare = async () => {
     setLoading(true);
+
     try {
       const doc = new jsPDF();
-      
-      // Add Title
-      doc.setFontSize(18);
-      doc.text(title, 14, 22);
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+      const margin = 14;
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Transform data object into table rows
-      const tableRows = Object.entries(data).map(([key, value]) => [
-        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), 
-        value?.toString() || "-"
+      // -------- 1. HEADER & LOGO LOGIC --------
+      let logoBottomY = 25;
+      try {
+        const logo = await loadImage("/images/logo/b.png");
+        const displayWidth = 45;
+        const displayHeight = (logo.naturalHeight * displayWidth) / logo.naturalWidth;
+        
+        doc.addImage(logo, "PNG", margin, 10, displayWidth, displayHeight);
+        logoBottomY = 10 + displayHeight;
+
+        // Title and Date Header
+        doc.setFontSize(16);
+        doc.text(title, pageWidth - margin, 18, { align: "right" });
+        doc.setFontSize(9);
+        doc.text(
+          `Generated: ${new Date().toLocaleString("en-IN")}`, 
+          pageWidth - margin, 24, { align: "right" }
+        );
+      } catch (e) {
+        console.warn("Logo failed to load, proceeding with text only", e);
+      }
+
+      // -------- 2. TABLE LOGIC --------
+      const rows = Object.entries(data).map(([key, value]) => [
+        key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()),
+        value !== undefined && value !== null ? String(value) : "-",
       ]);
 
       autoTable(doc, {
-        startY: 35,
+        startY: logoBottomY + 10,
         head: [["Field", "Value"]],
-        body: tableRows,
+        body: rows,
         theme: "striped",
-        headStyles: { fillColor: [41, 128, 185] },
+        headStyles: { fillColor: [0, 166, 184]}, // Blue header
       });
 
-      const pdfBlob = doc.output("blob");
-      const file = new File([pdfBlob], `${filename}.pdf`, { type: "application/pdf" });
+      // Prepare the PDF Blob
+      const pdfOutput = doc.output("arraybuffer");
+      const pdfBlob = new Blob([pdfOutput], { type: "application/pdf" });
 
-      // 1. Try Web Share API (Works on Mobile/Modern Browsers)
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: title,
-          text: `Please find the attached ${title}`,
+      // -------- 3. UPLOAD TO VERCEL --------
+      let vercelUrl = "";
+      try {
+        const uniqueFilename = `${filename}_${Date.now()}.pdf`;
+        const response = await fetch(`/api/upload-pdf?filename=${uniqueFilename}`, {
+          method: "POST",
+          body: pdfBlob,
         });
-      } else {
-        // 2. Fallback: Download and provide WhatsApp Web Link
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${filename}.pdf`;
-        link.click();
-        
-        // Open WhatsApp Web
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("I've downloaded the report: " + title)}`;
-        window.open(whatsappUrl, "_blank");
-        alert("PDF downloaded. You can now attach it to the WhatsApp window that opened.");
+
+        if (response.ok) {
+          const result = await response.json();
+          vercelUrl = result.url;
+        }
+      } catch (err) {
+        console.error("Upload failed:", err);
       }
-    } catch (error) {
-      console.error("Sharing failed", error);
+
+      // -------- 4. THE REDIRECT (WHATSAPP) --------
+      const message = vercelUrl
+        ? `📄 *${title}*\n\n✅ Click here to view report:\n${vercelUrl}`
+        : `📄 *${title}*\n\nReport generated. Please attach the downloaded file.`;
+
+      const whatsappLink = `https://wa.me/918921837945?text=${encodeURIComponent(message)}`;
+
+      // Link Injection Trick
+      const anchor = document.createElement("a");
+      anchor.href = whatsappLink;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+
+      // -------- 5. LOCAL DOWNLOAD BACKUP --------
+      const localUrl = URL.createObjectURL(pdfBlob);
+      const dlLink = document.createElement("a");
+      dlLink.href = localUrl;
+      dlLink.download = `${filename}.pdf`;
+      dlLink.click();
+      URL.revokeObjectURL(localUrl);
+
+    } catch (err) {
+      console.error("Process failed:", err);
     } finally {
       setLoading(false);
     }
@@ -72,12 +128,17 @@ export default function SharePdfButton({ title, filename, data }: SharePdfButton
 
   return (
     <button
-      onClick={generateAndShare}
+      onClick={(e) => { e.stopPropagation(); generateAndShare(); }}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+      className="flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 disabled:opacity-60 active:scale-95 w-full sm:w-auto justify-center"
     >
-      <IoLogoWhatsapp className="text-base" />
-      {loading ? "Generating..." : "Share to WhatsApp"}
+      <IoLogoWhatsapp 
+        size={18} 
+        className={`${loading ? "animate-spin text-[#25D366]" : "text-[#25D366]"}`} 
+      />
+      <span className="whitespace-nowrap">
+        {loading ? "Processing..." : buttonLabel}
+      </span>
     </button>
   );
 }

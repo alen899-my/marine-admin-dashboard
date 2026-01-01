@@ -15,6 +15,7 @@ import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
+import SharePdfButton from "@/components/common/SharePdfButton";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -680,22 +681,47 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
             </section>
           </div>
 
-          {/* ================= FOOTER: STATUS ================= */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-            <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                Status
-              </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-            <div className="hidden md:block"></div>
-          </div>
+         {/* ================= FOOTER: STATUS & SHARE ================= */}
+<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+  <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+      Status
+    </span>
+    <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
+      {selectedReport?.status === "active" ? "Active" : "Inactive"}
+    </Badge>
+  </div>
+
+  {/* SHARE BUTTON */}
+  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+    {selectedReport && (
+      <SharePdfButton
+        title={`Departure Report - ${getVesselName(selectedReport)}`}
+        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        data={{
+            "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status here
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+        
+          "Last Port": selectedReport.lastPort || "-",
+          "Current Port": selectedReport.portName,
+          "Departure Time": formatDate(selectedReport.eventTime),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
+          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
+          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
+          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
+          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
+          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
+          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
+          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
+          "General Remarks": selectedReport.remarks || "No Remarks"
+        }}
+      />
+    )}
+  </div>
+</div>
         </div>
       </ViewModal>
 
