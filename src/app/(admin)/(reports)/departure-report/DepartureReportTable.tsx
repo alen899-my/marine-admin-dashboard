@@ -520,7 +520,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">
-                {selectedReport.vesselName}
+                {getVesselName(selectedReport)}
               </span>
               <span>|</span>
              <span>{getVoyageDisplay(selectedReport)}</span>
