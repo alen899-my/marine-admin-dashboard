@@ -546,7 +546,10 @@ export default function ArrivalReportTable({
         headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold"> {getVesselName(selectedReport)}</span>
+              <span className="font-bold">
+                {" "}
+                {getVesselName(selectedReport)}
+              </span>
               <span>|</span>
               <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
@@ -651,7 +654,7 @@ export default function ArrivalReportTable({
               </p>
             </section>
           </div>
-           {/* --- VOYAGE PERFORMANCE SECTION --- */}
+          {/* --- VOYAGE PERFORMANCE SECTION --- */}
           <section className="md:col-span-2 mt-8">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase">
@@ -779,44 +782,55 @@ export default function ArrivalReportTable({
             )}
           </section>
 
-         {/* FOOTER: STATUS & SHARE */}
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  {/* STATUS */}
-  <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
+          {/* FOOTER: STATUS & SHARE */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+            {/* STATUS */}
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
 
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Arrival Report - ${getVesselName(selectedReport)}`}
-        filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-        data={{
-              "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage ID": getVoyageDisplay(selectedReport),
-      
-          "Port Name": selectedReport.portName,
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Arrival Time": formatDate(selectedReport.eventTime),
-          "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
-          "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
-          "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
-          "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
-    )}
-  </div>
-</div>
-         
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Arrival Report - ${getVesselName(selectedReport)}`}
+                  filename={`ArrivalReport_${
+                    selectedReport.portName
+                  }_${getVoyageDisplay(selectedReport)}`}
+                  data={{
+                    "Report Status":
+                      selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage ID": getVoyageDisplay(selectedReport),
 
+                    "Port Name": selectedReport.portName,
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    "Arrival Time": formatDate(selectedReport.eventTime),
+                    "NOR Tendered": formatDate(
+                      selectedReport.norDetails?.norTime
+                    ),
+                    "Cargo Quantity":
+                      (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") +
+                      " MT",
+                    "ROB VLSFO":
+                      (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
+                    "ROB LSMGO":
+                      (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
+                    Remarks: selectedReport.remarks || "No Remarks",
+                  }}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </ViewModal>
 
@@ -1018,6 +1032,135 @@ export default function ArrivalReportTable({
                   setEditData({ ...editData, remarks: e.target.value })
                 }
               />
+            </ComponentCard>
+
+            <ComponentCard title="Voyage Performance Summary">
+              {/* --- VOYAGE PERFORMANCE SECTION --- */}
+              <section className="md:col-span-2">
+                {metricsLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-20 bg-gray-100 dark:bg-white/5 animate-pulse rounded-xl"
+                      />
+                    ))}
+                  </div>
+                ) : voyageMetrics ? (
+                  <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
+                    <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
+                      {/* Time Metric */}
+                      <div className="p-5 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                          <Clock size={14} />
+                          <span className="text-[11px] font-bold uppercase tracking-wider">
+                            Steaming
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {voyageMetrics.totalTimeHours}
+                          </span>
+                          <span className="text-xs font-medium text-gray-500">
+                            Hrs
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-blue-500 font-medium">
+                          ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)}{" "}
+                          Days
+                        </p>
+                      </div>
+
+                      {/* Distance Metric */}
+                      <div className="p-5 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                          <Navigation size={14} />
+                          <span className="text-[11px] font-bold uppercase tracking-wider">
+                            Distance
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {voyageMetrics.totalDistance}
+                          </span>
+                          <span className="text-xs font-medium text-gray-500">
+                            NM
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <InfoIcon size={10} /> Noon Sum
+                        </p>
+                      </div>
+
+                      {/* Speed Metric */}
+                      <div className="p-5 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                          <Gauge size={14} />
+                          <span className="text-[11px] font-bold uppercase tracking-wider">
+                            Avg Speed
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {voyageMetrics.avgSpeed}
+                          </span>
+                          <span className="text-xs font-medium text-gray-500">
+                            Kts
+                          </span>
+                        </div>
+                        <div className="h-1 w-full bg-gray-100 dark:bg-white/10 rounded-full mt-2 overflow-hidden">
+                          <div className="h-full bg-emerald-500 w-[70%]" />{" "}
+                          {/* Decorative progress bar */}
+                        </div>
+                      </div>
+
+                      {/* Fuel Metric */}
+                      <div className="p-5 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                          <Fuel size={14} />
+                          <span className="text-[11px] font-bold uppercase tracking-wider">
+                            Consumption
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-medium text-gray-400">
+                              VLSFO
+                            </span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                              {voyageMetrics.consumedVlsfo}{" "}
+                              <span className="text-[10px] font-normal">
+                                MT
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-medium text-gray-400">
+                              LSMGO
+                            </span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                              {voyageMetrics.consumedLsmgo}{" "}
+                              <span className="text-[10px] font-normal">
+                                MT
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                    <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-full mb-2">
+                      <InfoIcon size={16} className="text-slate-400" />
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-[240px]">
+                      No Departure Report found. Data will populate once reports
+                      are linked.
+                    </p>
+                  </div>
+                )}
+              </section>
             </ComponentCard>
           </div>
         )}
