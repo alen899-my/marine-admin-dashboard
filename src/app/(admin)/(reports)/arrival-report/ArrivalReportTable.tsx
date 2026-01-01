@@ -15,6 +15,7 @@ import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
+import SharePdfButton from "@/components/common/SharePdfButton";
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -596,21 +597,42 @@ export default function ArrivalReportTable({
             </section>
           </div>
 
-          {/* ================= FOOTER: STATUS ================= */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                Status
-              </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-          </div>
+         {/* FOOTER: STATUS & SHARE */}
+<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+  {/* STATUS */}
+  <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+      Status
+    </span>
+    <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
+      {selectedReport?.status === "active" ? "Active" : "Inactive"}
+    </Badge>
+  </div>
+
+  {/* SHARE BUTTON */}
+  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+    {selectedReport && (
+      <SharePdfButton
+        title={`Arrival Report - ${getVesselName(selectedReport)}`}
+        filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        data={{
+              "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+      
+          "Port Name": selectedReport.portName,
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Arrival Time": formatDate(selectedReport.eventTime),
+          "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
+          "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
+          "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+    )}
+  </div>
+</div>
         </div>
       </ViewModal>
 
