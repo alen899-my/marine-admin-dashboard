@@ -656,9 +656,6 @@ export default function ArrivalReportTable({
               <h3 className="text-[11px] font-bold text-gray-400 uppercase">
                 Voyage Performance Summary
               </h3>
-              <span className="text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-md font-medium uppercase tracking-tight">
-                Auto-Calculated
-              </span>
             </div>
 
             {metricsLoading ? (
