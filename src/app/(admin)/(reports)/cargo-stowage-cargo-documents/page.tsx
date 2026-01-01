@@ -3,7 +3,7 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import CargoReportTable from "./CargoReportTable";
 import Filters from "@/components/common/Filters";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AddCargoButton from "./AddCragoButton";
 
 export default function CragoStowageCargoDocuments() {
@@ -13,6 +13,23 @@ export default function CragoStowageCargoDocuments() {
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [vesselId, setVesselId] = useState("");
+  const [voyageId, setVoyageId] = useState("");
+  const [vessels, setVessels] = useState([]);
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const result = await res.json();
+          setVessels(Array.isArray(result) ? result : result.data || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch vessels", error);
+      }
+    }
+    fetchVessels();
+  }, []);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -39,6 +56,11 @@ export default function CragoStowageCargoDocuments() {
             setStartDate={setStartDate}
             endDate={endDate}
             setEndDate={setEndDate}
+            vesselId={vesselId}
+            setVesselId={setVesselId}
+            voyageId={voyageId}
+            setVoyageId={setVoyageId}
+            vessels={vessels}
           />
         }
       >
@@ -48,6 +70,9 @@ export default function CragoStowageCargoDocuments() {
           status={status}
           startDate={startDate}
           endDate={endDate}
+          vesselId={vesselId}
+          voyageId={voyageId}
+          vesselList={vessels}
         />
       </ComponentCard>
     </div>

@@ -2,7 +2,7 @@
 
 import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters"; // Imported Filters
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonReportTable from "./DailyNoonReportTable";
 
@@ -14,7 +14,23 @@ export default function DailyNoonReport() {
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
+  const [vesselId, setVesselId] = useState("");
+  const [voyageId, setVoyageId] = useState("");
+  const [vessels, setVessels] = useState([]);
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const result = await res.json();
+          setVessels(Array.isArray(result) ? result : result.data || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch vessels", error);
+      }
+    }
+    fetchVessels();
+  }, []);
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   return (
@@ -31,8 +47,8 @@ export default function DailyNoonReport() {
 
       {/* Card Section: Action prop removed */}
       <ComponentCard
-      headerClassName="p-0 px-1"
-      title={
+        headerClassName="p-0 px-1"
+        title={
           <Filters
             search={search}
             setSearch={setSearch}
@@ -42,16 +58,24 @@ export default function DailyNoonReport() {
             setStartDate={setStartDate}
             endDate={endDate}
             setEndDate={setEndDate}
+            vesselId={vesselId}
+            setVesselId={setVesselId}
+            voyageId={voyageId}
+            setVoyageId={setVoyageId}
+            vessels={vessels}
           />
-        } 
+        }
       >
-        <DailyNoonReportTable 
-          refresh={refresh} 
+        <DailyNoonReportTable
+          refresh={refresh}
           // Passing filter props down
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
+          vesselId={vesselId}
+          voyageId={voyageId}
+          vesselList={vessels}
         />
       </ComponentCard>
     </div>

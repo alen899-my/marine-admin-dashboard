@@ -61,6 +61,9 @@ interface NORReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+    vesselId: string;  // Added this
+  voyageId: string;  // Added this
+ vesselList: any[];    // Added this
 }
 
 export default function NorReportTable({
@@ -69,6 +72,9 @@ export default function NorReportTable({
   status,
   startDate,
   endDate,
+  vesselId,
+      voyageId,
+      vesselList,
 }: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
@@ -309,6 +315,8 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
           status,
           startDate,
           endDate,
+           vesselId, // Added to query
+          voyageId, // Added to query
         });
 
         const res = await fetch(`/api/nor?${query.toString()}`);
@@ -325,7 +333,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate]
+    [LIMIT, search, status, startDate, endDate,vesselId, voyageId]
   );
     function handleEdit(report: INorReport) {
     setSelectedReport(report);
