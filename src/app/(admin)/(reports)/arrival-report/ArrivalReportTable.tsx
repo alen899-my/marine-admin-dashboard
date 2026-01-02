@@ -277,72 +277,44 @@ export default function ArrivalReportTable({
   // useCallback fixes the missing dependency warning
   // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
 
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId, // Added to query
-          voyageId, // Added to query
-        });
+ // Replace your existing fetchReports with this clean version
+const fetchReports = useCallback(
+  async (page = 1) => {
+    try {
+      setLoading(true);
+      const query = new URLSearchParams({
+        page: page.toString(),
+        limit: LIMIT.toString(),
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+      });
 
-        const res = await fetch(`/api/arrival-report?${query.toString()}`);
-        if (!res.ok) throw new Error();
+      const res = await fetch(`/api/arrival-report?${query.toString()}`);
+      if (!res.ok) throw new Error();
 
-        const result = await res.json();
-        const rawReports = result.data || [];
+      const result = await res.json();
+      
+      // We no longer need the .map(async ...) loop here!
+      // The backend now sends the 'metrics' object inside each report.
+      const rawReports = result.data || [];
 
-        // 🔥 NEW: Fetch performance metrics for all reports in this list
-        const augmentedReports = await Promise.all(
-          rawReports.map(async (report: ArrivalReport) => {
-            let vId = "";
-            if (
-              typeof report.voyageId === "object" &&
-              report.voyageId !== null
-            ) {
-              vId = (report.voyageId as any)._id;
-            } else if (typeof report.voyageId === "string") {
-              vId = report.voyageId;
-            }
+      setReports(rawReports);
+      if (onDataLoad) onDataLoad(rawReports); 
 
-            if (vId) {
-              try {
-                const metricRes = await fetch(
-                  `/api/reports/voyage-summary/${vId}`
-                );
-                const metricData = await metricRes.json();
-                return {
-                  ...report,
-                  metrics: metricData.success ? metricData.metrics : null,
-                };
-              } catch {
-                return { ...report, metrics: null };
-              }
-            }
-            return { ...report, metrics: null };
-          })
-        );
-
-        setReports(augmentedReports);
-        if (onDataLoad) onDataLoad(augmentedReports); // Now sends metrics to parent for Excel
-
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch {
-        setReports([]);
-        toast.error("Failed to load arrival reports");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
-  ); // Dependencies for fetchReports
-
+      setTotalPages(result.pagination?.totalPages || 1);
+    } catch {
+      setReports([]);
+      toast.error("Failed to load arrival reports");
+    } finally {
+      setLoading(false);
+    }
+  },
+  [search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+);
   // Trigger fetch when filters change (Reset to page 1)
   useEffect(() => {
     fetchReports(1);
@@ -372,35 +344,17 @@ export default function ArrivalReportTable({
   ];
 
   /* ================= ACTIONS ================= */
-  async function handleView(report: ArrivalReport) {
-    setSelectedReport(report);
-    setOpenView(true);
+  async function handleView(report: any) {
+  setSelectedReport(report);
+  setOpenView(true);
+  
+  // Use the metrics already attached to the report from the initial fetch
+  if (report.metrics) {
+    setVoyageMetrics(report.metrics);
+  } else {
     setVoyageMetrics(null);
-
-    // Extract Voyage ID from potential object or string
-    let vId = "";
-    if (typeof report.voyageId === "object" && report.voyageId !== null) {
-      vId = (report.voyageId as any)._id;
-    } else if (typeof report.voyageId === "string") {
-      vId = report.voyageId;
-    }
-
-    if (vId) {
-      setMetricsLoading(true);
-      try {
-        const res = await fetch(`/api/reports/voyage-summary/${vId}`);
-        const data = await res.json();
-
-        if (data.success) {
-          setVoyageMetrics(data.metrics);
-        }
-      } catch (err) {
-        // Logic for error state could go here if needed
-      } finally {
-        setMetricsLoading(false);
-      }
-    }
   }
+}
 
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
@@ -876,7 +830,7 @@ export default function ArrivalReportTable({
             )}
           </section>
           {/* Place this at the bottom of the grid, before the Voyage Performance Section */}
-          <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
+          <section className="md:col-span-2 space-y-1.5 pt-1 mt-4 border-t border-gray-200 dark:border-white/10">
             <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
               System Information
             </h3>

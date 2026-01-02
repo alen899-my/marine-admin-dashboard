@@ -1,12 +1,13 @@
 // src/app/api/arrival-report/route.ts
 import { dbConnect } from "@/lib/db";
-import Voyage from "@/models/Voyage"; // ✅ Import Voyage model
+import Voyage from "@/models/Voyage"; 
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import ReportOperational from "@/models/ReportOperational";
-
+import ReportDaily from "@/models/ReportDaily";
+import Vessel from "@/models/Vessel";
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
 
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
@@ -40,6 +41,10 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
+    // 1. Force Register Models for population
+    const _v = Voyage;
+    const _vsl = Vessel;
+
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
@@ -54,13 +59,9 @@ export async function GET(req: NextRequest) {
 
     const query: Record<string, unknown> = { eventType: "arrival" };
 
-    if (status !== "all") {
-      query.status = status;
-    }
+    if (status !== "all") query.status = status;
     if (selectedVessel) query.vesselId = selectedVessel;
-    if (selectedVoyage) {
-      query.voyageId = selectedVoyage;
-    }
+    if (selectedVoyage) query.voyageId = selectedVoyage;
 
     if (search) {
       query.$or = [
@@ -70,61 +71,84 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Date Filtering Logic
     if (startDate || endDate) {
-      const dateQuery: { $gte?: Date; $lte?: Date } = {};
-      if (startDate) {
-        const parsedStart = parseDateString(startDate);
-        if (parsedStart) dateQuery.$gte = parsedStart;
+      const dateQuery: any = {};
+      const parsedStart = parseDateString(startDate);
+      if (parsedStart) dateQuery.$gte = parsedStart;
+      const parsedEnd = parseDateString(endDate);
+      if (parsedEnd) {
+        parsedEnd.setHours(23, 59, 59, 999);
+        dateQuery.$lte = parsedEnd;
       }
-      if (endDate) {
-        const parsedEnd = parseDateString(endDate);
-        if (parsedEnd) {
-          parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd;
-        }
-      }
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
+      if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
     }
 
     const total = await ReportOperational.countDocuments(query);
-
-    // ✅ FIX: Ensure models are registered before population
-    // Sometimes in Next.js dev mode, models aren't loaded yet.
-    // Importing Voyage and Vessel at the top of the file usually fixes this.
-
-    const reports = await ReportOperational.find(query)
-      .populate({
-        path: "voyageId",
-        select: "voyageNo _id",
-      })
+    const rawReports = await ReportOperational.find(query)
+      .populate("voyageId", "voyageNo _id")
       .populate("vesselId", "name")
-      .populate("createdBy", "fullName") // ✅ Add this
-      .populate("updatedBy", "fullName") // ✅ Add this
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    // 🛠 DEBUG LOG (Check your terminal)
-    // console.log("Sample Report VoyageId:", reports[0]?.voyageId);
+    // 2. ENHANCED LOGIC: Calculate Metrics on Server for all records in this page
+    const reportsWithMetrics = await Promise.all(
+  rawReports.map(async (report: any) => {
+    if (!report.voyageId) return { ...report, metrics: null };
+
+    const vId = report.voyageId._id || report.voyageId;
+
+    const [departure, noonReports] = await Promise.all([
+      ReportOperational.findOne({ voyageId: vId, eventType: "departure", status: "active" }).lean(),
+      ReportDaily.find({ voyageId: vId, status: "active" }).lean(),
+    ]);
+
+    if (!departure) return { ...report, metrics: null };
+
+    // --- Calculations ---
+    
+    // 1. Total Time (Arrival EventTime - Departure EventTime)
+    const arrTime = new Date(report.eventTime || report.reportDate).getTime();
+    const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+    const totalTimeHours = Math.max(0, (arrTime - depTime) / (1000 * 60 * 60));
+
+    // 2. Total Distance (Sum of Noon Report observed distances)
+    const totalDistance = noonReports.reduce((sum, doc) => 
+      sum + (Number(doc.navigation?.distLast24h) || 0), 0
+    );
+
+    // 3. Fuel Consumed (The "Captain's Formula")
+    const getFuel = (fuelType: "Vlsfo" | "Lsmgo") => {
+      const depROB = Number(departure.departureStats?.[`rob${fuelType}`]) || 0;
+      const bunk = Number(departure.departureStats?.[`bunkersReceived${fuelType}`]) || 0;
+      const arrROB = Number(report.arrivalStats?.[`rob${fuelType}`]) || 0;
+      return (depROB + bunk) - arrROB;
+    };
+
+    return {
+      ...report,
+      metrics: {
+        totalTimeHours: Number(totalTimeHours.toFixed(2)),
+        totalDistance: Number(totalDistance.toFixed(2)),
+        avgSpeed: totalTimeHours > 0 ? Number((totalDistance / totalTimeHours).toFixed(2)) : 0,
+        consumedVlsfo: Number(getFuel("Vlsfo").toFixed(2)),
+        consumedLsmgo: Number(getFuel("Lsmgo").toFixed(2)),
+      }
+    };
+  })
+);
 
     return NextResponse.json({
-      data: reports,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: reportsWithMetrics,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error("GET ARRIVAL REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch arrival reports" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch arrival reports" }, { status: 500 });
   }
 }
 
