@@ -8,15 +8,14 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { useAuthorization } from "@/hooks/useAuthorization";
-import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Info } from "lucide-react";
-import SearchableSelect from "@/components/form/SearchableSelect";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
@@ -35,7 +34,11 @@ export default function AddDailyNoonReportButton({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+
+  // Dropdown State
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   const getCurrentDateTime = () => {
     return new Date()
@@ -65,12 +68,18 @@ export default function AddDailyNoonReportButton({
   });
 
   const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    form.vesselId || undefined,
+    form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
     form.reportDate
   );
-
+  // ✅ 2. Sync Logic (Auto-fill Voyage)
   useEffect(() => {
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== form.voyageNo) {
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== form.voyageNo
+    ) {
+      if (suggestedVoyageNo) {
+        // Optional: toast.info(`Voyage updated to ${suggestedVoyageNo}`);
+      }
       setForm((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
@@ -195,7 +204,7 @@ export default function AddDailyNoonReportButton({
 
     try {
       const payload = {
-        ...form, 
+        ...form,
         reportDate: form.reportDate ? `${form.reportDate}+05:30` : null,
       };
       const res = await fetch("/api/noon-report", {

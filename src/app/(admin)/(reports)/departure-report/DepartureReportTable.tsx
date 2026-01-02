@@ -64,6 +64,7 @@ interface DepartureReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: IDepartureReport[]) => void;
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
@@ -75,6 +76,7 @@ export default function DepartureReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
   vesselId,
   voyageId,
   vesselList,
@@ -261,8 +263,10 @@ export default function DepartureReportTable({
         if (!res.ok) throw new Error();
 
         const result = await res.json();
+        const fetchedData = result.data || [];
 
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
 
         if (!result.data || result.data.length === 0) {
           setTotalPages(1);
@@ -277,7 +281,7 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   );
   async function handleUpdate() {
     if (!selectedReport || !editData) return;

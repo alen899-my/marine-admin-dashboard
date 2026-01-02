@@ -64,6 +64,7 @@ interface CargoReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: ICargoReport[]) => void;
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
@@ -75,6 +76,7 @@ export default function CargoReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
   vesselId,
   voyageId,
   vesselList,
@@ -354,7 +356,11 @@ export default function CargoReportTable({
         if (!res.ok) throw new Error(`Error: ${res.status}`);
 
         const result = await res.json();
+        const fetchedData = result.data || [];
+
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         // Fix 'err' unused: Log it or use a typed catch
@@ -364,7 +370,7 @@ export default function CargoReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {

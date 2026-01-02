@@ -3,19 +3,19 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
+import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import SharePdfButton from "@/components/common/SharePdfButton";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 // --- Types ---
 interface IPosition {
   lat: string;
@@ -76,6 +76,7 @@ interface DailyNoonReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  onDataLoad?: (data: IDailyNoonReport[]) => void;
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
@@ -86,6 +87,7 @@ export default function DailyNoonReportTable({
   search,
   status,
   startDate,
+  onDataLoad,
   endDate, vesselId,
   voyageId,
   vesselList,
@@ -387,6 +389,10 @@ export default function DailyNoonReportTable({
         if (!res.ok) throw new Error();
 
         const result = await res.json();
+        const fetchedData = result.data || [];
+
+        setReports(fetchedData);
+if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
 
         setReports(result.data || []);
         if (!result.data || result.data.length === 0) {
@@ -401,7 +407,7 @@ export default function DailyNoonReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   );
 
   // Filter Trigger (Search, Status, Dates) - using props now

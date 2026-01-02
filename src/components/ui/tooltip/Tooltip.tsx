@@ -44,7 +44,7 @@ export default function Tooltip({
 
       {open && (
         <div
-          className={`absolute z-[9999] ${positionClasses[position]}`}
+          className={`absolute z-[9999999] ${positionClasses[position]}`}
         >
           <div className="relative w-max max-w-none whitespace-nowrap rounded-lg bg-gray-900 px-4 py-2 text-theme-xs text-gray-300 shadow-tooltip dark:bg-zinc-800">
             {content}

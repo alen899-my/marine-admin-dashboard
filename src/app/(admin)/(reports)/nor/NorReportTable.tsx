@@ -3,20 +3,20 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
+import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { File, FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import SharePdfButton from "@/components/common/SharePdfButton";
+import { FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 // --- Interfaces ---
 interface INorDetails {
   tenderTime?: string;
@@ -32,10 +32,10 @@ interface INorReport {
   _id: string;
   vesselId: string | { _id: string; name: string } | null;
   voyageId: string | { _id: string; voyageNo: string } | null;
-  
+
   vesselName?: string;
   voyageNo?: string;
-  
+
   portName: string;
   reportDate: string;
   status: string;
@@ -67,9 +67,10 @@ interface NORReportTableProps {
   status: string;
   startDate: string;
   endDate: string;
-    vesselId: string;  // Added this
-  voyageId: string;  // Added this
- vesselList: any[];    // Added this
+  onDataLoad?: (data: INorReport[]) => void;
+  vesselId: string; // Added this
+  voyageId: string; // Added this
+  vesselList: any[]; // Added this
 }
 
 export default function NorReportTable({
@@ -78,9 +79,10 @@ export default function NorReportTable({
   status,
   startDate,
   endDate,
+  onDataLoad,
   vesselId,
-      voyageId,
-      vesselList,
+  voyageId,
+  vesselList,
 }: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
@@ -105,21 +107,28 @@ export default function NorReportTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const LIMIT = 20;
-    const { can, isReady } = useAuthorization();
-    const canEdit = can("nor.edit");
-    const canDelete = can("nor.delete");
-const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId, 
+  const { can, isReady } = useAuthorization();
+  const canEdit = can("nor.edit");
+  const canDelete = can("nor.delete");
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId,
     editData?.reportDate
   );
 
-  
   useEffect(() => {
     // ✅ FIX 2: Update 'voyageNo' in state
-    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageNo) {
-       setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
+    if (
+      editData &&
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== editData.voyageNo
+    ) {
+      setEditData((prev) =>
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+      );
     }
   }, [suggestedVoyageNo]);
   const getVesselName = (r: INorReport | null) => {
@@ -133,7 +142,11 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
   // ✅ HELPER: Get Voyage Number (Handles Object or String)
   const getVoyageNo = (r: INorReport | null) => {
     if (!r) return "-";
-    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+    if (
+      r.voyageId &&
+      typeof r.voyageId === "object" &&
+      "voyageNo" in r.voyageId
+    ) {
       return r.voyageId.voyageNo;
     }
     return r.voyageNo || "-";
@@ -207,7 +220,12 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     }
 
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo  ]);
+  }, [
+    editData?.vesselId,
+    editData?.vesselName,
+    suggestedVoyageNo,
+    editData?.voyageNo,
+  ]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -234,12 +252,20 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
       render: (r: INorReport) => (
         <div className="flex flex-col text-xs space-y-0.5">
           <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Reported</span>
-            <span className="text-gray-700 dark:text-gray-300">{formatDate(r.reportDate)}</span>
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              Reported
+            </span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {formatDate(r.reportDate)}
+            </span>
           </div>
           <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Tendered</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium">{formatDate(r.norDetails?.tenderTime)}</span>
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              Tendered
+            </span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium">
+              {formatDate(r.norDetails?.tenderTime)}
+            </span>
           </div>
         </div>
       ),
@@ -261,12 +287,16 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
       header: "ETA & Document",
       render: (r: INorReport) => {
         const meta = getFileMeta(r?.norDetails?.documentUrl);
-        
+
         return (
           <div className="flex flex-col text-xs gap-1">
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 uppercase font-bold">ETA Port</span>
-              <span className="text-gray-700 dark:text-gray-300">{formatDate(r?.norDetails?.etaPort)}</span>
+              <span className="text-[10px] text-gray-400 uppercase font-bold">
+                ETA Port
+              </span>
+              <span className="text-gray-700 dark:text-gray-300">
+                {formatDate(r?.norDetails?.etaPort)}
+              </span>
             </div>
 
             {r?.norDetails?.documentUrl ? (
@@ -279,9 +309,13 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
                 ) : (
                   <FileCheck className="w-3.5 h-3.5 text-green-500" />
                 )}
-                
+
                 <span className="font-medium text-gray-600 dark:text-gray-400">
-                  {meta.isPdf ? "PDF Attached" : meta.isImage ? "Image Attached" : "Doc Attached"}
+                  {meta.isPdf
+                    ? "PDF Attached"
+                    : meta.isImage
+                    ? "Image Attached"
+                    : "Doc Attached"}
                 </span>
               </div>
             ) : (
@@ -321,7 +355,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
           status,
           startDate,
           endDate,
-           vesselId, // Added to query
+          vesselId, // Added to query
           voyageId, // Added to query
         });
 
@@ -330,7 +364,11 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         if (!res.ok) throw new Error(`Error: ${res.status}`);
 
         const result = await res.json();
+        const fetchedData = result.data || [];
+
         setReports(result.data || []);
+        if (onDataLoad) onDataLoad(fetchedData);
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         console.error(err);
@@ -339,14 +377,17 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate,vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   );
-    function handleEdit(report: INorReport) {
+  function handleEdit(report: INorReport) {
     setSelectedReport(report);
     setNewFile(null);
     // Set initial preview to existing document URL
     setPreviewUrl(report.norDetails?.documentUrl || null);
-    const vId = (report.vesselId && typeof report.vesselId === 'object') ? report.vesselId._id : (report.vesselId as string);
+    const vId =
+      report.vesselId && typeof report.vesselId === "object"
+        ? report.vesselId._id
+        : (report.vesselId as string);
     const voyNo = getVoyageNo(report);
     setEditData({
       status: report.status ?? "active",
@@ -365,7 +406,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
   }
 
   // UPDATED: Now sends FormData because the Backend PATCH route expects it
-async function handleUpdate() {
+  async function handleUpdate() {
     if (!selectedReport || !editData) return;
     setSaving(true);
     try {
@@ -375,20 +416,40 @@ async function handleUpdate() {
       formData.append("vesselId", editData.vesselId || "");
       formData.append("voyageNo", editData.voyageNo || ""); // ✅ Send String
 
-      formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
+      formData.append(
+        "reportDate",
+        editData.reportDate ? `${editData.reportDate}+05:30` : ""
+      );
       formData.append("portName", editData.portName);
       formData.append("remarks", editData.remarks);
       formData.append("pilotStation", editData.pilotStation);
-      formData.append("norTenderTime", editData.norTenderTime ? `${editData.norTenderTime}+05:30` : "");
-      formData.append("etaPort", editData.etaPort ? `${editData.etaPort}+05:30` : "");
+      formData.append(
+        "norTenderTime",
+        editData.norTenderTime ? `${editData.norTenderTime}+05:30` : ""
+      );
+      formData.append(
+        "etaPort",
+        editData.etaPort ? `${editData.etaPort}+05:30` : ""
+      );
       if (newFile) formData.append("norDocument", newFile);
 
-      const res = await fetch(`/api/nor/${selectedReport._id}`, { method: "PATCH", body: formData });
+      const res = await fetch(`/api/nor/${selectedReport._id}`, {
+        method: "PATCH",
+        body: formData,
+      });
       if (!res.ok) throw new Error("Update failed");
       const { report } = await res.json();
-      setReports((prev) => prev.map((r) => (r._id === report._id ? report : r)));
-      toast.success("Updated"); setOpenEdit(false); setSelectedReport(null);
-    } catch { toast.error("Failed"); } finally { setSaving(false); }
+      setReports((prev) =>
+        prev.map((r) => (r._id === report._id ? report : r))
+      );
+      toast.success("Updated");
+      setOpenEdit(false);
+      setSelectedReport(null);
+    } catch {
+      toast.error("Failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {
@@ -443,7 +504,6 @@ async function handleUpdate() {
     setOpenView(true);
   }
 
-
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
@@ -469,249 +529,226 @@ async function handleUpdate() {
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-  data={reports}
-  columns={columns}
-  loading={loading}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={setCurrentPage}
-  onView={handleView}
-  onEdit={canEdit ? handleEdit : undefined}
-  onDelete={
-    canDelete
-      ? (r: INorReport) => {
-          setSelectedReport(r);
-          setOpenDelete(true);
-        }
-      : undefined
-  }
-  onRowClick={handleView}
-/>
-
+              data={reports}
+              columns={columns}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r: INorReport) => {
+                      setSelectedReport(r);
+                      setOpenDelete(true);
+                    }
+                  : undefined
+              }
+              onRowClick={handleView}
+            />
           </div>
         </div>
       </div>
 
       {/* ================= VIEW MODAL ================= */}
       <ViewModal
-  isOpen={openView}
-  onClose={() => setOpenView(false)}
-  title="Notice of Readiness (NOR) Details"
-  headerRight={
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title="Notice of Readiness (NOR) Details"
+        headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold">
-               {getVesselName(selectedReport)}
-              </span>
+              <span className="font-bold">{getVesselName(selectedReport)}</span>
               <span>|</span>
-             {getVoyageNo(selectedReport)}
+              {getVoyageNo(selectedReport)}
             </div>
           )
         }
->
-  <div className="text-[13px] py-1">
-    {/* ================= MAIN CONTENT GRID ================= */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-      
-      {/* ================= GENERAL INFORMATION ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          General Information
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Vessel Name</span>
-          <span className="font-medium text-right">
-            {getVesselName(selectedReport)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Voyage No</span>
-          <span className="font-medium text-right">
-          {getVoyageNo(selectedReport)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Port Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.portName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">NOR Tender Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.norDetails?.tenderTime)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Report Date & Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.reportDate)}
-          </span>
-        </div>
-      </section>
+      >
+        <div className="text-[13px] py-1">
+          {/* ================= MAIN CONTENT GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            {/* ================= GENERAL INFORMATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                General Information
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Vessel Name</span>
+                <span className="font-medium text-right">
+                  {getVesselName(selectedReport)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Voyage No</span>
+                <span className="font-medium text-right">
+                  {getVoyageNo(selectedReport)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Port Name</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.portName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">NOR Tender Time</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.norDetails?.tenderTime)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">
+                  Report Date & Time
+                </span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.reportDate)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= LOCATION DETAILS ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          Location Details
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Pilot Station</span>
-          <span className="font-medium text-right">
-            {selectedReport?.norDetails?.pilotStation ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">ETA Port</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.norDetails?.etaPort)}
-          </span>
-        </div>
-      </section>
+            {/* ================= LOCATION DETAILS ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Location Details
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Pilot Station</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.norDetails?.pilotStation ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">ETA Port</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.norDetails?.etaPort)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= ATTACHED DOCUMENTS ================= */}
-      <section className="md:col-span-2 space-y-3 pt-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Attached Document
-        </h3>
-        
-        {!fileMeta || !selectedReport?.norDetails?.documentUrl ? (
-          <span className="text-gray-400 text-xs italic">
-            No file attached
-          </span>
-        ) : (
-          <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
-            {/* 🖼 THUMBNAIL */}
-            <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-              {fileMeta.isImage && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={selectedReport.norDetails.documentUrl}
-                  alt="Preview"
-                  className="w-full h-full object-contain p-1"
-                />
-              )}
+            {/* ================= ATTACHED DOCUMENTS ================= */}
+            <section className="md:col-span-2 space-y-3 pt-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Attached Document
+              </h3>
 
-              {fileMeta.isPdf && (
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
-                    <span className="text-white font-bold text-[8px]">PDF</span>
+              {!fileMeta || !selectedReport?.norDetails?.documentUrl ? (
+                <span className="text-gray-400 text-xs italic">
+                  No file attached
+                </span>
+              ) : (
+                <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+                  {/* 🖼 THUMBNAIL */}
+                  <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                    {fileMeta.isImage && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={selectedReport.norDetails.documentUrl}
+                        alt="Preview"
+                        className="w-full h-full object-contain p-1"
+                      />
+                    )}
+
+                    {fileMeta.isPdf && (
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm mb-1">
+                          <span className="text-white font-bold text-[8px]">
+                            PDF
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ⚙️ INFO & ACTIONS */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {fileMeta.name}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {fileMeta.isPdf ? "PDF Document" : "Image File"}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={selectedReport.norDetails.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition shadow-sm dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                      >
+                        Open
+                      </a>
+                      <a
+                        href={selectedReport.norDetails.documentUrl}
+                        download
+                        className="px-3 py-1 text-[11px] font-medium text-white bg-brand-500 hover:bg-brand-600 rounded transition shadow-sm"
+                      >
+                        Download
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
+            </section>
+
+            {/* ================= REMARKS ================= */}
+            <section className="md:col-span-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Remarks
+              </h3>
+              <p className="leading-relaxed py-1 font-medium">
+                {selectedReport?.remarks || "No remarks provided."}
+              </p>
+            </section>
+          </div>
+
+          {/* ================= FOOTER: STATUS & SHARE ================= */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+            <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
             </div>
 
-            {/* ⚙️ INFO & ACTIONS */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                {fileMeta.name}
-              </p>
-              <p className="text-xs text-gray-500 mb-2">
-                {fileMeta.isPdf ? "PDF Document" : "Image File"}
-              </p>
-              
-              <div className="flex items-center gap-2">
-                <a
-                  href={selectedReport.norDetails.documentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition shadow-sm dark:bg-slate-700 dark:text-white dark:border-slate-600"
-                >
-                  Open
-                </a>
-                <a
-                  href={selectedReport.norDetails.documentUrl}
-                  download
-                  className="px-3 py-1 text-[11px] font-medium text-white bg-brand-500 hover:bg-brand-600 rounded transition shadow-sm"
-                >
-                  Download
-                </a>
-              </div>
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Notice of Readiness - ${getVesselName(
+                    selectedReport
+                  )}`}
+                  filename={`NOR_${selectedReport.portName}_${getVoyageNo(
+                    selectedReport
+                  )}`}
+                  data={{
+                    "Report Status":
+                      selectedReport.status?.toUpperCase() || "ACTIVE",
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage No": getVoyageNo(selectedReport),
+                    "Port Name": selectedReport.portName,
+                    "NOR Tender Time": formatDate(
+                      selectedReport?.norDetails?.tenderTime
+                    ),
+                    "Pilot Station":
+                      selectedReport?.norDetails?.pilotStation || "-",
+                    "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    Remarks: selectedReport.remarks || "No Remarks",
+                  }}
+                />
+              )}
             </div>
           </div>
-        )}
-      </section>
-
-      {/* ================= REMARKS ================= */}
-      <section className="md:col-span-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Remarks
-        </h3>
-        <p className="leading-relaxed py-1 font-medium">
-          {selectedReport?.remarks || "No remarks provided."}
-        </p>
-      </section>
-       <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-              System Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Created By</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {selectedReport?.createdBy?.fullName || "System"}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Created At</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {formatDate(selectedReport?.createdAt)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Last Updated By</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {selectedReport?.updatedBy?.fullName || "-"}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Last Updated At</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {formatDate(selectedReport?.updatedAt)}
-                </span>
-              </div>
-            </div>
-          </section>
-    </div>
-    
-
-    {/* ================= FOOTER: STATUS & SHARE ================= */}
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge
-      color={selectedReport?.status === "active" ? "success" : "error"}
-    >
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
-
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Notice of Readiness - ${getVesselName(selectedReport)}`}
-        filename={`NOR_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "NOR Tender Time": formatDate(selectedReport?.norDetails?.tenderTime),
-          "Pilot Station": selectedReport?.norDetails?.pilotStation || "-",
-          "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-        
-        }}
-      />
-    )}
-  </div>
-</div>
-  </div>
-</ViewModal>
+        </div>
+      </ViewModal>
 
       {/* ================= EDIT MODAL ================= */}
       <EditModal
@@ -737,39 +774,41 @@ async function handleUpdate() {
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
-        <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={editData.vesselName}
-  onChange={(val) => {
-    const selected = vessels.find(v => v.name === val);
-    setEditData({
-      ...editData,
-      vesselName: val,
-      vesselId: selected?._id || "",
-      voyageNo: "" // 🔥 reset voyage when vessel changes
-    });
-  }}
-/>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={editData.vesselName}
+                    onChange={(val) => {
+                      const selected = vessels.find((v) => v.name === val);
+                      setEditData({
+                        ...editData,
+                        vesselName: val,
+                        vesselId: selected?._id || "",
+                        voyageNo: "", // 🔥 reset voyage when vessel changes
+                      });
+                    }}
+                  />
                 </div>
-                <div className="relative"><Label>Voyage No</Label><SearchableSelect
-  options={voyageList}
-  placeholder={
-    !editData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={editData.voyageNo}
-  onChange={(val) =>
-    setEditData({ ...editData, voyageNo: val })
-  }
- 
-/></div>
+                <div className="relative">
+                  <Label>Voyage No</Label>
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Search Voyage"
+                    }
+                    value={editData.voyageNo}
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageNo: val })
+                    }
+                  />
+                </div>
                 <div>
                   <Label>Port Name</Label>
                   <Input

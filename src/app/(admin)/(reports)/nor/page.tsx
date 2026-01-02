@@ -1,15 +1,17 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
+import ExportToExcel from "@/components/common/ExportToExcel"; // Import common component
 import Filters from "@/components/common/Filters";
-import { useState, useEffect } from "react";
-import AddNORButton from "./AddNORButton";
-import NorReportTable from "./NorReportTable";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import { useEffect, useState } from "react";
+import AddNORButton from "./AddNORButton";
+import NorReportTable from "./NorReportTable";
 
 export default function NoticeOfReadiness() {
   const [refresh, setRefresh] = useState(0);
+  const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
@@ -39,9 +41,31 @@ export default function NoticeOfReadiness() {
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
+  // Define how NOR Data maps to Excel Columns
+  const excelMapping = (r: any) => ({
+    "Vessel Name":
+      typeof r.vesselId === "object" ? r.vesselId?.name : r.vesselName,
+    "Voyage No":
+      typeof r.voyageId === "object" ? r.voyageId?.voyageNo : r.voyageNo,
+    "Port Name": r.portName || "-",
+    "NOR Tendered Time": r.norDetails?.tenderTime
+      ? new Date(r.norDetails.tenderTime).toLocaleString("en-IN")
+      : "-",
+    "ETA Port": r.norDetails?.etaPort
+      ? new Date(r.norDetails.etaPort).toLocaleString("en-IN")
+      : "-",
+    "Pilot Station": r.norDetails?.pilotStation || "N/A",
+    "Report Date": r.reportDate
+      ? new Date(r.reportDate).toLocaleString("en-IN")
+      : "-",
+    Status: r.status === "active" ? "Active" : "Inactive",
+    Remarks: r.remarks || "No Remarks",
+    "Document URL": r.norDetails?.documentUrl || "No Attachment",
+  });
+
   return (
     <div className="space-y-6">
-      {/* Header Section: Title on left, Button on right */}
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           NOR (Notice of Readiness)
@@ -49,9 +73,15 @@ export default function NoticeOfReadiness() {
 
         <div className="flex items-center gap-3">
           {/* Shared Filter Toggle */}
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
+          <FilterToggleButton
+            isVisible={isFilterVisible}
+            onToggle={setIsFilterVisible}
+          />
+          {/* Reusable Export Button */}
+          <ExportToExcel
+            data={reportsData}
+            fileName="NOR_Reports"
+            exportMap={excelMapping}
           />
           <AddNORButton onSuccess={handleRefresh} />
         </div>
@@ -85,6 +115,7 @@ export default function NoticeOfReadiness() {
           status={status}
           startDate={startDate}
           endDate={endDate}
+          onDataLoad={setReportsData} // Capture data from the table
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}
