@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import RoleFilters from "@/components/roles/RoleFilters"; // Using the component created above
+import RoleFilters from "@/components/roles/RoleFilters";
 import AddRoleButton from "./AddRoleButton";
-import RolesTable from "./RolesTable"; // Table component deferred as requested
+import RolesTable from "./RolesTable";
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function RoleManagement() {
   const [refresh, setRefresh] = useState(0);
+
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -25,36 +30,42 @@ export default function RoleManagement() {
           Roles & Permissions
         </h2>
 
-        {/* Add Role Button */}
-        <AddRoleButton onSuccess={handleRefresh} />
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton 
+            isVisible={isFilterVisible} 
+            onToggle={setIsFilterVisible} 
+          />
+          {/* Add Role Button */}
+          <AddRoleButton onSuccess={handleRefresh} />
+        </div>
       </div>
 
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          <RoleFilters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            showDateFilters={false}
-          />
+          isFilterVisible ? (
+            <RoleFilters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              showDateFilters={false}
+            />
+          ) : null
         }
       >
-    
-        
-       <RolesTable
+        <RolesTable
           refresh={refresh}
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
         /> 
-    
       </ComponentCard>
     </div>
   );

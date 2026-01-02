@@ -1,21 +1,36 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { signOut, useSession } from "next-auth/react";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [dbUser, setDbUser] = useState<any>(null); // State to hold DB/Blob data
   
   const { data: session } = useSession();
   const user = session?.user;
 
-  // Fallback values
-  const fullName = user?.fullName || "User";
-  const email = user?.email || "";
-  // ✅ Use profile picture from session, or fallback to your default owner.jpg
-  const profilePicture = user?.profilePicture || "/images/user/owner.jpg"; 
+  // Fetch updated profile from Blob/DB
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        const res = await fetch("/api/user"); // Your provided GET endpoint
+        if (res.ok) {
+          const data = await res.json();
+          setDbUser(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user blob data", error);
+      }
+    }
+    if (session) fetchUserData();
+  }, [session]);
+
+  const fullName = dbUser?.fullName || user?.fullName || "User";
+  const email = dbUser?.email || user?.email || "";
+  const profilePicture = dbUser?.profilePicture || user?.profilePicture;
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -36,15 +51,26 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 border border-gray-200 dark:border-gray-700">
-          <Image
-            width={44}
-            height={44}
-            src={profilePicture} // ✅ Updated Source
-            alt="User"
-            className="object-cover h-full w-full" // ✅ Ensures image fills circle
-            unoptimized // ✅ Critical for Blob/Local images
-          />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 border border-gray-200 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+          {profilePicture ? (
+            <Image
+              width={44}
+              height={44}
+              src={profilePicture}
+              alt="User"
+              className="object-cover h-full w-full"
+              unoptimized
+            />
+          ) : (
+            /* Modern Profile Icon Fallback */
+            <svg
+              className="w-7 h-7 text-gray-400"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+          )}
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">
@@ -112,7 +138,6 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
           
-          {/* Support Item */}
           <li>
              <DropdownItem
               onItemClick={closeDropdown}
@@ -128,7 +153,6 @@ export default function UserDropdown() {
           </li>
         </ul>
 
-        {/* LOGOUT BUTTON */}
         <button
           onClick={handleSignOut}
           className="flex w-full items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-left text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"

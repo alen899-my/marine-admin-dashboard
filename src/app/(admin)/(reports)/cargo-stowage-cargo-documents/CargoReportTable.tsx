@@ -32,7 +32,7 @@ interface ICargoReport {
   documentDate: string;
   reportDate: string;
   status: string;
- voyageNo : string; // This comes from schema (string)
+  voyageNo: string; // This comes from schema (string)
   voyageId: string | { _id: string; voyageNo: string }; // Link
   documentType: string;
   remarks: string;
@@ -58,6 +58,9 @@ interface CargoReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: ICargoReport[]) => void;
+  vesselId: string;  // Added this
+  voyageId: string;  // Added this
+  vesselList: any[];    // Added this
 }
 
 export default function CargoReportTable({
@@ -67,6 +70,9 @@ export default function CargoReportTable({
   startDate,
   endDate,
   onDataLoad,
+  vesselId,
+  voyageId,
+  vesselList,
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
@@ -108,9 +114,9 @@ export default function CargoReportTable({
 
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
-    const canEdit = can("departure.edit");
-    const canDelete = can("departure.delete");
-const getVesselName = (r: ICargoReport | null) => {
+  const canEdit = can("departure.edit");
+  const canDelete = can("departure.delete");
+  const getVesselName = (r: ICargoReport | null) => {
     if (!r || !r.vesselId) return "-";
     if (typeof r.vesselId === "object" && "name" in r.vesselId) {
       return r.vesselId.name;
@@ -165,60 +171,60 @@ const getVesselName = (r: ICargoReport | null) => {
 
   // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
   useEffect(() => {
-  
+
     if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageNo) {
-      
-       setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
+
+      setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
     }
   }, [suggestedVoyageNo]);
-   useEffect(() => {
-      async function fetchAndFilterVoyages() {
-        // Stop if no vessel selected
-        if (!editData?.vesselId) {
-          setVoyageList([]);
-          return;
-        }
-  
-        try {
-          const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
-  
-          if (res.ok) {
-            const result = await res.json();
-            const allVoyages = Array.isArray(result) ? result : result.data || [];
-  
-            // 🔒 STRICT FILTERING LOGIC
-            const filtered = allVoyages.filter((v: any) => {
-              // Rule 1: STRICTLY match the selected Vessel ID
-              const isCorrectVessel =
-                (v.vesselId && v.vesselId === editData.vesselId) ||
-                (v.vesselName && v.vesselName === editData.vesselName);
-  
-              if (!isCorrectVessel) return false;
-  
-              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-              const isRelevant =
-                v.status === "active" ||
-                v.voyageNo === suggestedVoyageNo ||
-                v.voyageNo === editData.voyageNo;
-  
-              return isRelevant;
-            });
-  
-            setVoyageList(
-              filtered.map((v: any) => ({
-                value: v.voyageNo,
-                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-              }))
-            );
-          }
-        } catch (error) {
-          console.error("Failed to load voyages", error);
-          setVoyageList([]);
-        }
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected
+      if (!editData?.vesselId) {
+        setVoyageList([]);
+        return;
       }
-  
-      fetchAndFilterVoyages();
-    }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo]);
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === editData.vesselId) ||
+              (v.vesselName && v.vesselName === editData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === editData.voyageNo;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -231,7 +237,7 @@ const getVesselName = (r: ICargoReport | null) => {
       header: "Vessel & Voyage ID",
       render: (r: ICargoReport) => (
         <div className="flex flex-col">
-         <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* Dynamic Vessel Name */}
             {getVesselName(r)}
           </span>
@@ -275,7 +281,7 @@ const getVesselName = (r: ICargoReport | null) => {
             </span>
             <div className="flex items-center gap-2">
               <span className="text-gray-500">{formatDateOnly(r.documentDate)}</span>
-              
+
               {r?.file?.url ? (
                 <div className="flex items-center gap-1" title={meta.name}>
                   {/* Icon Selection Logic */}
@@ -291,7 +297,7 @@ const getVesselName = (r: ICargoReport | null) => {
                   {!meta.isPdf && !meta.isImage && !meta.isExcel && (
                     <File className="w-3.5 h-3.5 text-brand-500" />
                   )}
-                  
+
                   <span className="text-[10px] font-bold uppercase text-gray-400">
                     {meta.isPdf ? "PDF" : meta.isExcel ? "XLS" : meta.isImage ? "IMG" : "DOC"}
                   </span>
@@ -334,6 +340,8 @@ const getVesselName = (r: ICargoReport | null) => {
           status,
           startDate,
           endDate,
+          vesselId, // Added to query
+          voyageId, // Added to query
         });
 
         const res = await fetch(`/api/cargo?${query.toString()}`);
@@ -355,7 +363,7 @@ const getVesselName = (r: ICargoReport | null) => {
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
@@ -367,9 +375,9 @@ const getVesselName = (r: ICargoReport | null) => {
       formData.append("status", editData.status);
       formData.append("vesselName", editData.vesselName);
       formData.append("vesselId", editData.vesselId || "");
-      
+
       // ✅ FIX: Send voyageNo as string
-      formData.append("voyageNo", editData.voyageNo); 
+      formData.append("voyageNo", editData.voyageNo);
 
       formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
       formData.append("portName", editData.portName);
@@ -394,7 +402,7 @@ const getVesselName = (r: ICargoReport | null) => {
 
       const { data } = await res.json();
 
-     await fetchReports(currentPage);
+      await fetchReports(currentPage);
 
       toast.success("Record updated successfully");
       setOpenEdit(false);
@@ -422,7 +430,7 @@ const getVesselName = (r: ICargoReport | null) => {
 
       if (!res.ok) throw new Error("Delete failed");
 
-    await fetchReports(currentPage);
+      await fetchReports(currentPage);
       toast.success("Record deleted");
     } catch (err) {
       // Fix unused err by removing it or logging it
@@ -473,13 +481,13 @@ const getVesselName = (r: ICargoReport | null) => {
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
-   
+
     const vesselIdStr = typeof report.vesselId === 'object' ? report.vesselId._id : report.vesselId;
     const voyageIdStr = typeof report.voyageId === 'object' ? report.voyageId.voyageNo : ""; // Use Voyage No string for dropdown logic
     setEditData({
       status: report.status ?? "active",
-     vesselId: vesselIdStr,
-      voyageNo: voyageIdStr, 
+      vesselId: vesselIdStr,
+      voyageNo: voyageIdStr,
       vesselName: getVesselName(report),
       reportDate: formatForInput(report.reportDate),
       portName: report.portName ?? "",
@@ -515,11 +523,11 @@ const getVesselName = (r: ICargoReport | null) => {
 
   const isExcelPreview = newFile
     ? newFile.name.endsWith(".xls") ||
-      newFile.name.endsWith(".xlsx") ||
-      newFile.name.endsWith(".csv")
+    newFile.name.endsWith(".xlsx") ||
+    newFile.name.endsWith(".csv")
     : previewUrl?.toLowerCase().endsWith(".xls") ||
-      previewUrl?.toLowerCase().endsWith(".xlsx") ||
-      previewUrl?.toLowerCase().endsWith(".csv");
+    previewUrl?.toLowerCase().endsWith(".xlsx") ||
+    previewUrl?.toLowerCase().endsWith(".csv");
 
   /* ================= RENDER ================= */
   const fileMeta = selectedReport?.file?.url
@@ -535,25 +543,25 @@ const getVesselName = (r: ICargoReport | null) => {
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
-           <CommonReportTable
-  data={reports}
-  columns={columns}
-  loading={loading}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={setCurrentPage}
-  onView={handleView}
-  onEdit={canEdit ? handleEdit : undefined}
-  onDelete={
-    canDelete
-      ? (r: ICargoReport) => {
-          setSelectedReport(r);
-          setOpenDelete(true);
-        }
-      : undefined
-  }
-  onRowClick={handleView}
-/>
+            <CommonReportTable
+              data={reports}
+              columns={columns}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r: ICargoReport) => {
+                    setSelectedReport(r);
+                    setOpenDelete(true);
+                  }
+                  : undefined
+              }
+              onRowClick={handleView}
+            />
 
           </div>
         </div>
@@ -561,196 +569,196 @@ const getVesselName = (r: ICargoReport | null) => {
 
       {/* ================= VIEW MODAL ================= */}
       <ViewModal
-  isOpen={openView}
-  onClose={() => setOpenView(false)}
-  title="Cargo Document Details"
-  headerRight={
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title="Cargo Document Details"
+        headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">
-               {getVesselName(selectedReport)}
+                {getVesselName(selectedReport)}
               </span>
               <span>|</span>
               <span>{getVoyageNo(selectedReport)}</span>
             </div>
           )
         }
->
-  <div className="text-[13px] py-1">
-    {/* ================= MAIN CONTENT GRID ================= */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-      
-      {/* ================= GENERAL INFORMATION ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          General Information
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Vessel Name</span>
-          <span className="font-medium text-right">
-            {getVesselName(selectedReport)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Voyage No</span>
-          <span className="font-medium text-right">
-            {getVoyageNo(selectedReport)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Port Name</span>
-          <span className="font-medium text-right">
-            {selectedReport?.portName ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Port Type</span>
-          <span className="font-medium capitalize text-right">
-            {selectedReport?.portType?.replace("_", " ") ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Report Date & Time</span>
-          <span className="font-medium text-right">
-            {formatDate(selectedReport?.reportDate)}
-          </span>
-        </div>
-      </section>
+      >
+        <div className="text-[13px] py-1">
+          {/* ================= MAIN CONTENT GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
 
-      {/* ================= DOCUMENT DETAILS ================= */}
-      <section className="space-y-1.5">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
-          Document Details
-        </h3>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Document Type</span>
-          <span className="font-medium capitalize text-right">
-            {selectedReport?.documentType?.replace(/_/g, " ") ?? "-"}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500 shrink-0">Document Date</span>
-          <span className="font-medium text-right">
-            {formatDateOnly(selectedReport?.documentDate)}
-          </span>
-        </div>
-      </section>
+            {/* ================= GENERAL INFORMATION ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                General Information
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Vessel Name</span>
+                <span className="font-medium text-right">
+                  {getVesselName(selectedReport)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Voyage No</span>
+                <span className="font-medium text-right">
+                  {getVoyageNo(selectedReport)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Port Name</span>
+                <span className="font-medium text-right">
+                  {selectedReport?.portName ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Port Type</span>
+                <span className="font-medium capitalize text-right">
+                  {selectedReport?.portType?.replace("_", " ") ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Report Date & Time</span>
+                <span className="font-medium text-right">
+                  {formatDate(selectedReport?.reportDate)}
+                </span>
+              </div>
+            </section>
 
-      {/* ================= ATTACHED DOCUMENT ================= */}
-      <section className="md:col-span-2 space-y-3 pt-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Attached Document
-        </h3>
-        
-        {!fileMeta || !selectedReport?.file?.url ? (
-          <span className="text-gray-400 text-xs italic">
-            No file attached
-          </span>
-        ) : (
-          <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
-            {/* 🖼 THUMBNAIL (Reduced size for compact look) */}
-            <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-              {fileMeta.isImage && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={selectedReport.file.url}
-                  alt="Preview"
-                  className="w-full h-full object-contain p-1"
+            {/* ================= DOCUMENT DETAILS ================= */}
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                Document Details
+              </h3>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Document Type</span>
+                <span className="font-medium capitalize text-right">
+                  {selectedReport?.documentType?.replace(/_/g, " ") ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 shrink-0">Document Date</span>
+                <span className="font-medium text-right">
+                  {formatDateOnly(selectedReport?.documentDate)}
+                </span>
+              </div>
+            </section>
+
+            {/* ================= ATTACHED DOCUMENT ================= */}
+            <section className="md:col-span-2 space-y-3 pt-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Attached Document
+              </h3>
+
+              {!fileMeta || !selectedReport?.file?.url ? (
+                <span className="text-gray-400 text-xs italic">
+                  No file attached
+                </span>
+              ) : (
+                <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+                  {/* 🖼 THUMBNAIL (Reduced size for compact look) */}
+                  <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                    {fileMeta.isImage && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={selectedReport.file.url}
+                        alt="Preview"
+                        className="w-full h-full object-contain p-1"
+                      />
+                    )}
+
+                    {fileMeta.isPdf && (
+                      <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm">
+                        <span className="text-white font-bold text-[8px]">PDF</span>
+                      </div>
+                    )}
+
+                    {fileMeta.isExcel && (
+                      <div className="w-8 h-10 bg-green-600 rounded flex items-center justify-center shadow-sm">
+                        <span className="text-white font-bold text-[8px]">XLS</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ⚙️ INFO & ACTIONS */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {fileMeta.name}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {fileMeta.isPdf ? "PDF Document" : fileMeta.isExcel ? "Excel Spreadsheet" : "Image File"}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={selectedReport.file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition shadow-sm dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                      >
+                        Open
+                      </a>
+                      <a
+                        href={selectedReport.file.url}
+                        download
+                        className="px-3 py-1 text-[11px] font-medium text-white bg-brand-500 hover:bg-brand-600 rounded transition shadow-sm"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* ================= REMARKS ================= */}
+            <section className="md:col-span-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
+                Remarks
+              </h3>
+              <p className="leading-relaxed py-1 font-medium">
+                {selectedReport?.remarks || "No Remarks."}
+              </p>
+            </section>
+          </div>
+
+          {/* ================= FOOTER: STATUS & SHARE ================= */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+            <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={selectedReport?.status === "active" ? "success" : "error"}
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Cargo Document - ${getVesselName(selectedReport)}`}
+                  filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+                  data={{
+                    "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage No": getVoyageNo(selectedReport),
+                    "Port Name": selectedReport.portName,
+                    "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
+                    "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
+                    "Document Date": formatDateOnly(selectedReport.documentDate),
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    "Remarks": selectedReport.remarks || "No Remarks",
+
+                  }}
                 />
               )}
-
-              {fileMeta.isPdf && (
-                <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-[8px]">PDF</span>
-                </div>
-              )}
-
-              {fileMeta.isExcel && (
-                <div className="w-8 h-10 bg-green-600 rounded flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-[8px]">XLS</span>
-                </div>
-              )}
-            </div>
-
-            {/* ⚙️ INFO & ACTIONS */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                {fileMeta.name}
-              </p>
-              <p className="text-xs text-gray-500 mb-2">
-                {fileMeta.isPdf ? "PDF Document" : fileMeta.isExcel ? "Excel Spreadsheet" : "Image File"}
-              </p>
-              
-              <div className="flex items-center gap-2">
-                <a
-                  href={selectedReport.file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition shadow-sm dark:bg-slate-700 dark:text-white dark:border-slate-600"
-                >
-                  Open
-                </a>
-                <a
-                  href={selectedReport.file.url}
-                  download
-                  className="px-3 py-1 text-[11px] font-medium text-white bg-brand-500 hover:bg-brand-600 rounded transition shadow-sm"
-                >
-                  Download
-                </a>
-              </div>
             </div>
           </div>
-        )}
-      </section>
-
-      {/* ================= REMARKS ================= */}
-      <section className="md:col-span-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 border-b">
-          Remarks
-        </h3>
-        <p className="leading-relaxed py-1 font-medium">
-          {selectedReport?.remarks || "No Remarks."}
-        </p>
-      </section>
-    </div>
-
-    {/* ================= FOOTER: STATUS & SHARE ================= */}
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge
-      color={selectedReport?.status === "active" ? "success" : "error"}
-    >
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
-
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Cargo Document - ${getVesselName(selectedReport)}`}
-        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
-          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
-          "Document Date": formatDateOnly(selectedReport.documentDate),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-      
-        }}
-      />
-    )}
-  </div>
-</div>
-  </div>
-</ViewModal>
+        </div>
+      </ViewModal>
 
       {/* ================= EDIT MODAL ================= */}
       <EditModal
@@ -776,42 +784,42 @@ const getVesselName = (r: ICargoReport | null) => {
                 </div>
                 <div>
                   <Label>Vessel Name</Label>
- <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={editData.vesselName}
-  onChange={(val) => {
-    const selected = vessels.find(v => v.name === val);
-    setEditData({
-      ...editData,
-      vesselName: val,
-      vesselId: selected?._id || "",
-      voyageNo: "" // 🔥 reset voyage when vessel changes
-    });
-  }}
-/>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={editData.vesselName}
+                    onChange={(val) => {
+                      const selected = vessels.find(v => v.name === val);
+                      setEditData({
+                        ...editData,
+                        vesselName: val,
+                        vesselId: selected?._id || "",
+                        voyageNo: "" // 🔥 reset voyage when vessel changes
+                      });
+                    }}
+                  />
                 </div>
-            <div className="relative">
+                <div className="relative">
                   <Label>Voyage No</Label>
                   <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !editData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={editData.voyageNo}
-  onChange={(val) =>
-    setEditData({ ...editData, voyageNo: val })
-  }
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={editData.voyageNo}
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageNo: val })
+                    }
 
-/>
-                
+                  />
+
                 </div>
                 <div>
                   <Label>Port Name</Label>
@@ -969,8 +977,8 @@ const getVesselName = (r: ICargoReport | null) => {
                           {isPdfPreview
                             ? "PDF Document"
                             : isExcelPreview
-                            ? "Excel File"
-                            : "Image File"}
+                              ? "Excel File"
+                              : "Image File"}
                         </p>
                       </div>
 

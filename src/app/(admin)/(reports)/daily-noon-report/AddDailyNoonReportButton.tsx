@@ -8,15 +8,14 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { useAuthorization } from "@/hooks/useAuthorization";
-import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Info } from "lucide-react";
-import SearchableSelect from "@/components/form/SearchableSelect";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
@@ -38,7 +37,9 @@ export default function AddDailyNoonReportButton({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Dropdown State
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   const getCurrentDateTime = () => {
     return new Date()
@@ -69,12 +70,15 @@ export default function AddDailyNoonReportButton({
 
   // ✅ 1. Call the Hook
   const { vessels, suggestedVoyageNo } = useVoyageLogic(
-  form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
-  form.reportDate
-);
+    form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
+    form.reportDate
+  );
   // ✅ 2. Sync Logic (Auto-fill Voyage)
   useEffect(() => {
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== form.voyageNo) {
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== form.voyageNo
+    ) {
       if (suggestedVoyageNo) {
         // Optional: toast.info(`Voyage updated to ${suggestedVoyageNo}`);
       }
@@ -209,10 +213,8 @@ export default function AddDailyNoonReportButton({
     setIsSubmitting(true);
 
     try {
-     
-
       const payload = {
-        ...form, 
+        ...form,
         reportDate: form.reportDate ? `${form.reportDate}+05:30` : null,
       };
       const res = await fetch("/api/noon-report", {
@@ -300,16 +302,16 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={form.vesselName}
-  onChange={handleVesselChange}
-  className={errors.vesselName ? "border-red-500" : ""}
-/>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={form.vesselName}
+                    onChange={handleVesselChange}
+                    className={errors.vesselName ? "border-red-500" : ""}
+                  />
 
                   {errors.vesselName && (
                     <p className="text-red-500 text-xs mt-1">
@@ -323,22 +325,19 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !form.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={form.voyageNo}
-  onChange={handleVoyageChange}
-
-  className={errors.voyageNo ? "border-red-500" : ""}
-/>
-                  
-                 
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !form.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Search Voyage"
+                    }
+                    value={form.voyageNo}
+                    onChange={handleVoyageChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
+                  />
 
                   {errors.voyageNo && (
                     <p className="text-red-500 text-xs mt-1">
@@ -445,33 +444,31 @@ export default function AddDailyNoonReportButton({
                 </div>
 
                 <div>
-  <Label className="flex items-center gap-1">
-    Slip (%) <span className="text-red-500">*</span>
+                  <Label className="flex items-center gap-1">
+                    Slip (%) <span className="text-red-500">*</span>
+                    <Tooltip
+                      position="right"
+                      content="Slip (%) = ((Engine Distance − Observed Distance) / Engine Distance) × 100"
+                    >
+                      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-zinc-400 dark:text-gray-500">
+                        <Info />
+                      </span>
+                    </Tooltip>
+                  </Label>
 
-    <Tooltip
-      position="right"
-      content="Slip (%) = ((Engine Distance − Observed Distance) / Engine Distance) × 100"
-    >
-      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-zinc-400 dark:text-gray-500">
-        <Info/>
-      </span>
-    </Tooltip>
-  </Label>
+                  <Input
+                    type="number"
+                    name="slip"
+                    placeholder="Calculated or manual"
+                    value={form.slip}
+                    onChange={handleChange}
+                    className={errors.slip ? "border-red-500" : ""}
+                  />
 
-  <Input
-    type="number"
-    name="slip"
-    placeholder="Calculated or manual"
-    value={form.slip}
-    onChange={handleChange}
-    className={errors.slip ? "border-red-500" : ""}
-  />
-
-  {errors.slip && (
-    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
-  )}
-</div>
-
+                  {errors.slip && (
+                    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
+                  )}
+                </div>
 
                 <div>
                   <Label>

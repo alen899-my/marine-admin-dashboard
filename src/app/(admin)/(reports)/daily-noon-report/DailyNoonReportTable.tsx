@@ -44,20 +44,21 @@ interface IWeather {
 interface IDailyNoonReport {
   _id: string;
   vesselName: string;
-vesselId: string | { _id: string; name: string };
- 
+  vesselId: string | { _id: string; name: string };
+
   type: string;
   status: string;
   reportDate: string;
-   voyageNo : string;
+  voyageNo: string;
   position?: IPosition;
-   voyageId: string | { voyageNo: string; _id: string };
+  voyageId: string | { voyageNo: string; _id: string };
   navigation?: INavigation;
   consumption?: IConsumption;
   weather?: IWeather;
   remarks?: string;
-  
-  
+
+
+
 }
 
 // Updated Props Interface
@@ -68,6 +69,9 @@ interface DailyNoonReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: IDailyNoonReport[]) => void;
+  vesselId: string;  // Added this
+  voyageId: string;  // Added this
+  vesselList: any[];    // Added this
 }
 
 export default function DailyNoonReportTable({
@@ -75,8 +79,10 @@ export default function DailyNoonReportTable({
   search,
   status,
   startDate,
-  endDate,
   onDataLoad,
+  endDate, vesselId,
+  voyageId,
+  vesselList,
 }: DailyNoonReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDailyNoonReport[]>([]);
@@ -99,35 +105,35 @@ export default function DailyNoonReportTable({
   const { can, isReady } = useAuthorization();
 
   // 1. Extract the string ID safely
-const currentVesselId = typeof editData?.vesselId === "object" 
-  ? editData?.vesselId._id 
-  : editData?.vesselId;
+  const currentVesselId = typeof editData?.vesselId === "object"
+    ? editData?.vesselId._id
+    : editData?.vesselId;
 
-// 2. Pass the resolved string to the hook
-const { vessels, suggestedVoyageNo } = useVoyageLogic(
-  currentVesselId, 
-  editData?.reportDate
-);
+  // 2. Pass the resolved string to the hook
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    currentVesselId,
+    editData?.reportDate
+  );
 
-const canEdit = can("noon.edit");
-const canDelete = can("noon.delete");
-const getVesselName = (r: IDailyNoonReport | null) => {
-  if (!r || !r.vesselId) return "-";
-  if (typeof r.vesselId === "object" && "name" in r.vesselId) {
-    return r.vesselId.name;
-  }
-  return r.vesselName || "-";
-};
+  const canEdit = can("noon.edit");
+  const canDelete = can("noon.delete");
+  const getVesselName = (r: IDailyNoonReport | null) => {
+    if (!r || !r.vesselId) return "-";
+    if (typeof r.vesselId === "object" && "name" in r.vesselId) {
+      return r.vesselId.name;
+    }
+    return r.vesselName || "-";
+  };
 
-const getVoyageNo = (r: IDailyNoonReport | null) => {
-  if (!r || !r.voyageId) return "-";
-  // If it's the populated object from the hook or API
-  if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
-    return r.voyageId.voyageNo;
-  }
-  // If it's the string stored directly
-  return typeof r.voyageId === "string" ? r.voyageId : "-";
-};
+  const getVoyageNo = (r: IDailyNoonReport | null) => {
+    if (!r || !r.voyageId) return "-";
+    // If it's the populated object from the hook or API
+    if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+      return r.voyageId.voyageNo;
+    }
+    // If it's the string stored directly
+    return typeof r.voyageId === "string" ? r.voyageId : "-";
+  };
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -149,9 +155,9 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
         setEditData((prev) =>
           prev
             ? {
-                ...prev,
-                navigation: { ...prev.navigation!, slip: slipVal },
-              }
+              ...prev,
+              navigation: { ...prev.navigation!, slip: slipVal },
+            }
             : null
         );
       }
@@ -161,9 +167,9 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
         setEditData((prev) =>
           prev
             ? {
-                ...prev,
-                navigation: { ...prev.navigation!, slip: "" },
-              }
+              ...prev,
+              navigation: { ...prev.navigation!, slip: "" },
+            }
             : null
         );
       }
@@ -172,16 +178,16 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
 
 
   useEffect(() => {
-  if (
-    editData &&
-    !editData.voyageNo &&   // only when empty
-    suggestedVoyageNo
-  ) {
-    setEditData(prev =>
-      prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
-    );
-  }
-}, [suggestedVoyageNo]);
+    if (
+      editData &&
+      !editData.voyageNo &&   // only when empty
+      suggestedVoyageNo
+    ) {
+      setEditData(prev =>
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+      );
+    }
+  }, [suggestedVoyageNo]);
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       // Stop if no vessel is selected (in edit data)
@@ -255,11 +261,11 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
       render: (r: IDailyNoonReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-        {getVesselName(r)}
-      </span>
-      <span className="text-xs text-gray-500 uppercase tracking-tighter">
-        ID: {getVoyageNo(r)}
-      </span>
+            {getVesselName(r)}
+          </span>
+          <span className="text-xs text-gray-500 uppercase tracking-tighter">
+            ID: {getVoyageNo(r)}
+          </span>
         </div>
       ),
     },
@@ -349,9 +355,9 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
       .replace(" ", "T")
       .slice(0, 16);
   };
-  
 
- 
+
+
 
   // Wrap fetchReports in useCallback to fix dependency warnings
   const fetchReports = useCallback(
@@ -366,6 +372,8 @@ const getVoyageNo = (r: IDailyNoonReport | null) => {
           status,
           startDate,
           endDate,
+          vesselId, // Added to query
+          voyageId, // Added to query
         });
 
         const res = await fetch(`/api/noon-report?${query.toString()}`);
@@ -391,7 +399,7 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   );
 
   // Filter Trigger (Search, Status, Dates) - using props now
@@ -417,28 +425,28 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
     setOpenView(true);
   }
 
-function handleEdit(report: IDailyNoonReport) {
+  function handleEdit(report: IDailyNoonReport) {
     setSelectedReport(report);
-    
+
     // Find the vessel object so we can get its ID for the edit state
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
-   const vesselIdStr = typeof report.vesselId === 'object' 
-    ? report.vesselId._id 
-    : report.vesselId;
+    const vesselIdStr = typeof report.vesselId === 'object'
+      ? report.vesselId._id
+      : report.vesselId;
 
-  // 2. Safely extract the Voyage Number (string) using your helper
-  const voyageNoStr = getVoyageNo(report);
+    // 2. Safely extract the Voyage Number (string) using your helper
+    const voyageNoStr = getVoyageNo(report);
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
       vesselId: vesselIdStr,
-     voyageNo: voyageNoStr, 
-    
-    // ✅ FIX 2: Map the voyageId (the reference field) to the string for the dropdown
-    voyageId: voyageNoStr,
-   
+      voyageNo: voyageNoStr,
 
-     
+      // ✅ FIX 2: Map the voyageId (the reference field) to the string for the dropdown
+      voyageId: voyageNoStr,
+
+
+
       type: report.type,
       status: report.status,
       reportDate: formatForInput(report.reportDate),
@@ -529,7 +537,7 @@ function handleEdit(report: IDailyNoonReport) {
       setSelectedReport(null);
     }
   }
-if (!isReady) return null;
+  if (!isReady) return null;
   return (
     <>
       {/* Filters Removed from here */}
@@ -539,25 +547,25 @@ if (!isReady) return null;
       >
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
-           <CommonReportTable
-  data={reports}
-  columns={columns}
-  loading={loading}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={setCurrentPage}
-  onView={handleView}
-  onEdit={canEdit ? handleEdit : undefined}
-  onDelete={
-    canDelete
-      ? (r: IDailyNoonReport) => {
-          setSelectedReport(r);
-          setOpenDelete(true);
-        }
-      : undefined
-  }
-  onRowClick={handleView}
-/>
+            <CommonReportTable
+              data={reports}
+              columns={columns}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r: IDailyNoonReport) => {
+                    setSelectedReport(r);
+                    setOpenDelete(true);
+                  }
+                  : undefined
+              }
+              onRowClick={handleView}
+            />
 
           </div>
         </div>
@@ -567,15 +575,15 @@ if (!isReady) return null;
         isOpen={openView}
         onClose={() => setOpenView(false)}
         title="Noon Report Details"
-        
+
         headerRight={
           selectedReport && (
-            
+
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-          
+
               <span className="font-bold">{getVesselName(selectedReport)}</span>
-        <span>|</span>
-        <span>{getVoyageNo(selectedReport)}</span>
+              <span>|</span>
+              <span>{getVoyageNo(selectedReport)}</span>
             </div>
           )
         }
@@ -592,13 +600,13 @@ if (!isReady) return null;
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Vessel Name</span>
                 <span className="font-medium text-right">
-                 {getVesselName(selectedReport)}
+                  {getVesselName(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                 {getVoyageNo(selectedReport)}
+                  {getVoyageNo(selectedReport)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -736,49 +744,49 @@ if (!isReady) return null;
             </section>
           </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  
-  {/* STATUS */}
-  <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge
-      color={selectedReport?.status === "active" ? "success" : "error"}
-    >
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
 
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Noon Report - ${getVesselName(selectedReport)}`}
-        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
-       data={{
-        "Vessel Name": getVesselName(selectedReport),
-        "Voyage Number": getVoyageNo(selectedReport),
-        "Report Date": formatDate(selectedReport.reportDate),
-        "Latitude": selectedReport.position?.lat || "-",
-        "Longitude": selectedReport.position?.long || "-",
-        "Next Port": selectedReport.navigation?.nextPort || "-",
-        "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-        "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-        "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-        "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-        "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-        "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
-        "Wind Condition": selectedReport.weather?.wind || "-",
-        "Sea State": selectedReport.weather?.seaState || "-",
-        "Weather Remarks": selectedReport.weather?.remarks || "-",
-        "General Remarks": selectedReport.remarks || "-"
-      }}
-      />
-    )}
-  </div>
+            {/* STATUS */}
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge
+                color={selectedReport?.status === "active" ? "success" : "error"}
+              >
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
 
-</div>
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Noon Report - ${getVesselName(selectedReport)}`}
+                  filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+                  data={{
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage Number": getVoyageNo(selectedReport),
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    "Latitude": selectedReport.position?.lat || "-",
+                    "Longitude": selectedReport.position?.long || "-",
+                    "Next Port": selectedReport.navigation?.nextPort || "-",
+                    "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+                    "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+                    "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+                    "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+                    "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+                    "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+                    "Wind Condition": selectedReport.weather?.wind || "-",
+                    "Sea State": selectedReport.weather?.seaState || "-",
+                    "Weather Remarks": selectedReport.weather?.remarks || "-",
+                    "General Remarks": selectedReport.remarks || "-"
+                  }}
+                />
+              )}
+            </div>
+
+          </div>
         </div>
       </ViewModal>
 
@@ -804,46 +812,46 @@ if (!isReady) return null;
                     }
                   />
                 </div>
-               <div>
- <Label>Vessel Name</Label>
-<SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={editData.vesselName}
-  onChange={(val) => {
-    const selected = vessels.find(v => v.name === val);
-    setEditData({
-      ...editData,
-      vesselName: val,
-      vesselId: selected?._id || "",
-      voyageNo: "",   // reset voyage
-      voyageId: ""
-    });
-  }}
-/>
+                <div>
+                  <Label>Vessel Name</Label>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={editData.vesselName}
+                    onChange={(val) => {
+                      const selected = vessels.find(v => v.name === val);
+                      setEditData({
+                        ...editData,
+                        vesselName: val,
+                        vesselId: selected?._id || "",
+                        voyageNo: "",   // reset voyage
+                        voyageId: ""
+                      });
+                    }}
+                  />
 
-</div>
+                </div>
 
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
-                 <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !editData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={editData.voyageNo}
-  onChange={(val) =>
-    setEditData({ ...editData, voyageNo: val })
-  }
-  disabled={!editData.vesselId}
-/>
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={editData.voyageNo}
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageNo: val })
+                    }
+                    disabled={!editData.vesselId}
+                  />
 
                 </div>
 

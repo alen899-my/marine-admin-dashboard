@@ -39,7 +39,7 @@ interface IDepartureReport {
   vesselId: string | { _id: string; name: string } | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
   voyageNo?: string;
-  
+
   portName: string;
   lastPort: string;
   eventTime: string;
@@ -57,6 +57,9 @@ interface DepartureReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: IDepartureReport[]) => void;
+  vesselId: string;  // Added this
+  voyageId: string;  // Added this
+  vesselList: any[];    // Added this
 }
 
 export default function DepartureReportTable({
@@ -66,6 +69,9 @@ export default function DepartureReportTable({
   startDate,
   endDate,
   onDataLoad,
+  vesselId,
+  voyageId,
+  vesselList,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
@@ -109,7 +115,7 @@ export default function DepartureReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
- const getVoyageDisplay = (r: IDepartureReport | null) => {
+  const getVoyageDisplay = (r: IDepartureReport | null) => {
     if (!r) return "-";
     if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
       return r.voyageId.voyageNo;
@@ -127,16 +133,16 @@ export default function DepartureReportTable({
   };
   /* ================= TABLE COLUMNS ================= */
   const columns = [
-  {
-    header: "S.No",
-    render: (_: IDepartureReport, index: number) =>
-      (currentPage - 1) * LIMIT + index + 1,
-  },
-  {
-    header: "Vessel & Voyage ID",
-    render: (r: IDepartureReport) => (
-      <div className="flex flex-col">
-        <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
+    {
+      header: "S.No",
+      render: (_: IDepartureReport, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
+    },
+    {
+      header: "Vessel & Voyage ID",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col">
+          <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
             {/* ✅ Use Helper */}
             {getVesselName(r)}
           </span>
@@ -144,88 +150,88 @@ export default function DepartureReportTable({
             {/* ✅ Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
-      </div>
-    ),
-  },
-  {
-    header: "Report & Departure",
-    render: (r: IDepartureReport) => (
-      <div className="flex flex-col text-xs space-y-0.5">
-        <div className="flex flex-col">
-          <span className="text-[10px] text-gray-400 uppercase font-bold">
-            Reported
+        </div>
+      ),
+    },
+    {
+      header: "Report & Departure",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              Reported
+            </span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {formatDate(r.reportDate)}
+            </span>
+          </div>
+          <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">
+              Departure
+            </span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium">
+              {formatDate(r.eventTime)}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Port & Navigation",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs">
+          <div className="flex items-center gap-1 font-bold truncate max-w-[140px]">
+            <span className="text-gray-400 font-normal">{r?.lastPort ?? "N/A"}</span>
+            <span className="text-blue-500">→</span>
+            <span>{r?.portName ?? "-"}</span>
+          </div>
+          <span className="text-gray-500">
+            To Go: {r?.navigation?.distanceToNextPortNm ?? 0} NM
           </span>
-          <span className="text-gray-700 dark:text-gray-300">
-            {formatDate(r.reportDate)}
+          <span className="text-[11px] mt-1 text-gray-600 dark:text-gray-400">
+            ETA: {formatDate(r?.navigation?.etaNextPort)}
           </span>
         </div>
-        <div className="flex flex-col pt-1 border-t border-gray-100 dark:border-white/5">
-          <span className="text-[10px] text-gray-400 uppercase font-bold">
-            Departure
-          </span>
-          <span className="text-gray-700 dark:text-gray-300 font-medium">
-            {formatDate(r.eventTime)}
-          </span>
+      ),
+    },
+    {
+      header: "ROB & Cargo",
+      render: (r: IDepartureReport) => (
+        <div className="flex flex-col text-xs gap-1">
+          {/* ROB & Bunkers Received */}
+          <div className="flex gap-2">
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0}</b>
+              <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedVlsfo ?? 0}</b>
+            </span>
+            <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
+              LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0}</b>
+              <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedLsmgo ?? 0}</b>
+            </span>
+          </div>
+          {/* Cargo Loaded/Unloaded Quantities */}
+          <div className="flex gap-2 text-[10px]">
+            <span className="uppercase">Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT</span>
+            <span className="uppercase">Unloaded: {r?.departureStats?.cargoQtyUnloadedMt ?? 0} MT</span>
+          </div>
+          <p
+            className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]"
+            title={r?.departureStats?.cargoSummary}
+          >
+            {r?.departureStats?.cargoSummary || "No cargo details"}
+          </p>
         </div>
-      </div>
-    ),
-  },
-  {
-    header: "Port & Navigation",
-    render: (r: IDepartureReport) => (
-      <div className="flex flex-col text-xs">
-        <div className="flex items-center gap-1 font-bold truncate max-w-[140px]">
-          <span className="text-gray-400 font-normal">{r?.lastPort ?? "N/A"}</span>
-          <span className="text-blue-500">→</span>
-          <span>{r?.portName ?? "-"}</span>
-        </div>
-        <span className="text-gray-500">
-          To Go: {r?.navigation?.distanceToNextPortNm ?? 0} NM
-        </span>
-        <span className="text-[11px] mt-1 text-gray-600 dark:text-gray-400">
-          ETA: {formatDate(r?.navigation?.etaNextPort)}
-        </span>
-      </div>
-    ),
-  },
-  {
-    header: "ROB & Cargo",
-    render: (r: IDepartureReport) => (
-      <div className="flex flex-col text-xs gap-1">
-        {/* ROB & Bunkers Received */}
-        <div className="flex gap-2">
-          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-            VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0}</b> 
-            <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedVlsfo ?? 0}</b>
-          </span>
-          <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
-            LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0}</b>
-            <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedLsmgo ?? 0}</b>
-          </span>
-        </div>
-        {/* Cargo Loaded/Unloaded Quantities */}
-        <div className="flex gap-2 text-[10px]">
-          <span className="uppercase">Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT</span>
-          <span className="uppercase">Unloaded: {r?.departureStats?.cargoQtyUnloadedMt ?? 0} MT</span>
-        </div>
-        <p
-          className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]"
-          title={r?.departureStats?.cargoSummary}
-        >
-          {r?.departureStats?.cargoSummary || "No cargo details"}
-        </p>
-      </div>
-    ),
-  },
-  {
-    header: "Status",
-    render: (r: IDepartureReport) => (
-      <Badge color={r.status === "active" ? "success" : "error"}>
-        {r.status === "active" ? "Active" : "Inactive"}
-      </Badge>
-    ),
-  },
-];
+      ),
+    },
+    {
+      header: "Status",
+      render: (r: IDepartureReport) => (
+        <Badge color={r.status === "active" ? "success" : "error"}>
+          {r.status === "active" ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+  ];
 
   /* ================= FETCH DATA ================= */
   // Wrap in useCallback to fix useEffect dependency
@@ -240,6 +246,8 @@ export default function DepartureReportTable({
           status,
           startDate,
           endDate,
+          vesselId, // Added to query
+          voyageId, // Added to query
         });
 
         const res = await fetch(`/api/departure-report?${query.toString()}`);
@@ -265,9 +273,9 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
   );
-async function handleUpdate() {
+  async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
     setSaving(true);
@@ -277,10 +285,10 @@ async function handleUpdate() {
         // ✅ FIX 3: Include vesselId. 
         // The backend needs this to lookup the correct Voyage ObjectId.
         vesselId: typeof editData.vesselId === 'object' ? editData.vesselId?._id : editData.vesselId,
-        
+
         // This sends the readable string (e.g., "OP-1225") from the dropdown
         voyageId: editData.voyageId, // This is the voyageNo string from dropdown
-      vesselName: editData.vesselName, 
+        vesselName: editData.vesselName,
         voyageNo: editData.voyageId, // Send explicitly for clarity if needed
 
         portName: editData.portName,
@@ -331,68 +339,68 @@ async function handleUpdate() {
       setSaving(false);
     }
   }
- const vesselIdForLookup = typeof editData?.vesselId === "object" 
-  ? editData?.vesselId?._id 
-  : editData?.vesselId;
+  const vesselIdForLookup = typeof editData?.vesselId === "object"
+    ? editData?.vesselId?._id
+    : editData?.vesselId;
 
-const { vessels, suggestedVoyageNo } = useVoyageLogic(
-  vesselIdForLookup || undefined, 
-  editData?.reportDate
-);
-    useEffect(() => {
-      async function fetchAndFilterVoyages() {
-      
-        if (!editData?.vesselId) {
-          setVoyageList([]);
-          return;
-        }
-  
-        try {
-          const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
-  
-          if (res.ok) {
-            const result = await res.json();
-            const allVoyages = Array.isArray(result) ? result : result.data || [];
-  
-            // 🔒 STRICT FILTERING LOGIC
-            const filtered = allVoyages.filter((v: any) => {
-              // Rule 1: STRICTLY match the selected Vessel ID
-              const isCorrectVessel =
-                (v.vesselId && v.vesselId === editData.vesselId) ||
-                (v.vesselName && v.vesselName === editData.vesselName);
-  
-              if (!isCorrectVessel) return false;
-  
-              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-              const isRelevant =
-                v.status === "active" ||
-                v.voyageNo === suggestedVoyageNo ||
-                v.voyageNo === editData.voyageId;
-  
-              return isRelevant;
-            });
-  
-            setVoyageList(
-              filtered.map((v: any) => ({
-                value: v.voyageNo,
-                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-              }))
-            );
-          }
-        } catch (error) {
-          console.error("Failed to load voyages", error);
-          setVoyageList([]);
-        }
-      }
-  
-      fetchAndFilterVoyages();
-    }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
- 
+  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+    vesselIdForLookup || undefined,
+    editData?.reportDate
+  );
   useEffect(() => {
-  
+    async function fetchAndFilterVoyages() {
+
+      if (!editData?.vesselId) {
+        setVoyageList([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === editData.vesselId) ||
+              (v.vesselName && v.vesselName === editData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === editData.voyageId;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+
+  useEffect(() => {
+
     if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
-     
-       setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+
+      setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
     }
   }, [suggestedVoyageNo]);
 
@@ -424,20 +432,20 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
     setOpenView(true);
   }
 
- function handleEdit(report: IDepartureReport) {
+  function handleEdit(report: IDepartureReport) {
     setSelectedReport(report);
-    
+
     // Try to find vessel in the list as fallback
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     const voyageIdString = getVoyageDisplay(report);
-    const vesselIdStr = typeof report.vesselId === 'object' 
-    ? report.vesselId?._id 
-    : report.vesselId;
+    const vesselIdStr = typeof report.vesselId === 'object'
+      ? report.vesselId?._id
+      : report.vesselId;
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
       vesselId: vesselIdStr || matchedVessel?._id || "",
-      voyageId: voyageIdString, 
+      voyageId: voyageIdString,
       voyageNo: voyageIdString,
       portName: report.portName ?? "",
       lastPort: report.lastPort ?? "",
@@ -491,25 +499,25 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900  rounded-xl">
         <div className="max-w-full overflow-x-auto overflow-hidden">
           <div className="min-w-[1200px]">
-           <CommonReportTable
-  data={reports}
-  columns={columns}
-  loading={loading}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={setCurrentPage}
-  onView={handleView}
-  onEdit={canEdit ? handleEdit : undefined}
-  onDelete={
-    canDelete
-      ? (r: IDepartureReport) => {
-          setSelectedReport(r);
-          setOpenDelete(true);
-        }
-      : undefined
-  }
-  onRowClick={handleView}
-/>
+            <CommonReportTable
+              data={reports}
+              columns={columns}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r: IDepartureReport) => {
+                    setSelectedReport(r);
+                    setOpenDelete(true);
+                  }
+                  : undefined
+              }
+              onRowClick={handleView}
+            />
 
           </div>
         </div>
@@ -527,7 +535,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
                 {getVesselName(selectedReport)}
               </span>
               <span>|</span>
-             <span>{getVoyageDisplay(selectedReport)}</span>
+              <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
           )
         }
@@ -549,7 +557,7 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Voyage No / ID</span>
                 <span className="font-medium text-right">
-                 {getVoyageDisplay(selectedReport)}
+                  {getVoyageDisplay(selectedReport)}
                 </span>
               </div>
               {/* NEW FIELD: Last Port */}
@@ -685,47 +693,47 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
             </section>
           </div>
 
-         {/* ================= FOOTER: STATUS & SHARE ================= */}
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-  <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-      Status
-    </span>
-    <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
-      {selectedReport?.status === "active" ? "Active" : "Inactive"}
-    </Badge>
-  </div>
+          {/* ================= FOOTER: STATUS & SHARE ================= */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
+            <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                Status
+              </span>
+              <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
+                {selectedReport?.status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
 
-  {/* SHARE BUTTON */}
-  <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-    {selectedReport && (
-      <SharePdfButton
-        title={`Departure Report - ${getVesselName(selectedReport)}`}
-        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-        data={{
-            "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status here
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage ID": getVoyageDisplay(selectedReport),
-        
-          "Last Port": selectedReport.lastPort || "-",
-          "Current Port": selectedReport.portName,
-          "Departure Time": formatDate(selectedReport.eventTime),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
-          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
-          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
-          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
-          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
-          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
-          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
-          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
-          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
-          "General Remarks": selectedReport.remarks || "No Remarks"
-        }}
-      />
-    )}
-  </div>
-</div>
+            {/* SHARE BUTTON */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
+              {selectedReport && (
+                <SharePdfButton
+                  title={`Departure Report - ${getVesselName(selectedReport)}`}
+                  filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+                  data={{
+                    "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status here
+                    "Vessel Name": getVesselName(selectedReport),
+                    "Voyage ID": getVoyageDisplay(selectedReport),
+
+                    "Last Port": selectedReport.lastPort || "-",
+                    "Current Port": selectedReport.portName,
+                    "Departure Time": formatDate(selectedReport.eventTime),
+                    "Report Date": formatDate(selectedReport.reportDate),
+                    "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
+                    "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
+                    "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
+                    "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
+                    "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
+                    "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
+                    "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
+                    "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
+                    "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
+                    "General Remarks": selectedReport.remarks || "No Remarks"
+                  }}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </ViewModal>
 
@@ -751,50 +759,50 @@ const { vessels, suggestedVoyageNo } = useVoyageLogic(
                     }
                   />
                 </div>
-              <div>
-  <Label>Vessel Name</Label>
- <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={editData.vesselName}
-  onChange={(val) => {
-    const selected = vessels.find(v => v.name === val);
-    setEditData({
-      ...editData,
-      vesselName: val,
-      vesselId: selected?._id || "",
-      voyageId: "",   // 🔥 reset voyage on vessel change
-      voyageNo: ""
-    });
-  }}
-/>
-</div>
-<div className="relative">
-  <Label>Voyage No / ID</Label>
-<SearchableSelect
-  options={voyageList}
-  placeholder={
-    !editData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={
-    typeof editData.voyageId === "string"
-      ? editData.voyageId
-      : editData.voyageId?.voyageNo ?? ""
-  }
-  onChange={(val) =>
-    setEditData({ ...editData, voyageId: val })
-  }
+                <div>
+                  <Label>Vessel Name</Label>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={editData.vesselName}
+                    onChange={(val) => {
+                      const selected = vessels.find(v => v.name === val);
+                      setEditData({
+                        ...editData,
+                        vesselName: val,
+                        vesselId: selected?._id || "",
+                        voyageId: "",   // 🔥 reset voyage on vessel change
+                        voyageNo: ""
+                      });
+                    }}
+                  />
+                </div>
+                <div className="relative">
+                  <Label>Voyage No / ID</Label>
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={
+                      typeof editData.voyageId === "string"
+                        ? editData.voyageId
+                        : editData.voyageId?.voyageNo ?? ""
+                    }
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageId: val })
+                    }
 
-/>
+                  />
 
-</div>
+                </div>
 
                 {/* NEW FIELD: Last Port */}
                 <div>

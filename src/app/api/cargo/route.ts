@@ -142,6 +142,9 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+      const selectedVessel = searchParams.get("vesselId");
+const selectedVoyage = searchParams.get("voyageId");
+
 
     const query: any = {};
 
@@ -156,7 +159,10 @@ export async function GET(req: Request) {
         { portName: { $regex: search, $options: "i" } },
       ];
     }
-    
+     if (selectedVessel) query.vesselId = selectedVessel;
+      if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
+    }
     if (startDate || endDate) {
       const dateQuery: any = {};
       if (startDate) dateQuery.$gte = parseDateString(startDate);

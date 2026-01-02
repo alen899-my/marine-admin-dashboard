@@ -5,9 +5,14 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters";
 import AddVoyage from "./AddVoyage";
 import VoyageTable from "./VoyageTable"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
+
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -25,26 +30,35 @@ export default function VoyageManagement() {
           Voyage Management
         </h2>
         
-        {/* Add Voyage Button triggers refresh on success */}
-        <AddVoyage onSuccess={handleRefresh} />
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton 
+            isVisible={isFilterVisible} 
+            onToggle={setIsFilterVisible} 
+          />
+          {/* Add Voyage Button triggers refresh on success */}
+          <AddVoyage onSuccess={handleRefresh} />
+        </div>
       </div>
 
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          <Filters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            // Updated search prop for Voyage context
-            searchVoyage={true}
-            optionOff={true}
-          />
+          isFilterVisible ? (
+            <Filters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              // Updated search prop for Voyage context
+              searchVoyage={true}
+              optionOff={true}
+            />
+          ) : null
         }
       >
         <VoyageTable

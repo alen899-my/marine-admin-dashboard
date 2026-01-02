@@ -3,7 +3,9 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import ExportToExcel from "@/components/common/ExportToExcel";
 import Filters from "@/components/common/Filters";
-import { useState } from "react";
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import { useEffect, useState } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
 import ArrivalReportTable from "./ArrivalReportTable";
 
@@ -11,10 +13,32 @@ export default function ArrivalReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for Excel data
 
+  // Use the shared persistent filter logic
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+
+  // --- Moved State from Table to Page ---
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [vesselId, setVesselId] = useState("");
+  const [voyageId, setVoyageId] = useState("");
+  const [vessels, setVessels] = useState([]);
+
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels");
+        if (res.ok) {
+          const result = await res.json();
+          setVessels(Array.isArray(result) ? result : result.data || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch vessels", error);
+      }
+    }
+    fetchVessels();
+  }, []);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -53,7 +77,12 @@ export default function ArrivalReport() {
           Arrival Report
         </h2>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Shared Filter Toggle */}
+          <FilterToggleButton
+            isVisible={isFilterVisible}
+            onToggle={setIsFilterVisible}
+          />
           {/* Reusable Export Button */}
           <ExportToExcel
             data={reportsData}
@@ -67,16 +96,23 @@ export default function ArrivalReport() {
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          <Filters
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-          />
+          isFilterVisible ? (
+            <Filters
+              search={search}
+              setSearch={setSearch}
+              status={status}
+              setStatus={setStatus}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              vesselId={vesselId}
+              setVesselId={setVesselId}
+              voyageId={voyageId}
+              setVoyageId={setVoyageId}
+              vessels={vessels}
+            />
+          ) : null
         }
       >
         <ArrivalReportTable
@@ -86,6 +122,9 @@ export default function ArrivalReport() {
           startDate={startDate}
           endDate={endDate}
           onDataLoad={setReportsData} // Capture data from table
+          vesselId={vesselId}
+          voyageId={voyageId}
+          vesselList={vessels}
         />
       </ComponentCard>
     </div>

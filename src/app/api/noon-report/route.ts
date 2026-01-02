@@ -45,6 +45,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const selectedVessel = searchParams.get("vesselId");
+const selectedVoyage = searchParams.get("voyageId");
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {};
@@ -60,7 +62,10 @@ export async function GET(req: NextRequest) {
         { "navigation.nextPort": { $regex: search, $options: "i" } },
       ];
     }
-
+    if (selectedVessel) query.vesselId = selectedVessel;
+  if (selectedVoyage) {
+  query.voyageId = selectedVoyage;
+}
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
       if (startDate) {
@@ -77,6 +82,7 @@ export async function GET(req: NextRequest) {
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
+      
     }
 
     const total = await ReportDaily.countDocuments(query);

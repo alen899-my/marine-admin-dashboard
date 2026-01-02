@@ -49,11 +49,17 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+      const selectedVessel = searchParams.get("vesselId");
+const selectedVoyage = searchParams.get("voyageId");
 
     const query: Record<string, unknown> = { eventType: "arrival" };
 
     if (status !== "all") {
       query.status = status;
+    }
+     if (selectedVessel) query.vesselId = selectedVessel;
+      if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
     }
 
     if (search) {
@@ -91,7 +97,7 @@ export async function GET(req: NextRequest) {
     const reports = await ReportOperational.find(query)
       .populate({
         path: "voyageId",
-        select: "voyageNo _id", // Explicitly include _id for the frontend summary logic
+        select: "voyageNo _id", 
       })
       .populate("vesselId", "name")
       .sort({ createdAt: -1 })

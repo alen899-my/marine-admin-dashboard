@@ -17,7 +17,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
       const day = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
       const year = parseInt(parts[2], 10);
-      
+
       const date = new Date(year, month, day);
       if (!isNaN(date.getTime())) {
         return date;
@@ -30,12 +30,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
 
-/* ======================================
-   GET ALL DEPARTURE REPORTS
-====================================== */
-/* ======================================
-   GET ALL DEPARTURE REPORTS
-====================================== */
+
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
@@ -49,6 +44,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedVoyage = searchParams.get("voyageId");
 
     // 1. Initialize Query
     const query: Record<string, unknown> = { eventType: "departure" };
@@ -57,16 +54,20 @@ export async function GET(req: NextRequest) {
     if (status !== "all") {
       query.status = status;
     }
+    if (selectedVessel) query.vesselId = selectedVessel;
+    if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
+    }
 
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
         // 🔴 FIX: Search 'voyageNo' (String), NOT 'voyageId' (ObjectId)
-        { voyageNo: { $regex: search, $options: "i" } }, 
+        { voyageNo: { $regex: search, $options: "i" } },
         { portName: { $regex: search, $options: "i" } },
       ];
     }
-    
+
     // 3. Date Filter
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
@@ -80,21 +81,21 @@ export async function GET(req: NextRequest) {
         const parsedEnd = parseDateString(endDate);
         if (parsedEnd) {
           parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd;
+          dateQuery.$lte = parsedEnd; 
         }
       }
-      
+
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
     }
 
     // 4. Fetch Data
-    const total = await ReportOperational.countDocuments(query); 
+    const total = await ReportOperational.countDocuments(query);
 
     const reports = await ReportOperational.find(query)
       // ✅ FIX: Populate voyageId to get the original ID details
-      .populate("voyageId", "voyageNo") 
+      .populate("voyageId", "voyageNo")
       .populate("vesselId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
   try {
     const authz = await authorizeRequest("departure.create");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const body = await req.json();
 
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
 
     const parsedReportDate = parseDateString(value.reportDate);
     if (!parsedReportDate) {
-        return NextResponse.json({ error: "Invalid Date Format" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid Date Format" }, { status: 400 });
     }
 
     // ==========================================
@@ -166,24 +167,24 @@ export async function POST(req: NextRequest) {
     let voyageObjectId = null;
 
     if (vesselIdString && voyageNoString) {
-       const vId = new mongoose.Types.ObjectId(vesselIdString);
-       
-       // Find the Voyage Document to get its _id
-       const foundVoyage = await Voyage.findOne({ 
-          vesselId: vId, 
-          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
-       }).select("_id");
-       
-       if (foundVoyage) {
-          voyageObjectId = foundVoyage._id;
-       } else {
-          return NextResponse.json(
-            { error: `Voyage ${voyageNoString} not found for this vessel.` },
-            { status: 404 }
-          );
-       }
+      const vId = new mongoose.Types.ObjectId(vesselIdString);
+
+      // Find the Voyage Document to get its _id
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vId,
+        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") }
+      }).select("_id");
+
+      if (foundVoyage) {
+        voyageObjectId = foundVoyage._id;
+      } else {
+        return NextResponse.json(
+          { error: `Voyage ${voyageNoString} not found for this vessel.` },
+          { status: 404 }
+        );
+      }
     } else {
-       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
+      return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
     }
 
     // ==========================================
@@ -200,14 +201,14 @@ export async function POST(req: NextRequest) {
       // ✅ SNAPSHOTS (Readable)
       vesselName: value.vesselName,
       voyageNo: voyageNoString, // Saved as String (e.g. "OP-1225-IN")
-      
+
       portName: value.portName,
       lastPort: value.lastPort,
       eventTime: new Date(value.eventTime),
       reportDate: parsedReportDate,
 
       navigation: {
-        distanceToNextPortNm: value.distance_to_next_port_nm, 
+        distanceToNextPortNm: value.distance_to_next_port_nm,
         etaNextPort: value.etaNextPort ? new Date(value.etaNextPort) : null,
       },
 

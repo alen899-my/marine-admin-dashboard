@@ -4,6 +4,7 @@ import DatePicker from "@/components/form/date-picker";
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
+import SearchableSelect from "@/components/form/SearchableSelect";
 
 // Define the Props Interface
 interface FilterProps {
@@ -15,9 +16,16 @@ interface FilterProps {
   setStartDate: (v: string) => void;
   endDate: string;
   setEndDate: (v: string) => void;
-  searchVessel?: boolean; // Context: Vessel Management
-  searchVoyage?: boolean; // Context: Voyage Management
-  optionOff?: boolean;    // Hides date pickers
+  searchVessel?: boolean;
+  searchVoyage?: boolean;
+  optionOff?: boolean;
+    vesselId?: string;
+  setVesselId?: (v: string) => void;
+
+  voyageId?: string;
+  setVoyageId?: (v: string) => void;
+
+  vessels?: any[];
 }
 
 export default function Filters({
@@ -32,22 +40,61 @@ export default function Filters({
   searchVessel,
   searchVoyage,
   optionOff,
+   vesselId = "",
+  setVesselId = () => {},
+
+  voyageId = "",
+  setVoyageId = () => {},
+
+  vessels = [],
 }: FilterProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
+  const [localVesselId, setLocalVesselId] = useState(vesselId);
+  const [localVoyageId, setLocalVoyageId] = useState(voyageId);
+  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => { setLocalSearch(search); }, [search]);
   useEffect(() => { setLocalStatus(status); }, [status]);
   useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
   useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
+  useEffect(() => { setLocalVesselId(vesselId); }, [vesselId]);
+  useEffect(() => { setLocalVoyageId(voyageId); }, [voyageId]);
+
+  useEffect(() => {
+    async function fetchAndFilterVoyages() {
+      if (!localVesselId) {
+        setVoyageList([]);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${localVesselId}`);
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+          setVoyageList(
+            allVoyages.map((v: any) => ({
+              value: v._id,
+              label: v.voyageNo,
+            }))
+          );
+        }
+      } catch (error) {
+        setVoyageList([]);
+      }
+    }
+    fetchAndFilterVoyages();
+  }, [localVesselId]);
 
   const handleApplyFilters = () => {
     setSearch(localSearch);
     setStatus(localStatus);
     setStartDate(localStartDate);
     setEndDate(localEndDate);
+    setVesselId(localVesselId);
+    setVoyageId(localVoyageId);
   };
 
   const handleClear = () => {
@@ -55,17 +102,20 @@ export default function Filters({
     setLocalStatus("all");
     setLocalStartDate("");
     setLocalEndDate("");
+    setLocalVesselId("");
+    setLocalVoyageId("");
     setSearch("");
     setStatus("all");
     setStartDate("");
     setEndDate("");
+    setVesselId("");
+    setVoyageId("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleApplyFilters();
   };
 
-  // --- 1. DYNAMIC STATUS OPTIONS ---
   const getStatusOptions = () => {
     if (searchVessel) {
       return [
@@ -84,7 +134,6 @@ export default function Filters({
         { value: "completed", label: "Completed" },
       ];
     }
-    // Default fallback
     return [
       { value: "all", label: "All Status" },
       { value: "active", label: "Active" },
@@ -92,7 +141,6 @@ export default function Filters({
     ];
   };
 
-  // --- 2. DYNAMIC PLACEHOLDER ---
   const getSearchPlaceholder = () => {
     if (searchVessel) return "Search by Name, IMO or Fleet";
     if (searchVoyage) return "Search by Voyage No, Port or Vessel";
@@ -101,23 +149,19 @@ export default function Filters({
 
   return (
     <div className="flex flex-wrap items-end gap-4 p-4 w-full">
-      
-      {/* SEARCH INPUT */}
-      <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">
+      <div className="flex-1 min-w-[200px] max-w-full lg:max-w-md">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search
         </label>
         <Input
           placeholder={getSearchPlaceholder()}
-          className="w-full"
+          className="w-"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-
-      {/* STATUS SELECT */}
-      <div className="w-full sm:w-auto min-w-[160px]">
+      <div className="w-full sm:w-auto min-w-[130px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Status
         </label>
@@ -129,10 +173,42 @@ export default function Filters({
           options={getStatusOptions()}
         />
       </div>
-
-      {/* DATES: Only render if optionOff is FALSE */}
       {!optionOff && (
         <>
+          {/* FIXED: Added fallback (vessels || []) to prevent map error */}
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Vessel Name
+            </label>
+            <SearchableSelect
+              options={(vessels || []).map((v: any) => ({
+                value: v.name,
+                label: v.name,
+              }))}
+              placeholder="Select Vessel"
+              value={(vessels || []).find(v => v._id === localVesselId)?.name || ""}
+              onChange={(selectedName) => {
+                const selectedVessel = (vessels || []).find((v: any) => v.name === selectedName);
+                setLocalVesselId(selectedVessel?._id || "");
+                setLocalVoyageId("");
+              }}
+            />
+          </div>
+
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Voyage ID
+            </label>
+            <SearchableSelect
+              options={voyageList}
+              placeholder={!localVesselId ? "Select Vessel first" : "Search Voyage"}
+              value={localVoyageId}
+              onChange={setLocalVoyageId}
+            />
+          </div>
+
+
+
           <div className="w-full sm:w-auto min-w-[180px]">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
               {searchVoyage ? "ETA From" : "Date From"}
@@ -145,7 +221,6 @@ export default function Filters({
               onChange={(_, dateStr) => setLocalStartDate(dateStr)}
             />
           </div>
-
           <div className="w-full sm:w-auto min-w-[180px]">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
               {searchVoyage ? "ETA To" : "Date To"}
@@ -161,7 +236,6 @@ export default function Filters({
         </>
       )}
 
-      {/* BUTTONS */}
       <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
         <button
           onClick={handleApplyFilters}
