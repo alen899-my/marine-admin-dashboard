@@ -64,10 +64,10 @@ export default function UserFilters({
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-4 p-4 w-full ms-2">
+    <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
       
-      {/* SEARCH */}
-      <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">
+      {/* SEARCH - Updated to match common component size */}
+      <div className="w-full sm:w-auto min-w-[200px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search Users
         </label>
@@ -80,8 +80,8 @@ export default function UserFilters({
         />
       </div>
 
-      {/* STATUS FILTER */}
-      <div className="w-full sm:w-auto min-w-[160px]">
+      {/* STATUS FILTER - Updated to match common component size */}
+      <div className="w-full sm:w-auto min-w-[210px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Account Status
         </label>
@@ -98,8 +98,8 @@ export default function UserFilters({
         />
       </div>
 
-      {/* JOINED DATE FROM
-      <div className="w-full sm:w-auto min-w-[180px]">
+      {/* JOINED DATE FROM - (Kept commented out as per your code)
+      <div className="w-full sm:w-auto min-w-[180px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Joined Date From
         </label>
@@ -112,8 +112,7 @@ export default function UserFilters({
         />
       </div>
 
-      
-      <div className="w-full sm:w-auto min-w-[180px]">
+      <div className="w-full sm:w-auto min-w-[180px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Joined Date To
         </label>
@@ -126,8 +125,8 @@ export default function UserFilters({
         />
       </div> */}
 
-      {/* ACTION BUTTONS */}
-      <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
+      {/* ACTION BUTTONS - ml-auto removed to keep them on the left */}
+      <div className="flex items-center gap-2 mt-2 sm:mt-0 shrink-0">
         <button
           onClick={handleApplyFilters}
           className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"

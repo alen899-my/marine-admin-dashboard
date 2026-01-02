@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
+import { auth } from "@/auth";
 import Voyage from "@/models/Voyage"; // ✅ Import Voyage
 import ReportOperational from "@/models/ReportOperational";
 import mongoose from "mongoose"; // ✅ Import Mongoose
@@ -97,6 +98,8 @@ export async function GET(req: NextRequest) {
       // ✅ FIX: Populate voyageId to get the original ID details
       .populate("voyageId", "voyageNo")
       .populate("vesselId", "name")
+      .populate("createdBy", "fullName") // ✅ Add this
+  .populate("updatedBy", "fullName") // ✅ Add this
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -125,6 +128,8 @@ export async function GET(req: NextRequest) {
 ====================================== */
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("departure.create");
     if (!authz.ok) return authz.response;
 
@@ -193,6 +198,8 @@ export async function POST(req: NextRequest) {
     const report = await ReportOperational.create({
       eventType: "departure",
       status: "active",
+      createdBy: currentUserId, // ✅ Store creator
+      updatedBy: currentUserId, // ✅ Store initial updater
 
       // ✅ IDS (Linked)
       vesselId: vesselIdString,

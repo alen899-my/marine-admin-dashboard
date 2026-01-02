@@ -77,7 +77,7 @@ export default function UserTable({
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
-
+    const [isDeleting, setIsDeleting] = useState(false);
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -245,6 +245,8 @@ export default function UserTable({
 
   const handleDelete = async () => {
     if (!selectedUser) return;
+     setIsDeleting(true);
+
     try {
       const res = await fetch(`/api/users/${selectedUser._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -256,6 +258,7 @@ export default function UserTable({
     } finally {
       setOpenDelete(false);
       setSelectedUser(null);
+      setIsDeleting(false);
     }
   };
 
@@ -402,6 +405,7 @@ export default function UserTable({
         onConfirm={handleDelete}
         title="Delete User"
         description={`Are you sure you want to delete ${selectedUser?.fullName}? This action cannot be undone.`}
+        loading={isDeleting}
       />
     </>
   );

@@ -6,6 +6,7 @@ import Document from "@/models/Document";
 import { put, del } from "@vercel/blob";
 import { existsSync } from "fs";
 import Voyage from "@/models/Voyage";
+import { auth } from "@/auth"; 
 import { authorizeRequest } from "@/lib/authorizeRequest";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
@@ -39,12 +40,13 @@ interface IUpdateData {
   voyageNo: string;
   portName: string;
   portType: string;
-   vesselId?: string; 
-    voyageId?: string;
+  vesselId?: string;
+  voyageId?: string;
   reportDate?: Date;
   documentType: string;
   documentDate: Date;
   status: string;
+  updatedBy?: any;
   remarks: string;
   file?: {
     url: string;
@@ -60,6 +62,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("cargo.edit");
     if (!authz.ok) return authz.response;
     await dbConnect();
@@ -86,17 +90,15 @@ export async function PATCH(
     const documentDate = formData.get("documentDate") as string;
     const status = formData.get("status") as string;
     const remarks = formData.get("remarks") as string;
-    // 🔥 IMPORTANT: Update vessel relation
+  
 
-
-    // Extract File
     const file = formData.get("file") as File | null;
 
-    // Fixed: Use interface instead of 'any'
     const updateData: IUpdateData = {
       vesselName,
       voyageNo,
       portName,
+      updatedBy: currentUserId,
       portType,
       reportDate: reportDate ? new Date(reportDate) : undefined,
       documentType,
@@ -105,20 +107,20 @@ export async function PATCH(
       remarks,
     };
     if (vesselId) {
-  updateData.vesselId = vesselId;
-}
+      updateData.vesselId = vesselId;
+    }
 
-// 🔥 CRITICAL: Re-resolve voyageId based on vessel + voyageNo
-if (vesselId && voyageNo) {
-  const voyage = await Voyage.findOne({
-    vesselId,
-    voyageNo,
-  });
+    // 🔥 CRITICAL: Re-resolve voyageId based on vessel + voyageNo
+    if (vesselId && voyageNo) {
+      const voyage = await Voyage.findOne({
+        vesselId,
+        voyageNo,
+      });
 
-  if (voyage) {
-    updateData.voyageId = voyage._id;
-  }
-}
+      if (voyage) {
+        updateData.voyageId = voyage._id;
+      }
+    }
 
     // If new file uploaded, process it
     if (file) {
@@ -185,8 +187,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-        const authz = await authorizeRequest("cargo.delete");
-        if (!authz.ok) return authz.response;
+    const authz = await authorizeRequest("cargo.delete");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const { id } = await params;
 

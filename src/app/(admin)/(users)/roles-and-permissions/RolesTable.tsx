@@ -59,7 +59,7 @@ export default function RolesTable({
   const [selectedRole, setSelectedRole] = useState<IRole | null>(null);
   const [editData, setEditData] = useState<IRole | null>(null);
   const [saving, setSaving] = useState(false);
-
+    const [isDeleting, setIsDeleting] = useState(false);
   // Status Options
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -166,6 +166,7 @@ export default function RolesTable({
 
   const handleDelete = async () => {
     if (!selectedRole) return;
+     setIsDeleting(true);
     try {
       const res = await fetch(`/api/roles/${selectedRole._id}`, {
         method: "DELETE",
@@ -178,6 +179,7 @@ export default function RolesTable({
       toast.error("Failed to delete role");
     } finally {
       setOpenDelete(false);
+       setIsDeleting(false); // ✅ Stop Loading
     }
   };
 
@@ -365,6 +367,7 @@ export default function RolesTable({
         onConfirm={handleDelete}
         title="Delete Role"
         description={`Are you sure you want to delete the role "${selectedRole?.name}"?`}
+         loading={isDeleting}
       />
     </>
   );

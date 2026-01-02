@@ -3,12 +3,14 @@ import ReportDaily from "@/models/ReportDaily";
 import Voyage from "@/models/Voyage"; // ✅ Import Voyage for ID lookup
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import { auth } from "@/auth"; 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("noon.edit");
     if (!authz.ok) return authz.response;
     
@@ -50,6 +52,7 @@ if (!voyageObjectId) {
         // ✅ Relation Fields
         vesselId: vesselId, 
         voyageId: voyageObjectId, 
+        updatedBy: currentUserId,
 
         // ✅ Snapshot Fields
         vesselName: body.vesselName,

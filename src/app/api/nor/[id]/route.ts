@@ -8,7 +8,7 @@ import { writeFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put, del } from "@vercel/blob";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import { auth } from "@/auth";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
@@ -41,6 +41,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.edit");
     if (!authz.ok) return authz.response;
     
@@ -55,7 +57,9 @@ export async function PATCH(
     }
 
     // 2. Prepare Update Data
-    const updateData: IUpdateNorData = {};
+    const updateData: IUpdateNorData = {
+      updatedBy: currentUserId as any,
+    };
 
     // --- A. Basic Fields ---
     const reportDate = formData.get("reportDate") as string;

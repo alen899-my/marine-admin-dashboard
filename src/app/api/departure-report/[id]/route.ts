@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
+import { auth } from "@/auth";
 /* ======================================
    UPDATE DEPARTURE REPORT (EDIT)
 ====================================== */
@@ -12,6 +13,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("departure.edit");
     if (!authz.ok) return authz.response;
     
@@ -29,21 +32,24 @@ export async function PATCH(
     }
 
     // ✅ VOYAGE LOOKUP LOGIC FOR EDIT
-    // Frontend might send the string in 'voyageId' or 'voyageNo'
     const newVoyageNoString = body.voyageNo || body.voyageId; 
-    const vesselId = body.vesselId || report.vesselId; // Use existing if not sent
+    const vesselId = body.vesselId || report.vesselId; 
 
     if (newVoyageNoString) {
-       // Look up new ID
        const foundVoyage = await Voyage.findOne({
           vesselId: vesselId,
           voyageNo: { $regex: new RegExp(`^${newVoyageNoString}$`, "i") }
        }).select("_id");
 
        if (foundVoyage) {
-          report.voyageId = foundVoyage._id; // Update Link
-          report.voyageNo = newVoyageNoString; // Update String
+          report.voyageId = foundVoyage._id; 
+          report.voyageNo = newVoyageNoString; 
        }
+    }
+
+    // ✅ FIX: Cast to ObjectId so Mongoose registers the update
+    if (currentUserId) {
+      report.updatedBy = new mongoose.Types.ObjectId(currentUserId) as any;
     }
 
     // Update other fields
@@ -75,10 +81,18 @@ export async function PATCH(
 
     await report.save();
 
+    // ✅ FIX: Re-populate to ensure the frontend receives the 'fullName' of the updater
+    const updatedReport = await ReportOperational.findById(report._id)
+      .populate("voyageId", "voyageNo")
+      .populate("vesselId", "name")
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
+      .lean();
+
     return NextResponse.json({
       success: true,
       message: "Report updated",
-      report,
+      report: updatedReport,
     });
   } catch (error) {
     console.error("UPDATE ERROR →", error);

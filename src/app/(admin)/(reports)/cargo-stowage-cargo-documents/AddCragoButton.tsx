@@ -26,10 +26,11 @@ export default function AddCargoButton({
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const  [errors, setErrors] = useState<Record<string, string>>({});
-    const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const { can, isReady } = useAuthorization();
-
 
   // Form State
   const getCurrentDateTime: () => string = () => {
@@ -59,62 +60,68 @@ export default function AddCargoButton({
   // ✅ 4. SYNC LOGIC (Auto-fill Voyage)
   useEffect(() => {
     // Check if suggestion exists (even empty string) and is different
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageNo) {
-    
-    
-     if (suggestedVoyageNo) {
-  setFormData(prev => ({ ...prev, voyageNo: suggestedVoyageNo }));
-}
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== formData.voyageNo
+    ) {
+      if (suggestedVoyageNo) {
+        setFormData((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
+      }
     }
   }, [suggestedVoyageNo]);
   useEffect(() => {
-      async function fetchAndFilterVoyages() {
-        // Stop if no vessel selected
-        if (!formData.vesselId) {
-          setVoyageList([]);
-          return;
-        }
-  
-        try {
-          const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
-  
-          if (res.ok) {
-            const result = await res.json();
-            const allVoyages = Array.isArray(result) ? result : result.data || [];
-  
-            // 🔒 STRICT FILTERING LOGIC
-            const filtered = allVoyages.filter((v: any) => {
-              // Rule 1: STRICTLY match the selected Vessel ID
-              const isCorrectVessel =
-                (v.vesselId && v.vesselId === formData.vesselId) ||
-                (v.vesselName && v.vesselName === formData.vesselName);
-  
-              if (!isCorrectVessel) return false;
-  
-              // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-              const isRelevant =
-                v.status === "active" ||
-                v.voyageNo === suggestedVoyageNo ||
-                v.voyageNo === formData.voyageNo;
-  
-              return isRelevant;
-            });
-  
-            setVoyageList(
-              filtered.map((v: any) => ({
-                value: v.voyageNo,
-                label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-              }))
-            );
-          }
-        } catch (error) {
-          console.error("Failed to load voyages", error);
-          setVoyageList([]);
-        }
+    async function fetchAndFilterVoyages() {
+      // Stop if no vessel selected
+      if (!formData.vesselId) {
+        setVoyageList([]);
+        return;
       }
-  
-      fetchAndFilterVoyages();
-    }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageNo]);
+
+      try {
+        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
+
+        if (res.ok) {
+          const result = await res.json();
+          const allVoyages = Array.isArray(result) ? result : result.data || [];
+
+          // 🔒 STRICT FILTERING LOGIC
+          const filtered = allVoyages.filter((v: any) => {
+            // Rule 1: STRICTLY match the selected Vessel ID
+            const isCorrectVessel =
+              (v.vesselId && v.vesselId === formData.vesselId) ||
+              (v.vesselName && v.vesselName === formData.vesselName);
+
+            if (!isCorrectVessel) return false;
+
+            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
+            const isRelevant =
+              v.status === "active" ||
+              v.voyageNo === suggestedVoyageNo ||
+              v.voyageNo === formData.voyageNo;
+
+            return isRelevant;
+          });
+
+          setVoyageList(
+            filtered.map((v: any) => ({
+              value: v.voyageNo,
+              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load voyages", error);
+        setVoyageList([]);
+      }
+    }
+
+    fetchAndFilterVoyages();
+  }, [
+    formData.vesselId,
+    formData.vesselName,
+    suggestedVoyageNo,
+    formData.voyageNo,
+  ]);
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -147,7 +154,7 @@ export default function AddCargoButton({
       });
     }
   };
-   const handleVoyageChange = (val: string) => {
+  const handleVoyageChange = (val: string) => {
     setFormData((prev) => ({ ...prev, voyageNo: val }));
     if (errors.voyageNo) {
       setErrors((prev) => {
@@ -173,10 +180,10 @@ export default function AddCargoButton({
     // Find the ID based on the name from the HOOK's vessel list
     const selectedVessel = vessels.find((v) => v.name === value);
 
-    setFormData((prev) => ({ 
-        ...prev, 
-        vesselName: value,
-        vesselId: selectedVessel?._id || "" // 👈 Save ID to trigger hook
+    setFormData((prev) => ({
+      ...prev,
+      vesselName: value,
+      vesselId: selectedVessel?._id || "", // 👈 Save ID to trigger hook
     }));
 
     if (errors.vesselName) {
@@ -333,8 +340,8 @@ export default function AddCargoButton({
     } finally {
       setIsSubmitting(false);
     }
-  }; const canCreate = isReady && can("cargo.create");
-
+  };
+  const canCreate = isReady && can("cargo.create");
 
   if (!isReady) {
     return null; // or loader
@@ -399,24 +406,27 @@ export default function AddCargoButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={formData.vesselName}
-  onChange={(val) => {
-    const selectedVessel = vessels.find(v => v.name === val);
-    setFormData(prev => ({
-      ...prev,
-      vesselName: val,
-      vesselId: selectedVessel?._id || "",
-      voyageNo: "" // 🔥 reset voyage when vessel changes
-    }));
-  }}
-  className={errors.vesselName ? "border-red-500" : ""}
-/>
+                  <SearchableSelect
+            options={vessels.map((v) => ({
+              value: v.name,
+              label: v.name,
+            }))}
+            placeholder="Search Vessel"
+            value={formData.vesselName}
+            onChange={(val) => {
+              const selectedVessel = vessels.find((v) => v.name === val);
+              setFormData((prev) => ({
+                ...prev,
+                vesselName: val,
+                vesselId: selectedVessel?._id || "",
+                voyageNo: "",
+              }));
+              // ✅ Clear error immediately on change
+              if (errors.vesselName) setErrors(prev => ({ ...prev, vesselName: "" }));
+            }}
+            // ✅ Trigger the custom red border logic
+            error={!!errors.vesselName}
+          />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.vesselName}
@@ -424,32 +434,33 @@ export default function AddCargoButton({
                   )}
                 </div>
 
-               <div className="relative">
+                <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !formData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={formData.voyageNo}
-  onChange={handleVoyageChange}
-
-  className={errors.voyageNo ? "border-red-500" : ""}
-/>
-
+                  <SearchableSelect
+            options={voyageList}
+            placeholder={
+              !formData.vesselId
+                ? "Select Vessel first"
+                : voyageList.length === 0
+                ? "No active voyages found"
+                : "Search Voyage"
+            }
+            value={formData.voyageNo}
+            onChange={(val) => {
+              handleVoyageChange(val);
+              if (errors.voyageNo) setErrors(prev => ({ ...prev, voyageNo: "" }));
+            }}
+            // ✅ Trigger the custom red border logic
+            error={!!errors.voyageNo}
+          />
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.voyageNo}
                     </p>
                   )}
                 </div>
-
 
                 <div>
                   <Label>

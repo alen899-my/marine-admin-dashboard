@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  error?: boolean;
 }
 
 export default function SearchableSelect({
@@ -24,6 +25,7 @@ export default function SearchableSelect({
   placeholder = "Select option...",
   className = "",
   disabled = false,
+  error = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -91,16 +93,21 @@ export default function SearchableSelect({
           value={inputValue}
           onChange={handleInputChange}
           onClick={() => !disabled && setIsOpen(true)}
-          className={`
-            h-11 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm shadow-theme-xs outline-none transition-colors
-            placeholder:text-gray-400 
-            ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800" : "bg-white text-gray-800 dark:bg-gray-900 dark:text-white/90"}
-            ${
-              isOpen
-                ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
-                : "border-gray-300 dark:border-gray-700"
-            }
-          `}
+    
+className={`
+  h-11 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm shadow-theme-xs outline-none transition-colors
+  placeholder:text-gray-400 
+  ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800" : "bg-white text-gray-800 dark:bg-gray-900 dark:text-white/90"}
+  
+  ${
+    error 
+      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" // ✅ Red in light, gray in dark
+      : isOpen
+        ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
+        : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
+  }
+`}
+            
         />
 
         {/* Icons Area */}
@@ -120,13 +127,7 @@ export default function SearchableSelect({
             </button>
           )}
           
-          {/* Chevron */}
-          <ChevronDown
-            size={18}
-            className={`pointer-events-none text-gray-500 transition-transform duration-200 dark:text-gray-400 ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
+         
         </div>
       </div>
 

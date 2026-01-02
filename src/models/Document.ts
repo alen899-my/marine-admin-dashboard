@@ -3,7 +3,9 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IDocument extends Document {
   vesselId?: mongoose.Types.ObjectId;
   voyageId?: mongoose.Types.ObjectId;
-  uploadedBy?: mongoose.Types.ObjectId;
+  
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
 
 
   
@@ -32,7 +34,14 @@ const DocumentSchema = new Schema<IDocument>(
   {
     vesselId: { type: Schema.Types.ObjectId, ref: "Vessel", required: true, index: true },
     voyageId: { type: Schema.Types.ObjectId, ref: "Voyage", required: true, index: true },
-    uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      createdBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        updatedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
 
     
 

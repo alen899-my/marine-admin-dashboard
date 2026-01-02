@@ -308,6 +308,7 @@ export default function AddArrivalReportButton({
                     value={formData.vesselName}
                     onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
+                 error={!!errors.vesselName}
                   />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
@@ -337,6 +338,7 @@ export default function AddArrivalReportButton({
                       }
                     }}
                     className={errors.voyageId ? "border-red-500" : ""}
+                     error={!!errors.voyageId}
                   />
 
                   {errors.voyageId && (

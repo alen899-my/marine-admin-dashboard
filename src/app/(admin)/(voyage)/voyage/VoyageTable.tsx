@@ -125,7 +125,7 @@ export default function VoyageTable({
   const [selectedVoyage, setSelectedVoyage] = useState<Voyage | null>(null);
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [saving, setSaving] = useState(false);
-
+  const [isDeleting, setIsDeleting] = useState(false);
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -416,6 +416,7 @@ export default function VoyageTable({
 
   async function handleDelete() {
     if (!selectedVoyage) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/voyages/${selectedVoyage._id}`, {
         method: "DELETE",
@@ -429,6 +430,7 @@ export default function VoyageTable({
     } finally {
       setOpenDelete(false);
       setSelectedVoyage(null);
+       setIsDeleting(false); // ✅ Stop Loading
     }
   }
 
@@ -728,6 +730,7 @@ export default function VoyageTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
+        loading={isDeleting}
       />
     </>
   );

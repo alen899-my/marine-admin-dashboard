@@ -69,10 +69,10 @@ export default function RoleFilters({
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-4 p-4 w-full ms-2">
+    <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
       
-      {/* SEARCH */}
-      <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">
+      {/* SEARCH - Updated to match common component size */}
+      <div className="w-full sm:w-auto min-w-[200px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search Roles
         </label>
@@ -85,8 +85,8 @@ export default function RoleFilters({
         />
       </div>
 
-      {/* STATUS */}
-      <div className="w-full sm:w-auto min-w-[160px]">
+      {/* STATUS - Updated to match common component size */}
+      <div className="w-full sm:w-auto min-w-[210px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Status
         </label>
@@ -107,7 +107,7 @@ export default function RoleFilters({
       {showDateFilters && (
         <>
           {/* DATE FROM */}
-          <div className="w-full sm:w-auto min-w-[180px]">
+          <div className="w-full sm:w-auto min-w-[180px] shrink-0">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
               Created From
             </label>
@@ -121,7 +121,7 @@ export default function RoleFilters({
           </div>
 
           {/* DATE TO */}
-          <div className="w-full sm:w-auto min-w-[180px]">
+          <div className="w-full sm:w-auto min-w-[180px] shrink-0">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
               Created To
             </label>
@@ -137,7 +137,7 @@ export default function RoleFilters({
       )}
 
       {/* BUTTONS */}
-      <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
+      <div className="flex items-center gap-2 mt-2 sm:mt-0  shrink-0">
         <button
           onClick={handleApplyFilters}
           className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"

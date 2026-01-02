@@ -3,7 +3,7 @@ import { dbConnect } from "@/lib/db";
 import Voyage from "@/models/Voyage"; // ✅ Import Voyage model
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
-
+import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import ReportOperational from "@/models/ReportOperational";
 
@@ -49,16 +49,16 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-      const selectedVessel = searchParams.get("vesselId");
-const selectedVoyage = searchParams.get("voyageId");
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedVoyage = searchParams.get("voyageId");
 
     const query: Record<string, unknown> = { eventType: "arrival" };
 
     if (status !== "all") {
       query.status = status;
     }
-     if (selectedVessel) query.vesselId = selectedVessel;
-      if (selectedVoyage) {
+    if (selectedVessel) query.vesselId = selectedVessel;
+    if (selectedVoyage) {
       query.voyageId = selectedVoyage;
     }
 
@@ -97,9 +97,11 @@ const selectedVoyage = searchParams.get("voyageId");
     const reports = await ReportOperational.find(query)
       .populate({
         path: "voyageId",
-        select: "voyageNo _id", 
+        select: "voyageNo _id",
       })
       .populate("vesselId", "name")
+      .populate("createdBy", "fullName") // ✅ Add this
+      .populate("updatedBy", "fullName") // ✅ Add this
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -131,6 +133,8 @@ const selectedVoyage = searchParams.get("voyageId");
 ====================================== */
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("arrival.create");
     if (!authz.ok) return authz.response;
     await dbConnect();
@@ -209,6 +213,8 @@ export async function POST(req: NextRequest) {
       // Snapshots
       vesselName: value.vesselName,
       voyageNo: voyageNoString, // Saved as String (Snapshot)
+      createdBy: currentUserId,
+      updatedBy: currentUserId,
 
       portName: value.portName,
       reportDate: parsedReportDate,

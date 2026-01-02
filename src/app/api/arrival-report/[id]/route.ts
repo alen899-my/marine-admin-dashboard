@@ -5,7 +5,7 @@ import { authorizeRequest } from "@/lib/authorizeRequest";
 // MODEL
 import ReportOperational from "@/models/ReportOperational";
 import Voyage from "@/models/Voyage";
-
+import { auth } from "@/auth";
 /* ======================================
    UPDATE ARRIVAL REPORT (PATCH)
 ====================================== */
@@ -14,6 +14,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+  const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("arrival.edit");
     if (!authz.ok) return authz.response;
     
@@ -49,7 +51,7 @@ export async function PATCH(
     // 2. Prepare the base update object
     const updateData: any = {
       vesselName: body.vesselName,
-      
+      updatedBy: currentUserId,
       // ✅ Update Linked IDs
       // Only update if we found a valid ID, otherwise keep existing (or let it fail validation if critical)
       ...(voyageObjectId && { voyageId: voyageObjectId }), 

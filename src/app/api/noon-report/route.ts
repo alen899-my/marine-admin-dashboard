@@ -1,13 +1,11 @@
-
 import { dbConnect } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth"; 
+import { auth } from "@/auth";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
 import ReportDaily from "@/models/ReportDaily";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
-
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -17,9 +15,9 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
     const parts = dateStr.split("/");
     if (parts.length === 3) {
       const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; 
+      const month = parseInt(parts[1], 10) - 1;
       const year = parseInt(parts[2], 10);
-      
+
       const date = new Date(year, month, day);
       if (!isNaN(date.getTime())) {
         return date;
@@ -46,7 +44,7 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const selectedVessel = searchParams.get("vesselId");
-const selectedVoyage = searchParams.get("voyageId");
+    const selectedVoyage = searchParams.get("voyageId");
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {};
@@ -55,7 +53,7 @@ const selectedVoyage = searchParams.get("voyageId");
       query.status = status;
     }
 
-   if (search) {
+    if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
         { voyageNo: { $regex: search, $options: "i" } }, // Search the snapshot string
@@ -63,9 +61,9 @@ const selectedVoyage = searchParams.get("voyageId");
       ];
     }
     if (selectedVessel) query.vesselId = selectedVessel;
-  if (selectedVoyage) {
-  query.voyageId = selectedVoyage;
-}
+    if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
+    }
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
       if (startDate) {
@@ -82,15 +80,16 @@ const selectedVoyage = searchParams.get("voyageId");
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
-      
     }
 
     const total = await ReportDaily.countDocuments(query);
 
     const reports = await ReportDaily.find(query)
-  
-      .populate("vesselId", "name") 
+
+      .populate("vesselId", "name")
       .populate("voyageId", "voyageNo")
+      .populate("createdBy", "fullName") // ✅ Add this
+      .populate("updatedBy", "fullName") // ✅ Add this
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -117,12 +116,13 @@ const selectedVoyage = searchParams.get("voyageId");
 // CREATE NOON REPORT
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("noon.create");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const body = await req.json();
-    
 
     const { error, value } = noonReportSchema.validate(body, {
       abortEarly: false,
@@ -143,8 +143,8 @@ export async function POST(req: NextRequest) {
 
     const {
       vesselName,
-      vesselId, 
-      voyageNo, 
+      vesselId,
+      voyageNo,
       reportDate,
       nextPort,
       latitude,
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     } = value;
 
     const parsedReportDate = parseDateString(reportDate);
-    
+
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format. Please use dd/mm/yyyy" },
@@ -172,15 +172,15 @@ export async function POST(req: NextRequest) {
 
     // 2. ✅ ROBUST VOYAGE LOOKUP
     let voyageObjectId = null;
-    
+
     if (vesselId && voyageNo) {
       // Convert to ObjectId to ensure match
       const vId = new mongoose.Types.ObjectId(vesselId);
 
-      const foundVoyage = await Voyage.findOne({ 
-        vesselId: vId, 
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vId,
         // Case-insensitive match for voyageNo
-        voyageNo: { $regex: new RegExp(`^${voyageNo}$`, "i") } 
+        voyageNo: { $regex: new RegExp(`^${voyageNo}$`, "i") },
       }).select("_id");
 
       if (foundVoyage) {
@@ -192,18 +192,20 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
-        return NextResponse.json(
-          { error: `Missing Vessel ID or Voyage Number` },
-          { status: 400 }
-        );
+      return NextResponse.json(
+        { error: `Missing Vessel ID or Voyage Number` },
+        { status: 400 }
+      );
     }
 
     // 3. SAVE REPORT
     const report = await ReportDaily.create({
-     vesselId: new mongoose.Types.ObjectId(vesselId),       
+      vesselId: new mongoose.Types.ObjectId(vesselId),
       voyageId: voyageObjectId,
-      vesselName,   
-      voyageNo,      
+      vesselName,
+      voyageNo,
+      createdBy: currentUserId,
+      updatedBy: currentUserId,
 
       type: "noon",
       status: "active",

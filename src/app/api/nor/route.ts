@@ -8,7 +8,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { put } from "@vercel/blob";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import { auth } from "@/auth";
 // ... (keep parseDateString helper exactly as is) ...
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -28,6 +28,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth(); // ✅ Get session
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.create");
     if (!authz.ok) return authz.response;
     
@@ -108,7 +110,8 @@ export async function POST(req: Request) {
     const newRecord = await ReportOperational.create({
       eventType: "nor",
       status: "active",
-
+      createdBy: currentUserId,
+      updatedBy: currentUserId,
       // ✅ IDs
       vesselId: vesselIdString,
       voyageId: voyageObjectId, 
@@ -207,6 +210,8 @@ const selectedVoyage = searchParams.get("voyageId");
     const reports = await ReportOperational.find(query)
       .populate("voyageId", "voyageNo") 
       .populate("vesselId", "name")
+      .populate("createdBy", "fullName") // ✅ Add this
+    .populate("updatedBy", "fullName") // ✅ Add this
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

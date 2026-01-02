@@ -5,7 +5,8 @@ export interface IReportOperational extends Document {
   voyageId: mongoose.Types.ObjectId; 
   vesselId: mongoose.Types.ObjectId; // Added for consistency
 
-
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   voyageNo: string; 
   vesselName: string;
 
@@ -71,7 +72,14 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
     // ✅ SNAPSHOT STRINGS
     voyageNo: { type: String, required: true }, // "OP-1225-IN"
     vesselName: { type: String, required: true },
-
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     eventType: {
       type: String,
       enum: ["departure", "arrival", "nor"],

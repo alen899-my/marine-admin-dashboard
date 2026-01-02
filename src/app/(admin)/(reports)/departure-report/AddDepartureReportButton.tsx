@@ -316,6 +316,7 @@ export default function AddDepartureReportButton({
   value={formData.vesselName}
   onChange={handleVesselChange}
   className={errors.vesselName ? "border-red-500" : ""}
+  error={!!errors.vesselName}
 />
 
                   {errors.vesselName && (
@@ -342,15 +343,13 @@ export default function AddDepartureReportButton({
   onChange={handleVoyageChange}
 
   className={errors.voyageNo ? "border-red-500" : ""}
+  error={!!errors.voyageId}
 />
                   
                  
-
-                  {errors.voyageNo && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.voyageNo}
-                    </p>
-                  )}
+{errors.voyageId && (
+    <p className="text-red-500 text-xs mt-1">{errors.voyageId}</p>
+  )}
                 </div>
 
                 <div>

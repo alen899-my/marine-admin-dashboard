@@ -84,7 +84,7 @@ export default function VesselTable({
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-
+   const [isDeleting, setIsDeleting] = useState(false);
   // Selection
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [editData, setEditData] = useState<EditFormData | null>(null);
@@ -393,6 +393,7 @@ export default function VesselTable({
 
   async function handleDelete() {
     if (!selectedVessel) return;
+     setIsDeleting(true);
     try {
       const res = await fetch(`/api/vessels/${selectedVessel._id}`, {
         method: "DELETE",
@@ -406,6 +407,7 @@ export default function VesselTable({
     } finally {
       setOpenDelete(false);
       setSelectedVessel(null);
+      setIsDeleting(false); // ✅ Stop Loading
     }
   }
 
@@ -739,6 +741,7 @@ export default function VesselTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
+          loading={isDeleting}
       />
     </>
   );

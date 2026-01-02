@@ -1,15 +1,16 @@
-// src/app/api/cargo/route.ts
+
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import Document from "@/models/Document"; // Adjust path to your model
+import Document from "@/models/Document"; 
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import Voyage from "@/models/Voyage"; 
+import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
-// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
 
@@ -20,7 +21,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
       const day = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
       const year = parseInt(parts[2], 10);
-      
+
       const date = new Date(year, month, day);
       if (!isNaN(date.getTime())) {
         return date;
@@ -35,6 +36,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("cargo.create");
     if (!authz.ok) return authz.response;
     await dbConnect();
@@ -44,9 +47,9 @@ export async function POST(req: Request) {
     // Extract fields
     const vesselIdString = formData.get("vesselId") as string;
     const voyageNoString = formData.get("voyageNo") as string;
-    
+
     // We don't need vesselName string anymore
-    
+
     const portName = formData.get("portName") as string;
     const portType = formData.get("portType") as string;
     const reportDate = formData.get("reportDate") as string;
@@ -55,8 +58,10 @@ export async function POST(req: Request) {
     const remarks = formData.get("remarks") as string;
     const file = formData.get("file") as File | null;
 
-    if (!file) return NextResponse.json({ error: "File required" }, { status: 400 });
-    if (file.size > 500 * 1024) return NextResponse.json({ error: "File size > 500KB" }, { status: 400 });
+    if (!file)
+      return NextResponse.json({ error: "File required" }, { status: 400 });
+    if (file.size > 500 * 1024)
+      return NextResponse.json({ error: "File size > 500KB" }, { status: 400 });
 
     // --- File Handling ---
     let fileUrl = "";
@@ -72,7 +77,10 @@ export async function POST(req: Request) {
       await writeFile(filePath, buffer);
       fileUrl = `/uploads/cargo/${filename}`;
     } else {
-      const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+      const blob = await put(filename, file, {
+        access: "public",
+        addRandomSuffix: true,
+      });
       fileUrl = blob.url;
     }
 
@@ -86,28 +94,35 @@ export async function POST(req: Request) {
     let voyageObjectId = null;
 
     if (vesselIdString && voyageNoString) {
-       const vId = new mongoose.Types.ObjectId(vesselIdString);
-       
-       const foundVoyage = await Voyage.findOne({ 
-          vesselId: vId, 
-          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
-       }).select("_id");
-       
-       if (foundVoyage) {
-          voyageObjectId = foundVoyage._id;
-       } else {
-          return NextResponse.json({ error: `Voyage ${voyageNoString} not found.` }, { status: 404 });
-       }
+      const vId = new mongoose.Types.ObjectId(vesselIdString);
+
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vId,
+        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+      }).select("_id");
+
+      if (foundVoyage) {
+        voyageObjectId = foundVoyage._id;
+      } else {
+        return NextResponse.json(
+          { error: `Voyage ${voyageNoString} not found.` },
+          { status: 404 }
+        );
+      }
     } else {
-       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing Vessel ID or Voyage Number" },
+        { status: 400 }
+      );
     }
 
     // Save to Database
     const newDoc = await Document.create({
       // ✅ Save Mapped IDs Only (No Strings)
       vesselId: new mongoose.Types.ObjectId(vesselIdString),
-      voyageId: voyageObjectId, 
-      
+      voyageId: voyageObjectId,
+      createdBy: currentUserId,
+      updatedBy: currentUserId,
       portName,
       portType,
       documentType,
@@ -120,13 +135,19 @@ export async function POST(req: Request) {
         mimeType: file.type,
         sizeBytes: file.size,
       },
-      status: "active", 
+      status: "active",
     });
 
-    return NextResponse.json({ message: "Uploaded successfully", data: newDoc }, { status: 201 });
+    return NextResponse.json(
+      { message: "Uploaded successfully", data: newDoc },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Upload Error:", error);
-    return NextResponse.json({ error: error.message || "Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -142,9 +163,8 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-      const selectedVessel = searchParams.get("vesselId");
-const selectedVoyage = searchParams.get("voyageId");
-
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedVoyage = searchParams.get("voyageId");
 
     const query: any = {};
 
@@ -153,14 +173,14 @@ const selectedVoyage = searchParams.get("voyageId");
     // Search logic needs to search on fields that exist
     if (search) {
       query.$or = [
-        // Note: Searching populated fields usually requires aggregate, 
-        // for simplicity we search portName here. 
+        // Note: Searching populated fields usually requires aggregate,
+        // for simplicity we search portName here.
         // To search vesselName dynamically, you'd strictly need aggregation.
         { portName: { $regex: search, $options: "i" } },
       ];
     }
-     if (selectedVessel) query.vesselId = selectedVessel;
-      if (selectedVoyage) {
+    if (selectedVessel) query.vesselId = selectedVessel;
+    if (selectedVoyage) {
       query.voyageId = selectedVoyage;
     }
     if (startDate || endDate) {
@@ -168,15 +188,20 @@ const selectedVoyage = searchParams.get("voyageId");
       if (startDate) dateQuery.$gte = parseDateString(startDate);
       if (endDate) {
         const end = parseDateString(endDate);
-        if(end) { end.setHours(23, 59, 59, 999); dateQuery.$lte = end; }
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          dateQuery.$lte = end;
+        }
       }
       if (dateQuery.$gte || dateQuery.$lte) query.reportDate = dateQuery;
     }
 
     const data = await Document.find(query)
-      // ✅ POPULATE BOTH FIELDS to get names dynamically
-      .populate("vesselId", "name") 
-      .populate("voyageId", "voyageNo") 
+
+      .populate("vesselId", "name")
+      .populate("voyageId", "voyageNo")
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

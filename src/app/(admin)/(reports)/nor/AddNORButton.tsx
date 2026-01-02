@@ -33,7 +33,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ***** NEW: State for Vessels List *****
-   const { can, isReady } = useAuthorization();
+  const { can, isReady } = useAuthorization();
 
   const getCurrentDateTime = () => {
     return new Date()
@@ -60,10 +60,15 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     formData.vesselId,
     formData.reportDate
   );
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   useEffect(() => {
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageNo) {
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== formData.voyageNo
+    ) {
       setFormData((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
@@ -116,7 +121,12 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     }
 
     fetchAndFilterVoyages();
-  }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageNo]);
+  }, [
+    formData.vesselId,
+    formData.vesselName,
+    suggestedVoyageNo,
+    formData.voyageNo,
+  ]);
 
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -139,14 +149,14 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   };
 
   // ***** NEW: Specific handler for the custom Select component *****
- const handleVesselChange = (selectedName: string) => {
+  const handleVesselChange = (selectedName: string) => {
     // Find the ID based on the name from the HOOK's vessel list
     const selectedVessel = vessels.find((v) => v.name === selectedName);
 
-    setFormData((prev) => ({ 
-        ...prev, 
-        vesselName: selectedName,
-        vesselId: selectedVessel?._id || "" // 👈 Save ID to trigger hook
+    setFormData((prev) => ({
+      ...prev,
+      vesselName: selectedName,
+      vesselId: selectedVessel?._id || "", // 👈 Save ID to trigger hook
     }));
 
     if (errors.vesselName) {
@@ -244,7 +254,6 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     // --- JOI VALIDATION END ---
 
     try {
-
       const data = new FormData();
       data.append("vesselId", formData.vesselId);
       data.append("vesselName", formData.vesselName);
@@ -297,10 +306,9 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
       setIsSubmitting(false);
     }
   };
-  
+
   const canCreate = isReady && can("nor.create");
 
- 
   if (!isReady) {
     return null; // or loader
   }
@@ -357,30 +365,33 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
                     </p>
                   )}
                 </div>
-                
+
                 {/* ***** CHANGED: Using Select for Vessel Name ***** */}
                 <div>
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={formData.vesselName}
-  onChange={(val) => {
-    const selected = vessels.find(v => v.name === val);
-    setFormData(prev => ({
-      ...prev,
-      vesselName: val,
-      vesselId: selected?._id || "",
-      voyageNo: "" // 🔥 reset voyage when vessel changes
-    }));
-  }}
-  className={errors.vesselName ? "border-red-500" : ""}
-/>
+                  <SearchableSelect
+            options={vessels.map((v) => ({
+              value: v.name,
+              label: v.name,
+            }))}
+            placeholder="Search Vessel"
+            value={formData.vesselName}
+            onChange={(val) => {
+              const selected = vessels.find((v) => v.name === val);
+              setFormData((prev) => ({
+                ...prev,
+                vesselName: val,
+                vesselId: selected?._id || "",
+                voyageNo: "", 
+              }));
+              // ✅ Clear error on change
+              if (errors.vesselName) setErrors(prev => ({ ...prev, vesselName: "" }));
+            }}
+            // ✅ Use the 'error' prop for red border logic
+            error={!!errors.vesselName}
+          />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.vesselName}
@@ -393,22 +404,23 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                  <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !formData.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={formData.voyageNo}
-  onChange={(val) =>
-    setFormData(prev => ({ ...prev, voyageNo: val }))
-  }
-  
-  className={errors.voyageNo ? "border-red-500" : ""}
-/>
-
+            options={voyageList}
+            placeholder={
+              !formData.vesselId
+                ? "Select Vessel first"
+                : voyageList.length === 0
+                ? "No active voyages found"
+                : "Search Voyage"
+            }
+            value={formData.voyageNo}
+            onChange={(val) => {
+              setFormData((prev) => ({ ...prev, voyageNo: val }));
+              // ✅ Clear error on change
+              if (errors.voyageNo) setErrors(prev => ({ ...prev, voyageNo: "" }));
+            }}
+            // ✅ Use the 'error' prop for red border logic
+            error={!!errors.voyageNo}
+          />
 
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">
