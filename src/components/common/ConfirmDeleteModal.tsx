@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
-import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
-import { Trash2 } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import { Loader2, Trash2 } from "lucide-react";
+import React from "react";
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -39,9 +39,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
       {/* HEADER */}
       <div className="flex items-center gap-3 text-red-600">
         <Trash2 size={20} />
-        <h2 className="text-base sm:text-lg font-semibold">
-          {title}
-        </h2>
+        <h2 className="text-base sm:text-lg font-semibold">{title}</h2>
       </div>
 
       {/* DESCRIPTION */}
@@ -61,16 +59,19 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         </Button>
 
         <Button
+          variant="destructive" // This handles red-600, red-700 on hover, and red-400 when disabled
           onClick={onConfirm}
           disabled={loading}
-          className="
-            w-full sm:w-auto
-            bg-red-600
-            hover:bg-red-700
-            text-white
-          "
+          className="w-full sm:w-auto"
         >
-          {loading ? "Deleting..." : "Delete"}
+          {loading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              <span>Deleting...</span>
+            </>
+          ) : (
+            "Delete"
+          )}
         </Button>
       </div>
     </Modal>
