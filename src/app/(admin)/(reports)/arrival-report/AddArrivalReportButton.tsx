@@ -38,7 +38,7 @@ export default function AddArrivalReportButton({
   };
 
   const [formData, setFormData] = useState({
-    vesselName: "AN16",
+    vesselName: "",
     vesselId: "", // 👈 Crucial for the hook
     voyageId: "",
     portName: "",

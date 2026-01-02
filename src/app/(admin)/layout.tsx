@@ -38,7 +38,7 @@ export default function AdminLayout({
             never exceeds the calculated width of the flex parent.
         */}
         <main className="flex-1 w-full max-w-full p-4 mx-auto md:p-6 overflow-y-auto">
-          <div className="max-w-(--breakpoint-2xl) mx-auto w-full">
+          <div className="  w-full">
              {children}
           </div>
         </main>

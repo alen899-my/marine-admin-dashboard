@@ -299,6 +299,7 @@ export default function AddDailyNoonReportButton({
                     value={form.vesselName}
                     onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
+                    error={!!errors.vesselName}
                   />
 
                   {errors.vesselName && (
@@ -325,6 +326,7 @@ export default function AddDailyNoonReportButton({
                     value={form.voyageNo}
                     onChange={handleVoyageChange}
                     className={errors.voyageNo ? "border-red-500" : ""}
+                    error={!!errors.vesselName}
                   />
 
                   {errors.voyageNo && (

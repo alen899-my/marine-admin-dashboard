@@ -124,7 +124,7 @@ export default function VesselTable({
       header: "Vessel Name",
       render: (v: Vessel) => (
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+          <span className="text-xs font-semibold text-gray-900 dark:text-white">
             {v.name}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
@@ -481,7 +481,7 @@ export default function VesselTable({
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">{selectedVessel.name}</span>
               <span>|</span>
-              <span className="text-gray-500 text-sm">IMO: {selectedVessel.imo}</span>
+              <span className=" ">{selectedVessel.imo}</span>
             </div>
           )
         }
