@@ -25,7 +25,10 @@ interface ArrivalStats {
   robLsmgo: number | string;
   arrivalCargoQtyMt?: number | string; // NEW
 }
-
+interface UserRef {
+  _id: string;
+  fullName: string;
+}
 interface NorDetails {
   norTime?: string; // NEW
 }
@@ -44,6 +47,10 @@ interface ArrivalReport {
   remarks?: string;
   arrivalStats?: ArrivalStats;
   norDetails?: NorDetails;
+  createdBy?: UserRef;
+  updatedBy?: UserRef;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface EditFormData {
@@ -96,7 +103,7 @@ export default function ArrivalReportTable({
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
     null
   );
@@ -499,6 +506,7 @@ export default function ArrivalReportTable({
 
   async function handleDelete() {
     if (!selectedReport) return;
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/arrival-report/${selectedReport._id}`, {
@@ -514,6 +522,7 @@ export default function ArrivalReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
+      setIsDeleting(false); // ✅ Stop Loading
     }
   }
   if (!isReady) return null;
@@ -789,7 +798,38 @@ export default function ArrivalReportTable({
               </div>
             )}
           </section>
-
+          {/* Place this at the bottom of the grid, before the Voyage Performance Section */}
+          <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
+            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+              System Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Created By</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {selectedReport?.createdBy?.fullName || "System"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Created At</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {formatDate(selectedReport?.createdAt)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Last Updated By</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {selectedReport?.updatedBy?.fullName || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Last Updated At</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {formatDate(selectedReport?.updatedAt)}
+                </span>
+              </div>
+            </div>
+          </section>
           {/* FOOTER: STATUS & SHARE */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
             {/* STATUS */}
@@ -891,6 +931,7 @@ export default function ArrivalReportTable({
                         voyageId: "", // 🔥 RESET voyage when vessel changes
                       });
                     }}
+                 
                   />
                 </div>
 
@@ -909,6 +950,7 @@ export default function ArrivalReportTable({
                     onChange={(val) =>
                       setEditData({ ...editData, voyageId: val })
                     }
+                 
                   />
                 </div>
 
@@ -1183,6 +1225,7 @@ export default function ArrivalReportTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
+        loading={isDeleting}
       />
     </>
   );

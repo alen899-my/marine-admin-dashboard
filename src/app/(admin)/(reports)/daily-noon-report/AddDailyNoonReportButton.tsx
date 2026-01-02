@@ -22,7 +22,6 @@ interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
 }
 
-// Defined interface for the error details
 interface APIErrorDetail {
   field: string;
   message: string;
@@ -33,11 +32,9 @@ export default function AddDailyNoonReportButton({
 }: AddDailyNoonReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Dropdown State
   const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
 
   const getCurrentDateTime = () => {
@@ -67,25 +64,19 @@ export default function AddDailyNoonReportButton({
     generalRemarks: "",
   });
 
-  // ✅ 1. Call the Hook
   const { vessels, suggestedVoyageNo } = useVoyageLogic(
-  form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
-  form.reportDate
-);
-  // ✅ 2. Sync Logic (Auto-fill Voyage)
+    form.vesselId || undefined,
+    form.reportDate
+  );
+
   useEffect(() => {
     if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== form.voyageNo) {
-      if (suggestedVoyageNo) {
-        // Optional: toast.info(`Voyage updated to ${suggestedVoyageNo}`);
-      }
       setForm((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
 
-  // ✅ 3. FETCH & FILTER VOYAGES (Client-Side Firewall)
   useEffect(() => {
     async function fetchAndFilterVoyages() {
-      // Stop if no vessel selected
       if (!form.vesselId) {
         setVoyageList([]);
         return;
@@ -93,46 +84,29 @@ export default function AddDailyNoonReportButton({
 
       try {
         const res = await fetch(`/api/voyages?vesselId=${form.vesselId}`);
-
         if (res.ok) {
           const result = await res.json();
           const allVoyages = Array.isArray(result) ? result : result.data || [];
 
-          // 🔒 STRICT FILTERING LOGIC
           const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === form.vesselId) ||
-              (v.vesselName && v.vesselName === form.vesselName);
-
+            const isCorrectVessel = (v.vesselId && v.vesselId === form.vesselId) || (v.vesselName && v.vesselName === form.vesselName);
             if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === form.voyageNo;
-
-            return isRelevant;
+            return v.status === "active" || v.voyageNo === suggestedVoyageNo || v.voyageNo === form.voyageNo;
           });
 
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
+          setVoyageList(filtered.map((v: any) => ({
+            value: v.voyageNo,
+            label: v.voyageNo,
+          })));
         }
       } catch (error) {
         console.error("Failed to load voyages", error);
         setVoyageList([]);
       }
     }
-
     fetchAndFilterVoyages();
   }, [form.vesselId, form.vesselName, suggestedVoyageNo, form.voyageNo]);
 
-  // Auto-calculate Slip
   useEffect(() => {
     const engineDist = parseFloat(form.engineDistance);
     const obsDist = parseFloat(form.distanceTravelled);
@@ -140,21 +114,20 @@ export default function AddDailyNoonReportButton({
     if (!isNaN(engineDist) && engineDist !== 0 && !isNaN(obsDist)) {
       const calculatedSlip = ((engineDist - obsDist) / engineDist) * 100;
       setForm((prev) => ({ ...prev, slip: calculatedSlip.toFixed(2) }));
-    } else if (engineDist === 0 || isNaN(engineDist)) {
+    } else {
       setForm((prev) => ({ ...prev, slip: "" }));
     }
   }, [form.engineDistance, form.distanceTravelled]);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
   };
 
@@ -163,16 +136,28 @@ export default function AddDailyNoonReportButton({
     setForm((prev) => ({
       ...prev,
       vesselName: val,
-      vesselId: selected?._id || "", // Save ID to trigger hook
-      voyageNo: "", // Clear voyage when vessel changes
+      vesselId: selected?._id || "",
+      voyageNo: "",
     }));
+
+    // ✅ Clear Vessel Error immediately
+    if (errors.vesselName) {
+      setErrors((prev) => {
+        const { vesselName, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
-  // ✅ New Handler for Voyage Select
   const handleVoyageChange = (val: string) => {
     setForm((prev) => ({ ...prev, voyageNo: val }));
+    
+    // ✅ Clear Voyage Error immediately
     if (errors.voyageNo) {
-      setErrors((prev) => ({ ...prev, voyageNo: "" }));
+      setErrors((prev) => {
+        const { voyageNo, ...rest } = prev;
+        return rest;
+      });
     }
   };
 
@@ -209,8 +194,6 @@ export default function AddDailyNoonReportButton({
     setIsSubmitting(true);
 
     try {
-     
-
       const payload = {
         ...form, 
         reportDate: form.reportDate ? `${form.reportDate}+05:30` : null,
@@ -249,12 +232,10 @@ export default function AddDailyNoonReportButton({
   };
 
   const canCreate = isReady && can("noon.create");
-
-  if (!isReady) return null;
-  if (!canCreate) return null;
+  if (!isReady || !canCreate) return null;
 
   return (
-    <>
+   <>
       <Button size="md" variant="primary" onClick={openModal}>
         Add Daily Noon Report
       </Button>
@@ -300,16 +281,16 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={vessels.map((v) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={form.vesselName}
-  onChange={handleVesselChange}
-  className={errors.vesselName ? "border-red-500" : ""}
-/>
+                  <SearchableSelect
+                    options={vessels.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={form.vesselName}
+                    onChange={handleVesselChange}
+                    className={errors.vesselName ? "border-red-500" : ""}
+                  />
 
                   {errors.vesselName && (
                     <p className="text-red-500 text-xs mt-1">
@@ -323,22 +304,19 @@ export default function AddDailyNoonReportButton({
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-  options={voyageList}
-  placeholder={
-    !form.vesselId
-      ? "Select Vessel first"
-      : voyageList.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={form.voyageNo}
-  onChange={handleVoyageChange}
-
-  className={errors.voyageNo ? "border-red-500" : ""}
-/>
-                  
-                 
+                  <SearchableSelect
+                    options={voyageList}
+                    placeholder={
+                      !form.vesselId
+                        ? "Select Vessel first"
+                        : voyageList.length === 0
+                        ? "No active voyages found"
+                        : "Search Voyage"
+                    }
+                    value={form.voyageNo}
+                    onChange={handleVoyageChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
+                  />
 
                   {errors.voyageNo && (
                     <p className="text-red-500 text-xs mt-1">
@@ -445,33 +423,31 @@ export default function AddDailyNoonReportButton({
                 </div>
 
                 <div>
-  <Label className="flex items-center gap-1">
-    Slip (%) <span className="text-red-500">*</span>
+                  <Label className="flex items-center gap-1">
+                    Slip (%) <span className="text-red-500">*</span>
+                    <Tooltip
+                      position="right"
+                      content="Slip (%) = ((Engine Distance − Observed Distance) / Engine Distance) × 100"
+                    >
+                      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-zinc-400 dark:text-gray-500">
+                        <Info />
+                      </span>
+                    </Tooltip>
+                  </Label>
 
-    <Tooltip
-      position="right"
-      content="Slip (%) = ((Engine Distance − Observed Distance) / Engine Distance) × 100"
-    >
-      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-zinc-400 dark:text-gray-500">
-        <Info/>
-      </span>
-    </Tooltip>
-  </Label>
+                  <Input
+                    type="number"
+                    name="slip"
+                    placeholder="Calculated or manual"
+                    value={form.slip}
+                    onChange={handleChange}
+                    className={errors.slip ? "border-red-500" : ""}
+                  />
 
-  <Input
-    type="number"
-    name="slip"
-    placeholder="Calculated or manual"
-    value={form.slip}
-    onChange={handleChange}
-    className={errors.slip ? "border-red-500" : ""}
-  />
-
-  {errors.slip && (
-    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
-  )}
-</div>
-
+                  {errors.slip && (
+                    <p className="text-red-500 text-xs mt-1">{errors.slip}</p>
+                  )}
+                </div>
 
                 <div>
                   <Label>

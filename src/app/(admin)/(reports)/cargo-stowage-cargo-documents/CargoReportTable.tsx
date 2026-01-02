@@ -22,7 +22,10 @@ interface ICargoReportFile {
   url: string;
   name?: string;
 }
-
+interface UserRef {
+  _id: string;
+  fullName: string;
+}
 interface ICargoReport {
   _id: string;
   vesselName: string;
@@ -37,6 +40,10 @@ interface ICargoReport {
   documentType: string;
   remarks: string;
   file?: ICargoReportFile;
+   createdBy?: UserRef;
+  updatedBy?: UserRef;
+  createdAt?: string;
+  updatedAt?: string;
 }
 interface IEditData {
   status: string;
@@ -75,7 +82,7 @@ export default function CargoReportTable({
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [isDeleting, setIsDeleting] = useState(false);
   // Modal States
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -416,6 +423,7 @@ export default function CargoReportTable({
 
   async function handleDelete() {
     if (!selectedReport) return;
+     setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/cargo/${selectedReport._id}`, {
@@ -433,6 +441,7 @@ export default function CargoReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
+      setIsDeleting(false); // ✅ Stop Loading
     }
   }
 
@@ -713,6 +722,38 @@ export default function CargoReportTable({
               <p className="leading-relaxed py-1 font-medium">
                 {selectedReport?.remarks || "No Remarks."}
               </p>
+            </section>
+             {/* ================= SYSTEM INFORMATION (Solid line style) ================= */}
+            <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                System Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5 text-[13px]">
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.createdBy?.fullName || "System"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.createdAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.updatedBy?.fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.updatedAt)}
+                  </span>
+                </div>
+              </div>
             </section>
           </div>
 
@@ -1023,6 +1064,7 @@ export default function CargoReportTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
+        loading={isDeleting}
       />
     </>
   );
