@@ -134,7 +134,7 @@ export default function SharePdfButton({
     >
       <IoLogoWhatsapp 
         size={18} 
-        className={`${loading ? "animate-spin text-[#25D366]" : "text-[#25D366]"}`} 
+        className={`${loading ? "text-[#25D366]" : "text-[#25D366]"}`} 
       />
       <span className="whitespace-nowrap">
         {loading ? "Processing..." : buttonLabel}

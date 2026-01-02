@@ -229,7 +229,7 @@ export default function VoyageTable({
              <span className="text-gray-700 dark:text-gray-300">{formatDateOnly(v.schedule?.startDate)}</span>
           </div>
           <div className="flex gap-2">
-             <span className="text-brand-500 font-bold w-8">ETA:</span>
+             <span className="text-gray-400 w-8">ETA:</span>
              <span className="text-gray-900 dark:text-white font-bold">{formatDateOnly(v.schedule?.eta)}</span>
           </div>
         </div>
@@ -492,7 +492,7 @@ export default function VoyageTable({
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <span className="font-bold">{selectedVoyage.voyageNo}</span>
               <span>|</span>
-              <span className="text-gray-500 text-sm">{selectedVoyage.vesselId?.name}</span>
+              <span>{selectedVoyage.vesselId?.name}</span>
             </div>
           )
         }
@@ -534,7 +534,7 @@ export default function VoyageTable({
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">ETA</span>
-                <span className="font-medium text-brand-600">{formatDate(selectedVoyage?.schedule?.eta)}</span>
+                <span className="font-medium">{formatDate(selectedVoyage?.schedule?.eta)}</span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">End Date</span>
