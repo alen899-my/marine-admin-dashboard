@@ -6,6 +6,7 @@ import ReportDaily from "@/models/ReportDaily";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
+import Vessel from "@/models/Vessel";
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
