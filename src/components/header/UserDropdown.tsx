@@ -16,7 +16,7 @@ export default function UserDropdown() {
   useEffect(() => {
     async function fetchUserData() {
       try {
-        const res = await fetch("/api/user"); // Your provided GET endpoint
+         const res = await fetch("/api/users/profile");
         if (res.ok) {
           const data = await res.json();
           setDbUser(data);
