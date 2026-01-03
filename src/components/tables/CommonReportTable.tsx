@@ -50,17 +50,20 @@ export default function CommonReportTable<T>({
             <TableHeader className="bg-gray-100 dark:bg-white/10">
               <TableRow>
                 {columns.map((col) => (
-                  <TableCell
+                    <TableCell
                     key={col.header}
                     isHeader
                     className="
-                      sticky top-0 z-20
-                      px-5 py-3 
-                      bg-brand-500 text-white 
-                      font-semibold text-left 
-               
-                      dark:bg-brand-500
-                    "
+    sticky top-0 z-20
+    h-10
+    px-5 py-2
+    leading-none
+    whitespace-nowrap
+    bg-brand-500 text-white
+    font-semibold text-left
+    align-middle
+    dark:bg-brand-500
+  "
                   >
                     {col.header}
                   </TableCell>
