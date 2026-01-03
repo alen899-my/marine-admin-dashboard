@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import Voyage from "@/models/Voyage"; // ✅ Import Voyage
 import ReportOperational from "@/models/ReportOperational";
 import mongoose from "mongoose"; // ✅ Import Mongoose
+import Vessel from "@/models/Vessel";
+
 // VALIDATION
 import { departureReportSchema } from "@/lib/validations/departureReportSchema";
 import { authorizeRequest } from "@/lib/authorizeRequest";
