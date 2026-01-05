@@ -554,7 +554,7 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
         className="border border-gray-200 bg-white text-gray-800
                   dark:border-white/10 dark:bg-slate-900 dark:text-gray-100 rounded-xl"
       >
-        <div className=" overflow-x-auto">
+        <div className=" max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
               data={reports}

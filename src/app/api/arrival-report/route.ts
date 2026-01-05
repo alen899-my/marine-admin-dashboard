@@ -1,49 +1,40 @@
-// src/app/api/arrival-report/route.ts
 import { dbConnect } from "@/lib/db";
-import Voyage from "@/models/Voyage"; 
+import Voyage from "@/models/Voyage";
+import Vessel from "@/models/Vessel";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import ReportOperational from "@/models/ReportOperational";
 import ReportDaily from "@/models/ReportDaily";
-import Vessel from "@/models/Vessel";
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
 
-// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
-function parseDateString(dateStr: string | null | undefined): Date | undefined {
-  if (!dateStr) return undefined;
+/* ======================================================
+   HELPER: Parse dd/mm/yyyy safely
+====================================================== */
+function parseDateString(dateStr?: string | null): Date | undefined {
+  if (!dateStr) return;
 
-  // Check if string matches dd/mm/yyyy format (simple check)
-  if (typeof dateStr === "string" && dateStr.includes("/")) {
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
-      const year = parseInt(parts[2], 10);
-
-      const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
-    }
+  if (dateStr.includes("/")) {
+    const [d, m, y] = dateStr.split("/").map(Number);
+    const date = new Date(y, m - 1, d);
+    if (!isNaN(date.getTime())) return date;
   }
 
-  // Fallback: Try standard parsing (for ISO strings or if Joi already converted it)
-  const fallbackDate = new Date(dateStr);
-  return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
+  const fallback = new Date(dateStr);
+  return isNaN(fallback.getTime()) ? undefined : fallback;
 }
 
-/* ======================================
-   GET ALL ARRIVAL REPORTS
-====================================== */
+/* ======================================================
+   GET ALL ARRIVAL REPORTS (FAST, NO N+1)
+====================================================== */
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    // 1. Force Register Models for population
-    const _v = Voyage;
-    const _vsl = Vessel;
+    // Force model registration (Next.js dev safety)
+    void Voyage;
+    void Vessel;
 
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
@@ -54,14 +45,15 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const selectedVessel = searchParams.get("vesselId");
-    const selectedVoyage = searchParams.get("voyageId");
+    const vesselId = searchParams.get("vesselId");
+    const voyageId = searchParams.get("voyageId");
 
-    const query: Record<string, unknown> = { eventType: "arrival" };
+    /* ------------------ BUILD QUERY ------------------ */
+    const query: any = { eventType: "arrival" };
 
     if (status !== "all") query.status = status;
-    if (selectedVessel) query.vesselId = selectedVessel;
-    if (selectedVoyage) query.voyageId = selectedVoyage;
+    if (vesselId) query.vesselId = vesselId;
+    if (voyageId) query.voyageId = voyageId;
 
     if (search) {
       query.$or = [
@@ -71,21 +63,22 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Date Filtering Logic
     if (startDate || endDate) {
       const dateQuery: any = {};
-      const parsedStart = parseDateString(startDate);
-      if (parsedStart) dateQuery.$gte = parsedStart;
-      const parsedEnd = parseDateString(endDate);
-      if (parsedEnd) {
-        parsedEnd.setHours(23, 59, 59, 999);
-        dateQuery.$lte = parsedEnd;
+      const s = parseDateString(startDate);
+      const e = parseDateString(endDate);
+      if (s) dateQuery.$gte = s;
+      if (e) {
+        e.setHours(23, 59, 59, 999);
+        dateQuery.$lte = e;
       }
-      if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
+      if (Object.keys(dateQuery).length) query.reportDate = dateQuery;
     }
 
+    /* ------------------ MAIN ARRIVAL QUERY ------------------ */
     const total = await ReportOperational.countDocuments(query);
-    const rawReports = await ReportOperational.find(query)
+
+    const arrivals = await ReportOperational.find(query)
       .populate("voyageId", "voyageNo _id")
       .populate("vesselId", "name")
       .populate("createdBy", "fullName")
@@ -95,60 +88,110 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .lean();
 
-    // 2. ENHANCED LOGIC: Calculate Metrics on Server for all records in this page
-    const reportsWithMetrics = await Promise.all(
-  rawReports.map(async (report: any) => {
-    if (!report.voyageId) return { ...report, metrics: null };
+    /* ------------------ NO DATA QUICK EXIT ------------------ */
+    if (!arrivals.length) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total, totalPages: 0 },
+      });
+    }
 
-    const vId = report.voyageId._id || report.voyageId;
+    /* ======================================================
+       BULK METRICS CALCULATION (ONLY 2 EXTRA QUERIES)
+    ====================================================== */
 
-    const [departure, noonReports] = await Promise.all([
-      ReportOperational.findOne({ voyageId: vId, eventType: "departure", status: "active" }).lean(),
-      ReportDaily.find({ voyageId: vId, status: "active" }).lean(),
-    ]);
+    const voyageIds = arrivals
+      .map(r => r.voyageId?._id)
+      .filter(Boolean)
+      .map(id => id.toString());
 
-    if (!departure) return { ...report, metrics: null };
+    // 1️⃣ Fetch ALL departures at once
+    const departures = await ReportOperational.find({
+      voyageId: { $in: voyageIds },
+      eventType: "departure",
+      status: "active",
+    }).lean();
 
-    // --- Calculations ---
-    
-    // 1. Total Time (Arrival EventTime - Departure EventTime)
-    const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-    const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
-    const totalTimeHours = Math.max(0, (arrTime - depTime) / (1000 * 60 * 60));
-
-    // 2. Total Distance (Sum of Noon Report observed distances)
-    const totalDistance = noonReports.reduce((sum, doc) => 
-      sum + (Number(doc.navigation?.distLast24h) || 0), 0
+    const departureMap = new Map(
+      departures.map(d => [d.voyageId.toString(), d])
     );
 
-    // 3. Fuel Consumed (The "Captain's Formula")
-    const getFuel = (fuelType: "Vlsfo" | "Lsmgo") => {
-      const depROB = Number(departure.departureStats?.[`rob${fuelType}`]) || 0;
-      const bunk = Number(departure.departureStats?.[`bunkersReceived${fuelType}`]) || 0;
-      const arrROB = Number(report.arrivalStats?.[`rob${fuelType}`]) || 0;
-      return (depROB + bunk) - arrROB;
-    };
+    // 2️⃣ Fetch ALL noon reports at once
+    const noonReports = await ReportDaily.find({
+      voyageId: { $in: voyageIds },
+      status: "active",
+    }).lean();
 
-    return {
-      ...report,
-      metrics: {
-        totalTimeHours: Number(totalTimeHours.toFixed(2)),
-        totalDistance: Number(totalDistance.toFixed(2)),
-        avgSpeed: totalTimeHours > 0 ? Number((totalDistance / totalTimeHours).toFixed(2)) : 0,
-        consumedVlsfo: Number(getFuel("Vlsfo").toFixed(2)),
-        consumedLsmgo: Number(getFuel("Lsmgo").toFixed(2)),
-      }
-    };
-  })
+    const noonMap = new Map<string, any[]>();
+    for (const n of noonReports) {
+      const id = n.voyageId.toString();
+      if (!noonMap.has(id)) noonMap.set(id, []);
+      noonMap.get(id)!.push(n);
+    }
+
+    /* ------------------ MERGE METRICS ------------------ */
+    const reportsWithMetrics = arrivals.map(report => {
+  const vId = report.voyageId?._id?.toString();
+  if (!vId) return { ...report, metrics: null };
+
+  const departure = departureMap.get(vId);
+  if (!departure) return { ...report, metrics: null };
+
+  // 1. Define times FIRST
+  const arrTime = new Date(report.eventTime || report.reportDate).getTime();
+  const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+
+  // 2. Now you can use them in the filter
+ const noonList = (noonMap.get(vId) || []).filter(n => {
+  const noonTime = new Date(n.reportDate).getTime();
+  // Buffer the start/end by 1 hour to catch reports exactly on the edge
+  const buffer = 3600000; 
+  return noonTime >= (depTime - buffer) && noonTime <= (arrTime + buffer);
+});
+
+  const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
+const totalDistance = noonList.reduce(
+  (sum, n) => sum + (Number(n.navigation?.distLast24h) || 0),
+  0
 );
+
+      const fuel = (t: "Vlsfo" | "Lsmgo") => {
+        const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
+        const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
+        const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
+        return dep + bunk - arr;
+      };
+
+      return {
+        ...report,
+        metrics: {
+          totalTimeHours: +totalTimeHours.toFixed(2),
+          totalDistance: +totalDistance.toFixed(2),
+          avgSpeed:
+            totalTimeHours > 0
+              ? +(totalDistance / totalTimeHours).toFixed(2)
+              : 0,
+          consumedVlsfo: +fuel("Vlsfo").toFixed(2),
+          consumedLsmgo: +fuel("Lsmgo").toFixed(2),
+        },
+      };
+    });
 
     return NextResponse.json({
       data: reportsWithMetrics,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error("GET ARRIVAL REPORT ERROR →", error);
-    return NextResponse.json({ error: "Failed to fetch arrival reports" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch arrival reports" },
+      { status: 500 }
+    );
   }
 }
 
