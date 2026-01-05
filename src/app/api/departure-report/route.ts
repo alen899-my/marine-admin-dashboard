@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { auth } from "@/auth";
-import Voyage from "@/models/Voyage"; // ✅ Import Voyage
-import ReportOperational from "@/models/ReportOperational";
+
+
 import mongoose from "mongoose"; // ✅ Import Mongoose
+import User from "@/models/User"; 
 import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage"; 
+import ReportOperational from "@/models/ReportOperational";
 
 // VALIDATION
 import { departureReportSchema } from "@/lib/validations/departureReportSchema";
@@ -37,7 +40,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
-
+    const _ensureModels = [Vessel, Voyage, User];
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
