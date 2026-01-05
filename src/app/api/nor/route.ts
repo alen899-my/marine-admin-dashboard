@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
-import ReportOperational from "@/models/ReportOperational";
-import Voyage from "@/models/Voyage"; // ✅ Import Voyage
+
+
 import mongoose from "mongoose"; // ✅ Import Mongoose
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
@@ -9,6 +9,14 @@ import { existsSync } from "fs";
 import { put } from "@vercel/blob";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { auth } from "@/auth";
+import User from "@/models/User"; 
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage"; 
+import ReportOperational from "@/models/ReportOperational";
+
+
+
+
 // ... (keep parseDateString helper exactly as is) ...
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -152,6 +160,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     await dbConnect();
+    const _ensureModels = [Vessel, Voyage, User];
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");

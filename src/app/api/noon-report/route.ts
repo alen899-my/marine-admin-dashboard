@@ -2,11 +2,14 @@ import { dbConnect } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
-import ReportDaily from "@/models/ReportDaily";
+
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import Voyage from "@/models/Voyage";
+
 import mongoose from "mongoose";
+import User from "@/models/User"; 
 import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import ReportDaily from "@/models/ReportDaily"
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -35,6 +38,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
+    const _ensureModels = [Vessel, Voyage, User];
 
     const { searchParams } = new URL(req.url);
 

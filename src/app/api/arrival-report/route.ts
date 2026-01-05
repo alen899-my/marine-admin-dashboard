@@ -1,14 +1,17 @@
 import { dbConnect } from "@/lib/db";
-import Voyage from "@/models/Voyage";
-import Vessel from "@/models/Vessel";
+
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+
+
+import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
+import User from "@/models/User"; 
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
 import ReportOperational from "@/models/ReportOperational";
 import ReportDaily from "@/models/ReportDaily";
-import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
-
 /* ======================================================
    HELPER: Parse dd/mm/yyyy safely
 ====================================================== */
@@ -31,6 +34,7 @@ function parseDateString(dateStr?: string | null): Date | undefined {
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
+    const _ensureModels = [Vessel, Voyage, User, ReportDaily];
 
     // Force model registration (Next.js dev safety)
     void Voyage;
