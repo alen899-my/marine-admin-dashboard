@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 
 type TooltipPosition = "top" | "bottom" | "left" | "right";
 
@@ -13,9 +13,26 @@ interface TooltipProps {
 export default function Tooltip({
   content,
   children,
-  position = "top",
+  position: preferredPosition = "top",
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
+  // Default to preferred, will be corrected by useEffect
+  const [coords, setCoords] = useState<TooltipPosition>(preferredPosition);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // If mobile, force position to 'left'
+      if (window.innerWidth < 640) {
+        setCoords("left");
+      } else {
+        setCoords(preferredPosition);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [preferredPosition]);
 
   const positionClasses: Record<TooltipPosition, string> = {
     top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
@@ -25,13 +42,10 @@ export default function Tooltip({
   };
 
   const arrowClasses: Record<TooltipPosition, string> = {
-    top: "top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-gray-800",
-    bottom:
-      "bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-800",
-    left:
-      "left-full top-1/2 -translate-y-1/2 border-l-gray-900 dark:border-l-gray-800",
-    right:
-      "right-full top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-gray-800",
+    top: "top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-zinc-800",
+    bottom: "bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-zinc-800",
+    left: "left-full top-1/2 -translate-y-1/2 border-l-gray-900 dark:border-l-zinc-800",
+    right: "right-full top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-zinc-800",
   };
 
   return (
@@ -39,19 +53,19 @@ export default function Tooltip({
       className="relative inline-flex"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
+      // Added for mobile accessibility
+      onClick={() => setOpen(!open)}
     >
       {children}
 
       {open && (
-        <div
-          className={`absolute z-[9999999] ${positionClasses[position]}`}
-        >
-          <div className="relative w-max max-w-none whitespace-nowrap rounded-lg bg-gray-900 px-4 py-2 text-theme-xs text-gray-300 shadow-tooltip dark:bg-zinc-800">
+        <div className={`absolute z-[999999] ${positionClasses[coords]}`}>
+          <div className="relative w-max max-w-[150px] sm:max-w-[250px] whitespace-normal break-words rounded-lg bg-gray-900 px-3 py-2 text-[11px] leading-tight text-gray-300 shadow-xl dark:bg-zinc-800">
             {content}
 
             {/* Arrow */}
             <span
-              className={`absolute h-0 w-0 border-4 border-transparent ${arrowClasses[position]}`}
+              className={`absolute h-0 w-0 border-4 border-transparent ${arrowClasses[coords]}`}
             />
           </div>
         </div>
