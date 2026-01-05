@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, Loader2, PenBox, Trash2 } from "lucide-react";
+import { Eye, PenBox, Trash2 } from "lucide-react";
 import React from "react";
 
 type Column<T> = {
@@ -42,6 +42,29 @@ export default function CommonReportTable<T>({
   onDelete,
   onRowClick,
 }: CommonReportTableProps<T>) {
+  // Skeleton Row Component for cleaner code
+  // Inside your CommonReportTable component
+const SkeletonRow = () => {
+  return (
+    <TableRow className="animate-pulse border-b border-gray-100 dark:border-white/5">
+      {columns.map((_, i) => (
+        <TableCell key={i} className="px-5 py-4">
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
+        </TableCell>
+      ))}
+      {(onView || onEdit || onDelete) && (
+        <TableCell className="px-5 py-4">
+          <div className="flex gap-2">
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+          </div>
+        </TableCell>
+      )}
+    </TableRow>
+  );
+};
+
   return (
     <div className="bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200">
       <div className="max-w-full rounded-xl overflow-hidden shadow-sm">
@@ -50,20 +73,10 @@ export default function CommonReportTable<T>({
             <TableHeader className="bg-gray-100 dark:bg-white/10">
               <TableRow>
                 {columns.map((col) => (
-                    <TableCell
+                  <TableCell
                     key={col.header}
                     isHeader
-                    className="
-    sticky top-0 z-20
-    h-10
-    px-5 py-2
-    leading-none
-    whitespace-nowrap
-    bg-brand-500 text-white
-    font-semibold text-left
-    align-middle
-    dark:bg-brand-500
-  "
+                    className="sticky top-0 z-20 h-10 px-5 py-2 leading-none whitespace-nowrap bg-brand-500 text-white font-semibold text-left align-middle dark:bg-brand-500"
                   >
                     {col.header}
                   </TableCell>
@@ -72,13 +85,7 @@ export default function CommonReportTable<T>({
                 {(onView || onEdit || onDelete) && (
                   <TableCell
                     isHeader
-                    className="
-                      sticky top-0 z-20
-                      px-5 py-3 
-                      bg-brand-500 text-white 
-                      font-semibold text-left
-                      dark:bg-brand-500
-                    "
+                    className="sticky top-0 z-20 px-5 py-3 bg-brand-500 text-white font-semibold text-left dark:bg-brand-500"
                   >
                     Action
                   </TableCell>
@@ -87,21 +94,14 @@ export default function CommonReportTable<T>({
             </TableHeader>
 
             <TableBody>
-              {loading && (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length + 1}
-                    className="py-10 text-center"
-                  >
-                    <div className="flex justify-center gap-2 text-gray-700 dark:text-gray-300">
-                      <Loader2 className="animate-spin" />
-                      Loading Reports...
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {!loading && data.length === 0 && (
+              {loading ? (
+                // Render 5 Skeleton Rows while loading
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <SkeletonRow key={i} />
+                  ))}
+                </>
+              ) : data.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + 1}
@@ -110,32 +110,25 @@ export default function CommonReportTable<T>({
                     No records found
                   </TableCell>
                 </TableRow>
-              )}
-
-              {!loading &&
+              ) : (
                 data.map((row, index) => (
                   <TableRow
                     key={(row as { _id?: string })._id ?? index}
                     onClick={() => onRowClick?.(row)}
                     className={`
-                      cursor-pointer
-                      transition-colors
+                      cursor-pointer transition-colors
                       ${
                         index % 2 === 0
                           ? "bg-white dark:bg-slate-900"
                           : "bg-gray-50 dark:bg-white/5"
                       }
-                      hover:bg-gray-100 
-                      dark:hover:bg-white/10
+                      hover:bg-gray-100 dark:hover:bg-white/10
                     `}
                   >
                     {columns.map((col) => (
                       <TableCell
                         key={col.header}
-                        className="
-                          px-5 py-3 text-left 
-                          text-gray-800 dark:text-gray-200
-                        "
+                        className="px-5 py-3 text-left text-gray-800 dark:text-gray-200"
                       >
                         {col.render(row, index)}
                       </TableCell>
@@ -150,9 +143,9 @@ export default function CommonReportTable<T>({
                               variant="outline"
                               className="dark:border-gray-600"
                               onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click
-                        onView(row);
-                      }}
+                                e.stopPropagation();
+                                onView(row);
+                              }}
                             >
                               <Eye className="h-4 w-4 text-blue-500" />
                             </Button>
@@ -164,9 +157,9 @@ export default function CommonReportTable<T>({
                               variant="outline"
                               className="dark:border-gray-600"
                               onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click
-                        onEdit(row);
-                      }}
+                                e.stopPropagation();
+                                onEdit(row);
+                              }}
                             >
                               <PenBox className="h-4 w-4 text-yellow-500" />
                             </Button>
@@ -178,9 +171,9 @@ export default function CommonReportTable<T>({
                               variant="outline"
                               className="dark:border-gray-600"
                               onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click
-                        onDelete(row);
-                      }}
+                                e.stopPropagation();
+                                onDelete(row);
+                              }}
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
@@ -189,7 +182,8 @@ export default function CommonReportTable<T>({
                       </TableCell>
                     )}
                   </TableRow>
-                ))}
+                ))
+              )}
             </TableBody>
           </Table>
 
