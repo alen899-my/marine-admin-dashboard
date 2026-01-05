@@ -277,44 +277,54 @@ export default function ArrivalReportTable({
   // useCallback fixes the missing dependency warning
   // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
 
- // Replace your existing fetchReports with this clean version
-const fetchReports = useCallback(
-  async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-      });
+  // Replace your existing fetchReports with this clean version
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+          vesselId,
+          voyageId,
+        });
 
-      const res = await fetch(`/api/arrival-report?${query.toString()}`);
-      if (!res.ok) throw new Error();
+        const res = await fetch(`/api/arrival-report?${query.toString()}`);
+        if (!res.ok) throw new Error();
 
-      const result = await res.json();
-      
-      // We no longer need the .map(async ...) loop here!
-      // The backend now sends the 'metrics' object inside each report.
-      const rawReports = result.data || [];
+        const result = await res.json();
 
-      setReports(rawReports);
-      if (onDataLoad) onDataLoad(rawReports); 
+        // We no longer need the .map(async ...) loop here!
+        // The backend now sends the 'metrics' object inside each report.
+        const rawReports = result.data || [];
 
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch {
-      setReports([]);
-      toast.error("Failed to load arrival reports");
-    } finally {
-      setLoading(false);
-    }
-  },
-  [search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
-);
+        setReports(rawReports);
+        if (onDataLoad) onDataLoad(rawReports);
+
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch {
+        setReports([]);
+        toast.error("Failed to load arrival reports");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+  );
+
+  const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  const checkMobile = () => setIsMobile(window.innerWidth < 640);
+  checkMobile(); // Check on initial load
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+
   // Trigger fetch when filters change (Reset to page 1)
   useEffect(() => {
     fetchReports(1);
@@ -345,16 +355,16 @@ const fetchReports = useCallback(
 
   /* ================= ACTIONS ================= */
   async function handleView(report: any) {
-  setSelectedReport(report);
-  setOpenView(true);
-  
-  // Use the metrics already attached to the report from the initial fetch
-  if (report.metrics) {
-    setVoyageMetrics(report.metrics);
-  } else {
-    setVoyageMetrics(null);
+    setSelectedReport(report);
+    setOpenView(true);
+
+    // Use the metrics already attached to the report from the initial fetch
+    if (report.metrics) {
+      setVoyageMetrics(report.metrics);
+    } else {
+      setVoyageMetrics(null);
+    }
   }
-}
 
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
@@ -658,73 +668,82 @@ const fetchReports = useCallback(
             </section>
           </div>
           {/* --- VOYAGE PERFORMANCE SECTION --- */}
-          <section className="md:col-span-2 mt-8">
+          <section className="mt-8">
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase">
+              {/* Heading with updated color and refined typography */}
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Voyage Performance Summary
               </h3>
             </div>
 
             {metricsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[...Array(4)].map((_, i) => (
                   <div
                     key={i}
-                    className="h-20 bg-gray-100 dark:bg-white/5 animate-pulse rounded-xl"
+                    className="h-24 bg-gray-100 dark:bg-white/5 animate-pulse rounded-2xl"
                   />
                 ))}
               </div>
             ) : voyageMetrics ? (
-              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
-                <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/5">
                   {/* Time Metric */}
-                  <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                        <Clock size={14} />
-                        <span className="text-[11px] font-bold uppercase tracking-wider">
-                          Steaming
+                  <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock
+                          size={16}
+                          className="text-blue-600 dark:text-blue-400"
+                        />
+                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                          Total Time
                         </span>
                       </div>
                       <Tooltip
-                        content="Steaming Time = Arrival Time - Departure Time"
-                        position="right"
+                        content="Total Time = Arrival Time - Departure Time"
+                        position={isMobile ? "left" : "right"}
                       >
                         <InfoIcon
-                          size={12}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help transition-colors"
                         />
                       </Tooltip>
                     </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {voyageMetrics.totalTimeHours}
-                      </span>
-                      <span className="text-xs font-medium text-gray-500">
-                        Hrs
-                      </span>
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.totalTimeHours}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-400">
+                          Hrs
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-blue-500 font-semibold mt-1 w-fit px-2 py-0.5 rounded-md">
+                        ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days
+                      </p>
                     </div>
-                    <p className="text-[10px] text-blue-500 font-medium">
-                      ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days
-                    </p>
                   </div>
 
                   {/* Distance Metric */}
-                  <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                        <Navigation size={14} />
-                        <span className="text-[11px] font-bold uppercase tracking-wider">
-                          Distance
+                  <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Navigation
+                          size={16}
+                          className="text-indigo-600 dark:text-indigo-400"
+                        />
+                        <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                          Total Distance
                         </span>
                       </div>
                       <Tooltip
                         content="Total Distance = Σ (Distance Last 24h from all Noon Reports)"
-                        position="bottom"
+                        position={isMobile ? "left" : "top"}
                       >
                         <InfoIcon
-                          size={12}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
                         />
                       </Tooltip>
                     </div>
@@ -732,28 +751,31 @@ const fetchReports = useCallback(
                       <span className="text-2xl font-bold text-slate-900 dark:text-white">
                         {voyageMetrics.totalDistance}
                       </span>
-                      <span className="text-xs font-medium text-gray-500">
+                      <span className="text-xs font-semibold text-slate-400">
                         NM
                       </span>
                     </div>
                   </div>
 
                   {/* Speed Metric */}
-                  <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                        <Gauge size={14} />
-                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                  <div className="p-6 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Gauge
+                          size={16}
+                          className="text-amber-600 dark:text-amber-400"
+                        />
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                           Avg Speed
                         </span>
                       </div>
                       <Tooltip
-                        content="Avg Speed = Total Distance / Total Steaming Hours"
-                        position="bottom"
+                        content="Avg Speed = Total Distance / Total Time"
+                        position={isMobile ? "left" : "top"}
                       >
                         <InfoIcon
-                          size={12}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
                         />
                       </Tooltip>
                     </div>
@@ -761,18 +783,21 @@ const fetchReports = useCallback(
                       <span className="text-2xl font-bold text-slate-900 dark:text-white">
                         {voyageMetrics.avgSpeed}
                       </span>
-                      <span className="text-xs font-medium text-gray-500">
+                      <span className="text-xs font-semibold text-slate-400">
                         Kts
                       </span>
                     </div>
                   </div>
 
                   {/* Fuel Metric */}
-                  <div className="p-5 flex flex-col gap-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                        <Fuel size={14} />
-                        <span className="text-[11px] font-bold uppercase tracking-wider">
+                  <div className="p-6 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Fuel
+                          size={16}
+                          className="text-emerald-600 dark:text-emerald-400"
+                        />
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                           Consumption
                         </span>
                       </div>
@@ -781,28 +806,32 @@ const fetchReports = useCallback(
                         position="left"
                       >
                         <InfoIcon
-                          size={12}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
                         />
                       </Tooltip>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-medium text-gray-400">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
                           VLSFO
                         </span>
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
                           {voyageMetrics.consumedVlsfo}{" "}
-                          <span className="text-[10px] font-normal">MT</span>
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            MT
+                          </span>
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-medium text-gray-400">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
                           LSMGO
                         </span>
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
                           {voyageMetrics.consumedLsmgo}{" "}
-                          <span className="text-[10px] font-normal">MT</span>
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            MT
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -810,21 +839,17 @@ const fetchReports = useCallback(
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
-                <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-full mb-2">
-                  <Tooltip
-                    content="A Departure Report is required to calculate performance baseline."
-                    position="top"
-                  >
-                    <InfoIcon
-                      size={16}
-                      className="text-slate-400 cursor-help"
-                    />
-                  </Tooltip>
+              /* Empty State */
+              <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/30 dark:bg-white/[0.01]">
+                <div className="p-3 bg-white dark:bg-white/5 shadow-sm rounded-full mb-4">
+                  <InfoIcon size={24} className="text-slate-300" />
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-[240px]">
-                  No Departure Report found. Data will populate once reports are
-                  linked.
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                  Missing Departure Data
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-[280px] leading-relaxed">
+                  A Departure Report is required to calculate performance
+                  metrics. Please link your reports to see analytics.
                 </p>
               </div>
             )}
@@ -979,7 +1004,6 @@ const fetchReports = useCallback(
                         voyageId: "", // 🔥 RESET voyage when vessel changes
                       });
                     }}
-                 
                   />
                 </div>
 
@@ -998,7 +1022,6 @@ const fetchReports = useCallback(
                     onChange={(val) =>
                       setEditData({ ...editData, voyageId: val })
                     }
-                 
                   />
                 </div>
 
@@ -1138,176 +1161,185 @@ const fetchReports = useCallback(
 
             <ComponentCard title="Voyage Performance Summary">
               {/* --- VOYAGE PERFORMANCE SECTION --- */}
-              <section className="md:col-span-2">
-                {metricsLoading ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[...Array(4)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-20 bg-gray-100 dark:bg-white/5 animate-pulse rounded-xl"
-                      />
-                    ))}
-                  </div>
-                ) : voyageMetrics ? (
-                  <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
-                    <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
-                      {/* Time Metric */}
-                      <div className="p-5 flex flex-col gap-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Clock size={14} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">
-                              Steaming
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Steaming Time = Arrival Time - Departure Time"
-                            position="right"
-                          >
-                            <InfoIcon
-                              size={12}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {voyageMetrics.totalTimeHours}
-                          </span>
-                          <span className="text-xs font-medium text-gray-500">
-                            Hrs
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-blue-500 font-medium">
-                          ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)}{" "}
-                          Days
-                        </p>
+              <section>
+            {metricsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-24 bg-gray-100 dark:bg-white/5 animate-pulse rounded-2xl"
+                  />
+                ))}
+              </div>
+            ) : voyageMetrics ? (
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/5">
+                  {/* Time Metric */}
+                  <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock
+                          size={16}
+                          className="text-blue-600 dark:text-blue-400"
+                        />
+                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                          Total Time
+                        </span>
                       </div>
-
-                      {/* Distance Metric */}
-                      <div className="p-5 flex flex-col gap-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Navigation size={14} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">
-                              Distance
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Total Distance = Σ (Distance Last 24h from all Noon Reports)"
-                            position="bottom"
-                          >
-                            <InfoIcon
-                              size={12}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {voyageMetrics.totalDistance}
-                          </span>
-                          <span className="text-xs font-medium text-gray-500">
-                            NM
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Speed Metric */}
-                      <div className="p-5 flex flex-col gap-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Gauge size={14} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">
-                              Avg Speed
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Avg Speed = Total Distance / Total Steaming Hours"
-                            position="bottom"
-                          >
-                            <InfoIcon
-                              size={12}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {voyageMetrics.avgSpeed}
-                          </span>
-                          <span className="text-xs font-medium text-gray-500">
-                            Kts
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Fuel Metric */}
-                      <div className="p-5 flex flex-col gap-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Fuel size={14} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">
-                              Consumption
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Consumed = (Dep ROB + Bunkers) - Arr ROB"
-                            position="left"
-                          >
-                            <InfoIcon
-                              size={12}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-medium text-gray-400">
-                              VLSFO
-                            </span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">
-                              {voyageMetrics.consumedVlsfo}{" "}
-                              <span className="text-[10px] font-normal">
-                                MT
-                              </span>
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-medium text-gray-400">
-                              LSMGO
-                            </span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">
-                              {voyageMetrics.consumedLsmgo}{" "}
-                              <span className="text-[10px] font-normal">
-                                MT
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
-                    <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-full mb-2">
                       <Tooltip
-                        content="A Departure Report is required to calculate performance baseline."
-                        position="top"
+                        content="Total Time = Arrival Time - Departure Time"
+                        position={isMobile ? "left" : "right"}
                       >
                         <InfoIcon
-                          size={16}
-                          className="text-slate-400 cursor-help"
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help transition-colors"
                         />
                       </Tooltip>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-[240px]">
-                      No Departure Report found. Data will populate once reports
-                      are linked.
-                    </p>
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.totalTimeHours}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-400">
+                          Hrs
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-blue-500 font-semibold mt-1 w-fit px-2 py-0.5 rounded-md">
+                        ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days
+                      </p>
+                    </div>
                   </div>
-                )}
-              </section>
+
+                  {/* Distance Metric */}
+                  <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Navigation
+                          size={16}
+                          className="text-indigo-600 dark:text-indigo-400"
+                        />
+                        <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                          Total Distance
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Total Distance = Σ (Distance Last 24h from all Noon Reports)"
+                        position={isMobile ? "left" : "top"}
+                      >
+                        <InfoIcon
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
+                        />
+                      </Tooltip>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {voyageMetrics.totalDistance}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400">
+                        NM
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Speed Metric */}
+                  <div className="p-6 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Gauge
+                          size={16}
+                          className="text-amber-600 dark:text-amber-400"
+                        />
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                          Avg Speed
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Avg Speed = Total Distance / Total Time"
+                        position={isMobile ? "left" : "top"}
+                      >
+                        <InfoIcon
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
+                        />
+                      </Tooltip>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {voyageMetrics.avgSpeed}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400">
+                        Kts
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Fuel Metric */}
+                  <div className="p-6 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Fuel
+                          size={16}
+                          className="text-emerald-600 dark:text-emerald-400"
+                        />
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                          Consumption
+                        </span>
+                      </div>
+                      <Tooltip
+                        content="Consumed = (Dep ROB + Bunkers) - Arr ROB"
+                        position="left"
+                      >
+                        <InfoIcon
+                          size={14}
+                          className="text-slate-300 hover:text-slate-500 cursor-help"
+                        />
+                      </Tooltip>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          VLSFO
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.consumedVlsfo}{" "}
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            MT
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          LSMGO
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {voyageMetrics.consumedLsmgo}{" "}
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            MT
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Empty State */
+              <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/30 dark:bg-white/[0.01]">
+                <div className="p-3 bg-white dark:bg-white/5 shadow-sm rounded-full mb-4">
+                  <InfoIcon size={24} className="text-slate-300" />
+                </div>
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                  Missing Departure Data
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-[280px] leading-relaxed">
+                  A Departure Report is required to calculate performance
+                  metrics. Please link your reports to see analytics.
+                </p>
+              </div>
+            )}
+          </section>
             </ComponentCard>
           </div>
         )}
