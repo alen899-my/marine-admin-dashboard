@@ -14,7 +14,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import SharePdfButton from "@/components/common/SharePdfButton";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
@@ -877,59 +877,83 @@ const fetchReports = useCallback(
               </Badge>
             </div>
 
-            {/* SHARE BUTTON */}
-            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-              {selectedReport && (
-                <SharePdfButton
-                  title={`Arrival Report - ${getVesselName(selectedReport)}`}
-                  filename={`ArrivalReport_${
-                    selectedReport.portName
-                  }_${getVoyageDisplay(selectedReport)}`}
-                  data={{
-                    // --- General Information ---
-                    "Report Status":
-                      selectedReport.status?.toUpperCase() || "ACTIVE",
-                    "Vessel Name": getVesselName(selectedReport),
-                    "Voyage ID": getVoyageDisplay(selectedReport),
-                    "Port Name": selectedReport.portName,
-                    "Report Date": formatDate(selectedReport.reportDate),
-                    "Arrival Time": formatDate(selectedReport.eventTime),
-                    "NOR Tendered": formatDate(
-                      selectedReport.norDetails?.norTime
-                    ),
+          {/* ACTIONS (DOWNLOAD & SHARE) */}
+<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+  {selectedReport && (
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      {/* 1. DOWNLOAD BUTTON */}
+      <DownloadPdfButton
+        title={`Arrival Report - ${getVesselName(selectedReport)}`}
+        filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        buttonLabel="Download Report"
+        data={{
+          // --- General Information ---
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+          "Port Name": selectedReport.portName,
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Arrival Time": formatDate(selectedReport.eventTime),
+          "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
 
-                    // --- Arrival Stats ---
-                    "Cargo Quantity":
-                      (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") +
-                      " MT",
-                    "ROB VLSFO":
-                      (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
-                    "ROB LSMGO":
-                      (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
+          // --- Arrival Stats ---
+          "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
+          "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
 
-                    // --- Voyage Performance Summary (Autocalculated Metrics) ---
-                    ...(voyageMetrics
-                      ? {
-                          "Total Steaming Time": `${
-                            voyageMetrics.totalTimeHours
-                          } Hrs (~${(voyageMetrics.totalTimeHours / 24).toFixed(
-                            1
-                          )} Days)`,
-                          "Total Distance": `${voyageMetrics.totalDistance} NM`,
-                          "Average Speed": `${voyageMetrics.avgSpeed} Kts`,
-                          "Total VLSFO Consumed": `${voyageMetrics.consumedVlsfo} MT`,
-                          "Total LSMGO Consumed": `${voyageMetrics.consumedLsmgo} MT`,
-                        }
-                      : {
-                          "Performance Data": "No Departure Report linked",
-                        }),
+          // --- Voyage Performance Summary ---
+          ...(voyageMetrics
+            ? {
+                "Total Steaming Time": `${voyageMetrics.totalTimeHours} Hrs (~${(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days)`,
+                "Total Distance": `${voyageMetrics.totalDistance} NM`,
+                "Average Speed": `${voyageMetrics.avgSpeed} Kts`,
+                "Total VLSFO Consumed": `${voyageMetrics.consumedVlsfo} MT`,
+                "Total LSMGO Consumed": `${voyageMetrics.consumedLsmgo} MT`,
+              }
+            : {
+                "Performance Data": "No Departure Report linked",
+              }),
 
-                    // --- Remarks ---
-                    Remarks: selectedReport.remarks || "No Remarks",
-                  }}
-                />
-              )}
-            </div>
+          // --- Remarks ---
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+
+      {/* 2. SHARE BUTTON */}
+      <SharePdfButton
+        title={`Arrival Report - ${getVesselName(selectedReport)}`}
+        filename={`ArrivalReport_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+          "Port Name": selectedReport.portName,
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Arrival Time": formatDate(selectedReport.eventTime),
+          "NOR Tendered": formatDate(selectedReport.norDetails?.norTime),
+
+          "Cargo Quantity": (selectedReport.arrivalStats?.arrivalCargoQtyMt || "0") + " MT",
+          "ROB VLSFO": (selectedReport.arrivalStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.arrivalStats?.robLsmgo || "0") + " MT",
+
+          ...(voyageMetrics
+            ? {
+                "Total Steaming Time": `${voyageMetrics.totalTimeHours} Hrs (~${(voyageMetrics.totalTimeHours / 24).toFixed(1)} Days)`,
+                "Total Distance": `${voyageMetrics.totalDistance} NM`,
+                "Average Speed": `${voyageMetrics.avgSpeed} Kts`,
+                "Total VLSFO Consumed": `${voyageMetrics.consumedVlsfo} MT`,
+                "Total LSMGO Consumed": `${voyageMetrics.consumedLsmgo} MT`,
+              }
+            : {
+                "Performance Data": "No Departure Report linked",
+              }),
+
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+    </div>
+  )}
+</div>
           </div>
         </div>
       </ViewModal>
