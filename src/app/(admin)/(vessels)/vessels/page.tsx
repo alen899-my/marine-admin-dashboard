@@ -7,9 +7,11 @@ import AddVesselButton from "./AddVesselButton";
 import VesselTable from "./VesselTable"; 
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import TableCount from "@/components/common/TableCount";
 
 export default function VesselManagement() {
   const [refresh, setRefresh] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("vessels");
@@ -61,12 +63,16 @@ export default function VesselManagement() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+                  <TableCount count={totalCount} label="Vessels" />
+                </div>
         <VesselTable
           refresh={refresh}
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
+          setTotalCount={setTotalCount}
         />
       </ComponentCard>
     </div>

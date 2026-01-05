@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters";
-import AddVoyage from "./AddVoyage";
-import VoyageTable from "./VoyageTable"; 
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import { useState } from "react";
+import AddVoyage from "./AddVoyage";
+import VoyageTable from "./VoyageTable";
 
 export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("voyage");
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("voyage");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -29,12 +32,12 @@ export default function VoyageManagement() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Voyage Management
         </h2>
-        
+
         <div className="flex items-center gap-3">
           {/* Shared Filter Toggle */}
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
+          <FilterToggleButton
+            isVisible={isFilterVisible}
+            onToggle={setIsFilterVisible}
           />
           {/* Add Voyage Button triggers refresh on success */}
           <AddVoyage onSuccess={handleRefresh} />
@@ -61,12 +64,16 @@ export default function VoyageManagement() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="voyages" />
+        </div>
         <VoyageTable
           refresh={refresh}
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
+          setTotalCount={setTotalCount}
         />
       </ComponentCard>
     </div>

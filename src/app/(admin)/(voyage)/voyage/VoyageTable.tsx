@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { toast } from "react-toastify";
 
 // UI Components
 import ComponentCard from "@/components/common/ComponentCard";
@@ -11,13 +17,12 @@ import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import Button from "@/components/ui/button/Button";
 
 // Form Components
+import DatePicker from "@/components/form/date-picker";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
-import DatePicker from "@/components/form/date-picker";
 
 // --- Types ---
 interface UserRef {
@@ -36,7 +41,7 @@ interface Voyage {
   vesselId: VesselRef; // Populated
   voyageNo: string;
   status: "scheduled" | "active" | "completed";
-  
+
   route: {
     loadPort: string;
     dischargePort: string;
@@ -104,6 +109,7 @@ interface VoyageTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function VoyageTable({
@@ -112,6 +118,7 @@ export default function VoyageTable({
   status,
   startDate,
   endDate,
+  setTotalCount,
 }: VoyageTableProps) {
   const [voyages, setVoyages] = useState<Voyage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +169,8 @@ export default function VoyageTable({
   const columns = [
     {
       header: "S.No",
-      render: (_: Voyage, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: Voyage, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Voyage Info",
@@ -181,42 +189,51 @@ export default function VoyageTable({
             </span>
           </div>
           {v.charter?.chartererName && (
-             <div className="grid grid-cols-[75px_1fr] items-center text-xs">
-             <span className="text-gray-400">Charterer</span>
-             <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px]" title={v.charter.chartererName}>
-               {v.charter.chartererName}
-             </span>
-           </div>
+            <div className="grid grid-cols-[75px_1fr] items-center text-xs">
+              <span className="text-gray-400">Charterer</span>
+              <span
+                className="text-gray-600 dark:text-gray-400 truncate max-w-[100px]"
+                title={v.charter.chartererName}
+              >
+                {v.charter.chartererName}
+              </span>
+            </div>
           )}
         </div>
       ),
     },
-   {
+    {
       header: "Route",
       render: (v: Voyage) => (
         <div className="flex flex-col gap-0.5 text-xs min-w-[150px]">
-          
           {/* Load Port */}
           <div className="grid grid-cols-[60px_1fr] items-center gap-2">
             <span className="text-gray-400">Load</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium truncate" title={v.route?.loadPort}>
+            <span
+              className="text-gray-700 dark:text-gray-300 font-medium truncate"
+              title={v.route?.loadPort}
+            >
               {v.route?.loadPort}
             </span>
           </div>
 
           {/* Tiny Arrow visual (Aligned with label) */}
           <div className="grid grid-cols-[60px_1fr] gap-2">
-             <span className="text-gray-500 dark:text-gray-600 text-[10px] pl-0.5">↓</span>
+            <span className="text-gray-500 dark:text-gray-600 text-[10px] pl-0.5">
+              ↓
+            </span>
           </div>
 
           {/* Discharge Port */}
           <div className="grid grid-cols-[60px_1fr] items-center gap-2">
             <span className="text-gray-400">Discharge</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium truncate" title={v.route?.dischargePort}>
+            <span
+              className="text-gray-700 dark:text-gray-300 font-medium truncate"
+              title={v.route?.dischargePort}
+            >
               {v.route?.dischargePort}
             </span>
           </div>
-
         </div>
       ),
     },
@@ -225,12 +242,16 @@ export default function VoyageTable({
       render: (v: Voyage) => (
         <div className="flex flex-col gap-1 text-xs">
           <div className="flex gap-2">
-             <span className="text-gray-400 w-8">Start:</span>
-             <span className="text-gray-700 dark:text-gray-300">{formatDateOnly(v.schedule?.startDate)}</span>
+            <span className="text-gray-400 w-8">Start:</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {formatDateOnly(v.schedule?.startDate)}
+            </span>
           </div>
           <div className="flex gap-2">
-             <span className="text-gray-400 w-8">ETA:</span>
-             <span className="text-gray-900 dark:text-white font-bold">{formatDateOnly(v.schedule?.eta)}</span>
+            <span className="text-gray-400 w-8">ETA:</span>
+            <span className="text-gray-900 dark:text-white font-bold">
+              {formatDateOnly(v.schedule?.eta)}
+            </span>
           </div>
         </div>
       ),
@@ -240,26 +261,35 @@ export default function VoyageTable({
       render: (v: Voyage) => (
         <div className="flex flex-col gap-0.5 text-xs">
           <span className="font-medium text-gray-700 dark:text-gray-300">
-             {v.cargo?.commodity || "-"}
+            {v.cargo?.commodity || "-"}
           </span>
           {v.cargo?.quantity && (
-             <span className="text-gray-500">
-                {v.cargo.quantity.toLocaleString()} MT
-             </span>
+            <span className="text-gray-500">
+              {v.cargo.quantity.toLocaleString()} MT
+            </span>
           )}
         </div>
-      )
+      ),
     },
     {
       header: "Status",
       render: (v: Voyage) => {
         let color: "success" | "warning" | "default" | "light" = "default";
-       let label: string = v.status;
-        
+        let label: string = v.status;
+
         switch (v.status) {
-          case "active": color = "success"; label = "Active"; break;
-          case "scheduled": color = "warning"; label = "Scheduled"; break;
-          case "completed": color = "default"; label = "Completed"; break;
+          case "active":
+            color = "success";
+            label = "Active";
+            break;
+          case "scheduled":
+            color = "warning";
+            label = "Scheduled";
+            break;
+          case "completed":
+            color = "default";
+            label = "Completed";
+            break;
         }
 
         return <Badge color={color}>{label}</Badge>;
@@ -285,15 +315,20 @@ export default function VoyageTable({
         if (!res.ok) throw new Error();
 
         const result = await res.json();
-        
-        if (Array.isArray(result)) {
-           setVoyages(result);
-           setTotalPages(1);
-        } else {
-           setVoyages(result.data || []);
-           setTotalPages(result.pagination?.totalPages || 1);
-        }
 
+        if (Array.isArray(result)) {
+          setVoyages(result);
+          setTotalPages(1);
+        } else {
+          setVoyages(result.data || []);
+
+          // UPDATE DYNAMIC COUNT
+          if (setTotalCount) {
+            setTotalCount(result.pagination?.total || result.length || 0);
+          }
+
+          setTotalPages(result.pagination?.totalPages || 1);
+        }
       } catch (err) {
         setVoyages([]);
         setTotalPages(1);
@@ -353,28 +388,28 @@ export default function VoyageTable({
       vesselId: voyage.vesselId?._id || "",
       voyageNo: voyage.voyageNo,
       status: voyage.status,
-      route: { 
-        loadPort: voyage.route.loadPort, 
+      route: {
+        loadPort: voyage.route.loadPort,
         dischargePort: voyage.route.dischargePort,
         via: voyage.route.via || "",
-        totalDistance: voyage.route.totalDistance || ""
+        totalDistance: voyage.route.totalDistance || "",
       },
       schedule: {
         startDate: voyage.schedule.startDate || "",
         eta: voyage.schedule.eta || "",
-        endDate: voyage.schedule.endDate || ""
+        endDate: voyage.schedule.endDate || "",
       },
       cargo: {
         commodity: voyage.cargo.commodity || "",
         quantity: voyage.cargo.quantity || "",
-        grade: voyage.cargo.grade || ""
+        grade: voyage.cargo.grade || "",
       },
       charter: {
         chartererName: voyage.charter.chartererName || "",
         charterPartyDate: voyage.charter.charterPartyDate || "",
         laycanStart: voyage.charter.laycanStart || "",
-        laycanEnd: voyage.charter.laycanEnd || ""
-      }
+        laycanEnd: voyage.charter.laycanEnd || "",
+      },
     });
     setOpenEdit(true);
   }
@@ -385,10 +420,13 @@ export default function VoyageTable({
 
     try {
       const payload = {
-         ...editData,
-         // Ensure Numbers
-         route: { ...editData.route, totalDistance: Number(editData.route.totalDistance) },
-         cargo: { ...editData.cargo, quantity: Number(editData.cargo.quantity) }
+        ...editData,
+        // Ensure Numbers
+        route: {
+          ...editData.route,
+          totalDistance: Number(editData.route.totalDistance),
+        },
+        cargo: { ...editData.cargo, quantity: Number(editData.cargo.quantity) },
       };
 
       const res = await fetch(`/api/voyages/${selectedVoyage._id}`, {
@@ -424,13 +462,19 @@ export default function VoyageTable({
       if (!res.ok) throw new Error();
 
       setVoyages((prev) => prev.filter((v) => v._id !== selectedVoyage._id));
+
+      // UPDATE DYNAMIC COUNT ON DELETE
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
+
       toast.success("Voyage deleted successfully");
     } catch {
       toast.error("Failed to delete voyage");
     } finally {
       setOpenDelete(false);
       setSelectedVoyage(null);
-       setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); // ✅ Stop Loading
     }
   }
 
@@ -499,7 +543,6 @@ export default function VoyageTable({
       >
         <div className="text-[13px] py-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-            
             {/* ROUTE INFO */}
             <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
@@ -507,19 +550,29 @@ export default function VoyageTable({
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Load Port</span>
-                <span className="font-medium">{selectedVoyage?.route?.loadPort}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.route?.loadPort}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Discharge Port</span>
-                <span className="font-medium">{selectedVoyage?.route?.dischargePort}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.route?.dischargePort}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Via</span>
-                <span className="font-medium">{selectedVoyage?.route?.via || "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.route?.via || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Distance</span>
-                <span className="font-medium">{selectedVoyage?.route?.totalDistance ? `${selectedVoyage.route.totalDistance} NM` : "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.route?.totalDistance
+                    ? `${selectedVoyage.route.totalDistance} NM`
+                    : "-"}
+                </span>
               </div>
             </section>
 
@@ -530,54 +583,73 @@ export default function VoyageTable({
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Start Date</span>
-                <span className="font-medium">{formatDate(selectedVoyage?.schedule?.startDate)}</span>
+                <span className="font-medium">
+                  {formatDate(selectedVoyage?.schedule?.startDate)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">ETA</span>
-                <span className="font-medium">{formatDate(selectedVoyage?.schedule?.eta)}</span>
+                <span className="font-medium">
+                  {formatDate(selectedVoyage?.schedule?.eta)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">End Date</span>
-                <span className="font-medium">{formatDate(selectedVoyage?.schedule?.endDate)}</span>
+                <span className="font-medium">
+                  {formatDate(selectedVoyage?.schedule?.endDate)}
+                </span>
               </div>
             </section>
 
-             {/* CARGO */}
-             <section className="space-y-1.5">
+            {/* CARGO */}
+            <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
                 Cargo Details
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Commodity</span>
-                <span className="font-medium">{selectedVoyage?.cargo?.commodity || "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.cargo?.commodity || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Quantity</span>
-                <span className="font-medium">{selectedVoyage?.cargo?.quantity ? `${selectedVoyage.cargo.quantity.toLocaleString()} MT` : "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.cargo?.quantity
+                    ? `${selectedVoyage.cargo.quantity.toLocaleString()} MT`
+                    : "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Grade</span>
-                <span className="font-medium">{selectedVoyage?.cargo?.grade || "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.cargo?.grade || "-"}
+                </span>
               </div>
             </section>
 
-             {/* CHARTER */}
-             <section className="space-y-1.5">
+            {/* CHARTER */}
+            <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
                 Charter Party
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Charterer</span>
-                <span className="font-medium">{selectedVoyage?.charter?.chartererName || "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.charter?.chartererName || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">CP Date</span>
-                <span className="font-medium">{selectedVoyage?.charter?.charterPartyDate || "-"}</span>
+                <span className="font-medium">
+                  {selectedVoyage?.charter?.charterPartyDate || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Laycan</span>
                 <span className="font-medium">
-                  {selectedVoyage?.charter?.laycanStart || "?"} to {selectedVoyage?.charter?.laycanEnd || "?"}
+                  {selectedVoyage?.charter?.laycanStart || "?"} to{" "}
+                  {selectedVoyage?.charter?.laycanEnd || "?"}
                 </span>
               </div>
             </section>
@@ -588,44 +660,54 @@ export default function VoyageTable({
                 System Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Created By</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {typeof selectedVoyage?.createdBy === 'object' ? selectedVoyage.createdBy?.fullName : "-"}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Created At</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {formatDate(selectedVoyage?.createdAt)}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Last Updated By</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                         {typeof selectedVoyage?.updatedBy === 'object' ? selectedVoyage.updatedBy?.fullName : "-"}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Last Updated At</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {formatDate(selectedVoyage?.updatedAt)}
-                    </span>
-                 </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {typeof selectedVoyage?.createdBy === "object"
+                      ? selectedVoyage.createdBy?.fullName
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedVoyage?.createdAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {typeof selectedVoyage?.updatedBy === "object"
+                      ? selectedVoyage.updatedBy?.fullName
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedVoyage?.updatedAt)}
+                  </span>
+                </div>
               </div>
             </section>
-
           </div>
 
-           {/* STATUS FOOTER */}
-           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</span>
-              <Badge color={
-                 selectedVoyage?.status === "active" ? "success" : 
-                 selectedVoyage?.status === "scheduled" ? "warning" : "default"
-              }>
-               <span className="capitalize">{selectedVoyage?.status}</span>
-              </Badge>
+          {/* STATUS FOOTER */}
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              Status
+            </span>
+            <Badge
+              color={
+                selectedVoyage?.status === "active"
+                  ? "success"
+                  : selectedVoyage?.status === "scheduled"
+                  ? "warning"
+                  : "default"
+              }
+            >
+              <span className="capitalize">{selectedVoyage?.status}</span>
+            </Badge>
           </div>
         </div>
       </ViewModal>
@@ -640,87 +722,180 @@ export default function VoyageTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
-             {/* GENERAL */}
-             <ComponentCard title="General">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-      <Label>Vessel</Label>
-      <Select
-        options={vessels.map((v) => ({ value: v._id, label: v.name }))}
-        value={editData.vesselId}
-        onChange={(val) => handleEditChange("vesselId", val)}
-      />
-    </div>
-                    <InputField label="Voyage No" value={editData.voyageNo} onChange={e => handleEditChange('voyageNo', e.target.value)} />
-                    <div>
-                        <Label>Status</Label>
-                        <Select
-                            options={[
-                                { value: "scheduled", label: "Scheduled" },
-                                { value: "active", label: "Active" },
-                                { value: "completed", label: "Completed" },
-                            ]}
-                            value={editData.status}
-                            onChange={(val) => handleEditChange('status', val)}
-                        />
-                    </div>
+            {/* GENERAL */}
+            <ComponentCard title="General">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>Vessel</Label>
+                  <Select
+                    options={vessels.map((v) => ({
+                      value: v._id,
+                      label: v.name,
+                    }))}
+                    value={editData.vesselId}
+                    onChange={(val) => handleEditChange("vesselId", val)}
+                  />
                 </div>
-             </ComponentCard>
+                <InputField
+                  label="Voyage No"
+                  value={editData.voyageNo}
+                  onChange={(e) => handleEditChange("voyageNo", e.target.value)}
+                />
+                <div>
+                  <Label>Status</Label>
+                  <Select
+                    options={[
+                      { value: "scheduled", label: "Scheduled" },
+                      { value: "active", label: "Active" },
+                      { value: "completed", label: "Completed" },
+                    ]}
+                    value={editData.status}
+                    onChange={(val) => handleEditChange("status", val)}
+                  />
+                </div>
+              </div>
+            </ComponentCard>
 
-             {/* ROUTE */}
-             <ComponentCard title="Route">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <InputField label="Load Port" value={editData.route.loadPort} onChange={e => handleNestedEditChange('route', 'loadPort', e.target.value)} />
-                    <InputField label="Discharge Port" value={editData.route.dischargePort} onChange={e => handleNestedEditChange('route', 'dischargePort', e.target.value)} />
-                    <InputField label="Via" value={editData.route.via} onChange={e => handleNestedEditChange('route', 'via', e.target.value)} />
-                    <InputField label="Distance (NM)" type="number" value={editData.route.totalDistance} onChange={e => handleNestedEditChange('route', 'totalDistance', e.target.value)} />
-                </div>
-             </ComponentCard>
+            {/* ROUTE */}
+            <ComponentCard title="Route">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <InputField
+                  label="Load Port"
+                  value={editData.route.loadPort}
+                  onChange={(e) =>
+                    handleNestedEditChange("route", "loadPort", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Discharge Port"
+                  value={editData.route.dischargePort}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "route",
+                      "dischargePort",
+                      e.target.value
+                    )
+                  }
+                />
+                <InputField
+                  label="Via"
+                  value={editData.route.via}
+                  onChange={(e) =>
+                    handleNestedEditChange("route", "via", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Distance (NM)"
+                  type="number"
+                  value={editData.route.totalDistance}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "route",
+                      "totalDistance",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+            </ComponentCard>
 
-             {/* SCHEDULE */}
-             <ComponentCard title="Schedule">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                   <div>
-                      <Label>Start Date</Label>
-                      <Input type="datetime-local" value={editData.schedule.startDate?.slice(0, 16)} onChange={e => handleNestedEditChange('schedule', 'startDate', e.target.value)} />
-                   </div>
-                   <div>
-                      <Label>ETA</Label>
-                      <Input type="datetime-local" value={editData.schedule.eta?.slice(0, 16)} onChange={e => handleNestedEditChange('schedule', 'eta', e.target.value)} />
-                   </div>
-                   <div>
-                      <Label>End Date</Label>
-                      <Input type="datetime-local" value={editData.schedule.endDate?.slice(0, 16)} onChange={e => handleNestedEditChange('schedule', 'endDate', e.target.value)} />
-                   </div>
+            {/* SCHEDULE */}
+            <ComponentCard title="Schedule">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <Label>Start Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editData.schedule.startDate?.slice(0, 16)}
+                    onChange={(e) =>
+                      handleNestedEditChange(
+                        "schedule",
+                        "startDate",
+                        e.target.value
+                      )
+                    }
+                  />
                 </div>
-             </ComponentCard>
+                <div>
+                  <Label>ETA</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editData.schedule.eta?.slice(0, 16)}
+                    onChange={(e) =>
+                      handleNestedEditChange("schedule", "eta", e.target.value)
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>End Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editData.schedule.endDate?.slice(0, 16)}
+                    onChange={(e) =>
+                      handleNestedEditChange(
+                        "schedule",
+                        "endDate",
+                        e.target.value
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </ComponentCard>
 
             {/* CHARTER & CARGO */}
-             <ComponentCard title="Commercial">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <InputField label="Charterer" value={editData.charter.chartererName} onChange={e => handleNestedEditChange('charter', 'chartererName', e.target.value)} />
-                    <InputField label="Commodity" value={editData.cargo.commodity} onChange={e => handleNestedEditChange('cargo', 'commodity', e.target.value)} />
-                    <InputField label="Quantity (MT)" type="number" value={editData.cargo.quantity} onChange={e => handleNestedEditChange('cargo', 'quantity', e.target.value)} />
-                    
-                    {/* Dates using DatePicker - Added IDs here */}
-                    <div>
-                        <Label>Laycan Start</Label>
-                        <DatePicker 
-                            id="edit-laycan-start" // ✅ ADDED ID
-                            defaultDate={editData.charter.laycanStart} 
-                            onChange={(_, date) => handleNestedEditChange('charter', 'laycanStart', date)} 
-                        />
-                    </div>
-                    <div>
-                        <Label>Laycan End</Label>
-                        <DatePicker 
-                            id="edit-laycan-end" // ✅ ADDED ID
-                            defaultDate={editData.charter.laycanEnd} 
-                            onChange={(_, date) => handleNestedEditChange('charter', 'laycanEnd', date)} 
-                        />
-                    </div>
+            <ComponentCard title="Commercial">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <InputField
+                  label="Charterer"
+                  value={editData.charter.chartererName}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "charter",
+                      "chartererName",
+                      e.target.value
+                    )
+                  }
+                />
+                <InputField
+                  label="Commodity"
+                  value={editData.cargo.commodity}
+                  onChange={(e) =>
+                    handleNestedEditChange("cargo", "commodity", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Quantity (MT)"
+                  type="number"
+                  value={editData.cargo.quantity}
+                  onChange={(e) =>
+                    handleNestedEditChange("cargo", "quantity", e.target.value)
+                  }
+                />
+
+                {/* Dates using DatePicker - Added IDs here */}
+                <div>
+                  <Label>Laycan Start</Label>
+                  <DatePicker
+                    id="edit-laycan-start" // ✅ ADDED ID
+                    defaultDate={editData.charter.laycanStart}
+                    onChange={(_, date) =>
+                      handleNestedEditChange("charter", "laycanStart", date)
+                    }
+                  />
                 </div>
-             </ComponentCard>
+                <div>
+                  <Label>Laycan End</Label>
+                  <DatePicker
+                    id="edit-laycan-end" // ✅ ADDED ID
+                    defaultDate={editData.charter.laycanEnd}
+                    onChange={(_, date) =>
+                      handleNestedEditChange("charter", "laycanEnd", date)
+                    }
+                  />
+                </div>
+              </div>
+            </ComponentCard>
           </div>
         )}
       </EditModal>
@@ -737,7 +912,10 @@ export default function VoyageTable({
 }
 
 /* ================= HELPERS ================= */
-function InputField({ label, ...props }: { label: string } & React.ComponentProps<typeof Input>) {
+function InputField({
+  label,
+  ...props
+}: { label: string } & React.ComponentProps<typeof Input>) {
   return (
     <div>
       <Label>{label}</Label>

@@ -8,10 +8,12 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared H
 import { useEffect, useState } from "react";
 import AddDepartureReportButton from "./AddDepartureReportButton";
 import DepartureReportTable from "./DepartureReportTable";
+import TableCount from "@/components/common/TableCount";
 
 export default function DepartureReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // Data for Excel
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("departure");
@@ -114,6 +116,9 @@ export default function DepartureReport() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="Reports" />
+        </div>
         <DepartureReportTable
           refresh={refresh}
           search={search}
@@ -121,6 +126,7 @@ export default function DepartureReport() {
           startDate={startDate}
           endDate={endDate}
           onDataLoad={setReportsData} // Capture the table data here
+          setTotalCount={setTotalCount}
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}

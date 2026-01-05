@@ -14,7 +14,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Types ---
@@ -81,6 +81,7 @@ interface DailyNoonReportTableProps {
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function DailyNoonReportTable({
@@ -89,6 +90,7 @@ export default function DailyNoonReportTable({
   status,
   startDate,
   onDataLoad,
+  setTotalCount,
   endDate, vesselId,
   voyageId,
   vesselList,
@@ -369,11 +371,19 @@ export default function DailyNoonReportTable({
 
 
   // Wrap fetchReports in useCallback to fix dependency warnings
-  const fetchReports = useCallback(
+  const [totalItems, setTotalItems] = useState(0); // Add this state
+
+  // Inside DailyNoonReportTableProps interface, add:
+interface DailyNoonReportTableProps {
+  // ... existing props
+  setTotalCount?: (count: number) => void; 
+}
+
+// Inside DailyNoonReportTable component, update fetchReports:
+const fetchReports = useCallback(
     async (page = 1) => {
       try {
         setLoading(true);
-
         const query = new URLSearchParams({
           page: page.toString(),
           limit: LIMIT.toString(),
@@ -381,21 +391,25 @@ export default function DailyNoonReportTable({
           status,
           startDate,
           endDate,
-          vesselId, // Added to query
-          voyageId, // Added to query
+          vesselId,
+          voyageId,
         });
 
         const res = await fetch(`/api/noon-report?${query.toString()}`);
-
         if (!res.ok) throw new Error();
 
         const result = await res.json();
         const fetchedData = result.data || [];
 
         setReports(fetchedData);
-if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
+        if (onDataLoad) onDataLoad(fetchedData);
 
-        setReports(result.data || []);
+        // 3. UPDATE COUNT DYNAMICALLY FROM API PAGINATION
+        if (setTotalCount) {
+          // result.pagination.total comes from your backend route
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         if (!result.data || result.data.length === 0) {
           setTotalPages(1);
         } else {
@@ -404,11 +418,12 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
       } catch (err) {
         console.error(err);
         setReports([]);
+        if (setTotalCount) setTotalCount(0);
       } finally {
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, setTotalCount, vesselId, voyageId]
   );
 
   // Filter Trigger (Search, Status, Dates) - using props now
@@ -527,26 +542,36 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
   }
 
   async function handleDelete() {
-    if (!selectedReport) return;
-     setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/noon-report/${selectedReport._id}`, {
-        method: "DELETE",
-      });
+    if (!selectedReport) return;
+     setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/noon-report/${selectedReport._id}`, {
+        method: "DELETE",
+      });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error();
 
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      // 1. Update local table data
+      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
 
-      toast.success("Noon report deleted successfully");
-    } catch {
-      toast.error("Failed to delete report");
-    } finally {
-      setOpenDelete(false);
-      setSelectedReport(null);
-       setIsDeleting(false);
-    }
-  }
+      // 2. DYNAMICALLY UPDATE THE TOTAL COUNT IN THE HEADER
+      if (setTotalCount) {
+        setTotalCount((prev: number) => Math.max(0, prev - 1));
+      }
+
+      toast.success("Noon report deleted successfully");
+    } catch {
+      toast.error("Failed to delete report");
+    } finally {
+      setOpenDelete(false);
+      setSelectedReport(null);
+       setIsDeleting(false);
+      
+      // Optional: Re-fetch the current page to fill the gap left by the deleted row
+      // fetchReports(currentPage); 
+    }
+  }
+  
   if (!isReady) return null;
   return (
     <>

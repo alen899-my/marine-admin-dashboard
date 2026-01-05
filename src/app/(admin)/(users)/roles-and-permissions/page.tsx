@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import TableCount from "@/components/common/TableCount";
 import RoleFilters from "@/components/roles/RoleFilters";
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import { useState } from "react";
 import AddRoleButton from "./AddRoleButton";
 import RolesTable from "./RolesTable";
-import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 
 export default function RoleManagement() {
   const [refresh, setRefresh] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
@@ -32,9 +34,9 @@ export default function RoleManagement() {
 
         <div className="flex items-center gap-3">
           {/* Shared Filter Toggle */}
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
+          <FilterToggleButton
+            isVisible={isFilterVisible}
+            onToggle={setIsFilterVisible}
           />
           {/* Add Role Button */}
           <AddRoleButton onSuccess={handleRefresh} />
@@ -59,13 +61,17 @@ export default function RoleManagement() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="roles" />
+        </div>
         <RolesTable
           refresh={refresh}
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
-        /> 
+          setTotalCount={setTotalCount}
+        />
       </ComponentCard>
     </div>
   );

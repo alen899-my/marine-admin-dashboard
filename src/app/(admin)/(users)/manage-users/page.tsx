@@ -1,15 +1,17 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
-import UserFilters from "@/components/Users/UserFilters"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import TableCount from "@/components/common/TableCount";
+import UserFilters from "@/components/Users/UserFilters";
+import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useState } from "react";
 import AddUserButton from "./AddUserButton";
-import UsersTable from "./UsersTable"; 
-import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
+import UsersTable from "./UsersTable";
 
 export default function UserManagement() {
   const [refresh, setRefresh] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("users");
@@ -28,12 +30,12 @@ export default function UserManagement() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           User Management
         </h2>
-        
+
         <div className="flex items-center gap-3">
           {/* Shared Filter Toggle */}
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
+          <FilterToggleButton
+            isVisible={isFilterVisible}
+            onToggle={setIsFilterVisible}
           />
           <AddUserButton onSuccess={handleRefresh} />
         </div>
@@ -56,13 +58,17 @@ export default function UserManagement() {
           ) : null
         }
       >
-         <UsersTable
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="users" />
+        </div>
+        <UsersTable
           refresh={refresh}
           search={search}
           status={status}
           startDate={startDate}
           endDate={endDate}
-        /> 
+          setTotalCount={setTotalCount}
+        />
       </ComponentCard>
     </div>
   );

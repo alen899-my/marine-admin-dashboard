@@ -10,7 +10,7 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
@@ -69,6 +69,7 @@ interface DepartureReportTableProps {
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function DepartureReportTable({
@@ -81,6 +82,7 @@ export default function DepartureReportTable({
   vesselId,
   voyageId,
   vesselList,
+  setTotalCount,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
@@ -269,6 +271,11 @@ export default function DepartureReportTable({
         setReports(result.data || []);
         if (onDataLoad) onDataLoad(fetchedData);
 
+        // Update Total Count
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         if (!result.data || result.data.length === 0) {
           setTotalPages(1);
         } else {
@@ -282,7 +289,7 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, setTotalCount]
   );
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -493,6 +500,10 @@ export default function DepartureReportTable({
       if (!res.ok) throw new Error();
 
       setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      // Dynamic Update Count
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
 
       toast.success("Departure report deleted");
     } catch {
