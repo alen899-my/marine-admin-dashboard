@@ -16,6 +16,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import SharePdfButton from "@/components/common/SharePdfButton";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -745,35 +746,63 @@ export default function DepartureReportTable({
               </Badge>
             </div>
 
-            {/* SHARE BUTTON */}
-            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-              {selectedReport && (
-                <SharePdfButton
-                  title={`Departure Report - ${getVesselName(selectedReport)}`}
-                  filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-                  data={{
-                    "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE", // Added Status here
-                    "Vessel Name": getVesselName(selectedReport),
-                    "Voyage ID": getVoyageDisplay(selectedReport),
+         {/* ACTIONS (DOWNLOAD & SHARE) */}
+<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+  {selectedReport && (
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      {/* 1. DOWNLOAD BUTTON */}
+      <DownloadPdfButton
+        title={`Departure Report - ${getVesselName(selectedReport)}`}
+        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        buttonLabel="Download Report"
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+          "Last Port": selectedReport.lastPort || "-",
+          "Current Port": selectedReport.portName,
+          "Departure Time": formatDate(selectedReport.eventTime),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
+          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
+          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
+          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
+          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
+          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
+          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
+          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
+          "General Remarks": selectedReport.remarks || "No Remarks"
+        }}
+      />
 
-                    "Last Port": selectedReport.lastPort || "-",
-                    "Current Port": selectedReport.portName,
-                    "Departure Time": formatDate(selectedReport.eventTime),
-                    "Report Date": formatDate(selectedReport.reportDate),
-                    "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
-                    "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
-                    "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
-                    "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
-                    "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
-                    "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
-                    "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
-                    "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
-                    "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
-                    "General Remarks": selectedReport.remarks || "No Remarks"
-                  }}
-                />
-              )}
-            </div>
+      {/* 2. SHARE BUTTON */}
+      <SharePdfButton
+        title={`Departure Report - ${getVesselName(selectedReport)}`}
+        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage ID": getVoyageDisplay(selectedReport),
+          "Last Port": selectedReport.lastPort || "-",
+          "Current Port": selectedReport.portName,
+          "Departure Time": formatDate(selectedReport.eventTime),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
+          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
+          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
+          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
+          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
+          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
+          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
+          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
+          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
+          "General Remarks": selectedReport.remarks || "No Remarks"
+        }}
+      />
+    </div>
+  )}
+</div>
           </div>
         </div>
       </ViewModal>

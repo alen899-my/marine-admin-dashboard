@@ -16,6 +16,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Types ---
 interface IPosition {
   lat: string;
@@ -799,33 +800,62 @@ if (onDataLoad) onDataLoad(fetchedData); // Send data to parent
               </Badge>
             </div>
 
-            {/* SHARE BUTTON */}
-            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-              {selectedReport && (
-                <SharePdfButton
-                  title={`Noon Report - ${getVesselName(selectedReport)}`}
-                  filename={`NoonReport_${getVoyageNo(selectedReport)}`}
-                  data={{
-                    "Vessel Name": getVesselName(selectedReport),
-                    "Voyage Number": getVoyageNo(selectedReport),
-                    "Report Date": formatDate(selectedReport.reportDate),
-                    "Latitude": selectedReport.position?.lat || "-",
-                    "Longitude": selectedReport.position?.long || "-",
-                    "Next Port": selectedReport.navigation?.nextPort || "-",
-                    "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-                    "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-                    "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-                    "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-                    "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-                    "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
-                    "Wind Condition": selectedReport.weather?.wind || "-",
-                    "Sea State": selectedReport.weather?.seaState || "-",
-                    "Weather Remarks": selectedReport.weather?.remarks || "-",
-                    "General Remarks": selectedReport.remarks || "-"
-                  }}
-                />
-              )}
-            </div>
+           {/* ACTIONS (SHARE & DOWNLOAD) */}
+<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+  {selectedReport && (
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+       <DownloadPdfButton
+        title={`Noon Report - ${getVesselName(selectedReport)}`}
+        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+        buttonLabel="Download PDF"
+        data={{
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage Number": getVoyageNo(selectedReport),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Latitude": selectedReport.position?.lat || "-",
+          "Longitude": selectedReport.position?.long || "-",
+          "Next Port": selectedReport.navigation?.nextPort || "-",
+          "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+          "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+          "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+          "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+          "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+          "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+          "Wind Condition": selectedReport.weather?.wind || "-",
+          "Sea State": selectedReport.weather?.seaState || "-",
+          "Weather Remarks": selectedReport.weather?.remarks || "-",
+          "General Remarks": selectedReport.remarks || "-"
+        }}
+      />
+      {/* 1. Share via WhatsApp */}
+      <SharePdfButton
+        title={`Noon Report - ${getVesselName(selectedReport)}`}
+        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+        data={{
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage Number": getVoyageNo(selectedReport),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Latitude": selectedReport.position?.lat || "-",
+          "Longitude": selectedReport.position?.long || "-",
+          "Next Port": selectedReport.navigation?.nextPort || "-",
+          "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+          "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+          "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+          "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+          "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+          "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+          "Wind Condition": selectedReport.weather?.wind || "-",
+          "Sea State": selectedReport.weather?.seaState || "-",
+          "Weather Remarks": selectedReport.weather?.remarks || "-",
+          "General Remarks": selectedReport.remarks || "-"
+        }}
+      />
+
+      {/* 2. Download as PDF */}
+     
+    </div>
+  )}
+</div>
 
           </div>
         </div>

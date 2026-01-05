@@ -17,6 +17,7 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Interfaces ---
 interface INorDetails {
   tenderTime?: string;
@@ -718,34 +719,47 @@ export default function NorReportTable({
               </Badge>
             </div>
 
-            {/* SHARE BUTTON */}
-            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-              {selectedReport && (
-                <SharePdfButton
-                  title={`Notice of Readiness - ${getVesselName(
-                    selectedReport
-                  )}`}
-                  filename={`NOR_${selectedReport.portName}_${getVoyageNo(
-                    selectedReport
-                  )}`}
-                  data={{
-                    "Report Status":
-                      selectedReport.status?.toUpperCase() || "ACTIVE",
-                    "Vessel Name": getVesselName(selectedReport),
-                    "Voyage No": getVoyageNo(selectedReport),
-                    "Port Name": selectedReport.portName,
-                    "NOR Tender Time": formatDate(
-                      selectedReport?.norDetails?.tenderTime
-                    ),
-                    "Pilot Station":
-                      selectedReport?.norDetails?.pilotStation || "-",
-                    "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
-                    "Report Date": formatDate(selectedReport.reportDate),
-                    Remarks: selectedReport.remarks || "No Remarks",
-                  }}
-                />
-              )}
-            </div>
+            {/* ACTIONS (DOWNLOAD & SHARE) */}
+<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+  {selectedReport && (
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      {/* 1. DOWNLOAD BUTTON */}
+      <DownloadPdfButton
+        title={`Notice of Readiness - ${getVesselName(selectedReport)}`}
+        filename={`NOR_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+        buttonLabel="Download Report"
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage No": getVoyageNo(selectedReport),
+          "Port Name": selectedReport.portName,
+          "NOR Tender Time": formatDate(selectedReport?.norDetails?.tenderTime),
+          "Pilot Station": selectedReport?.norDetails?.pilotStation || "-",
+          "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+
+      {/* 2. SHARE BUTTON */}
+      <SharePdfButton
+        title={`Notice of Readiness - ${getVesselName(selectedReport)}`}
+        filename={`NOR_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage No": getVoyageNo(selectedReport),
+          "Port Name": selectedReport.portName,
+          "NOR Tender Time": formatDate(selectedReport?.norDetails?.tenderTime),
+          "Pilot Station": selectedReport?.norDetails?.pilotStation || "-",
+          "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+    </div>
+  )}
+</div>
           </div>
         </div>
       </ViewModal>

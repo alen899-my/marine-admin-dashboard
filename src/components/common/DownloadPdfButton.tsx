@@ -3,21 +3,21 @@
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { IoLogoWhatsapp } from "react-icons/io";
+import { HiOutlineDownload } from "react-icons/hi"; // Using a download icon
 
-export interface SharePdfButtonProps {
+export interface DownloadPdfButtonProps {
   title: string;
   filename: string;
   data: Record<string, any>;
   buttonLabel?: string;
 }
 
-export default function SharePdfButton({
+export default function DownloadPdfButton({
   title,
   filename,
   data,
-  buttonLabel = "Share via WhatsApp",
-}: SharePdfButtonProps) {
+  buttonLabel = "Download Report",
+}: DownloadPdfButtonProps) {
   const [loading, setLoading] = useState(false);
 
   // Helper to load the logo
@@ -30,7 +30,7 @@ export default function SharePdfButton({
     });
   };
 
-  const generateAndShare = async () => {
+  const generateAndDownload = async () => {
     setLoading(true);
 
     try {
@@ -71,49 +71,14 @@ export default function SharePdfButton({
         head: [["Field", "Value"]],
         body: rows,
         theme: "striped",
-        headStyles: { fillColor: [0, 166, 184]}, // Blue header
+        headStyles: { fillColor: [0, 166, 184] }, // Matches your blue header
       });
 
-      // Prepare the PDF Blob
-      const pdfOutput = doc.output("arraybuffer");
-      const pdfBlob = new Blob([pdfOutput], { type: "application/pdf" });
-
-      // -------- 3. UPLOAD TO VERCEL --------
-      let vercelUrl = "";
-      try {
-        const uniqueFilename = `${filename}_${Date.now()}.pdf`;
-        const response = await fetch(`/api/upload-pdf?filename=${uniqueFilename}`, {
-          method: "POST",
-          body: pdfBlob,
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          vercelUrl = result.url;
-        }
-      } catch (err) {
-        console.error("Upload failed:", err);
-      }
-
-      // -------- 4. THE REDIRECT (WHATSAPP) --------
-      // Note: Removed local download block from here
-      const message = vercelUrl
-        ? `📄 *${title}*\n\n✅ Click here to view report:\n${vercelUrl}`
-        : `📄 *${title}*\n\nReport generated but link failed to generate.`;
-
-      const whatsappLink = `https://wa.me/918921837945?text=${encodeURIComponent(message)}`;
-
-      // Open WhatsApp Link
-      const anchor = document.createElement("a");
-      anchor.href = whatsappLink;
-      anchor.target = "_blank";
-      anchor.rel = "noopener noreferrer";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
+      // -------- 3. DIRECT DOWNLOAD --------
+      doc.save(`${filename}.pdf`);
 
     } catch (err) {
-      console.error("Process failed:", err);
+      console.error("Download failed:", err);
     } finally {
       setLoading(false);
     }
@@ -121,16 +86,16 @@ export default function SharePdfButton({
 
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); generateAndShare(); }}
+      onClick={(e) => { e.stopPropagation(); generateAndDownload(); }}
       disabled={loading}
       className="flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 disabled:opacity-60 active:scale-95 w-full sm:w-auto justify-center"
     >
-      <IoLogoWhatsapp 
+      <HiOutlineDownload 
         size={18} 
-        className="text-[#25D366]" 
+        className="text-brand-500" 
       />
       <span className="whitespace-nowrap">
-        {loading ? "Sharing..." : buttonLabel}
+        {loading ? "Generating..." : buttonLabel}
       </span>
     </button>
   );

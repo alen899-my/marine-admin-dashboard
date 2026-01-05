@@ -14,7 +14,7 @@ export default function CragoStowageCargoDocuments() {
   const [reportsData, setReportsData] = useState<any[]>([]); // Data for Excel
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("cargoDocuments");
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");

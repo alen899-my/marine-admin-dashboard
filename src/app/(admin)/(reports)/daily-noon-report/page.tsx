@@ -15,7 +15,7 @@ export default function DailyNoonReport() {
   const [reportsData, setReportsData] = useState<any[]>([]); // Hold data for export
 
   // Use the shared hook
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");

@@ -17,6 +17,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import SharePdfButton from "@/components/common/SharePdfButton";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
   url: string;
@@ -775,28 +776,47 @@ export default function CargoReportTable({
                 {selectedReport?.status === "active" ? "Active" : "Inactive"}
               </Badge>
             </div>
+{/* ACTIONS (DOWNLOAD & SHARE) */}
+<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+  {selectedReport && (
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      {/* 1. DOWNLOAD BUTTON */}
+      <DownloadPdfButton
+        title={`Cargo Document - ${getVesselName(selectedReport)}`}
+        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+        buttonLabel="Download Report"
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage No": getVoyageNo(selectedReport),
+          "Port Name": selectedReport.portName,
+          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
+          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
+          "Document Date": formatDateOnly(selectedReport.documentDate),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
 
-            {/* SHARE BUTTON */}
-            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-2">
-              {selectedReport && (
-                <SharePdfButton
-                  title={`Cargo Document - ${getVesselName(selectedReport)}`}
-                  filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-                  data={{
-                    "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-                    "Vessel Name": getVesselName(selectedReport),
-                    "Voyage No": getVoyageNo(selectedReport),
-                    "Port Name": selectedReport.portName,
-                    "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
-                    "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
-                    "Document Date": formatDateOnly(selectedReport.documentDate),
-                    "Report Date": formatDate(selectedReport.reportDate),
-                    "Remarks": selectedReport.remarks || "No Remarks",
-
-                  }}
-                />
-              )}
-            </div>
+      {/* 2. SHARE BUTTON */}
+      <SharePdfButton
+        title={`Cargo Document - ${getVesselName(selectedReport)}`}
+        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
+        data={{
+          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
+          "Vessel Name": getVesselName(selectedReport),
+          "Voyage No": getVoyageNo(selectedReport),
+          "Port Name": selectedReport.portName,
+          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
+          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
+          "Document Date": formatDateOnly(selectedReport.documentDate),
+          "Report Date": formatDate(selectedReport.reportDate),
+          "Remarks": selectedReport.remarks || "No Remarks",
+        }}
+      />
+    </div>
+  )}
+</div>
           </div>
         </div>
       </ViewModal>

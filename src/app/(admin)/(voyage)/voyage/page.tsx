@@ -12,7 +12,7 @@ export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("voyage");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");

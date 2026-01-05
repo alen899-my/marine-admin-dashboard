@@ -14,7 +14,7 @@ export default function NoticeOfReadiness() {
   const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("nor");
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");

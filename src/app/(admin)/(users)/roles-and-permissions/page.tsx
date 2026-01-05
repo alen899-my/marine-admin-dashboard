@@ -12,7 +12,7 @@ export default function RoleManagement() {
   const [refresh, setRefresh] = useState(0);
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");

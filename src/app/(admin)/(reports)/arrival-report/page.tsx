@@ -14,7 +14,7 @@ export default function ArrivalReport() {
   const [reportsData, setReportsData] = useState<any[]>([]); // State for Excel data
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence();
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("arrival");
 
   // --- Moved State from Table to Page ---
   const [search, setSearch] = useState("");
