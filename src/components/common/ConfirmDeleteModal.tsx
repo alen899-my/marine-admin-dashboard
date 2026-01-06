@@ -11,7 +11,7 @@ interface ConfirmDeleteModalProps {
   onConfirm: () => void;
   loading?: boolean;
   title?: string;
-  description?: string;
+  description?: React.ReactNode;
 }
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
