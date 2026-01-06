@@ -12,6 +12,7 @@ import {
   Users2,
   Ship,
   Map,
+  Building2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -89,6 +90,13 @@ const navItems: NavItem[] = [
     name:" Users",
     path:"/manage-users",
     requiredPermission: "users.view",
+  },
+
+  {
+    icon: <Building2 size={25} />, // ✅ Company Icon
+    name: "Companies",
+    path: "/manage-companies",      // ✅ Matches your new route
+    requiredPermission: "companies.view", // ✅ Matches the RBAC slug
   },
 
   {
