@@ -12,7 +12,7 @@ import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 // --- Types Matching Mongoose Schema ---
@@ -68,6 +68,7 @@ interface VesselTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function VesselTable({
@@ -76,6 +77,7 @@ export default function VesselTable({
   status,
   startDate,
   endDate,
+  setTotalCount,
 }: VesselTableProps) {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,19 +176,19 @@ export default function VesselTable({
       header: "Dimensions",
       render: (v: Vessel) => (
         <div className="flex flex-col gap-1 text-xs min-w-[120px]">
-          <div className="flex grid grid-cols-[55px_1fr] justify-between">
+          <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">LOA</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               {v.dimensions?.loa ? `${v.dimensions.loa} M` : "-"}
             </span>
           </div>
-          <div className="flex grid grid-cols-[55px_1fr] justify-between">
+          <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">Beam</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               {v.dimensions?.beam ? `${v.dimensions.beam} M` : "-"}
             </span>
           </div>
-          <div className="flex grid grid-cols-[55px_1fr] justify-between">
+          <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">Draft</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               {v.dimensions?.maxDraft ? `${v.dimensions.maxDraft} M` : "-"}
@@ -199,13 +201,13 @@ export default function VesselTable({
       header: "Capacity",
       render: (v: Vessel) => (
         <div className="flex flex-col gap-1 text-xs min-w-[90px]">
-           <div className="flex  grid grid-cols-[55px_1fr] justify-between">
+           <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">DWT</span>
             <span className="text-gray-900 dark:text-white font-bold">
               {v.dimensions?.dwt ? `${v.dimensions.dwt.toLocaleString()}` : "-"}
             </span>
           </div>
-          <div className="flex  grid grid-cols-[55px_1fr] justify-between">
+          <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">GT</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               {v.dimensions?.grossTonnage ? v.dimensions.grossTonnage.toLocaleString() : "-"}
@@ -287,6 +289,12 @@ export default function VesselTable({
            setTotalPages(1);
         } else {
            setVessels(result.data || []);
+
+           // UPDATE DYNAMIC COUNT
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.length || 0);
+        }
+
            setTotalPages(result.pagination?.totalPages || 1);
         }
 
@@ -401,6 +409,12 @@ export default function VesselTable({
       if (!res.ok) throw new Error();
 
       setVessels((prev) => prev.filter((v) => v._id !== selectedVessel._id));
+      
+      // UPDATE DYNAMIC COUNT ON DELETE
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
+
       toast.success("Vessel deleted successfully");
     } catch {
       toast.error("Failed to delete vessel");

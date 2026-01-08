@@ -2,6 +2,7 @@
 
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import EditModal from "@/components/common/EditModal";
 import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
@@ -15,9 +16,14 @@ import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
-import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Interfaces ---
 interface INorDetails {
   tenderTime?: string;
@@ -72,6 +78,7 @@ interface NORReportTableProps {
   vesselId: string; // Added this
   voyageId: string; // Added this
   vesselList: any[]; // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function NorReportTable({
@@ -84,6 +91,7 @@ export default function NorReportTable({
   vesselId,
   voyageId,
   vesselList,
+  setTotalCount,
 }: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
@@ -370,6 +378,11 @@ export default function NorReportTable({
         setReports(result.data || []);
         if (onDataLoad) onDataLoad(fetchedData);
 
+        // Update Total Count
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         console.error(err);
@@ -378,7 +391,7 @@ export default function NorReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, setTotalCount]
   );
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
@@ -455,7 +468,7 @@ export default function NorReportTable({
 
   async function handleDelete() {
     if (!selectedReport) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/nor/${selectedReport._id}`, {
@@ -465,6 +478,10 @@ export default function NorReportTable({
       if (!res.ok) throw new Error("Delete failed");
 
       setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      // Dynamic Update Count
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
       toast.success("Record deleted");
     } catch (err) {
       console.error(err);
@@ -720,46 +737,66 @@ export default function NorReportTable({
             </div>
 
             {/* ACTIONS (DOWNLOAD & SHARE) */}
-<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
-  {selectedReport && (
-    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-      {/* 1. DOWNLOAD BUTTON */}
-      <DownloadPdfButton
-        title={`Notice of Readiness - ${getVesselName(selectedReport)}`}
-        filename={`NOR_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        buttonLabel="Download Report"
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "NOR Tender Time": formatDate(selectedReport?.norDetails?.tenderTime),
-          "Pilot Station": selectedReport?.norDetails?.pilotStation || "-",
-          "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+              {selectedReport && (
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  {/* 1. DOWNLOAD BUTTON */}
+                  <DownloadPdfButton
+                    title={`Notice of Readiness - ${getVesselName(
+                      selectedReport
+                    )}`}
+                    filename={`NOR_${selectedReport.portName}_${getVoyageNo(
+                      selectedReport
+                    )}`}
+                    buttonLabel="Download Report"
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage No": getVoyageNo(selectedReport),
+                      "Port Name": selectedReport.portName,
+                      "NOR Tender Time": formatDate(
+                        selectedReport?.norDetails?.tenderTime
+                      ),
+                      "Pilot Station":
+                        selectedReport?.norDetails?.pilotStation || "-",
+                      "ETA Port": formatDate(
+                        selectedReport?.norDetails?.etaPort
+                      ),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      Remarks: selectedReport.remarks || "No Remarks",
+                    }}
+                  />
 
-      {/* 2. SHARE BUTTON */}
-      <SharePdfButton
-        title={`Notice of Readiness - ${getVesselName(selectedReport)}`}
-        filename={`NOR_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "NOR Tender Time": formatDate(selectedReport?.norDetails?.tenderTime),
-          "Pilot Station": selectedReport?.norDetails?.pilotStation || "-",
-          "ETA Port": formatDate(selectedReport?.norDetails?.etaPort),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
-    </div>
-  )}
-</div>
+                  {/* 2. SHARE BUTTON */}
+                  <SharePdfButton
+                    title={`Notice of Readiness - ${getVesselName(
+                      selectedReport
+                    )}`}
+                    filename={`NOR_${selectedReport.portName}_${getVoyageNo(
+                      selectedReport
+                    )}`}
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage No": getVoyageNo(selectedReport),
+                      "Port Name": selectedReport.portName,
+                      "NOR Tender Time": formatDate(
+                        selectedReport?.norDetails?.tenderTime
+                      ),
+                      "Pilot Station":
+                        selectedReport?.norDetails?.pilotStation || "-",
+                      "ETA Port": formatDate(
+                        selectedReport?.norDetails?.etaPort
+                      ),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      Remarks: selectedReport.remarks || "No Remarks",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </ViewModal>
@@ -1022,7 +1059,7 @@ export default function NorReportTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
-         loading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

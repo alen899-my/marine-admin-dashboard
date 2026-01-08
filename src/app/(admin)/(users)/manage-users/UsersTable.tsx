@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Image from "next/image"; // ✅ Import Image
 import { User as UserIcon } from "lucide-react"; // ✅ Import Icon for fallback
@@ -55,6 +55,7 @@ interface UserTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function UserTable({
@@ -63,6 +64,7 @@ export default function UserTable({
   status,
   startDate,
   endDate,
+  setTotalCount,
 }: UserTableProps) {
   // --- Data State ---
   const [users, setUsers] = useState<IUser[]>([]);
@@ -205,6 +207,12 @@ export default function UserTable({
         const result = await res.json();
 
         setUsers(result.data || []);
+
+           // UPDATE DYNAMIC COUNT
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.length || 0);
+        }
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         console.error(err);
@@ -213,7 +221,7 @@ export default function UserTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate]
+    [LIMIT, search, status, startDate, endDate, setTotalCount]
   );
 
   const selectedUserRoleName =
@@ -252,6 +260,10 @@ export default function UserTable({
       const res = await fetch(`/api/users/${selectedUser._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
+      // UPDATE DYNAMIC COUNT ON DELETE
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
       toast.success("User deleted successfully");
     } catch (error) {
       console.error(error);

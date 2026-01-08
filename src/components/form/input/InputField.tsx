@@ -4,17 +4,12 @@ interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | string;
   id?: string;
   name?: string;
+  label?: string; // ✅ ADD THIS
   placeholder?: string;
-
-  // ⭐ ADD THIS
-  value?: string | number;             
-
+  value?: string | number;
   defaultValue?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  
-  // ✅ ADDED: Support for key events (like Enter key)
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-
   className?: string;
   min?: string;
   max?: string;
@@ -29,17 +24,12 @@ const Input: FC<InputProps> = ({
   type = "text",
   id,
   name,
+  label, // ✅ Destructure label
   placeholder,
-
-  // ⭐ ADD THIS
   value,
-
   defaultValue,
   onChange,
-  
-  // ✅ ADDED: Destructure onKeyDown
   onKeyDown,
-
   className = "",
   min,
   max,
@@ -49,6 +39,7 @@ const Input: FC<InputProps> = ({
   error = false,
   hint,
 }) => {
+  // ... (keep your existing inputClasses logic)
   let inputClasses = `h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 dark:[color-scheme:dark] ${className} `;
 
   if (disabled) {
@@ -62,42 +53,48 @@ const Input: FC<InputProps> = ({
   }
 
   return (
-    <div className="relative">
-      <input
-        type={type}
-        id={id}
-        name={name}
-        placeholder={placeholder}
-
-        // ⭐ SUPPORT CONTROLLED VALUE
-        value={value}
-        defaultValue={defaultValue}
-
-        onChange={onChange}
-        
-        // ✅ ADDED: Pass onKeyDown to the input element
-        onKeyDown={onKeyDown}
-
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        className={inputClasses}
-      />
-
-      {hint && (
-        <p
-          className={`mt-1.5 text-xs ${
-            error
-              ? "text-error-500"
-              : success
-              ? "text-success-500"
-              : "text-gray-500"
-          }`}
+    <div className="w-full">
+      {/* ✅ ADD THE LABEL RENDERER */}
+      {label && (
+        <label
+          htmlFor={id || name}
+          className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400 ml-1"
         >
-          {hint}
-        </p>
+          {label}
+        </label>
       )}
+
+      <div className="relative">
+        <input
+          type={type}
+          id={id || name}
+          name={name}
+          placeholder={placeholder}
+          value={value}
+          defaultValue={defaultValue}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          className={inputClasses}
+        />
+
+        {hint && (
+          <p
+            className={`mt-1.5 text-xs ${
+              error
+                ? "text-error-500"
+                : success
+                ? "text-success-500"
+                : "text-gray-500"
+            }`}
+          >
+            {hint}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

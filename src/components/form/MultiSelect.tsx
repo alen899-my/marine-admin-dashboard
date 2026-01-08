@@ -9,6 +9,7 @@ interface Option {
 interface MultiSelectProps {
   label: string;
   options: Option[];
+  placeholder?: string; // Added this line
   defaultSelected?: string[];
   onChange?: (selected: string[]) => void;
   disabled?: boolean;
@@ -17,6 +18,7 @@ interface MultiSelectProps {
 const MultiSelect: React.FC<MultiSelectProps> = ({
   label,
   options,
+  placeholder = "Select option", // Added this line
   defaultSelected = [],
   onChange,
   disabled = false,
@@ -57,7 +59,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
       <div className="relative z-20 inline-block w-full">
         <div className="relative flex flex-col items-center">
-          <div onClick={toggleDropdown}  className="w-full">
+          <div onClick={toggleDropdown} className="w-full">
             <div className="mb-2 flex h-11 rounded-lg border border-gray-300 py-1.5 pl-3 pr-3 shadow-theme-xs outline-hidden transition focus:border-brand-300 focus:shadow-focus-ring dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-300">
               <div className="flex flex-wrap flex-auto gap-2">
                 {selectedValuesText.length > 0 ? (
@@ -94,17 +96,17 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                   ))
                 ) : (
                   <input
-                    placeholder="Select option"
+                    placeholder={placeholder}
                     className="w-full h-full p-1 pr-2 text-sm bg-transparent border-0 outline-hidden appearance-none placeholder:text-gray-800 focus:border-0 focus:outline-hidden focus:ring-0 dark:placeholder:text-white/90"
                     readOnly
-                    value="Select option"
+                    value=""
                   />
                 )}
               </div>
               <div className="flex items-center py-1 pl-1 pr-1 w-7">
                 <button
                   type="button"
-                  onClick={toggleDropdown} 
+                  onClick={toggleDropdown}
                   className="w-5 h-5 text-gray-700 outline-hidden cursor-pointer focus:outline-hidden dark:text-gray-400"
                 >
                   <svg

@@ -14,7 +14,8 @@ import {
   Map,
   KeyRound,
   IdCard,Fingerprint,
-  Component
+  Component,
+  Building2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -95,6 +96,15 @@ const navItems: NavItem[] = [
   },
 
   {
+   
+    icon: <Building2 size={25} />, // ✅ Company Icon
+    name: "Companies",
+    path: "/manage-companies",      // ✅ Matches your new route
+    requiredPermission: "companies.view", // ✅ Matches the RBAC slug
+  },
+
+  {
+    
     icon:<IdCard size={25}/>,
     name:" Roles ",
     path:"/roles-and-permissions",

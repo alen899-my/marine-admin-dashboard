@@ -9,10 +9,9 @@ export interface IVessel extends Document {
   mmsi: string;
   flag: string;
   yearBuilt: number;
-
-
-    createdAt: Date;
-    updatedAt: Date;
+  companyId: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
   dimensions: {
     loa: number;
     beam: number;
@@ -34,8 +33,6 @@ export interface IVessel extends Document {
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
   // createdAt and updatedAt are automatic via timestamps: true
-
-
 }
 
 const VesselSchema = new Schema<IVessel>(
@@ -43,15 +40,20 @@ const VesselSchema = new Schema<IVessel>(
     name: {
       type: String,
       required: true, // ✅ Required
-      unique: true,   // 🔒 Unique Name
+      unique: true, // 🔒 Unique Name
       trim: true,
     },
-    
+
     imo: {
       type: String,
       required: true, // ✅ Required
-      unique: true,   // 🔒 Unique IMO Number
+      unique: true, // 🔒 Unique IMO Number
       trim: true,
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true, // ✅ Added to Schema
     },
     fleet: String,
     status: {
@@ -91,7 +93,6 @@ const VesselSchema = new Schema<IVessel>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-  
   },
 
   { timestamps: true }

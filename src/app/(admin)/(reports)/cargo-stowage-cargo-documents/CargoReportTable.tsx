@@ -11,7 +11,7 @@ import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { File, FileSpreadsheet, FileText, FileWarning, ImageIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
@@ -69,6 +69,7 @@ interface CargoReportTableProps {
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function CargoReportTable({
@@ -81,6 +82,7 @@ export default function CargoReportTable({
   vesselId,
   voyageId,
   vesselList,
+  setTotalCount,
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
@@ -362,6 +364,11 @@ export default function CargoReportTable({
         setReports(result.data || []);
         if (onDataLoad) onDataLoad(fetchedData);
 
+        // Update Dynamic Count
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         // Fix 'err' unused: Log it or use a typed catch
@@ -438,6 +445,14 @@ export default function CargoReportTable({
       });
 
       if (!res.ok) throw new Error("Delete failed");
+
+      // Update Local State
+      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      
+      // Update Dynamic Count
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
 
       await fetchReports(currentPage);
       toast.success("Record deleted");

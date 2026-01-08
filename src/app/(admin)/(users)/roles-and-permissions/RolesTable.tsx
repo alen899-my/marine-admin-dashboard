@@ -1,20 +1,25 @@
 "use client";
 
-import ComponentCard from "@/components/common/ComponentCard";
-import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
-import PermissionLegend from "@/components/roles/PermissionLegend";
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
+import PermissionGrid, { IPermission } from "@/components/roles/PermissionGrid";
+import PermissionLegend from "@/components/roles/PermissionLegend";
+import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import PermissionGrid, { IPermission } from "@/components/roles/PermissionGrid";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { toast } from "react-toastify";
 // 1. Import the Widget Section
 import DashboardWidgetSection from "@/components/roles/DashboardWidgetSection";
 
@@ -33,6 +38,7 @@ interface RolesTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function RolesTable({
@@ -41,6 +47,7 @@ export default function RolesTable({
   status,
   startDate,
   endDate,
+  setTotalCount,
 }: RolesTableProps) {
   const [roles, setRoles] = useState<IRole[]>([]);
   const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
@@ -59,7 +66,7 @@ export default function RolesTable({
   const [selectedRole, setSelectedRole] = useState<IRole | null>(null);
   const [editData, setEditData] = useState<IRole | null>(null);
   const [saving, setSaving] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Status Options
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -105,6 +112,12 @@ export default function RolesTable({
         const result = await res.json();
 
         setRoles(result.data || []);
+
+        // UPDATE DYNAMIC COUNT
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.length || 0);
+        }
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch (err) {
         console.error(err);
@@ -113,7 +126,7 @@ export default function RolesTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate]
+    [search, status, startDate, endDate, setTotalCount]
   );
 
   useEffect(() => {
@@ -166,7 +179,7 @@ export default function RolesTable({
 
   const handleDelete = async () => {
     if (!selectedRole) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/roles/${selectedRole._id}`, {
         method: "DELETE",
@@ -174,12 +187,16 @@ export default function RolesTable({
       if (!res.ok) throw new Error();
 
       setRoles((prev) => prev.filter((r) => r._id !== selectedRole._id));
+      // UPDATE DYNAMIC COUNT ON DELETE
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
       toast.success("Role deleted successfully");
     } catch {
       toast.error("Failed to delete role");
     } finally {
       setOpenDelete(false);
-       setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); // ✅ Stop Loading
     }
   };
 
@@ -307,7 +324,10 @@ export default function RolesTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-5">
-            <RoleComponentCard title="Role Information" className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <RoleComponentCard
+              title="Role Information"
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Role Name</Label>
@@ -331,17 +351,18 @@ export default function RolesTable({
               </div>
             </RoleComponentCard>
 
-            <RoleComponentCard title="Permissions" className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" legend={<PermissionLegend />}>
-               <div className="space-y-8">
-                
+            <RoleComponentCard
+              title="Permissions"
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+              legend={<PermissionLegend />}
+            >
+              <div className="space-y-8">
                 {/* 3. Dashboard Widgets (Editable) */}
-               
 
                 <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                 <div>
-                
-                  <PermissionGrid 
+                  <PermissionGrid
                     allPermissions={allPermissions}
                     selectedPermissions={editData.permissions}
                     isReadOnly={false}
@@ -376,7 +397,7 @@ export default function RolesTable({
         onConfirm={handleDelete}
         title="Delete Role"
         description={`Are you sure you want to delete the role "${selectedRole?.name}"?`}
-         loading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

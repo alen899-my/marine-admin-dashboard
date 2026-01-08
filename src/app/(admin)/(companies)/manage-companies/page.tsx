@@ -1,20 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
-import RoleFilters from "@/components/roles/RoleFilters";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useState } from "react";
-import AddRoleButton from "./AddRoleButton";
-import RolesTable from "./RolesTable";
+import AddCompanyButton from "./AddCompanyButton";
+import CompaniesTable from "./CompaniesTable";
+import CompanyFilters from "@/components/Companies/CompanyFilters";
 
-export default function RoleManagement() {
+export default function CompanyManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
+  // Use the shared persistent filter logic for companies
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("companies");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -26,10 +26,10 @@ export default function RoleManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
+      {/* --- Header Section --- */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Roles & Permissions
+          Company Management
         </h2>
 
         <div className="flex items-center gap-3">
@@ -38,16 +38,16 @@ export default function RoleManagement() {
             isVisible={isFilterVisible}
             onToggle={setIsFilterVisible}
           />
-          {/* Add Role Button */}
-          <AddRoleButton onSuccess={handleRefresh} />
+          <AddCompanyButton onSuccess={handleRefresh} />
         </div>
       </div>
 
+      {/* --- Main Content Card --- */}
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
           isFilterVisible ? (
-            <RoleFilters
+            <CompanyFilters
               search={search}
               setSearch={setSearch}
               status={status}
@@ -56,15 +56,17 @@ export default function RoleManagement() {
               setStartDate={setStartDate}
               endDate={endDate}
               setEndDate={setEndDate}
-              showDateFilters={false}
             />
           ) : null
         }
       >
+        {/* Dynamic Count Display */}
         <div className="flex justify-end me-2 mb-2">
-          <TableCount count={totalCount} label="roles" />
+          <TableCount count={totalCount} label="companies" />
         </div>
-        <RolesTable
+
+        {/* Data Table */}
+        <CompaniesTable
           refresh={refresh}
           search={search}
           status={status}

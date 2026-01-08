@@ -4,6 +4,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import ExportToExcel from "@/components/common/ExportToExcel"; // Import common component
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useEffect, useState } from "react";
 import AddNORButton from "./AddNORButton";
@@ -12,6 +13,7 @@ import NorReportTable from "./NorReportTable";
 export default function NoticeOfReadiness() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("nor");
@@ -109,6 +111,9 @@ export default function NoticeOfReadiness() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="Reports" />
+        </div>
         <NorReportTable
           refresh={refresh}
           search={search}
@@ -116,6 +121,7 @@ export default function NoticeOfReadiness() {
           startDate={startDate}
           endDate={endDate}
           onDataLoad={setReportsData} // Capture data from the table
+          setTotalCount={setTotalCount}
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}

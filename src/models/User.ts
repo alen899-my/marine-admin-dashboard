@@ -7,6 +7,11 @@ const userSchema = new Schema(
     phone: { type: String, required: false },
     password: { type: String, required: true },
 
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
   
     role: {
       type: mongoose.Schema.Types.ObjectId,

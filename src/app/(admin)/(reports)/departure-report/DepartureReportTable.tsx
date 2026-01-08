@@ -2,21 +2,27 @@
 
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import EditModal from "@/components/common/EditModal";
+import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import SharePdfButton from "@/components/common/SharePdfButton";
-import DownloadPdfButton from "@/components/common/DownloadPdfButton";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { toast } from "react-toastify";
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -66,9 +72,10 @@ interface DepartureReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: IDepartureReport[]) => void;
-  vesselId: string;  // Added this
-  voyageId: string;  // Added this
-  vesselList: any[];    // Added this
+  vesselId: string; // Added this
+  voyageId: string; // Added this
+  vesselList: any[]; // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 export default function DepartureReportTable({
@@ -81,18 +88,21 @@ export default function DepartureReportTable({
   vesselId,
   voyageId,
   vesselList,
+  setTotalCount,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(
     null
   );
   const [editData, setEditData] = useState<IDepartureReport | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [openEdit, setOpenEdit] = useState(false);
@@ -126,7 +136,11 @@ export default function DepartureReportTable({
   };
   const getVoyageDisplay = (r: IDepartureReport | null) => {
     if (!r) return "-";
-    if (r.voyageId && typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
+    if (
+      r.voyageId &&
+      typeof r.voyageId === "object" &&
+      "voyageNo" in r.voyageId
+    ) {
       return r.voyageId.voyageNo;
     }
     return r.voyageNo || "-";
@@ -190,7 +204,9 @@ export default function DepartureReportTable({
       render: (r: IDepartureReport) => (
         <div className="flex flex-col text-xs">
           <div className="flex items-center gap-1 font-bold truncate max-w-[140px]">
-            <span className="text-gray-400 font-normal">{r?.lastPort ?? "N/A"}</span>
+            <span className="text-gray-400 font-normal">
+              {r?.lastPort ?? "N/A"}
+            </span>
             <span className="text-blue-500">→</span>
             <span>{r?.portName ?? "-"}</span>
           </div>
@@ -211,17 +227,25 @@ export default function DepartureReportTable({
           <div className="flex gap-2">
             <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
               VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0}</b>
-              <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedVlsfo ?? 0}</b>
+              <b className="text-green-600 ml-1">
+                + {r?.departureStats?.bunkersReceivedVlsfo ?? 0}
+              </b>
             </span>
             <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
               LSMGO: <b>{r?.departureStats?.robLsmgo ?? 0}</b>
-              <b className="text-green-600 ml-1">+ {r?.departureStats?.bunkersReceivedLsmgo ?? 0}</b>
+              <b className="text-green-600 ml-1">
+                + {r?.departureStats?.bunkersReceivedLsmgo ?? 0}
+              </b>
             </span>
           </div>
           {/* Cargo Loaded/Unloaded Quantities */}
           <div className="flex gap-2 text-[10px]">
-            <span className="uppercase">Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT</span>
-            <span className="uppercase">Unloaded: {r?.departureStats?.cargoQtyUnloadedMt ?? 0} MT</span>
+            <span className="uppercase">
+              Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT
+            </span>
+            <span className="uppercase">
+              Unloaded: {r?.departureStats?.cargoQtyUnloadedMt ?? 0} MT
+            </span>
           </div>
           <p
             className="text-[11px] text-gray-500 line-clamp-1 max-w-[180px]"
@@ -269,6 +293,11 @@ export default function DepartureReportTable({
         setReports(result.data || []);
         if (onDataLoad) onDataLoad(fetchedData);
 
+        // Update Total Count
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         if (!result.data || result.data.length === 0) {
           setTotalPages(1);
         } else {
@@ -282,7 +311,17 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [
+      LIMIT,
+      search,
+      status,
+      startDate,
+      endDate,
+      onDataLoad,
+      vesselId,
+      voyageId,
+      setTotalCount,
+    ]
   );
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -291,9 +330,12 @@ export default function DepartureReportTable({
 
     try {
       const payload = {
-        // ✅ FIX 3: Include vesselId. 
+        // ✅ FIX 3: Include vesselId.
         // The backend needs this to lookup the correct Voyage ObjectId.
-        vesselId: typeof editData.vesselId === 'object' ? editData.vesselId?._id : editData.vesselId,
+        vesselId:
+          typeof editData.vesselId === "object"
+            ? editData.vesselId?._id
+            : editData.vesselId,
 
         // This sends the readable string (e.g., "OP-1225") from the dropdown
         voyageId: editData.voyageId, // This is the voyageNo string from dropdown
@@ -308,7 +350,9 @@ export default function DepartureReportTable({
         remarks: editData.remarks,
 
         navigation: {
-          distance_to_next_port_nm: Number(editData.navigation?.distanceToNextPortNm),
+          distance_to_next_port_nm: Number(
+            editData.navigation?.distanceToNextPortNm
+          ),
           etaNextPort: editData.navigation?.etaNextPort
             ? `${editData.navigation.etaNextPort}+05:30`
             : null,
@@ -317,10 +361,18 @@ export default function DepartureReportTable({
         departureStats: {
           robVlsfo: Number(editData.departureStats?.robVlsfo),
           robLsmgo: Number(editData.departureStats?.robLsmgo),
-          bunkers_received_vlsfo_mt: Number(editData.departureStats?.bunkersReceivedVlsfo),
-          bunkers_received_lsmgo_mt: Number(editData.departureStats?.bunkersReceivedLsmgo),
-          cargo_qty_loaded_mt: Number(editData.departureStats?.cargoQtyLoadedMt),
-          cargo_qty_unloaded_mt: Number(editData.departureStats?.cargoQtyUnloadedMt),
+          bunkers_received_vlsfo_mt: Number(
+            editData.departureStats?.bunkersReceivedVlsfo
+          ),
+          bunkers_received_lsmgo_mt: Number(
+            editData.departureStats?.bunkersReceivedLsmgo
+          ),
+          cargo_qty_loaded_mt: Number(
+            editData.departureStats?.cargoQtyLoadedMt
+          ),
+          cargo_qty_unloaded_mt: Number(
+            editData.departureStats?.cargoQtyUnloadedMt
+          ),
           cargoSummary: editData.departureStats?.cargoSummary,
         },
       };
@@ -348,9 +400,10 @@ export default function DepartureReportTable({
       setSaving(false);
     }
   }
-  const vesselIdForLookup = typeof editData?.vesselId === "object"
-    ? editData?.vesselId?._id
-    : editData?.vesselId;
+  const vesselIdForLookup =
+    typeof editData?.vesselId === "object"
+      ? editData?.vesselId?._id
+      : editData?.vesselId;
 
   const { vessels, suggestedVoyageNo } = useVoyageLogic(
     vesselIdForLookup || undefined,
@@ -358,7 +411,6 @@ export default function DepartureReportTable({
   );
   useEffect(() => {
     async function fetchAndFilterVoyages() {
-
       if (!editData?.vesselId) {
         setVoyageList([]);
         return;
@@ -403,13 +455,22 @@ export default function DepartureReportTable({
     }
 
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+  }, [
+    editData?.vesselId,
+    editData?.vesselName,
+    suggestedVoyageNo,
+    editData?.voyageId,
+  ]);
 
   useEffect(() => {
-
-    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageId) {
-
-      setEditData(prev => prev ? { ...prev, voyageId: suggestedVoyageNo } : null);
+    if (
+      editData &&
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== editData.voyageId
+    ) {
+      setEditData((prev) =>
+        prev ? { ...prev, voyageId: suggestedVoyageNo } : null
+      );
     }
   }, [suggestedVoyageNo]);
 
@@ -447,9 +508,10 @@ export default function DepartureReportTable({
     // Try to find vessel in the list as fallback
     const matchedVessel = vessels.find((v) => v.name === report.vesselName);
     const voyageIdString = getVoyageDisplay(report);
-    const vesselIdStr = typeof report.vesselId === 'object'
-      ? report.vesselId?._id
-      : report.vesselId;
+    const vesselIdStr =
+      typeof report.vesselId === "object"
+        ? report.vesselId?._id
+        : report.vesselId;
     setEditData({
       _id: report._id,
       vesselName: report.vesselName ?? "",
@@ -483,7 +545,7 @@ export default function DepartureReportTable({
   }
   async function handleDelete() {
     if (!selectedReport) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/departure-report/${selectedReport._id}`, {
@@ -493,6 +555,10 @@ export default function DepartureReportTable({
       if (!res.ok) throw new Error();
 
       setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      // Dynamic Update Count
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
 
       toast.success("Departure report deleted");
     } catch {
@@ -500,7 +566,7 @@ export default function DepartureReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
-       setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); // ✅ Stop Loading
     }
   }
   if (!isReady) return null;
@@ -522,14 +588,13 @@ export default function DepartureReportTable({
               onDelete={
                 canDelete
                   ? (r: IDepartureReport) => {
-                    setSelectedReport(r);
-                    setOpenDelete(true);
-                  }
+                      setSelectedReport(r);
+                      setOpenDelete(true);
+                    }
                   : undefined
               }
               onRowClick={handleView}
             />
-
           </div>
         </div>
       </div>
@@ -542,9 +607,7 @@ export default function DepartureReportTable({
         headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold">
-                {getVesselName(selectedReport)}
-              </span>
+              <span className="font-bold">{getVesselName(selectedReport)}</span>
               <span>|</span>
               <span>{getVoyageDisplay(selectedReport)}</span>
             </div>
@@ -702,37 +765,37 @@ export default function DepartureReportTable({
                 {selectedReport?.remarks || "No Remarks"}
               </p>
             </section>
-             <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-              System Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Created By</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {selectedReport?.createdBy?.fullName || "System"}
-                </span>
+            <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                System Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.createdBy?.fullName || "System"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.createdAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.updatedBy?.fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.updatedAt)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Created At</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {formatDate(selectedReport?.createdAt)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Last Updated By</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {selectedReport?.updatedBy?.fullName || "-"}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Last Updated At</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {formatDate(selectedReport?.updatedAt)}
-                </span>
-              </div>
-            </div>
-          </section>
+            </section>
           </div>
 
           {/* ================= FOOTER: STATUS & SHARE ================= */}
@@ -741,68 +804,116 @@ export default function DepartureReportTable({
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
-              <Badge color={selectedReport?.status === "active" ? "success" : "error"}>
+              <Badge
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
+              >
                 {selectedReport?.status === "active" ? "Active" : "Inactive"}
               </Badge>
             </div>
 
-         {/* ACTIONS (DOWNLOAD & SHARE) */}
-<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
-  {selectedReport && (
-    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-      {/* 1. DOWNLOAD BUTTON */}
-      <DownloadPdfButton
-        title={`Departure Report - ${getVesselName(selectedReport)}`}
-        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-        buttonLabel="Download Report"
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage ID": getVoyageDisplay(selectedReport),
-          "Last Port": selectedReport.lastPort || "-",
-          "Current Port": selectedReport.portName,
-          "Departure Time": formatDate(selectedReport.eventTime),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
-          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
-          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
-          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
-          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
-          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
-          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
-          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
-          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
-          "General Remarks": selectedReport.remarks || "No Remarks"
-        }}
-      />
+            {/* ACTIONS (DOWNLOAD & SHARE) */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+              {selectedReport && (
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  {/* 1. DOWNLOAD BUTTON */}
+                  <DownloadPdfButton
+                    title={`Departure Report - ${getVesselName(
+                      selectedReport
+                    )}`}
+                    filename={`Departure_${
+                      selectedReport.portName
+                    }_${getVoyageDisplay(selectedReport)}`}
+                    buttonLabel="Download Report"
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage ID": getVoyageDisplay(selectedReport),
+                      "Last Port": selectedReport.lastPort || "-",
+                      "Current Port": selectedReport.portName,
+                      "Departure Time": formatDate(selectedReport.eventTime),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      "Dist to Next Port":
+                        (selectedReport.navigation?.distanceToNextPortNm ||
+                          "0") + " NM",
+                      "ETA Next Port": formatDate(
+                        selectedReport.navigation?.etaNextPort
+                      ),
+                      "ROB VLSFO":
+                        (selectedReport.departureStats?.robVlsfo || "0") +
+                        " MT",
+                      "ROB LSMGO":
+                        (selectedReport.departureStats?.robLsmgo || "0") +
+                        " MT",
+                      "Bunkers Recv VLSFO":
+                        (selectedReport.departureStats?.bunkersReceivedVlsfo ||
+                          "0") + " MT",
+                      "Bunkers Recv LSMGO":
+                        (selectedReport.departureStats?.bunkersReceivedLsmgo ||
+                          "0") + " MT",
+                      "Cargo Loaded":
+                        (selectedReport.departureStats?.cargoQtyLoadedMt ||
+                          "0") + " MT",
+                      "Cargo Unloaded":
+                        (selectedReport.departureStats?.cargoQtyUnloadedMt ||
+                          "0") + " MT",
+                      "Cargo Summary":
+                        selectedReport.departureStats?.cargoSummary || "-",
+                      "General Remarks": selectedReport.remarks || "No Remarks",
+                    }}
+                  />
 
-      {/* 2. SHARE BUTTON */}
-      <SharePdfButton
-        title={`Departure Report - ${getVesselName(selectedReport)}`}
-        filename={`Departure_${selectedReport.portName}_${getVoyageDisplay(selectedReport)}`}
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage ID": getVoyageDisplay(selectedReport),
-          "Last Port": selectedReport.lastPort || "-",
-          "Current Port": selectedReport.portName,
-          "Departure Time": formatDate(selectedReport.eventTime),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Dist to Next Port": (selectedReport.navigation?.distanceToNextPortNm || "0") + " NM",
-          "ETA Next Port": formatDate(selectedReport.navigation?.etaNextPort),
-          "ROB VLSFO": (selectedReport.departureStats?.robVlsfo || "0") + " MT",
-          "ROB LSMGO": (selectedReport.departureStats?.robLsmgo || "0") + " MT",
-          "Bunkers Recv VLSFO": (selectedReport.departureStats?.bunkersReceivedVlsfo || "0") + " MT",
-          "Bunkers Recv LSMGO": (selectedReport.departureStats?.bunkersReceivedLsmgo || "0") + " MT",
-          "Cargo Loaded": (selectedReport.departureStats?.cargoQtyLoadedMt || "0") + " MT",
-          "Cargo Unloaded": (selectedReport.departureStats?.cargoQtyUnloadedMt || "0") + " MT",
-          "Cargo Summary": selectedReport.departureStats?.cargoSummary || "-",
-          "General Remarks": selectedReport.remarks || "No Remarks"
-        }}
-      />
-    </div>
-  )}
-</div>
+                  {/* 2. SHARE BUTTON */}
+                  <SharePdfButton
+                    title={`Departure Report - ${getVesselName(
+                      selectedReport
+                    )}`}
+                    filename={`Departure_${
+                      selectedReport.portName
+                    }_${getVoyageDisplay(selectedReport)}`}
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage ID": getVoyageDisplay(selectedReport),
+                      "Last Port": selectedReport.lastPort || "-",
+                      "Current Port": selectedReport.portName,
+                      "Departure Time": formatDate(selectedReport.eventTime),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      "Dist to Next Port":
+                        (selectedReport.navigation?.distanceToNextPortNm ||
+                          "0") + " NM",
+                      "ETA Next Port": formatDate(
+                        selectedReport.navigation?.etaNextPort
+                      ),
+                      "ROB VLSFO":
+                        (selectedReport.departureStats?.robVlsfo || "0") +
+                        " MT",
+                      "ROB LSMGO":
+                        (selectedReport.departureStats?.robLsmgo || "0") +
+                        " MT",
+                      "Bunkers Recv VLSFO":
+                        (selectedReport.departureStats?.bunkersReceivedVlsfo ||
+                          "0") + " MT",
+                      "Bunkers Recv LSMGO":
+                        (selectedReport.departureStats?.bunkersReceivedLsmgo ||
+                          "0") + " MT",
+                      "Cargo Loaded":
+                        (selectedReport.departureStats?.cargoQtyLoadedMt ||
+                          "0") + " MT",
+                      "Cargo Unloaded":
+                        (selectedReport.departureStats?.cargoQtyUnloadedMt ||
+                          "0") + " MT",
+                      "Cargo Summary":
+                        selectedReport.departureStats?.cargoSummary || "-",
+                      "General Remarks": selectedReport.remarks || "No Remarks",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </ViewModal>
@@ -839,13 +950,13 @@ export default function DepartureReportTable({
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vessels.find(v => v.name === val);
+                      const selected = vessels.find((v) => v.name === val);
                       setEditData({
                         ...editData,
                         vesselName: val,
                         vesselId: selected?._id || "",
-                        voyageId: "",   // 🔥 reset voyage on vessel change
-                        voyageNo: ""
+                        voyageId: "", // 🔥 reset voyage on vessel change
+                        voyageNo: "",
                       });
                     }}
                   />
@@ -858,8 +969,8 @@ export default function DepartureReportTable({
                       !editData.vesselId
                         ? "Select Vessel first"
                         : voyageList.length === 0
-                          ? "No active voyages found"
-                          : "Search Voyage"
+                        ? "No active voyages found"
+                        : "Search Voyage"
                     }
                     value={
                       typeof editData.voyageId === "string"
@@ -869,9 +980,7 @@ export default function DepartureReportTable({
                     onChange={(val) =>
                       setEditData({ ...editData, voyageId: val })
                     }
-
                   />
-
                 </div>
 
                 {/* NEW FIELD: Last Port */}
@@ -1114,7 +1223,7 @@ export default function DepartureReportTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
-          loading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

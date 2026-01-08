@@ -18,7 +18,7 @@ import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import SharePdfButton from "@/components/common/SharePdfButton";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 // --- Types ---
 interface ArrivalStats {
@@ -79,6 +79,7 @@ interface ArrivalReportTableProps {
   vesselId: string; // Added this
   voyageId: string; // Added this
   vesselList: any[]; // Added this
+  setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
 interface VoyageMetrics {
@@ -99,6 +100,7 @@ export default function ArrivalReportTable({
   vesselId,
   voyageId,
   vesselList,
+  setTotalCount,
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -305,6 +307,11 @@ export default function ArrivalReportTable({
         setReports(rawReports);
         if (onDataLoad) onDataLoad(rawReports);
 
+        // Update Total Count
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || 0);
+        }
+
         setTotalPages(result.pagination?.totalPages || 1);
       } catch {
         setReports([]);
@@ -313,7 +320,7 @@ export default function ArrivalReportTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId, setTotalCount]
   );
 
   const [isMobile, setIsMobile] = useState(false);
@@ -512,6 +519,10 @@ useEffect(() => {
       if (!res.ok) throw new Error();
 
       setReports((prev) => prev.filter((r) => r._id !== selectedReport._id));
+      // Dynamic Update Count
+      if (setTotalCount) {
+        setTotalCount((prev) => Math.max(0, prev - 1));
+      }
       toast.success("Arrival report deleted");
     } catch {
       toast.error("Failed to delete arrival report");

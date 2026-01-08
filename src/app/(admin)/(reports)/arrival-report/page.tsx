@@ -4,6 +4,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import ExportToExcel from "@/components/common/ExportToExcel";
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
+import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useEffect, useState } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
@@ -12,9 +13,11 @@ import ArrivalReportTable from "./ArrivalReportTable";
 export default function ArrivalReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for Excel data
+  const [totalCount, setTotalCount] = useState(0);
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("arrival");
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("arrival");
 
   // --- Moved State from Table to Page ---
   const [search, setSearch] = useState("");
@@ -115,6 +118,9 @@ export default function ArrivalReport() {
           ) : null
         }
       >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="Reports" />
+        </div>
         <ArrivalReportTable
           refresh={refresh}
           search={search}
@@ -122,6 +128,7 @@ export default function ArrivalReport() {
           startDate={startDate}
           endDate={endDate}
           onDataLoad={setReportsData} // Capture data from table
+          setTotalCount={setTotalCount}
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}
