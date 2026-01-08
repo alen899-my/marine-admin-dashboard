@@ -24,6 +24,7 @@ import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectio
 interface IPermission {
   _id: string;
   slug: string;
+   name: string;
   description?: string;
   group: string;
 }
@@ -275,6 +276,7 @@ export default function UserTable({
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               onView={handleView}
+               onRowClick={handleView}
               onEdit={canEditUser ? handleEdit : undefined}
               onDelete={canDeleteUser ? (u: IUser) => {
                 setSelectedUser(u);
@@ -291,70 +293,77 @@ export default function UserTable({
         onClose={() => setOpenView(false)}
         title="User Details & Permissions"
       >
-        <div className="space-y-6 text-sm">
+        <div className=" text-sm">
         
-         {/* 2. General Info with Avatar */}
-          <ComponentCard title="General Information">
-             <div className="flex flex-col sm:flex-row gap-20 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
-               
-             {/* <div className="flex-shrink-0 flex flex-col items-center gap-2"> */}
-  {/* Image Container */}
-  {/* <div className="w-20 h-20 ml-5 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-700 shadow-sm">
-    {selectedUser?.profilePicture ? (
-      <Image 
-        src={selectedUser.profilePicture} 
-        alt="Profile" 
-        fill 
-        className="object-cover" 
-        unoptimized
-      />
-    ) : (
-      <div className="w-full h-full flex items-center justify-center">
-         <UserIcon className="w-8 h-8 text-gray-400" />
+<div className="text-[13px] py-1">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+    
+   {/* 1. PHOTO & NAME */}
+<section className="space-y-1.5 p-3">
+  <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
+    General Information
+  </h3>
+  <div className="flex items-center gap-4 py-2">
+    {/* Image Container must have 'relative' for Next.js Image fill to work */}
+    <div className="w-16 h-16 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-700 shadow-sm shrink-0">
+      {selectedUser?.profilePicture ? (
+        <Image 
+          src={selectedUser.profilePicture} 
+          alt="Profile" 
+          fill 
+          sizes="64px"
+          className="object-cover" 
+          priority
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+           <span className="text-xl font-bold text-gray-400">
+             {selectedUser?.fullName?.charAt(0) || "U"}
+           </span>
+        </div>
+      )}
+    </div>
+    <div className="flex flex-col">
+      <span className="font-bold text-gray-900 dark:text-white text-sm">
+        {selectedUser?.fullName ?? "-"}
+      </span>
+      <span className="text-gray-500 text-[10px] uppercase tracking-tight">
+        User Profile
+      </span>
+    </div>
+  </div>
+</section>
+
+    {/* 2. CONTACT DETAILS */}
+    <section className="space-y-1.5 p-3">
+      <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
+        Contact Details
+      </h3>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">Email Address</span>
+        <span className="font-medium text-right break-all">{selectedUser?.email ?? "-"}</span>
       </div>
-    )}
-  </div> */}
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">Phone Number</span>
+        <span className="font-medium text-right">{selectedUser?.phone ?? "-"}</span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-500">System Role</span>
+        <span className="font-medium text-right">{formatRole(selectedUser?.role || "")}</span>
+      </div>
+    </section>
 
-  {/* Label */}
-  {/* <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-    User Profile
-  </span> */}
-{/* </div> */}
+   
+  </div>
 
-                <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Full Name</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {selectedUser?.fullName ?? "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Email Address</p>
-                    <p className="font-medium text-gray-900 dark:text-white break-all">
-                      {selectedUser?.email ?? "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Phone Number</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {selectedUser?.phone ?? "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">System Role</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {formatRole(selectedUser?.role || "")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Account Status</p>
-                    <Badge color={selectedUser?.status === "active" ? "success" : "error"}>
-                      {selectedUser?.status === "active" ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                </div>
-             </div>
-          </ComponentCard>
+  {/* STATUS FOOTER */}
+  <div className=" p-3   dark: flex items-center justify-between">
+    <span className="text-[11px] font-bold text-gray-400  tracking-widest">Account Status</span>
+    <Badge color={selectedUser?.status === "active" ? "success" : "error"}>
+      <span className="capitalize">{selectedUser?.status || "inactive"}</span>
+    </Badge>
+  </div>
+</div>
 
           {/* 3. Permissions Matrix (Read Only) */}
           {selectedUser && (
@@ -377,6 +386,7 @@ export default function UserTable({
                   isReadOnly={true}
                 />
                 <DashboardWidgetSectionUser 
+                 allPermissions={allPermissions} 
                   rolePermissions={getSelectedUserRolePermissions()}
                   additionalPermissions={selectedUser.additionalPermissions || []}
                   excludedPermissions={selectedUser.excludedPermissions || []}

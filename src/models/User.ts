@@ -25,6 +25,11 @@ const userSchema = new Schema(
       type: [String],
       default: [],
     },
+    permissionVersion: {
+      type: Number,
+      default: 1, // backward-compatible
+    },
+
 
     assignedVesselId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -221,6 +221,7 @@ export default function RolesTable({
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
+               onRowClick={handleView}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -236,59 +237,66 @@ export default function RolesTable({
         </div>
       </div>
 
-      {/* --- VIEW MODAL --- */}
-      <ViewModal
-        isOpen={openView}
-        onClose={() => setOpenView(false)}
-        title="Role Details"
-      >
-        <div className="space-y-6 text-sm">
-          <RoleComponentCard title="General Information">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500">Role Name</p>
-                <p className="font-medium">{selectedRole?.name}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Status</p>
-                <Badge
-                  color={selectedRole?.status === "active" ? "success" : "error"}
-                >
-                  {selectedRole?.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            </div>
-          </RoleComponentCard>
+     {/* --- VIEW MODAL --- */}
+<ViewModal
+  isOpen={openView}
+  onClose={() => setOpenView(false)}
+  title="Role Details"
 
-          <RoleComponentCard   title="Assigned Permissions" legend={<PermissionLegend />}>
-            {selectedRole && (
-              <div className="space-y-8">
-                
-                {/* 2. Dashboard Widgets (Read Only) */}
-                
-
-                <div className="border-t border-gray-100 dark:border-gray-800"></div>
-
-                <div>
-                 
-                  <PermissionGrid 
-                    allPermissions={allPermissions}
-                    selectedPermissions={selectedRole.permissions}
-                    isReadOnly={true}
-                  />
-                </div>
-                <div className="pointer-events-none opacity-80">
-                  <DashboardWidgetSection 
-                    selectedPermissions={selectedRole.permissions}
-                    onToggle={() => {}} // No-op for read-only
-                  />
-                </div>
-              </div>
-            )}
-          </RoleComponentCard>
+>
+  <div className="space-y-4 text-sm">
+    <RoleComponentCard title="General Information">
+      {/* Changed to items-start for better label alignment */}
+      <div className="flex flex-row items-start justify-between w-full px-1">
+        {/* Left Side: Role Name */}
+        <div className="flex flex-col gap-1">
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+            Role Name
+          </p>
+          <p className=" text-gray-900 dark:text-white text-base">
+            {selectedRole?.name}
+          </p>
         </div>
-      </ViewModal>
 
+        {/* Right Side: Status - Added text-right to push badge to the edge */}
+        <div className="flex flex-col gap-1 items-end ">
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+           Role Status
+          </p>
+          <Badge
+            color={selectedRole?.status === "active" ? "success" : "error"}
+          >
+            <span className="uppercase font-bold text-[10px]">
+              {selectedRole?.status === "active" ? "Active" : "Inactive"}
+            </span>
+          </Badge>
+        </div>
+      </div>
+    </RoleComponentCard>
+
+    <RoleComponentCard title="Assigned Permissions" legend={<PermissionLegend />}>
+      {selectedRole && (
+        <div className="space-y-8">
+          <div>
+            <PermissionGrid 
+              allPermissions={allPermissions}
+              selectedPermissions={selectedRole.permissions}
+              isReadOnly={true}
+            />
+          </div>
+          {/* Dashboard Widgets */}
+          <div className="pointer-events-none opacity-80  border-gray-200 dark:border-white/10 ">
+            <DashboardWidgetSection 
+            allPermissions={allPermissions}
+              selectedPermissions={selectedRole.permissions}
+              onToggle={() => {}} 
+            />
+          </div>
+        </div>
+      )}
+    </RoleComponentCard>
+  </div>
+</ViewModal>
       {/* --- EDIT MODAL --- */}
       <EditModal
         isOpen={openEdit}
@@ -346,6 +354,7 @@ export default function RolesTable({
                   />
                 </div>
                  <DashboardWidgetSection 
+                 allPermissions={allPermissions}
                   selectedPermissions={editData.permissions}
                   onToggle={(slug, checked) => {
                     const newPerms = checked

@@ -12,6 +12,9 @@ import {
   Users2,
   Ship,
   Map,
+  KeyRound,
+  IdCard,Fingerprint,
+  Component
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -92,10 +95,23 @@ const navItems: NavItem[] = [
   },
 
   {
-    icon:<ShieldCheck size={25}/>,
-    name:" Roles And Permissions",
+    icon:<IdCard size={25}/>,
+    name:" Roles ",
     path:"/roles-and-permissions",
     requiredPermission: "roles.view", 
+  },
+  {
+    icon: <Fingerprint size={25} />,
+    name: "Permissions",
+    path: "/permissions",
+    requiredPermission:"permission.view"
+    
+  },
+  {
+    icon: <Component size={25} />,
+    name: "Resources",
+    path: "/resources",
+    requiredPermission:"resource.view"
   },
 ];
 
