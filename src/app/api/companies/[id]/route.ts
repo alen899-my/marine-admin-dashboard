@@ -1,11 +1,11 @@
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
-import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/authorizeRequest";
-import path from "path";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
 import { put } from "@vercel/blob";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
 // --- UPDATE COMPANY (PATCH) ---
 export async function PATCH(
@@ -32,16 +32,30 @@ export async function PATCH(
     // 4. Build Update Object
     const updateData: any = {};
     if (formData.has("name")) updateData.name = formData.get("name") as string;
-    if (formData.has("email")) updateData.email = formData.get("email") as string;
-    if (formData.has("phone")) updateData.phone = formData.get("phone") as string;
-    if (formData.has("address")) updateData.address = formData.get("address") as string;
-    if (formData.has("status")) updateData.status = formData.get("status") as string;
+    if (formData.has("email"))
+      updateData.email = formData.get("email") as string;
+    if (formData.has("phone"))
+      updateData.phone = formData.get("phone") as string;
+    if (formData.has("address"))
+      updateData.address = formData.get("address") as string;
+    if (formData.has("status"))
+      updateData.status = formData.get("status") as string;
+
+    if (formData.has("contactName")) {
+      updateData.contactName = formData.get("contactName") as string;
+    }
+    if (formData.has("contactEmail")) {
+      updateData.contactEmail = formData.get("contactEmail") as string;
+    }
 
     // 5. Handle Logo Update (If a new file is provided)
     const file = formData.get("logo") as File | null;
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json({ error: "Logo exceeds 2MB limit." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Logo exceeds 2MB limit." },
+          { status: 400 }
+        );
       }
 
       const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
@@ -55,27 +69,34 @@ export async function PATCH(
         updateData.logo = `/uploads/companies/${filename}`;
       } else {
         // Vercel Blob for Prod
-        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+        const blob = await put(filename, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
         updateData.logo = blob.url;
       }
     }
 
     // 6. Update Database
-    const updatedCompany = await Company.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const updatedCompany = await Company.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     return NextResponse.json({ success: true, company: updatedCompany });
-
   } catch (error: any) {
     console.error("UPDATE COMPANY ERROR →", error);
     // Handle Duplicate Email Error
     if (error.code === 11000) {
-      return NextResponse.json({ error: "A company with this email already exists" }, { status: 409 });
+      return NextResponse.json(
+        { error: "A company with this email already exists" },
+        { status: 409 }
+      );
     }
-    return NextResponse.json({ error: error.message || "Update failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Update failed" },
+      { status: 500 }
+    );
   }
 }
 

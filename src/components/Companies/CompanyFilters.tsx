@@ -33,10 +33,18 @@ export default function CompanyFilters({
   const [localEndDate, setLocalEndDate] = useState(endDate);
 
   // --- Sync local state if parent state changes externally ---
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
-  useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalStartDate(startDate);
+  }, [startDate]);
+  useEffect(() => {
+    setLocalEndDate(endDate);
+  }, [endDate]);
 
   const handleApplyFilters = () => {
     setSearch(localSearch);
@@ -50,7 +58,7 @@ export default function CompanyFilters({
     setLocalStatus("all");
     setLocalStartDate("");
     setLocalEndDate("");
-    
+
     // Immediately clear parent state too
     setSearch("");
     setStatus("all");
@@ -64,14 +72,13 @@ export default function CompanyFilters({
 
   return (
     <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
-      
       {/* SEARCH COMPANIES */}
-      <div className="w-full sm:w-auto min-w-[200px] shrink-0">
+      <div className="w-full sm:w-auto min-w-[350px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search Companies
         </label>
         <Input
-          placeholder="Name, Email, Phone..."
+          placeholder="Name, Email, Phone, Contact Person..."
           className="w-full"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}

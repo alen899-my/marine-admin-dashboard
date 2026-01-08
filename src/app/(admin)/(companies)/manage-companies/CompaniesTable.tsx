@@ -28,6 +28,8 @@ interface ICompany {
   email: string;
   phone: string;
   address: string;
+  contactName?: string;
+  contactEmail?: string;
   status: string;
   logo?: string;
   createdAt: string;
@@ -335,6 +337,30 @@ export default function CompaniesTable({
               </div>
             </section>
 
+            <section className="space-y-4">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-100 dark:border-white/10">
+                Contact Person
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                {/* Contact Name */}
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500 shrink-0">Name</span>
+                  <span className="font-medium text-right text-gray-900 dark:text-gray-100">
+                    {selectedCompany?.contactName || "-"}
+                  </span>
+                </div>
+
+                {/* Contact Email */}
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500 shrink-0">Email</span>
+                  <span className="font-medium text-right break-all text-gray-900 dark:text-gray-100">
+                    {selectedCompany?.contactEmail || "-"}
+                  </span>
+                </div>
+              </div>
+            </section>
+
             {/* ================= SECTION 2: SYSTEM INFORMATION ================= */}
             <section className="pt-4 border-t border-gray-100 dark:border-white/10 space-y-3">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -386,10 +412,14 @@ export default function CompaniesTable({
         onConfirm={handleDelete}
         title="Delete Company"
         description={
-    <>
-      Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">{selectedCompany?.name}</span>? This action cannot be undone.
-    </>
-  }
+          <>
+            Are you sure you want to delete{" "}
+            <span className="font-bold text-gray-900 dark:text-white">
+              {selectedCompany?.name}
+            </span>
+            ? This action cannot be undone.
+          </>
+        }
         loading={isDeleting}
       />
     </>

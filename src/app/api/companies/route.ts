@@ -1,14 +1,14 @@
+import { auth } from "@/auth"; // Ensure this matches your Auth.js/NextAuth path
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
 import Company from "@/models/Company";
 import User from "@/models/User";
 import Vessel from "@/models/Vessel";
-import { authorizeRequest } from "@/lib/authorizeRequest";
-import path from "path";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
 import { put } from "@vercel/blob";
-import { auth } from "@/auth"; // Ensure this matches your Auth.js/NextAuth path
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
 // --- CREATE COMPANY (POST) ---
 export async function POST(req: NextRequest) {
@@ -30,12 +30,14 @@ export async function POST(req: NextRequest) {
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const address = formData.get("address") as string;
+    const contactName = formData.get("contactName") as string;
+    const contactEmail = formData.get("contactEmail") as string;
     const status = (formData.get("status") as string) || "active";
 
     // Extract Linked IDs
     const userIdsRaw = formData.get("userIds") as string;
     const vesselIdsRaw = formData.get("vesselIds") as string;
-    
+
     let userIds: string[] = [];
     let vesselIds: string[] = [];
 
@@ -52,7 +54,10 @@ export async function POST(req: NextRequest) {
 
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json({ error: "Logo exceeds 2MB limit." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Logo exceeds 2MB limit." },
+          { status: 400 }
+        );
       }
 
       const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
@@ -64,19 +69,28 @@ export async function POST(req: NextRequest) {
         await writeFile(path.join(uploadDir, filename), buffer);
         logoUrl = `/uploads/companies/${filename}`;
       } else {
-        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+        const blob = await put(filename, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
         logoUrl = blob.url;
       }
     }
 
     // 4. Validations
     if (!name || !email) {
-      return NextResponse.json({ error: "Missing Name or Email" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing Name or Email" },
+        { status: 400 }
+      );
     }
 
     const existingCompany = await Company.findOne({ email });
     if (existingCompany) {
-      return NextResponse.json({ error: "A company with this email already exists" }, { status: 409 });
+      return NextResponse.json(
+        { error: "A company with this email already exists" },
+        { status: 409 }
+      );
     }
 
     // 5. Save Company with Audit Fields
@@ -85,6 +99,8 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       address,
+      contactName,
+      contactEmail,
       logo: logoUrl || null,
       status,
       createdBy: currentUserId, // Capturing creator
@@ -93,15 +109,23 @@ export async function POST(req: NextRequest) {
 
     // 6. RELATIONSHIP LINKING
     if (userIds.length > 0) {
-      await User.updateMany({ _id: { $in: userIds } }, { $set: { companyId: newCompany._id } });
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $set: { companyId: newCompany._id } }
+      );
     }
 
     if (vesselIds.length > 0) {
-      await Vessel.updateMany({ _id: { $in: vesselIds } }, { $set: { companyId: newCompany._id } });
+      await Vessel.updateMany(
+        { _id: { $in: vesselIds } },
+        { $set: { companyId: newCompany._id } }
+      );
     }
 
-    return NextResponse.json({ success: true, companyId: newCompany._id }, { status: 201 });
-
+    return NextResponse.json(
+      { success: true, companyId: newCompany._id },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("CREATE COMPANY ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -135,6 +159,8 @@ export async function GET(req: NextRequest) {
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
         { address: { $regex: search, $options: "i" } },
+        { contactName: { $regex: search, $options: "i" } },
+        { contactEmail: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -150,7 +176,7 @@ export async function GET(req: NextRequest) {
     }
 
     const total = await Company.countDocuments(query);
-    
+
     // ✅ POPULATE audit fields so names appear in the View modal
     const companies = await Company.find(query)
       .populate("createdBy", "fullName")
@@ -169,9 +195,11 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-
   } catch (error: any) {
     console.error("GET COMPANIES ERROR →", error);
-    return NextResponse.json({ error: "Failed to fetch companies" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch companies" },
+      { status: 500 }
+    );
   }
 }

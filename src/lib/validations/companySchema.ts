@@ -5,7 +5,7 @@ export const companySchema = Joi.object({
     "string.empty": "Company name is required",
     "string.min": "Company name must be at least 2 characters",
   }),
-  
+
   email: Joi.string()
     .email({ tlds: { allow: false } })
     .required()
@@ -22,11 +22,22 @@ export const companySchema = Joi.object({
     "string.max": "Address cannot exceed 500 characters",
   }),
 
+  contactName: Joi.string().allow("", null).max(100).messages({
+    "string.max": "Contact name cannot exceed 100 characters",
+  }),
+
+  contactEmail: Joi.string()
+    .email({ tlds: { allow: false } })
+    .allow("", null)
+    .messages({
+      "string.email": "Please enter a valid contact email address",
+    }),
+
   status: Joi.string().valid("active", "inactive").default("active").messages({
     "any.only": "Status must be either Active or Inactive",
   }),
 
-  // Logo is usually handled via FormData/File object in the component, 
+  // Logo is usually handled via FormData/File object in the component,
   // but we allow it as a string URL for the validation of existing data.
   logo: Joi.string().allow("", null),
 });
