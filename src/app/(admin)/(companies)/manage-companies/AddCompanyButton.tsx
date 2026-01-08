@@ -56,10 +56,42 @@ export default function AddCompanyButton({ onSuccess }: AddCompanyButtonProps) {
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
+    if (!file) return;
+
+    // 1. Create a URL for the selected file
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+
+    img.onload = () => {
+      // 2. Check dimensions
+      const width = img.width;
+      const height = img.height;
+
+      if (width === 785 && height === 220) {
+        setLogoFile(file);
+        setLogoPreview(objectUrl);
+        // Clear logo error if you have one in the errors state
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.logo;
+          return newErrors;
+        });
+      } else {
+        // 3. Reject if dimensions don't match
+        toast.error(
+          `Invalid dimensions: ${width}x${height}. Required: 785x220.`
+        );
+        e.target.value = ""; // Reset the input
+        URL.revokeObjectURL(objectUrl); // Clean up memory
+      }
+    };
+
+    img.onerror = () => {
+      toast.error("Failed to load image. Please try another file.");
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    img.src = objectUrl;
   };
 
   const handleClose = () => {
@@ -224,30 +256,33 @@ export default function AddCompanyButton({ onSuccess }: AddCompanyButtonProps) {
               </div>
             </ComponentCard>
 
-            <div className="flex flex-col items-center justify-center py-3 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-              <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border-2 border-white dark:border-gray-800 shadow-md mb-3">
+            <div className="flex flex-col items-center justify-center py-4 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+              {/* Reduced max-width from 500px to 320px for a more compact look */}
+              <div className="relative w-full max-w-[320px] aspect-[785/220] rounded-xl overflow-hidden bg-white dark:bg-gray-900 border-2 border-white dark:border-gray-800 shadow-sm mb-3">
                 {logoPreview ? (
                   <Image
                     src={logoPreview}
                     alt="Logo Preview"
                     fill
-                    className="object-cover"
+                    className="object-contain"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Building2 className="w-10 h-10 text-gray-300" />
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800">
+                    <Building2 className="w-8 h-8 text-gray-300 mb-1" />
+                    <p className="text-[11px] text-gray-500 font-normal">
+                      Click to upload logo{" "}
+                      <span className="font-semibold">(785x220px)</span>
+                    </p>
                   </div>
                 )}
+
                 <input
                   type="file"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
                   onChange={handleLogoChange}
                   accept="image/*"
                 />
               </div>
-              <p className="text-xs text-gray-500 font-medium">
-                Click to upload company logo
-              </p>
             </div>
           </div>
         </AddForm>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2 } from "lucide-react"; // ✅ Icon for fallback
+import { ImageOff } from "lucide-react"; // ✅ Icon for fallback
 import Image from "next/image";
 import {
   Dispatch,
@@ -184,23 +184,23 @@ export default function CompaniesTable({
       header: "Company Name",
       render: (c: ICompany) => (
         <div className="flex items-center gap-3">
-          {/* ✅ Logo Display in Table */}
-          <div className="w-9 h-9 relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+          {/* Changed w-9 h-9 to w-16 aspect-ratio */}
+          <div className="w-25 aspect-[785/220] relative rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-hidden">
             {c.logo ? (
               <Image
                 src={c.logo}
                 alt={c.name}
                 fill
-                className="object-cover"
+                className="object-contain" // Ensures the whole banner logo is visible
                 unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-gray-400" />
+                <ImageOff className="w-4 h-4 text-gray-400" />
               </div>
             )}
           </div>
-          <span className="font-medium text-gray-700 dark:text-gray-200">
+          <span className="font-medium text-gray-700 dark:text-gray-200 truncate max-w-[200px]">
             {c.name}
           </span>
         </div>
@@ -306,22 +306,22 @@ export default function CompaniesTable({
                 </div>
 
                 {/* Top Right: Logo */}
-                <div className="flex justify-between md:justify-end items-start gap-4">
-                  <span className="text-gray-500 shrink-0 md:hidden">
+                <div className="flex flex-col md:items-end gap-2">
+                  <span className="text-gray-500 text-[11px] uppercase font-semibold">
                     Company Logo
                   </span>
-                  <div className="w-24 h-24 relative rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <div className="w-full max-w-[240px] aspect-[785/220] relative rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
                     {selectedCompany?.logo ? (
                       <Image
                         src={selectedCompany.logo}
                         alt="Logo"
                         fill
-                        className="object-contain p-2"
+                        className="object-contain p-1" // Added padding so the logo doesn't touch the borders
                         unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Building2 className="w-10 h-10 text-gray-300" />
+                        <ImageOff className="w-8 h-8 text-gray-300" />
                       </div>
                     )}
                   </div>
