@@ -9,7 +9,7 @@ interface ViewModalProps {
   title: string;
   headerRight?: React.ReactNode;
   children: React.ReactNode;
-  
+  size?: "sm" | "md" | "lg"; 
 }
 
 export default function ViewModal({
@@ -18,7 +18,16 @@ export default function ViewModal({
   title,
   headerRight,
   children,
+  size = "lg",
 }: ViewModalProps) {
+  
+  // Mapping sizes to the specific width classes
+  const sizeMaxWidth = {
+    sm: "md:max-w-[480px]",
+    md: "md:max-w-[720px]",
+    lg: "md:max-w-[900px]",
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -27,8 +36,7 @@ export default function ViewModal({
         w-full
         max-w-[95vw]
         sm:max-w-[90vw]
-        md:max-w-[720px]
-        lg:max-w-[900px]
+        ${sizeMaxWidth[size]} 
         p-4
         sm:p-6
         lg:p-8
@@ -47,7 +55,6 @@ export default function ViewModal({
           </div>
         )}
       </div>
-
 
       {/* BODY */}
       <div

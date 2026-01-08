@@ -21,6 +21,7 @@ interface IUser {
   fullName: string;
   email: string;
   phone: string;
+  
   role: any;
   status: string;
   additionalPermissions?: string[];
@@ -45,6 +46,7 @@ interface UserFormModalProps {
 
 interface IPermission {
   _id: string;
+  name: string;
   slug: string;
   description?: string;
   group: string;
@@ -479,6 +481,7 @@ const handleSubmit = async () => {
             isReadOnly={!isEditMode || isSuperAdmin}
           />
            <DashboardWidgetSectionUser 
+           allPermissions={allPermissions} 
              rolePermissions={selectedRolePermissions}
              additionalPermissions={additionalPerms}
              excludedPermissions={excludedPerms}

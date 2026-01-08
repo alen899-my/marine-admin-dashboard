@@ -11,9 +11,18 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
+  // 🟢 LOGIC FIX: Calculate start and end to stay within boundaries
+  let start = Math.max(1, currentPage - 1);
+  let end = Math.min(totalPages, start + 2);
+
+  // If we are at the end, adjust start so we still show 3 pages if possible
+  if (end === totalPages) {
+    start = Math.max(1, end - 2);
+  }
+
   const pagesAroundCurrent = Array.from(
-    { length: Math.min(3, totalPages) },
-    (_, i) => i + Math.max(currentPage - 1, 1)
+    { length: end - start + 1 },
+    (_, i) => start + i
   );
 
   return (
@@ -23,7 +32,7 @@ const Pagination: React.FC<PaginationProps> = ({
         disabled={currentPage === 1}
         className="mr-2.5 flex items-center h-10 justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-700 shadow-theme-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] text-sm"
       >
-        <ChevronLeft />
+        <ChevronLeft size={18} />
         Previous
       </button>
       <div className="flex items-center gap-2">
@@ -49,7 +58,7 @@ const Pagination: React.FC<PaginationProps> = ({
         className="ml-2.5 flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-700 shadow-theme-xs text-md hover:bg-gray-50 h-10 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]"
       >
         Next
-        <ChevronRight />
+        <ChevronRight size={18} />
       </button>
     </div>
   );

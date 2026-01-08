@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
 
 interface IPermission {
@@ -6,6 +8,10 @@ interface IPermission {
   slug: string;
   description?: string;
   group: string;
+  resourceId?: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface PermissionMatrixTableProps {
@@ -26,34 +32,45 @@ export default function PermissionMatrixTable({
   isReadOnly = false,
 }: PermissionMatrixTableProps) {
   
-  const groupPermissions = (perms: IPermission[]) => {
-    return perms.reduce((groups, perm) => {
-      const groupName = perm.group || "General";
+ 
+  const grouped = useMemo(() => {
+    // 1. Define standard CRUD actions
+    const crudEndings = [".create", ".view", ".edit", ".delete"];
+
+    // 2. Filter list to include ONLY CRUD and EXCLUDE Dashboard Stats
+    const filtered = allPermissions.filter((p) => {
+      const isCrud = crudEndings.some((ending) => p.slug.toLowerCase().endsWith(ending));
+      const groupName = p.resourceId?.name || p.group || "";
+      return isCrud && groupName !== "Dashboard Statistics";
+    });
+
+    // 3. Group the filtered list
+    return filtered.reduce((groups, perm) => {
+      const groupName = perm.resourceId?.name || perm.group || "General";
       if (!groups[groupName]) groups[groupName] = [];
       groups[groupName].push(perm);
       return groups;
     }, {} as Record<string, IPermission[]>);
-  };
+  }, [allPermissions]);
 
-  if (rolePermissions.length === 0) {
+  if (rolePermissions.length === 0 && additionalPermissions.length === 0 && excludedPermissions.length === 0) {
     return <div className="text-gray-400 text-sm italic py-2">Select a role to view its permissions.</div>;
   }
 
-  // ✅ CHANGE: Filter out 'Dashboard Statistics' before grouping
-  const filteredPermissions = allPermissions.filter(p => p.group !== "Dashboard Statistics");
-  
-  // Group only the filtered permissions
-  const grouped = groupPermissions(filteredPermissions);
-  
   const actionColumns = ["create", "view", "edit", "delete"];
-  const headerLabels: Record<string, string> = { create: "Create", view: "Read", edit: "Update", delete: "Delete" };
+  const headerLabels: Record<string, string> = { 
+    create: "Create", 
+    view: "Read", 
+    edit: "Update", 
+    delete: "Delete" 
+  };
 
   return (
-    <div className="w-full overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg mt-4">
+    <div className="w-full overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg mt-2">
       <div className="min-w-[600px]">
         {/* Header */}
         <div className="grid grid-cols-5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-gray-700 py-2 px-4">
-          <div className="col-span-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Module</div>
+          <div className="col-span-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">resources</div>
           {actionColumns.map((action) => (
             <div key={action} className="text-center text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
               {headerLabels[action]}
@@ -64,8 +81,10 @@ export default function PermissionMatrixTable({
         {/* Rows */}
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {Object.entries(grouped).map(([groupName, groupPerms]) => (
-            <div key={groupName} className="grid grid-cols-5 items-center py-2 px-4">
-              <div className="col-span-1 font-semibold text-sm text-gray-800 dark:text-gray-200 truncate pr-2">{groupName}</div>
+            <div key={groupName} className="grid grid-cols-5 items-center py-2 px-4 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+              <div className="col-span-1 font-semibold text-sm text-gray-800 dark:text-gray-200 truncate pr-2">
+                {groupName}
+              </div>
 
               {actionColumns.map((action) => {
                 const perm = groupPerms.find(
@@ -82,20 +101,16 @@ export default function PermissionMatrixTable({
                 let variant: CheckboxVariant = "default";
                 let tooltip = "Click to Add";
 
-                // ✅ NEW PRIORITY ORDER:
-                // 1. Excluded (Red) - Highest Priority (Overrides everything)
                 if (isExcluded) {
                   isChecked = true;
                   variant = "danger"; 
                   tooltip = "Manually Excluded";
                 } 
-                // 2. Role (Blue) - Visual Priority over Additional
                 else if (isRolePerm) {
                   isChecked = true;
                   variant = "default"; 
-                  tooltip = "previous Role";
+                  tooltip = "Inherited from Role";
                 } 
-                // 3. Additional (Green) - Only if not in Role (or Role hidden)
                 else if (isAdditional) {
                   isChecked = true;
                   variant = "success"; 
@@ -106,16 +121,15 @@ export default function PermissionMatrixTable({
                   <div key={action} className="flex justify-center">
                     <div
                       title={isReadOnly ? "" : tooltip}
-                      // Disable click event if readOnly
                       onClick={() => !isReadOnly && onToggle(perm.slug)}
                       className={`relative flex items-center justify-center p-1 transition-transform 
                         ${!isReadOnly ? 'cursor-pointer active:scale-95' : 'cursor-default opacity-60'}`}
                     >
                       <Checkbox 
                         checked={isChecked} 
-                        onChange={() => {}} // Controlled by div click
+                        onChange={() => {}} 
                         variant={variant}
-                        className={isReadOnly ? "pointer-events-none" : ""} // Ensure input is non-interactive
+                        className={isReadOnly ? "pointer-events-none" : ""} 
                       />
                     </div>
                   </div>

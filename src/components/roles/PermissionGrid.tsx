@@ -7,8 +7,13 @@ import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
 export interface IPermission {
   _id: string;
   slug: string;
+  name: string;
   description?: string;
   group: string;
+   resourceId?: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface PermissionGridProps {
@@ -21,7 +26,9 @@ interface PermissionGridProps {
 // --- Helper: Group permissions ---
 const groupPermissions = (perms: IPermission[]) => {
   return perms.reduce((groups, perm) => {
-    const groupName = perm.group || "General";
+  
+    const groupName = (perm.resourceId as any)?.name || perm.group || "General";
+    
     if (!groups[groupName]) groups[groupName] = [];
     groups[groupName].push(perm);
     return groups;
@@ -35,12 +42,26 @@ export default function PermissionGrid({
   onToggle,
 }: PermissionGridProps) {
   
-  // 1. Filter out "Dashboard Statistics" so it doesn't show in the grid
-  const filteredPermissions = useMemo(() => {
-    if (!allPermissions) return [];
-    return allPermissions.filter((p) => p.group !== "Dashboard Statistics");
-  }, [allPermissions]);
+const filteredPermissions = useMemo(() => {
+  if (!allPermissions) return [];
+  
+  
+  const gridActions = [".create", ".view", ".edit", ".delete"];
 
+  return allPermissions.filter((p) => {
+    // 1. Check if the permission belongs to the Grid (ends with CRUD action)
+    const isGridAction = gridActions.some(action => 
+      p.slug.toLowerCase().endsWith(action) || 
+      p.slug.toLowerCase() === action.replace('.', '')
+    );
+
+    const groupName = (p.resourceId as any)?.name || p.group;
+    const isDashboard = groupName === "Dashboard Statistics";
+
+  
+    return isGridAction && !isDashboard;
+  });
+}, [allPermissions]);
   // 2. Group the filtered permissions
   const grouped = useMemo(() => groupPermissions(filteredPermissions), [filteredPermissions]);
   
@@ -62,7 +83,7 @@ export default function PermissionGrid({
         {/* Header */}
         <div className="grid grid-cols-5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-gray-700 py-2 px-4">
           <div className="col-span-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
-            Module
+            resources
           </div>
           {actionColumns.map((action) => (
             <div

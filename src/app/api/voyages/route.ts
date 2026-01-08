@@ -172,11 +172,29 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(newVoyage, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating voyage:", error);
+  }  catch (error: any) {
+  console.error("Error creating voyage:", error);
+
+  // ✅ Handle MongoDB duplicate key error
+  if (error?.code === 11000) {
     return NextResponse.json(
-      { error: error.message || "Failed to create voyage" },
-      { status: 500 }
+      {
+        error: "Duplicate voyage",
+        details: [
+          {
+            field: "voyageNo",
+            message: "Voyage number already exists for this vessel",
+          },
+        ],
+      },
+      { status: 409 }
     );
   }
+
+  return NextResponse.json(
+    { error: error.message || "Failed to create voyage" },
+    { status: 500 }
+  );
+}
+
 }

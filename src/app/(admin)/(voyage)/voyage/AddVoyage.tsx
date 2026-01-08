@@ -75,7 +75,7 @@ export default function AddVoyage({ onSuccess }: AddVoyageProps) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // ✅ New Handler for Custom DatePicker
+
   const handleDateChange = (name: string, dateStr: string) => {
     setFormData((prev) => ({ ...prev, [name]: dateStr }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));

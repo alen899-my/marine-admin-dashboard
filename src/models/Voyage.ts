@@ -90,6 +90,6 @@ const VoyageSchema = new Schema<IVoyage>(
   },
   { timestamps: true }
 );
-VoyageSchema.index({ vesselId: 1, voyageNo: 1 }, { unique: true });
+VoyageSchema.index({ voyageNo: 1 }, { unique: true });
 export default mongoose.models.Voyage ||
   mongoose.model<IVoyage>("Voyage", VoyageSchema);

@@ -172,13 +172,14 @@ export default function AddRoleButton({ onSuccess }: AddRoleButtonProps) {
                 
                 {/* A. Dashboard Widgets Section */}
                 <DashboardWidgetSection 
+                allPermissions={permissionsList}
                   selectedPermissions={formData.permissions}
                   onToggle={handlePermissionToggle}
                 />
 
                 <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
-                {/* B. Detailed Module Permissions */}
+             
                
 
               </div>

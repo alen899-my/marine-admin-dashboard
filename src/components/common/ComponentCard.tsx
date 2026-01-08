@@ -54,7 +54,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
       )}
 
       {/* Card Body */}
-      <div className="p-2 border-t border-gray-100 dark:border-gray-800 sm:p-4">
+      <div className="p-2  border-gray-100 dark:border-gray-800 sm:p-4">
         {/* Padding reduced: p-3 -> p-2 and sm:p-5 -> sm:p-4 */}
         <div className="space-y-6">{children}</div>
       </div>

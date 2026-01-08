@@ -23,14 +23,14 @@ const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
     >
       {/* Card Header */}
       {(title || action || legend) && (
-        <div className="px-4 py-3  dark:">
+        <div className="px-3 py-3  dark:">
           {/* ✅ RESPONSIVE FIX: flex-col on mobile, flex-row on small screens and up */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             
             {/* Title & Description */}
             <div className="flex-1">
               {typeof title === "string" ? (
-                <h3 className="text-sm font-bold text-gray-800 dark:text-white/90 tracking-wide">
+                <h3 className="text-[11px] font-bold text-gray-400  tracking-wider">
                   {title}
                 </h3>
               ) : (

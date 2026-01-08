@@ -26,6 +26,7 @@ interface FilterProps {
   setVoyageId?: (v: string) => void;
 
   vessels?: any[];
+  
 }
 
 export default function Filters({
