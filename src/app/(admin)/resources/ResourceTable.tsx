@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Dispatch,
+  SetStateAction, } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 
@@ -28,9 +29,10 @@ interface ResourceTableProps {
   refresh: number;
   search: string;
   status: string; 
+   setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
-export default function ResourceTable({ refresh, search, status }: ResourceTableProps) {
+export default function ResourceTable({ refresh, search, status,setTotalCount }: ResourceTableProps) {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,13 +96,16 @@ export default function ResourceTable({ refresh, search, status }: ResourceTable
       const result = await res.json();
       
       setResources(result.data || []);
+      if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.data?.length || 0);
+        }
       setTotalPages(result.pagination?.totalPages || 1); 
     } catch (err) {
       toast.error("Failed to load resources");
     } finally {
       setLoading(false);
     }
-  }, [currentPage, search, status]); // Dependencies updated
+  }, [currentPage, search, status,setTotalCount]); // Dependencies updated
 
   // Reset to page 1 if search or status changes
   useEffect(() => {

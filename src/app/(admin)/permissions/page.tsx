@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; 
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; 
-
+import TableCount from "@/components/common/TableCount";
 // Permission Components
 import PermissionTable from "./PermissionTable";
 import AddPermissionButton from "./AddPermissionButton";
@@ -12,7 +12,7 @@ import PermissionFilter from "@/components/permissions/permissionFilter";
 
 export default function PermissionManagement() {
   const [refresh, setRefresh] = useState(0);
-
+    const [totalCount, setTotalCount] = useState(0);
   // Use the shared persistent filter logic (Key: "permission")
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("permission");
 
@@ -87,11 +87,15 @@ export default function PermissionManagement() {
           ) : null
         }
       >
+          <div className="flex justify-end me-2 mb-2">
+                  <TableCount count={totalCount} label="permissions" />
+                </div>
         <PermissionTable
           refresh={refresh}
           search={search}
           status={status}
           module={module}
+          setTotalCount={setTotalCount}
         />
       </ComponentCard>
     </div>

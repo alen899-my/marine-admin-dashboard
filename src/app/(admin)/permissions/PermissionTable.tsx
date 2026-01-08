@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo,Dispatch,
+  SetStateAction, } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import SearchableSelect from "@/components/form/SearchableSelect";
@@ -55,12 +56,14 @@ interface PermissionTableProps {
   search: string;
   status: string;
   module: string;
+   setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 export default function PermissionTable({
   refresh,
   search,
   status,
   module,
+  setTotalCount
 }: PermissionTableProps) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   
@@ -186,13 +189,16 @@ const fetchPermissions = useCallback(async () => {
     const result = await res.json();
     
     setPermissions(result.data || []);
+    if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.data?.length || 0);
+        }
     setTotalPages(result.pagination?.totalPages || 1);
   } catch (err) {
     toast.error("Failed to load permissions");
   } finally {
     setLoading(false);
   }
-}, [currentPage, search, status, module]);
+}, [currentPage, search, status, module,setTotalCount]);
 
   // Reset to page 1 on filter change
   useEffect(() => {

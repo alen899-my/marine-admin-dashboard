@@ -4,12 +4,14 @@ import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import ResourceFilters from "@/components/resources/ResourceFilters"; // ✅ Using the new specific filter
 import AddResource from "./AddResource";
+import TableCount from "@/components/common/TableCount";
 import ResourceTable from "./ResourceTable"; 
 import FilterToggleButton from "@/components/common/FilterToggleButton"; 
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 
 export default function ResourceManagement() {
   const [refresh, setRefresh] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Persistence hook for "resources" module
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources");
@@ -55,10 +57,14 @@ export default function ResourceManagement() {
           ) : null
         }
       >
+         <div className="flex justify-end me-2 mb-2">
+                  <TableCount count={totalCount} label="resources" />
+                </div>
         <ResourceTable 
           refresh={refresh} 
           search={search} 
           status={status} 
+           setTotalCount={setTotalCount}
         />
       </ComponentCard>
     </div>
