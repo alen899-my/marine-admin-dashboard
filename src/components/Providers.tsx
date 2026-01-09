@@ -16,7 +16,7 @@ export function Providers({
 }) {
   return (
     // Pass the session here so it doesn't have to fetch it on mount
-    <SessionProvider session={session}>
+    <SessionProvider session={session} refetchInterval={120}>
       <ThemeProvider>
         <SidebarProvider>
           {children}

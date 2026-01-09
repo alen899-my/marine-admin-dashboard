@@ -9,10 +9,17 @@ import { useEffect, useState } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonReportTable from "./DailyNoonReportTable";
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function DailyNoonReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]);
+  
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("noon.view");
+  const canCreate = can("noon.create");
+
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
 
   const [search, setSearch] = useState("");
@@ -26,6 +33,9 @@ export default function DailyNoonReport() {
 
   useEffect(() => {
     async function fetchVessels() {
+      // Only fetch if user has view permission
+      if (!canView) return;
+
       try {
         const res = await fetch("/api/vessels");
         if (res.ok) {
@@ -36,8 +46,8 @@ export default function DailyNoonReport() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    fetchVessels();
-  }, []);
+    if (isReady) fetchVessels();
+  }, [isReady, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -59,6 +69,18 @@ export default function DailyNoonReport() {
     Remarks: r.remarks || "-",
   });
 
+  // 1. Wait for Auth load
+  if (!isReady) return null;
+
+  // 2. Gate the entire page
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Daily Noon Reports.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -75,7 +97,8 @@ export default function DailyNoonReport() {
             fileName="Daily_Noon_Reports"
             exportMap={excelMapping}
           />
-          <AddDailyNoonReportButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for creating noon reports */}
+          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} />}
         </div>
       </div>
 
@@ -111,7 +134,7 @@ export default function DailyNoonReport() {
           startDate={startDate}
           endDate={endDate}
           onDataLoad={setReportsData}
-          setTotalCount={setTotalCount} // CRITICAL: This was missing
+          setTotalCount={setTotalCount} 
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}

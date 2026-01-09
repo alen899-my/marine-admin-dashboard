@@ -124,8 +124,8 @@ export default function CargoReportTable({
 
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
-  const canEdit = can("departure.edit");
-  const canDelete = can("departure.delete");
+  const canEdit = can("cargo.edit");
+  const canDelete = can("cargo.delete");
   const getVesselName = (r: ICargoReport | null) => {
     if (!r || !r.vesselId) return "-";
     if (typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -680,7 +680,7 @@ export default function CargoReportTable({
                   No file attached
                 </span>
               ) : (
-                <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
                   {/* 🖼 THUMBNAIL (Reduced size for compact look) */}
                   <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
                     {fileMeta.isImage && (
@@ -1006,7 +1006,7 @@ export default function CargoReportTable({
                     {newFile ? "New File Selected" : "Current File"}
                   </Label>
 
-                  <div className="flex flex-row gap-4 items-start">
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
                     {/* 🖼 THUMBNAIL */}
                     <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
                       {isPdfPreview ? (

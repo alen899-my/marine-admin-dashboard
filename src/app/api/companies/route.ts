@@ -14,7 +14,7 @@ import path from "path";
 export async function POST(req: NextRequest) {
   try {
     // 1. Authorization Check
-    const authz = await authorizeRequest("companies.create");
+    const authz = await authorizeRequest("company.create");
     if (!authz.ok) return authz.response;
 
     // Get current user session
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 // --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
 export async function GET(req: NextRequest) {
   try {
-    const authz = await authorizeRequest("companies.view");
+    const authz = await authorizeRequest("company.view");
     if (!authz.ok) return authz.response;
 
     await dbConnect();

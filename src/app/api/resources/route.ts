@@ -10,7 +10,7 @@ import { authorizeRequest } from "@/lib/authorizeRequest";
 export async function GET(req: NextRequest) {
   try {
     
-
+    
     await dbConnect();
 
     const { searchParams } = new URL(req.url);

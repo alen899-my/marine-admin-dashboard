@@ -8,10 +8,16 @@ import VesselTable from "./VesselTable";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function VesselManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("vessels.view");
+  const canAdd = can("vessels.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("vessels");
@@ -23,6 +29,18 @@ export default function VesselManagement() {
   const [endDate, setEndDate] = useState("");
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
+
+  // 1. Wait for Auth check
+  if (!isReady) return null;
+
+  // 2. Full Page Guard
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">You do not have permission to access Vessel Management.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,8 +56,8 @@ export default function VesselManagement() {
             isVisible={isFilterVisible} 
             onToggle={setIsFilterVisible} 
           />
-          {/* Add Vessel Button triggers refresh on success */}
-          <AddVesselButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for adding */}
+          {canAdd && <AddVesselButton onSuccess={handleRefresh} />}
         </div>
       </div>
 
@@ -64,8 +82,8 @@ export default function VesselManagement() {
         }
       >
         <div className="flex justify-end me-2 mb-2">
-                  <TableCount count={totalCount} label="Vessels" />
-                </div>
+          <TableCount count={totalCount} label="Vessels" />
+        </div>
         <VesselTable
           refresh={refresh}
           search={search}

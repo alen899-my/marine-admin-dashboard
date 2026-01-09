@@ -3,7 +3,7 @@
  * Used by middleware for route-level RBAC.
  */
 export const routePermissions: Record<string, string> = {
-  "/": "dashboard.view",
+
 
   "/daily-noon-report": "noon.view",
   "/departure-report": "departure.view",
@@ -18,4 +18,6 @@ export const routePermissions: Record<string, string> = {
   "/manage-users": "users.view",
   "/roles-and-permissions": "roles.view",
   "/permissions": "permission.view",
+  "/resources":"resource.view",
+  "/manage-companies": "company.view",
 };

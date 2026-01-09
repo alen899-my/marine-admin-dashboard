@@ -9,11 +9,17 @@ import { useEffect, useState } from "react";
 import AddDepartureReportButton from "./AddDepartureReportButton";
 import DepartureReportTable from "./DepartureReportTable";
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function DepartureReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // Data for Excel
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("departure.view");
+  const canCreate = can("departure.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("departure");
@@ -28,6 +34,9 @@ export default function DepartureReport() {
 
   useEffect(() => {
     async function fetchVessels() {
+      // Only fetch if user is authorized to view
+      if (!canView) return;
+
       try {
         const res = await fetch("/api/vessels");
         if (res.ok) {
@@ -38,8 +47,8 @@ export default function DepartureReport() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    fetchVessels();
-  }, []);
+    if (isReady) fetchVessels();
+  }, [isReady, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -72,6 +81,18 @@ export default function DepartureReport() {
     Remarks: r.remarks || "",
   });
 
+  // 1. Wait for Auth load
+  if (!isReady) return null;
+
+  // 2. Gate the entire page
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Departure Reports.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -91,7 +112,8 @@ export default function DepartureReport() {
             fileName="Departure_Reports"
             exportMap={excelMapping}
           />
-          <AddDepartureReportButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for adding departure reports */}
+          {canCreate && <AddDepartureReportButton onSuccess={handleRefresh} />}
         </div>
       </div>
       <ComponentCard

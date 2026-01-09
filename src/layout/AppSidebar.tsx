@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
     icon: <LayoutDashboard size={25} />,
     name: "Dashboard",
     path: "/",
-    requiredPermission: "dashboard.view",
+    
   },
   {
     icon: <FileText size={25} />,
@@ -100,7 +100,7 @@ const navItems: NavItem[] = [
     icon: <Building2 size={25} />, // ✅ Company Icon
     name: "Companies",
     path: "/manage-companies",      // ✅ Matches your new route
-    requiredPermission: "companies.view", // ✅ Matches the RBAC slug
+    requiredPermission: "company.view", // ✅ Matches the RBAC slug
   },
 
   {

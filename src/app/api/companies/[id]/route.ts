@@ -14,7 +14,7 @@ export async function PATCH(
 ) {
   try {
     // 1. Authorization
-    const authz = await authorizeRequest("companies.edit");
+    const authz = await authorizeRequest("company.edit");
     if (!authz.ok) return authz.response;
 
     await dbConnect();
@@ -107,7 +107,7 @@ export async function DELETE(
 ) {
   try {
     // 1. Authorization
-    const authz = await authorizeRequest("companies.delete");
+    const authz = await authorizeRequest("company.delete");
     if (!authz.ok) return authz.response;
 
     await dbConnect();

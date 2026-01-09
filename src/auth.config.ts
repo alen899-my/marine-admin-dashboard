@@ -5,27 +5,22 @@ export const authConfig = {
   pages: {
     signIn: "/signin",
   },
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+  },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.fullName = user.fullName;
-        token.role = user.role;
-        token.permissions = user.permissions;
-        token.profilePicture = user.profilePicture; // ✅ Added
-      }
-      return token;
-    },
+    // Basic session mapping
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.fullName = token.fullName as string;
         session.user.role = token.role as string;
         session.user.permissions = token.permissions as string[];
-        session.user.profilePicture = token.profilePicture as string | null; // ✅ Added
+        session.user.profilePicture = token.profilePicture as string | null;
       }
       return session;
     },
   },
-  providers: [],
+  providers: [], // Empty array, to be populated in auth.ts
 } satisfies NextAuthConfig;

@@ -8,7 +8,7 @@ import UserCardComponent from "@/components/Users/UserCardComponent";
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import { userSchema } from "@/lib/validations/uservalidation/userSchema";
 import Alert from "@/components/ui/alert/Alert"; 
-
+import { useSession } from "next-auth/react";
 import UserDetailsForm from "./components/UserDetailsForm";
 import RoleSelectionList from "./components/RoleSelectionList";
 import PermissionMatrixTable from "./components/PermissionMatrixTable";
@@ -55,6 +55,7 @@ interface IPermission {
 export default function UserFormModal({ isOpen, onClose, onSuccess, initialData }: UserFormModalProps) {
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const { can, isReady } = useAuthorization();
+  const { data: session, update } = useSession();
   const isEditMode = !!initialData || !!createdUserId;
   const currentUserId = initialData?._id || createdUserId;
   const canEdit = can("users.edit");
