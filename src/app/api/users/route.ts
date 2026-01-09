@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
@@ -170,13 +171,24 @@ export async function GET(req: NextRequest) {
     // 1. Ensure DB is connected BEFORE any operations
     await dbConnect();
 
+    // 2. Get current session to identify the user and their role
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    // Check if user is Super Admin (adjust string to match your DB exactly, e.g., 'super-admin')
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-    const companyId = searchParams.get("companyId");
+    const companyIdParam = searchParams.get("companyId");
 
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
@@ -185,12 +197,27 @@ export async function GET(req: NextRequest) {
 
     const query: any = {};
 
-    if (status !== "all") query.status = status;
-
-    // Safety check for companyId to prevent casting errors
-    if (companyId && companyId !== "undefined" && companyId !== "null") {
-      query.company = companyId;
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (isSuperAdmin) {
+      // Super Admin: Can see all or filter by a specific company if provided
+      if (companyIdParam && companyIdParam !== "undefined" && companyIdParam !== "null" && companyIdParam !== "all") {
+        query.company = companyIdParam;
+      }
+    } else {
+      // Regular User: FORCED to their own company
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+      query.company = userCompanyId;
     }
+    // =========================================================
+
+    if (status !== "all") query.status = status;
 
     if (search) {
       query.$or = [
@@ -211,7 +238,7 @@ export async function GET(req: NextRequest) {
       if (Object.keys(dateQuery).length > 0) query.createdAt = dateQuery;
     }
 
-    // 2. Run count and find
+    // 3. Run count and find using the filtered query
     const total = await User.countDocuments(query);
 
     const users = await User.find(query)
