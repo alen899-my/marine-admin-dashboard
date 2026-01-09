@@ -6,6 +6,7 @@ import Voyage from "@/models/Voyage";
 import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi schema
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import Company from "@/models/Company";
 export async function GET(req: Request) {
   try {
      const authz = await authorizeRequest("vessels.view");
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
+    const companyId = searchParams.get("companyId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
@@ -42,6 +44,7 @@ export async function GET(req: Request) {
     } else {
       // 🔵 MODE B: ADMIN LIST (Full Details + Pagination)
       if (status && status !== "all") query.status = status;
+      if (companyId) query.company = companyId;
       
       if (search) {
         query.$or = [
@@ -58,6 +61,7 @@ export async function GET(req: Request) {
       }
 
       vesselQuery = Vessel.find(query)
+      .populate("company", "name")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
         .sort({ createdAt: -1 })
@@ -151,6 +155,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Validation failed", details }, { status: 400 });
     }
 
+    const validCompany = await Company.findById(value.company);
+    if (!validCompany) {
+      return NextResponse.json({ error: "The selected company does not exist." }, { status: 400 });
+    }
+
     // ❌ REMOVED: Manual check for existingVessel. 
     // We let the Database throw the error now.
 
@@ -160,9 +169,15 @@ export async function POST(request: Request) {
       updatedBy: currentUserId, 
     };
 
-    const newVessel = await Vessel.create(vesselData);
+    const newVessel = await Vessel.create(vesselData) as any;
 
-    return NextResponse.json(newVessel, { status: 201 });
+    const populatedVessel = await Vessel.findById(newVessel._id)
+      .populate("company", "name")
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
+      .lean();
+
+    return NextResponse.json(populatedVessel, { status: 201 });
 
   } catch (error: any) {
     // ✅ HANDLE DUPLICATES HERE (Covers Name AND IMO)

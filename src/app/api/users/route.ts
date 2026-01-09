@@ -1,13 +1,14 @@
-import { dbConnect } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
-import User from "@/models/User";
-import Role from "@/models/Role";
-import bcrypt from "bcryptjs";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import path from "path";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { dbConnect } from "@/lib/db";
+import Company from "@/models/Company";
+import Role from "@/models/Role";
+import User from "@/models/User";
 import { put } from "@vercel/blob";
+import bcrypt from "bcryptjs";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,18 +26,25 @@ export async function POST(req: NextRequest) {
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const password = formData.get("password") as string;
+    const company = formData.get("company") as string;
     let role = formData.get("role") as string;
 
     // Handle Permissions (expecting JSON strings for arrays)
-    const additionalPermissionsRaw = formData.get("additionalPermissions") as string;
-    const excludedPermissionsRaw = formData.get("excludedPermissions") as string;
-    
+    const additionalPermissionsRaw = formData.get(
+      "additionalPermissions"
+    ) as string;
+    const excludedPermissionsRaw = formData.get(
+      "excludedPermissions"
+    ) as string;
+
     let additionalPermissions: string[] = [];
     let excludedPermissions: string[] = [];
 
     try {
-      if (additionalPermissionsRaw) additionalPermissions = JSON.parse(additionalPermissionsRaw);
-      if (excludedPermissionsRaw) excludedPermissions = JSON.parse(excludedPermissionsRaw);
+      if (additionalPermissionsRaw)
+        additionalPermissions = JSON.parse(additionalPermissionsRaw);
+      if (excludedPermissionsRaw)
+        excludedPermissions = JSON.parse(excludedPermissionsRaw);
     } catch (e) {
       console.warn("Failed to parse permissions JSON", e);
     }
@@ -95,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Basic Validations
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !company) {
       return NextResponse.json(
         { error: "Missing required fields: name, email, or password" },
         { status: 400 }
@@ -107,6 +115,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "User with this email already exists" },
         { status: 409 }
+      );
+    }
+
+    const validCompany = await Company.findById(company);
+    if (!validCompany) {
+      return NextResponse.json(
+        { error: "Invalid Company ID" },
+        { status: 400 }
       );
     }
 
@@ -126,6 +142,7 @@ export async function POST(req: NextRequest) {
       email: email,
       phone: phone,
       password: hashedPassword,
+      company: company,
       role: role,
       additionalPermissions: additionalPermissions,
       excludedPermissions: excludedPermissions,
@@ -133,11 +150,14 @@ export async function POST(req: NextRequest) {
       status: "active",
     });
 
+    await Company.findByIdAndUpdate(company, {
+      $addToSet: { users: newUser._id },
+    });
+
     return NextResponse.json(
       { success: true, userId: newUser._id, roleId: newUser.role },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error("CREATE USER ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -151,12 +171,14 @@ export async function GET(req: NextRequest) {
     if (!authz.ok) return authz.response;
 
     await dbConnect();
+
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
+    const companyId = searchParams.get("companyId");
 
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
@@ -166,6 +188,11 @@ export async function GET(req: NextRequest) {
     const query: any = {};
 
     if (status !== "all") query.status = status;
+
+    // Safety check for companyId to prevent casting errors
+    if (companyId && companyId !== "undefined" && companyId !== "null") {
+      query.company = companyId;
+    }
 
     if (search) {
       query.$or = [
@@ -186,11 +213,18 @@ export async function GET(req: NextRequest) {
       if (Object.keys(dateQuery).length > 0) query.createdAt = dateQuery;
     }
 
+    // 2. Run count and find
     const total = await User.countDocuments(query);
 
     const users = await User.find(query)
       .select("-password")
       .populate("role", "name")
+      .populate({
+        path: "company",
+        select: "name",
+        // This prevents the whole query from failing if one company is missing
+        strictPopulate: false,
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -206,9 +240,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
+    // Look at your terminal console to see the specific error message here
     console.error("GET USERS ERROR →", error);
     return NextResponse.json(
-      { error: "Failed to fetch users" },
+      { error: error.message || "Failed to fetch users" },
       { status: 500 }
     );
   }
