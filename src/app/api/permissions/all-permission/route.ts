@@ -3,9 +3,11 @@ import Permission from "@/models/Permission";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import Resource from "@/models/Resource";
-
+import { authorizeRequest } from "@/lib/authorizeRequest";
 export async function GET(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("permission.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Resource];
     const { searchParams } = new URL(req.url);

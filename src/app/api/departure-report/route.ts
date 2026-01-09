@@ -39,6 +39,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 export async function GET(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("departure.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Vessel, Voyage, User];
     const { searchParams } = new URL(req.url);

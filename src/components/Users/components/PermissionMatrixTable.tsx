@@ -2,10 +2,12 @@
 
 import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
+import Tooltip from "@/components/ui/tooltip/Tooltip"; // ✅ Import existing Tooltip
 
 interface IPermission {
   _id: string;
   slug: string;
+  name?: string; // Added to support tooltip display
   description?: string;
   group: string;
   resourceId?: {
@@ -32,7 +34,6 @@ export default function PermissionMatrixTable({
   isReadOnly = false,
 }: PermissionMatrixTableProps) {
   
- 
   const grouped = useMemo(() => {
     // 1. Define standard CRUD actions
     const crudEndings = [".create", ".view", ".edit", ".delete"];
@@ -99,39 +100,51 @@ export default function PermissionMatrixTable({
 
                 let isChecked = false;
                 let variant: CheckboxVariant = "default";
-                let tooltip = "Click to Add";
+                let statusLabel = "Click to Add";
 
                 if (isExcluded) {
                   isChecked = true;
                   variant = "danger"; 
-                  tooltip = "Manually Excluded";
+                  statusLabel = "Manually Excluded";
                 } 
                 else if (isRolePerm) {
                   isChecked = true;
                   variant = "default"; 
-                  tooltip = "Inherited from Role";
+                  statusLabel = "Inherited from Role";
                 } 
                 else if (isAdditional) {
                   isChecked = true;
                   variant = "success"; 
-                  tooltip = "Manually Added";
+                  statusLabel = "Manually Added";
                 }
 
                 return (
                   <div key={action} className="flex justify-center">
-                    <div
-                      title={isReadOnly ? "" : tooltip}
-                      onClick={() => !isReadOnly && onToggle(perm.slug)}
-                      className={`relative flex items-center justify-center p-1 transition-transform 
-                        ${!isReadOnly ? 'cursor-pointer active:scale-95' : 'cursor-default opacity-60'}`}
+                    {/* ✅ Tooltip implementation */}
+                    <Tooltip
+                      position="top"
+                      content={
+                        <div className="">
+                         
+                          <p className="text-gray-300">
+                            {perm.description || `Allows user to ${action} ${groupName}.`}
+                          </p>
+                        </div>
+                      }
                     >
-                      <Checkbox 
-                        checked={isChecked} 
-                        onChange={() => {}} 
-                        variant={variant}
-                        className={isReadOnly ? "pointer-events-none" : ""} 
-                      />
-                    </div>
+                      <div
+                        onClick={() => !isReadOnly && onToggle(perm.slug)}
+                        className={`relative flex items-center justify-center p-1 transition-transform 
+                          ${!isReadOnly ? 'cursor-pointer active:scale-95' : 'cursor-default opacity-60'}`}
+                      >
+                        <Checkbox 
+                          checked={isChecked} 
+                          onChange={() => {}} 
+                          variant={variant}
+                          className={isReadOnly ? "pointer-events-none" : ""} 
+                        />
+                      </div>
+                    </Tooltip>
                   </div>
                 );
               })}

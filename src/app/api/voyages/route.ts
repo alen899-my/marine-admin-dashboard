@@ -11,6 +11,8 @@ import { authorizeRequest } from "@/lib/authorizeRequest";
 ====================================== */
 export async function GET(req: Request) {
   try {
+    const authz = await authorizeRequest("voyage.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
     const { searchParams } = new URL(req.url);

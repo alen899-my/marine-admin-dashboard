@@ -168,7 +168,9 @@ export async function POST(req: NextRequest) {
 // ... GET function (Keep your existing GET function here)
 export async function GET(req: NextRequest) {
   try {
-    // 1. Ensure DB is connected BEFORE any operations
+    const authz = await authorizeRequest("users.view");
+    if (!authz.ok) return authz.response;
+
     await dbConnect();
 
     // 2. Get current session to identify the user and their role

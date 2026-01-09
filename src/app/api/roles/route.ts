@@ -7,6 +7,8 @@ import ReportOperational from "@/models/ReportOperational";
 // GET ALL ROLES (With Pagination & Search)
 export async function GET(req: NextRequest) {
   try {
+     const authz = await authorizeRequest("roles.view");
+        if (!authz.ok) return authz.response;
     await dbConnect();
     const { searchParams } = new URL(req.url);
 

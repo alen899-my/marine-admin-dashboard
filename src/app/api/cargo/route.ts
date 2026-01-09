@@ -153,6 +153,8 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    const authz = await authorizeRequest("cargo.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");

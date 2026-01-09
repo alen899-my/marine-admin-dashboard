@@ -37,6 +37,8 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 //  GET ALL NOON REPORTS
 export async function GET(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("noon.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Vessel, Voyage, User];
 

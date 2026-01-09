@@ -107,12 +107,14 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
     }
   }, [currentPage, search, status,setTotalCount]); // Dependencies updated
 
-  // Reset to page 1 if search or status changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, status]);
+ useEffect(() => {
+  setCurrentPage(1);
+}, [search, status]);
 
-  useEffect(() => { fetchResources(); }, [fetchResources, refresh]);
+useEffect(() => {
+  fetchResources();
+}, [currentPage, refresh]);
+
   const handleView = (r: Resource) => {
   setSelectedResource(r);
   setOpenView(true);

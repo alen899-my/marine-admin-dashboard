@@ -1,0 +1,90 @@
+"use client";
+
+import { ReactNode, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+
+type TooltipPosition = "top" | "bottom" | "left" | "right";
+
+interface TooltipProps {
+  content: ReactNode;
+  children: ReactNode;
+  position?: TooltipPosition;
+}
+
+export default function Tooltip2({
+  content,
+  children,
+  position: preferredPosition = "top",
+}: TooltipProps) {
+  const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const positionClasses: Record<TooltipPosition, string> = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+
+  const arrowClasses: Record<TooltipPosition, string> = {
+    top: "top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-zinc-800",
+    bottom: "bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-zinc-800",
+    left: "left-full top-1/2 -translate-y-1/2 border-l-gray-900 dark:border-l-zinc-800",
+    right: "right-full top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-zinc-800",
+  };
+
+  // Mobile Portal Content
+  const mobileTooltip = mounted && open && isMobile
+    ? createPortal(
+        <div className="fixed inset-x-4 bottom-6 z-[999999] animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="bg-gray-900 dark:bg-zinc-800 text-gray-100 p-4 rounded-xl shadow-2xl border border-white/10">
+            <div className="text-[13px] leading-relaxed">
+              {content}
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              className="mt-3 w-full py-2 bg-white/10 rounded-lg text-xs font-bold uppercase tracking-wider"
+            >
+              Close
+            </button>
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div
+      className="relative inline-flex"
+      onMouseEnter={() => !isMobile && setOpen(true)}
+      onMouseLeave={() => !isMobile && setOpen(false)}
+      onClick={() => isMobile && setOpen(!open)}
+    >
+      {children}
+
+      {/* Desktop View: Traditional Absolute Tooltip */}
+      {!isMobile && open && (
+        <div className={`absolute z-[9999] ${positionClasses[preferredPosition]}`}>
+          <div className="relative w-max max-w-[250px] whitespace-normal break-words rounded-lg bg-gray-900 px-3 py-2 text-[11px] leading-tight text-gray-300 shadow-xl dark:bg-zinc-800 border border-white/5">
+            {content}
+            <span className={`absolute h-0 w-0 border-4 border-transparent ${arrowClasses[preferredPosition]}`} />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile View: Portal Overlay */}
+      {mobileTooltip}
+    </div>
+  );
+}
