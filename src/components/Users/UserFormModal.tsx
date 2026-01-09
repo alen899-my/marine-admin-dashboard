@@ -2,13 +2,14 @@
 
 import AddForm from "@/components/common/AddForm";
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
-import Alert from "@/components/ui/alert/Alert";
 import { Modal } from "@/components/ui/modal";
 import UserCardComponent from "@/components/Users/UserCardComponent";
 import { userSchema } from "@/lib/validations/uservalidation/userSchema";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
+import Alert from "@/components/ui/alert/Alert"; 
+import { useSession } from "next-auth/react";
 import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import PermissionLegend from "./components/PermissionLegend";
@@ -60,6 +61,7 @@ export default function UserFormModal({
 }: UserFormModalProps) {
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const { can, isReady } = useAuthorization();
+  const { data: session, update } = useSession();
   const isEditMode = !!initialData || !!createdUserId;
   const currentUserId = initialData?._id || createdUserId;
   const canEdit = can("users.edit");

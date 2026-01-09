@@ -5,6 +5,8 @@ import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; 
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; 
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
+
 // Permission Components
 import PermissionTable from "./PermissionTable";
 import AddPermissionButton from "./AddPermissionButton";
@@ -12,8 +14,14 @@ import PermissionFilter from "@/components/permissions/permissionFilter";
 
 export default function PermissionManagement() {
   const [refresh, setRefresh] = useState(0);
-    const [totalCount, setTotalCount] = useState(0);
-  // Use the shared persistent filter logic (Key: "permission")
+  const [totalCount, setTotalCount] = useState(0);
+  
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("permission.view");
+  const canAdd = can("permission.create");
+
+  // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("permission");
 
   // --- Filter State ---
@@ -26,28 +34,36 @@ export default function PermissionManagement() {
 
   useEffect(() => {
     async function fetchFilterData() {
+      // Only fetch if user can actually view
+      if (!canView) return; 
+
       try {
-        // 1. Fetch ONLY Active Resource documents for the filter dropdown
         const resResources = await fetch("/api/resources?limit=none&status=active");
         const resourcesData = await resResources.json();
-        
-        // Ensure we handle both direct array or paginated object shape
         const resourceList = Array.isArray(resourcesData) ? resourcesData : (resourcesData.data || []);
-        
-        // 2. Map directly to { id, name } objects
         const finalModules = resourceList.map((r: any) => ({
           id: r._id,
           name: r.name
         }));
-
-        // 3. Sort alphabetically and update state
         setModules(finalModules.sort((a: any, b: any) => a.name.localeCompare(b.name)));
       } catch (err) {
         console.error("Failed to load filter modules", err);
       }
     }
-    fetchFilterData();
-  }, [refresh]);
+    if (isReady) fetchFilterData();
+  }, [refresh, isReady, canView]);
+
+  // 1. Wait for Auth to load
+  if (!isReady) return null;
+
+  // 2. Gate the entire page
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Permission Management.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -67,7 +83,8 @@ export default function PermissionManagement() {
             isVisible={isFilterVisible} 
             onToggle={setIsFilterVisible} 
           />
-          <AddPermissionButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for adding */}
+          {canAdd && <AddPermissionButton onSuccess={handleRefresh} />}
         </div>
       </div>
 
@@ -87,9 +104,9 @@ export default function PermissionManagement() {
           ) : null
         }
       >
-          <div className="flex justify-end me-2 mb-2">
-                  <TableCount count={totalCount} label="permissions" />
-                </div>
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="permissions" />
+        </div>
         <PermissionTable
           refresh={refresh}
           search={search}

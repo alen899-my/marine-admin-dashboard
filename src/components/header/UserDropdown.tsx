@@ -15,20 +15,24 @@ export default function UserDropdown() {
   const { data: session } = useSession();
   const user = session?.user;
 
-  useEffect(() => {
-    async function fetchUserData() {
-      try {
-        const res = await fetch("/api/users/profile");
-        if (res.ok) {
-          const data = await res.json();
-          setDbUser(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user data", error);
+ useEffect(() => {
+  async function fetchUserData() {
+    try {
+      const res = await fetch("/api/users/profile");
+      if (res.ok) {
+        const data = await res.json();
+        setDbUser(data);
       }
+    } catch (error) {
+      console.error("Failed to fetch user data", error);
     }
-    if (session) fetchUserData();
-  }, [session]);
+  }
+
+  // ONLY fetch if we have a session AND we haven't loaded dbUser yet
+  if (session && !dbUser) { 
+    fetchUserData();
+  }
+}, [session, dbUser]); // Added dbUser to dependencies
 
   const fullName = dbUser?.fullName || user?.fullName || "User";
   const email = dbUser?.email || user?.email || "";

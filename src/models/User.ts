@@ -10,7 +10,7 @@ const userSchema = new Schema(
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
-      required: true,
+      required: false,
     },
 
     role: {

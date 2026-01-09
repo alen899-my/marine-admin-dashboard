@@ -14,7 +14,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Vessel Management",
+  title: "Parkora Falcon",
   description: "Professional Dashboard",
 };
 

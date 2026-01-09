@@ -9,11 +9,17 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared H
 import { useEffect, useState } from "react";
 import AddNORButton from "./AddNORButton";
 import NorReportTable from "./NorReportTable";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function NoticeOfReadiness() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("nor.view");
+  const canCreate = can("nor.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("nor");
@@ -28,6 +34,9 @@ export default function NoticeOfReadiness() {
 
   useEffect(() => {
     async function fetchVessels() {
+      // Only fetch vessels if the user is authorized to view the page
+      if (!canView) return;
+
       try {
         const res = await fetch("/api/vessels");
         if (res.ok) {
@@ -38,8 +47,8 @@ export default function NoticeOfReadiness() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    fetchVessels();
-  }, []);
+    if (isReady) fetchVessels();
+  }, [isReady, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -65,6 +74,18 @@ export default function NoticeOfReadiness() {
     "Document URL": r.norDetails?.documentUrl || "No Attachment",
   });
 
+  // 1. Wait for Auth check
+  if (!isReady) return null;
+
+  // 2. Full Page Guard
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access NOR Reports.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -85,7 +106,8 @@ export default function NoticeOfReadiness() {
             fileName="NOR_Reports"
             exportMap={excelMapping}
           />
-          <AddNORButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for creating NOR */}
+          {canCreate && <AddNORButton onSuccess={handleRefresh} />}
         </div>
       </div>
 

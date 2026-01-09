@@ -2,25 +2,43 @@
 
 import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import ResourceFilters from "@/components/resources/ResourceFilters"; // ✅ Using the new specific filter
+import ResourceFilters from "@/components/resources/ResourceFilters";
 import AddResource from "./AddResource";
 import TableCount from "@/components/common/TableCount";
 import ResourceTable from "./ResourceTable"; 
 import FilterToggleButton from "@/components/common/FilterToggleButton"; 
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function ResourceManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // Authorization hooks
+  const { can, isReady } = useAuthorization();
+  const canView = can("resource.view");
+  const canAdd = can("resource.create");
 
   // Persistence hook for "resources" module
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources");
 
-  // --- Filter State (Clean & Minimal) ---
+  // --- Filter State ---
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
+
+  // Don't render anything until auth status is known
+  if (!isReady) return null;
+
+  // If user can't even view, show an access denied message or nothing
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">You do not have permission to access Resource Management.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -40,7 +58,8 @@ export default function ResourceManagement() {
             isVisible={isFilterVisible} 
             onToggle={setIsFilterVisible} 
           />
-          <AddResource onSuccess={handleRefresh} />
+          {/* ✅ Only show Add button if user has permission */}
+          {canAdd && <AddResource onSuccess={handleRefresh} />}
         </div>
       </div>
 
@@ -57,14 +76,15 @@ export default function ResourceManagement() {
           ) : null
         }
       >
-         <div className="flex justify-end me-2 mb-2">
-                  <TableCount count={totalCount} label="resources" />
-                </div>
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="resources" />
+        </div>
+        
         <ResourceTable 
           refresh={refresh} 
           search={search} 
           status={status} 
-           setTotalCount={setTotalCount}
+          setTotalCount={setTotalCount}
         />
       </ComponentCard>
     </div>

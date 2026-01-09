@@ -9,11 +9,17 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared H
 import { useEffect, useState } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
 import ArrivalReportTable from "./ArrivalReportTable";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function ArrivalReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for Excel data
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("arrival.view");
+  const canCreate = can("arrival.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } =
@@ -30,6 +36,9 @@ export default function ArrivalReport() {
 
   useEffect(() => {
     async function fetchVessels() {
+      // Only fetch if user has view permission
+      if (!canView) return;
+
       try {
         const res = await fetch("/api/vessels");
         if (res.ok) {
@@ -40,8 +49,8 @@ export default function ArrivalReport() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    fetchVessels();
-  }, []);
+    if (isReady) fetchVessels();
+  }, [isReady, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -73,6 +82,18 @@ export default function ArrivalReport() {
     Remarks: r.remarks || "No Remarks",
   });
 
+  // 1. Wait for Auth load
+  if (!isReady) return null;
+
+  // 2. Gate the entire page
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Arrival Reports.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -92,7 +113,8 @@ export default function ArrivalReport() {
             fileName="Arrival_Reports"
             exportMap={excelMapping}
           />
-          <AddArrivalReportButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for creating arrival reports */}
+          {canCreate && <AddArrivalReportButton onSuccess={handleRefresh} />}
         </div>
       </div>
 

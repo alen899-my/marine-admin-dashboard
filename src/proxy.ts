@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
 import { NextResponse } from "next/server";
-import { routePermissions } from "@/lib/routePermissions"; // Ensure this path is correct
+import { routePermissions } from "@/lib/routePermissions";
 
 const { auth } = NextAuth(authConfig);
 
@@ -12,27 +12,22 @@ export default auth((req) => {
   const { nextUrl } = req;
   const user = req.auth?.user;
 
-  // 1. If Logged In -> Block access to Signin/Signup
+  // 1. Redirect if logged in and accessing auth pages
   if (isLoggedIn && publicRoutes.includes(nextUrl.pathname)) {
     return NextResponse.redirect(new URL("/", nextUrl));
   }
 
-  // 2. If Not Logged In -> Block access to protected routes
+  // 2. Redirect if not logged in and accessing protected pages
   if (!isLoggedIn && !publicRoutes.includes(nextUrl.pathname)) {
     return NextResponse.redirect(new URL("/signin", nextUrl));
   }
 
-  // 3. RBAC Logic: Direct URL Access Protection
+  // 3. RBAC Logic
   if (isLoggedIn) {
     const requiredPermission = routePermissions[nextUrl.pathname];
-
-    // If the route is in our map, check if the user has the required permission
     if (requiredPermission) {
       const userPermissions = (user as any).permissions || [];
-      const hasAccess = userPermissions.includes(requiredPermission);
-
-      if (!hasAccess) {
-        // Redirect them to a 'Not Authorized' page or back to home
+      if (!userPermissions.includes(requiredPermission)) {
         return NextResponse.redirect(new URL("/403", nextUrl));
       }
     }

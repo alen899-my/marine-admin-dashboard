@@ -8,14 +8,21 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared H
 import { useState } from "react";
 import AddVoyage from "./AddVoyage";
 import VoyageTable from "./VoyageTable";
+import { useAuthorization } from "@/hooks/useAuthorization"; 
 
 export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-
+  
+  const { can, isReady } = useAuthorization();
+  
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } =
     useFilterPersistence("voyage");
+
+  // ✅ Permissions logic
+  const canView = can("permission.view"); 
+  const canAdd = can("permission.create");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -24,6 +31,18 @@ export default function VoyageManagement() {
   const [endDate, setEndDate] = useState("");
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
+
+  // 1. Wait for Auth check
+  if (!isReady) return null;
+
+  // 2. Full Page Guard
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">You do not have permission to access Voyage Management.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -39,8 +58,8 @@ export default function VoyageManagement() {
             isVisible={isFilterVisible}
             onToggle={setIsFilterVisible}
           />
-          {/* Add Voyage Button triggers refresh on success */}
-          <AddVoyage onSuccess={handleRefresh} />
+          {/* ✅ Check permission for adding */}
+          {canAdd && <AddVoyage onSuccess={handleRefresh} />}
         </div>
       </div>
 

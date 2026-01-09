@@ -88,8 +88,8 @@ export default function CompaniesTable({
   const LIMIT = 20;
 
   const { can } = useAuthorization();
-  const canEdit = can("companies.edit");
-  const canDelete = can("companies.delete");
+  const canEdit = can("company.edit");
+  const canDelete = can("company.delete");
 
   // --- 1. Fetch Companies ---
   const fetchCompanies = useCallback(

@@ -103,16 +103,12 @@ const canDelete = can("permission.delete");
 
 
 
- useEffect(() => {
+useEffect(() => {
   const fetchResources = async () => {
     try {
-    
       const res = await fetch("/api/resources?limit=none&status=active");
       const data = await res.json();
-      
-      // 💡 Check if data is an array (since limit=none returns a direct array)
       const resourceList = Array.isArray(data) ? data : (data.data || []);
-      
       setResourceOptions(resourceList.map((r: any) => ({
         value: r._id,
         label: r.name
@@ -171,13 +167,12 @@ const canDelete = can("permission.delete");
       ),
     },
   ];
-
 const fetchPermissions = useCallback(async () => {
   try {
     setLoading(true);
     const params = new URLSearchParams({
       page: currentPage.toString(),
-      limit: "20", // Hardcoded to match ResourceTable
+      limit: "20",
       search: search || "",
       status: status || "all",
       resource: module || ""
@@ -185,30 +180,38 @@ const fetchPermissions = useCallback(async () => {
 
     const res = await fetch(`/api/permissions/all-permission?${params.toString()}`);
     if (!res.ok) throw new Error();
-    
     const result = await res.json();
     
     setPermissions(result.data || []);
-    if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.data?.length || 0);
-        }
+    
+    // Check for actual change before calling parent state update
+    if (setTotalCount && result.pagination?.total !== undefined) {
+      setTotalCount(result.pagination.total);
+    }
     setTotalPages(result.pagination?.totalPages || 1);
   } catch (err) {
     toast.error("Failed to load permissions");
   } finally {
     setLoading(false);
   }
-}, [currentPage, search, status, module,setTotalCount]);
+}, [currentPage, search, status, module]); // Remove setTotalCount from deps
 
-  // Reset to page 1 on filter change
-  useEffect(() => {
+// 2. Optimized Effect Logic
+useEffect(() => {
+  // Only reset if we aren't already on page 1
+  if (currentPage !== 1) {
     setCurrentPage(1);
-  }, [search, status, module]);
+  } else {
+    // If we are already on page 1, manually trigger the fetch 
+    // because the currentPage change won't trigger the effect below
+    fetchPermissions();
+  }
+}, [search, status, module]);
 
-  // Trigger fetch
-  useEffect(() => { 
-    fetchPermissions(); 
-  }, [fetchPermissions, refresh]);
+useEffect(() => {
+  // This handles the initial mount and whenever currentPage or refresh changes
+  fetchPermissions();
+}, [currentPage, refresh]);
 
   /* ================= ACTIONS ================= */
   const handleEdit = (p: Permission) => {

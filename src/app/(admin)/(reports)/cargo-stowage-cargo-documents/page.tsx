@@ -9,11 +9,17 @@ import ExportToExcel from "@/components/common/ExportToExcel";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function CragoStowageCargoDocuments() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // Data for Excel
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("cargo.view");
+  const canCreate = can("cargo.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("cargoDocuments");
@@ -28,6 +34,9 @@ export default function CragoStowageCargoDocuments() {
 
   useEffect(() => {
     async function fetchVessels() {
+      // Only fetch vessels if user is authorized to view
+      if (!canView) return;
+
       try {
         const res = await fetch("/api/vessels");
         if (res.ok) {
@@ -38,8 +47,8 @@ export default function CragoStowageCargoDocuments() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    fetchVessels();
-  }, []);
+    if (isReady) fetchVessels();
+  }, [isReady, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -56,6 +65,18 @@ export default function CragoStowageCargoDocuments() {
     "File URL": r.file?.url || "No Attachment",
     "Remarks": r.remarks || "No Remarks",
   });
+
+  // 1. Wait for Auth check
+  if (!isReady) return null;
+
+  // 2. Full Page Guard
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Cargo Documents.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -77,7 +98,8 @@ export default function CragoStowageCargoDocuments() {
             fileName="Cargo_Documents_Report" 
             exportMap={excelMapping}
            />
-          <AddCargoButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for creating cargo documents */}
+          {canCreate && <AddCargoButton onSuccess={handleRefresh} />}
         </div>
       </div>
       <ComponentCard
@@ -103,8 +125,8 @@ export default function CragoStowageCargoDocuments() {
         }
       >
         <div className="flex justify-end me-2 mb-2">
-                  <TableCount count={totalCount} label="Reports" />
-                </div>
+          <TableCount count={totalCount} label="Reports" />
+        </div>
         <CargoReportTable
           refresh={refresh}
           search={search}

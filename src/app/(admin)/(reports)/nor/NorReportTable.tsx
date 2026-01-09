@@ -656,8 +656,7 @@ export default function NorReportTable({
                   No file attached
                 </span>
               ) : (
-                <div className="flex flex-row gap-4 items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
-                  {/* 🖼 THUMBNAIL */}
+               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
                   <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
                     {fileMeta.isImage && (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -967,7 +966,7 @@ export default function NorReportTable({
                     {newFile ? "New File Selected" : "Current File"}
                   </Label>
 
-                  <div className="flex flex-row gap-4 items-start">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
                     {/* 🖼 THUMBNAIL (Fixed Small Square) */}
                     <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
                       {/* Logic: If it's a PDF, show ICON. If Image, show Thumbnail. */}

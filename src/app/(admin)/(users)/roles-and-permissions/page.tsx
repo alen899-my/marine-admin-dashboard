@@ -8,10 +8,16 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared H
 import { useState } from "react";
 import AddRoleButton from "./AddRoleButton";
 import RolesTable from "./RolesTable";
+import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function RoleManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+
+  // ✅ Authorization logic
+  const { can, isReady } = useAuthorization();
+  const canView = can("roles.view");
+  const canCreate = can("roles.create");
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
@@ -23,6 +29,18 @@ export default function RoleManagement() {
   const [endDate, setEndDate] = useState("");
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
+
+  // 1. Wait for Auth check to complete
+  if (!isReady) return null;
+
+  // 2. Full Page Guard
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">You do not have permission to access Roles & Permissions.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,8 +56,8 @@ export default function RoleManagement() {
             isVisible={isFilterVisible}
             onToggle={setIsFilterVisible}
           />
-          {/* Add Role Button */}
-          <AddRoleButton onSuccess={handleRefresh} />
+          {/* ✅ Check permission for creating roles */}
+          {canCreate && <AddRoleButton onSuccess={handleRefresh} />}
         </div>
       </div>
 

@@ -148,7 +148,7 @@ export default function AddCompanyButton({ onSuccess }: AddCompanyButtonProps) {
     }
   };
 
-  if (!isReady || !can("companies.create")) return null;
+  if (!isReady || !can("company.create")) return null;
 
   return (
     <>
