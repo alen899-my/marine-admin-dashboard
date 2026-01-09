@@ -18,6 +18,13 @@ export const vesselSchema = Joi.object({
       "any.required": "IMO Number is required",
     }),
 
+    company: Joi.string()
+    .required()
+    .messages({
+      "string.empty": "Please select a company",
+      "any.required": "Company selection is required",
+    }),
+
   // --- OPTIONAL FIELDS (Allowing them so validation doesn't fail on unknown keys) ---
   fleet: Joi.string().allow("").optional(),
   status: Joi.string().valid("active", "laid_up", "sold", "dry_dock").default("active"),

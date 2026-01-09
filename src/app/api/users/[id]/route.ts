@@ -1,13 +1,13 @@
-import { dbConnect } from "@/lib/db";
-import User from "@/models/User";
-import Role from "@/models/Role";
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import path from "path";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { dbConnect } from "@/lib/db";
+import Company from "@/models/Company";
+import User from "@/models/User";
 import { put } from "@vercel/blob";
+import bcrypt from "bcryptjs";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
 export async function PATCH(
   req: NextRequest,
@@ -34,11 +34,45 @@ export async function PATCH(
     const updateData: any = {};
 
     // Only update fields if they are present in the FormData
-    if (formData.has("name")) updateData.fullName = formData.get("name") as string;
-    if (formData.has("email")) updateData.email = formData.get("email") as string;
-    if (formData.has("phone")) updateData.phone = formData.get("phone") as string;
+    if (formData.has("name"))
+      updateData.fullName = formData.get("name") as string;
+    if (formData.has("email"))
+      updateData.email = formData.get("email") as string;
+    if (formData.has("phone"))
+      updateData.phone = formData.get("phone") as string;
     if (formData.has("role")) updateData.role = formData.get("role") as string;
-    if (formData.has("status")) updateData.status = formData.get("status") as string;
+    if (formData.has("status"))
+      updateData.status = formData.get("status") as string;
+
+    if (formData.has("company")) {
+      const newCompanyId = formData.get("company") as string;
+      const oldCompanyId = user.company?.toString();
+
+      if (newCompanyId !== oldCompanyId) {
+        // Validate new company exists
+        const companyExists = await Company.findById(newCompanyId);
+        if (!companyExists) {
+          return NextResponse.json(
+            { error: "Invalid Company ID" },
+            { status: 400 }
+          );
+        }
+
+        updateData.company = newCompanyId;
+
+        // Remove user from old company's user list
+        if (oldCompanyId) {
+          await Company.findByIdAndUpdate(oldCompanyId, {
+            $pull: { users: id },
+          });
+        }
+
+        // Add user to new company's user list
+        await Company.findByIdAndUpdate(newCompanyId, {
+          $addToSet: { users: id },
+        });
+      }
+    }
 
     // Password logic
     const password = formData.get("password") as string;
@@ -49,21 +83,32 @@ export async function PATCH(
     // Permission Arrays (Parse JSON strings)
     if (formData.has("additionalPermissions")) {
       try {
-        updateData.additionalPermissions = JSON.parse(formData.get("additionalPermissions") as string);
-      } catch (e) { console.warn("Invalid additionalPermissions JSON"); }
+        updateData.additionalPermissions = JSON.parse(
+          formData.get("additionalPermissions") as string
+        );
+      } catch (e) {
+        console.warn("Invalid additionalPermissions JSON");
+      }
     }
 
     if (formData.has("excludedPermissions")) {
       try {
-        updateData.excludedPermissions = JSON.parse(formData.get("excludedPermissions") as string);
-      } catch (e) { console.warn("Invalid excludedPermissions JSON"); }
+        updateData.excludedPermissions = JSON.parse(
+          formData.get("excludedPermissions") as string
+        );
+      } catch (e) {
+        console.warn("Invalid excludedPermissions JSON");
+      }
     }
 
     // 4. Handle Profile Picture
     const file = formData.get("profilePicture") as File | null;
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json({ error: "Profile picture exceeds 2MB." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Profile picture exceeds 2MB." },
+          { status: 400 }
+        );
       }
 
       const filename = `user_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
@@ -75,7 +120,10 @@ export async function PATCH(
         await writeFile(path.join(uploadDir, filename), buffer);
         updateData.profilePicture = `/uploads/users/${filename}`;
       } else {
-        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+        const blob = await put(filename, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
         updateData.profilePicture = blob.url;
       }
     }
@@ -88,11 +136,14 @@ export async function PATCH(
     ).select("-password");
 
     return NextResponse.json({ success: true, user: updatedUser });
-
   } catch (error: any) {
     console.error("UPDATE USER ERROR →", error);
-    if (error.code === 11000) return NextResponse.json({ error: "Email exists" }, { status: 409 });
-    return NextResponse.json({ error: error.message || "Failed update" }, { status: 500 });
+    if (error.code === 11000)
+      return NextResponse.json({ error: "Email exists" }, { status: 409 });
+    return NextResponse.json(
+      { error: error.message || "Failed update" },
+      { status: 500 }
+    );
   }
 }
 export async function DELETE(
@@ -107,6 +158,12 @@ export async function DELETE(
     const { id } = await context.params;
 
     const deleted = await User.findByIdAndDelete(id);
+
+    if (deleted && deleted.company) {
+      await Company.findByIdAndUpdate(deleted.company, {
+        $pull: { users: id },
+      });
+    }
 
     if (!deleted) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

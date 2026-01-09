@@ -6,13 +6,19 @@ import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import Checkbox from "@/components/form/input/Checkbox"; // Using your custom Checkbox
 import Input from "@/components/form/input/InputField";
-import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
 
 // --- Types Matching Mongoose Schema ---
@@ -43,6 +49,7 @@ interface Vessel {
   _id: string;
   name: string;
   imo: string;
+  company?: { _id: string; name: string } | any;
   fleet?: string;
   status: "active" | "laid_up" | "sold" | "dry_dock";
   callSign?: string;
@@ -81,12 +88,15 @@ export default function VesselTable({
 }: VesselTableProps) {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companiesList, setCompaniesList] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   // Modals
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Selection
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [editData, setEditData] = useState<EditFormData | null>(null);
@@ -100,11 +110,11 @@ export default function VesselTable({
   // Permissions
   const { can, isReady } = useAuthorization();
   // Using generic placeholders; adjust to your actual permission strings
-  const canEdit = can("vessels.edit"); 
+  const canEdit = can("vessels.edit");
   const canDelete = can("vessels.delete");
 
   /* ================= HELPERS ================= */
-  
+
   // Format Date if needed (e.g. for CreatedAt)
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -116,11 +126,32 @@ export default function VesselTable({
     });
   };
 
+  // 4. Fetch companies when Edit Modal opens
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const json = await res.json();
+          const formatted = (json.data || []).map((c: any) => ({
+            value: c._id,
+            label: c.name,
+          }));
+          setCompaniesList(formatted);
+        }
+      } catch (error) {
+        console.error("Failed to load companies", error);
+      }
+    }
+    if (openEdit) fetchCompanies();
+  }, [openEdit]);
+
   /* ================= COLUMNS ================= */
- const columns = [
+  const columns = [
     {
       header: "S.No",
-      render: (_: Vessel, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: Vessel, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Vessel Name",
@@ -130,13 +161,13 @@ export default function VesselTable({
             {v.name}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-             {v.fleet && <span>{v.fleet}</span>}
-             {v.flag && (
-                <>
-                 <span className="opacity-30">|</span>
-                 <span>{v.flag}</span>
-                </>
-             )}
+            {v.fleet && <span>{v.fleet}</span>}
+            {v.flag && (
+              <>
+                <span className="opacity-30">|</span>
+                <span>{v.flag}</span>
+              </>
+            )}
           </div>
         </div>
       ),
@@ -153,7 +184,7 @@ export default function VesselTable({
               {v.imo}
             </span>
           </div>
-          
+
           {/* Call Sign */}
           <div className="grid grid-cols-[55px_1fr] items-center">
             <span className="text-gray-400">Call Sign</span>
@@ -161,7 +192,7 @@ export default function VesselTable({
               {v.callSign || "-"}
             </span>
           </div>
-          
+
           {/* MMSI */}
           <div className="grid grid-cols-[55px_1fr] items-center">
             <span className="text-gray-400">MMSI</span>
@@ -171,6 +202,18 @@ export default function VesselTable({
           </div>
         </div>
       ),
+    },
+    {
+      header: "Company", // ✅ New Column
+      render: (v: Vessel) => {
+        const companyName =
+          typeof v.company === "object" ? v.company?.name : "N/A";
+        return (
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            {companyName || "N/A"}
+          </span>
+        );
+      },
     },
     {
       header: "Dimensions",
@@ -201,7 +244,7 @@ export default function VesselTable({
       header: "Capacity",
       render: (v: Vessel) => (
         <div className="flex flex-col gap-1 text-xs min-w-[90px]">
-           <div className="flex grid-cols-[55px_1fr] justify-between">
+          <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">DWT</span>
             <span className="text-gray-900 dark:text-white font-bold">
               {v.dimensions?.dwt ? `${v.dimensions.dwt.toLocaleString()}` : "-"}
@@ -210,50 +253,74 @@ export default function VesselTable({
           <div className="flex grid-cols-[55px_1fr] justify-between">
             <span className="text-gray-400">GT</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium">
-              {v.dimensions?.grossTonnage ? v.dimensions.grossTonnage.toLocaleString() : "-"}
+              {v.dimensions?.grossTonnage
+                ? v.dimensions.grossTonnage.toLocaleString()
+                : "-"}
             </span>
           </div>
         </div>
-      )
+      ),
     },
     {
       header: "Machinery",
       render: (v: Vessel) => (
         <div className="flex flex-col gap-1.5 max-w-[180px]">
-           <div className="text-xs">
-             <span className="text-gray-400 block text-[10px] uppercase mb-0.5">Main Engine</span>
-             <span className="text-gray-700 dark:text-gray-300 font-medium line-clamp-1" title={v.machinery?.mainEngine}>
-                {v.machinery?.mainEngine || "-"}
-             </span>
-           </div>
-           
-           <div className="flex flex-wrap gap-1">
-              {v.machinery?.allowedFuels?.slice(0, 3).map(f => (
-                  <span key={f} className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300 border border-gray-200 dark:border-white/5">
-                    {f}
-                  </span>
-              ))}
-              {(v.machinery?.allowedFuels?.length || 0) > 3 && (
-                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-50 text-gray-400 dark:bg-white/5">
-                    +{v.machinery!.allowedFuels!.length - 3}
-                 </span>
-              )}
-           </div>
+          <div className="text-xs">
+            <span className="text-gray-400 block text-[10px] uppercase mb-0.5">
+              Main Engine
+            </span>
+            <span
+              className="text-gray-700 dark:text-gray-300 font-medium line-clamp-1"
+              title={v.machinery?.mainEngine}
+            >
+              {v.machinery?.mainEngine || "-"}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-1">
+            {v.machinery?.allowedFuels?.slice(0, 3).map((f) => (
+              <span
+                key={f}
+                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300 border border-gray-200 dark:border-white/5"
+              >
+                {f}
+              </span>
+            ))}
+            {(v.machinery?.allowedFuels?.length || 0) > 3 && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-50 text-gray-400 dark:bg-white/5">
+                +{v.machinery!.allowedFuels!.length - 3}
+              </span>
+            )}
+          </div>
         </div>
-      )
+      ),
     },
     {
       header: "Status",
       render: (v: Vessel) => {
-        let color: "success" | "warning" | "error" | "default" | "light" = "default";
-        let label: string = v.status; 
-        
+        let color: "success" | "warning" | "error" | "default" | "light" =
+          "default";
+        let label: string = v.status;
+
         switch (v.status) {
-          case "active": color = "success"; label = "Active"; break;
-          case "laid_up": color = "warning"; label = "Laid Up"; break;
-          case "sold": color = "error"; label = "Sold"; break;
-          case "dry_dock": color = "light"; label = "Dry Dock"; break;
-          default: label = v.status;
+          case "active":
+            color = "success";
+            label = "Active";
+            break;
+          case "laid_up":
+            color = "warning";
+            label = "Laid Up";
+            break;
+          case "sold":
+            color = "error";
+            label = "Sold";
+            break;
+          case "dry_dock":
+            color = "light";
+            label = "Dry Dock";
+            break;
+          default:
+            label = v.status;
         }
 
         return <Badge color={color}>{label}</Badge>;
@@ -280,24 +347,23 @@ export default function VesselTable({
         if (!res.ok) throw new Error();
 
         const result = await res.json();
-        
+
         // Handle API response structure (assuming { data: [], pagination: {} } or similar)
         // Adjust based on your actual API response structure
         if (Array.isArray(result)) {
-           // If API returns plain array (from previous GET example), we manually paginate or handle it
-           setVessels(result);
-           setTotalPages(1);
+          // If API returns plain array (from previous GET example), we manually paginate or handle it
+          setVessels(result);
+          setTotalPages(1);
         } else {
-           setVessels(result.data || []);
+          setVessels(result.data || []);
 
-           // UPDATE DYNAMIC COUNT
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.length || 0);
+          // UPDATE DYNAMIC COUNT
+          if (setTotalCount) {
+            setTotalCount(result.pagination?.total || result.length || 0);
+          }
+
+          setTotalPages(result.pagination?.totalPages || 1);
         }
-
-           setTotalPages(result.pagination?.totalPages || 1);
-        }
-
       } catch (err) {
         setVessels([]);
         setTotalPages(1);
@@ -343,11 +409,12 @@ export default function VesselTable({
       mmsi: vessel.mmsi,
       flag: vessel.flag,
       yearBuilt: vessel.yearBuilt,
+      company: typeof vessel.company === 'object' ? vessel.company?._id : vessel.company,
       dimensions: { ...vessel.dimensions },
       performance: { ...vessel.performance },
-      machinery: { 
+      machinery: {
         mainEngine: vessel.machinery?.mainEngine,
-        allowedFuels: vessel.machinery?.allowedFuels || [] 
+        allowedFuels: vessel.machinery?.allowedFuels || [],
       },
     });
     setOpenEdit(true);
@@ -358,23 +425,24 @@ export default function VesselTable({
     setSaving(true);
 
     try {
-        // Ensure numeric fields are actually numbers
-        const payload = {
-            ...editData,
-            yearBuilt: Number(editData.yearBuilt),
-            dimensions: {
-                loa: Number(editData.dimensions?.loa),
-                beam: Number(editData.dimensions?.beam),
-                maxDraft: Number(editData.dimensions?.maxDraft),
-                dwt: Number(editData.dimensions?.dwt),
-                grossTonnage: Number(editData.dimensions?.grossTonnage),
-            },
-            performance: {
-                designSpeed: Number(editData.performance?.designSpeed),
-                ballastConsumption: Number(editData.performance?.ballastConsumption),
-                ladenConsumption: Number(editData.performance?.ladenConsumption),
-            }
-        }
+      // Ensure numeric fields are actually numbers
+      const payload = {
+        ...editData,
+        company: editData.company,
+        yearBuilt: Number(editData.yearBuilt),
+        dimensions: {
+          loa: Number(editData.dimensions?.loa),
+          beam: Number(editData.dimensions?.beam),
+          maxDraft: Number(editData.dimensions?.maxDraft),
+          dwt: Number(editData.dimensions?.dwt),
+          grossTonnage: Number(editData.dimensions?.grossTonnage),
+        },
+        performance: {
+          designSpeed: Number(editData.performance?.designSpeed),
+          ballastConsumption: Number(editData.performance?.ballastConsumption),
+          ladenConsumption: Number(editData.performance?.ladenConsumption),
+        },
+      };
 
       const res = await fetch(`/api/vessels/${selectedVessel._id}`, {
         method: "PATCH",
@@ -386,12 +454,15 @@ export default function VesselTable({
       const responseData = await res.json();
       const updatedVesselData = responseData.report || responseData.data;
 
-    setVessels((prev) =>
-        prev.map((v) => (v._id === updatedVesselData._id ? updatedVesselData : v))
+      setVessels((prev) =>
+        prev.map((v) =>
+          v._id === updatedVesselData._id ? updatedVesselData : v
+        )
       );
       toast.success("Vessel updated successfully");
       setOpenEdit(false);
       setSelectedVessel(null);
+      if (refresh) fetchVessels(currentPage);
     } catch {
       toast.error("Failed to update vessel");
     } finally {
@@ -401,7 +472,7 @@ export default function VesselTable({
 
   async function handleDelete() {
     if (!selectedVessel) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/vessels/${selectedVessel._id}`, {
         method: "DELETE",
@@ -409,7 +480,7 @@ export default function VesselTable({
       if (!res.ok) throw new Error();
 
       setVessels((prev) => prev.filter((v) => v._id !== selectedVessel._id));
-      
+
       // UPDATE DYNAMIC COUNT ON DELETE
       if (setTotalCount) {
         setTotalCount((prev) => Math.max(0, prev - 1));
@@ -449,7 +520,7 @@ export default function VesselTable({
     const newFuels = currentFuels.includes(fuel)
       ? currentFuels.filter((f) => f !== fuel)
       : [...currentFuels, fuel];
-    
+
     handleNestedEditChange("machinery", "allowedFuels", newFuels);
   };
 
@@ -485,7 +556,7 @@ export default function VesselTable({
       </div>
 
       {/* ================= VIEW MODAL ================= */}
-    
+
       <ViewModal
         isOpen={openView}
         onClose={() => setOpenView(false)}
@@ -502,31 +573,61 @@ export default function VesselTable({
       >
         <div className="text-[13px] py-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-            
             {/* GENERAL INFO */}
             <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
                 General Information
               </h3>
               <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Vessel Name</span>
+          <span className="font-medium">
+            {selectedVessel?.name || "-"}
+          </span>
+        </div>
+
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">IMO Number</span>
+          <span className="font-medium">
+            {selectedVessel?.imo || "-"}
+          </span>
+        </div>
+              <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Company</span>
+          <span className="font-medium">
+            {typeof selectedVessel?.company === "object" 
+              ? selectedVessel.company.name 
+              : "-"}
+          </span>
+        </div>
+              <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Fleet</span>
-                <span className="font-medium">{selectedVessel?.fleet || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.fleet || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Call Sign</span>
-                <span className="font-medium">{selectedVessel?.callSign || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.callSign || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">MMSI</span>
-                <span className="font-medium">{selectedVessel?.mmsi || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.mmsi || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Flag</span>
-                <span className="font-medium">{selectedVessel?.flag || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.flag || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Year Built</span>
-                <span className="font-medium">{selectedVessel?.yearBuilt || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.yearBuilt || "-"}
+                </span>
               </div>
             </section>
 
@@ -537,23 +638,33 @@ export default function VesselTable({
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">LOA</span>
-                <span className="font-medium">{selectedVessel?.dimensions?.loa} M</span>
+                <span className="font-medium">
+                  {selectedVessel?.dimensions?.loa} M
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Beam</span>
-                <span className="font-medium">{selectedVessel?.dimensions?.beam} M</span>
+                <span className="font-medium">
+                  {selectedVessel?.dimensions?.beam} M
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Max Draft</span>
-                <span className="font-medium">{selectedVessel?.dimensions?.maxDraft} M</span>
+                <span className="font-medium">
+                  {selectedVessel?.dimensions?.maxDraft} M
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Deadweight</span>
-                <span className="font-medium">{selectedVessel?.dimensions?.dwt} MT</span>
+                <span className="font-medium">
+                  {selectedVessel?.dimensions?.dwt} MT
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Gross Tonnage</span>
-                <span className="font-medium">{selectedVessel?.dimensions?.grossTonnage} GT</span>
+                <span className="font-medium">
+                  {selectedVessel?.dimensions?.grossTonnage} GT
+                </span>
               </div>
             </section>
 
@@ -564,15 +675,21 @@ export default function VesselTable({
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Design Speed</span>
-                <span className="font-medium">{selectedVessel?.performance?.designSpeed} KN</span>
+                <span className="font-medium">
+                  {selectedVessel?.performance?.designSpeed} KN
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Ballast Consumption</span>
-                <span className="font-medium">{selectedVessel?.performance?.ballastConsumption} MT/day</span>
+                <span className="font-medium">
+                  {selectedVessel?.performance?.ballastConsumption} MT/day
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Laden Consumption</span>
-                <span className="font-medium">{selectedVessel?.performance?.ladenConsumption} MT/day</span>
+                <span className="font-medium">
+                  {selectedVessel?.performance?.ladenConsumption} MT/day
+                </span>
               </div>
             </section>
 
@@ -583,15 +700,24 @@ export default function VesselTable({
               </h3>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Main Engine</span>
-                <span className="font-medium">{selectedVessel?.machinery?.mainEngine || "-"}</span>
+                <span className="font-medium">
+                  {selectedVessel?.machinery?.mainEngine || "-"}
+                </span>
               </div>
               <div className="flex justify-between gap-4 items-start">
                 <span className="text-gray-500 shrink-0">Allowed Fuels</span>
                 <div className="flex flex-wrap gap-1 justify-end">
-                    {selectedVessel?.machinery?.allowedFuels?.map(f => (
-                        <span key={f} className="bg-gray-100 dark:bg-white/10 px-1.5 rounded text-[10px]">{f}</span>
-                    ))}
-                    {!selectedVessel?.machinery?.allowedFuels?.length && <span>-</span>}
+                  {selectedVessel?.machinery?.allowedFuels?.map((f) => (
+                    <span
+                      key={f}
+                      className="bg-gray-100 dark:bg-white/10 px-1.5 rounded text-[10px]"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                  {!selectedVessel?.machinery?.allowedFuels?.length && (
+                    <span>-</span>
+                  )}
                 </div>
               </div>
             </section>
@@ -601,68 +727,70 @@ export default function VesselTable({
                 System Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Created By</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {selectedVessel?.createdBy?.fullName || "-"}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Created At</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {formatDate(selectedVessel?.createdAt)}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Last Updated By</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {selectedVessel?.updatedBy?.fullName || "-"}
-                    </span>
-                 </div>
-                 <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Last Updated At</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {formatDate(selectedVessel?.updatedAt)}
-                    </span>
-                 </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedVessel?.createdBy?.fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedVessel?.createdAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedVessel?.updatedBy?.fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedVessel?.updatedAt)}
+                  </span>
+                </div>
               </div>
             </section>
-
           </div>
 
-           {/* STATUS FOOTER */}
-           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</span>
-              
-              {(() => {
-                if (!selectedVessel) return null;
+          {/* STATUS FOOTER */}
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              Status
+            </span>
 
-                let color: "success" | "warning" | "error" | "default" | "light" = "default";
-                let label: string = selectedVessel.status; 
+            {(() => {
+              if (!selectedVessel) return null;
 
-                switch (selectedVessel.status) {
-                  case "active":
-                    color = "success";
-                    label = "Active";
-                    break;
-                  case "laid_up":
-                    color = "warning";
-                    label = "Laid Up";
-                    break;
-                  case "sold":
-                    color = "error";
-                    label = "Sold";
-                    break;
-                  case "dry_dock":
-                    color = "default";
-                    label = "Dry Dock";
-                    break;
-                  default:
-                    label = selectedVessel.status;
-                }
+              let color: "success" | "warning" | "error" | "default" | "light" =
+                "default";
+              let label: string = selectedVessel.status;
 
-                return <Badge color={color}>{label}</Badge>;
-              })()}
+              switch (selectedVessel.status) {
+                case "active":
+                  color = "success";
+                  label = "Active";
+                  break;
+                case "laid_up":
+                  color = "warning";
+                  label = "Laid Up";
+                  break;
+                case "sold":
+                  color = "error";
+                  label = "Sold";
+                  break;
+                case "dry_dock":
+                  color = "default";
+                  label = "Dry Dock";
+                  break;
+                default:
+                  label = selectedVessel.status;
+              }
+
+              return <Badge color={color}>{label}</Badge>;
+            })()}
           </div>
         </div>
       </ViewModal>
@@ -677,75 +805,204 @@ export default function VesselTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
-             {/* SECTION 1: GENERAL INFORMATION */}
-             <ComponentCard title="General Information">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <InputField label="Vessel Name" value={editData.name} onChange={e => handleEditChange('name', e.target.value)} />
-                    <InputField label="IMO Number" value={editData.imo} onChange={e => handleEditChange('imo', e.target.value)} />
-                    <InputField label="Fleet" value={editData.fleet} onChange={e => handleEditChange('fleet', e.target.value)} />
-                    
-                    <div>
-                        <Label>Status</Label>
-                        <Select
-                            options={[
-                                { value: "active", label: "Active" },
-                                { value: "laid_up", label: "Laid Up" },
-                                { value: "sold", label: "Sold" },
-                                { value: "dry_dock", label: "Dry Dock" },
-                            ]}
-                            value={editData.status}
-                            onChange={(val) => handleEditChange('status', val)}
-                        />
-                    </div>
+            {/* SECTION 1: GENERAL INFORMATION */}
+            <ComponentCard title="General Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <InputField
+                  label="Vessel Name"
+                  value={editData.name}
+                  onChange={(e) => handleEditChange("name", e.target.value)}
+                />
+                <InputField
+                  label="IMO Number"
+                  value={editData.imo}
+                  onChange={(e) => handleEditChange("imo", e.target.value)}
+                />
+                <div>
+                  <Label>Company</Label>
+                  <SearchableSelect
+                    options={companiesList}
+                    value={editData.company}
+                    onChange={(val) => handleEditChange("company", val)}
+                    placeholder="Select Company"
+                  />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mt-4">
-                    <InputField label="Call Sign" value={editData.callSign} onChange={e => handleEditChange('callSign', e.target.value)} />
-                    <InputField label="MMSI" value={editData.mmsi} onChange={e => handleEditChange('mmsi', e.target.value)} />
-                    <InputField label="Flag" value={editData.flag} onChange={e => handleEditChange('flag', e.target.value)} />
-                    <InputField label="Year Built" type="number" value={editData.yearBuilt} onChange={e => handleEditChange('yearBuilt', e.target.value)} />
-                </div>
-             </ComponentCard>
+                <InputField
+                  label="Fleet"
+                  value={editData.fleet}
+                  onChange={(e) => handleEditChange("fleet", e.target.value)}
+                />
 
-             {/* SECTION 2: DIMENSIONS */}
-             <ComponentCard title="Dimensions">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <InputField label="LOA (m)" type="number" value={editData.dimensions?.loa} onChange={e => handleNestedEditChange('dimensions', 'loa', e.target.value)} />
-                    <InputField label="Beam (m)" type="number" value={editData.dimensions?.beam} onChange={e => handleNestedEditChange('dimensions', 'beam', e.target.value)} />
-                    <InputField label="Max Draft (m)" type="number" value={editData.dimensions?.maxDraft} onChange={e => handleNestedEditChange('dimensions', 'maxDraft', e.target.value)} />
-                    <InputField label="DWT (MT)" type="number" value={editData.dimensions?.dwt} onChange={e => handleNestedEditChange('dimensions', 'dwt', e.target.value)} />
-                    <InputField label="Gross Tonnage (GT)" type="number" value={editData.dimensions?.grossTonnage} onChange={e => handleNestedEditChange('dimensions', 'grossTonnage', e.target.value)} />
+                <div>
+                  <Label>Status</Label>
+                  <Select
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "laid_up", label: "Laid Up" },
+                      { value: "sold", label: "Sold" },
+                      { value: "dry_dock", label: "Dry Dock" },
+                    ]}
+                    value={editData.status}
+                    onChange={(val) => handleEditChange("status", val)}
+                  />
                 </div>
-             </ComponentCard>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mt-4">
+                <InputField
+                  label="Call Sign"
+                  value={editData.callSign}
+                  onChange={(e) => handleEditChange("callSign", e.target.value)}
+                />
+                <InputField
+                  label="MMSI"
+                  value={editData.mmsi}
+                  onChange={(e) => handleEditChange("mmsi", e.target.value)}
+                />
+                <InputField
+                  label="Flag"
+                  value={editData.flag}
+                  onChange={(e) => handleEditChange("flag", e.target.value)}
+                />
+                <InputField
+                  label="Year Built"
+                  type="number"
+                  value={editData.yearBuilt}
+                  onChange={(e) =>
+                    handleEditChange("yearBuilt", e.target.value)
+                  }
+                />
+              </div>
+            </ComponentCard>
 
-             {/* SECTION 3: PERFORMANCE */}
-             <ComponentCard title="Performance">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <InputField label="Design Speed (kn)" type="number" value={editData.performance?.designSpeed} onChange={e => handleNestedEditChange('performance', 'designSpeed', e.target.value)} />
-                    <InputField label="Ballast Cons. (MT)" type="number" value={editData.performance?.ballastConsumption} onChange={e => handleNestedEditChange('performance', 'ballastConsumption', e.target.value)} />
-                    <InputField label="Laden Cons. (MT)" type="number" value={editData.performance?.ladenConsumption} onChange={e => handleNestedEditChange('performance', 'ladenConsumption', e.target.value)} />
+            {/* SECTION 2: DIMENSIONS */}
+            <ComponentCard title="Dimensions">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <InputField
+                  label="LOA (m)"
+                  type="number"
+                  value={editData.dimensions?.loa}
+                  onChange={(e) =>
+                    handleNestedEditChange("dimensions", "loa", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Beam (m)"
+                  type="number"
+                  value={editData.dimensions?.beam}
+                  onChange={(e) =>
+                    handleNestedEditChange("dimensions", "beam", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Max Draft (m)"
+                  type="number"
+                  value={editData.dimensions?.maxDraft}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "dimensions",
+                      "maxDraft",
+                      e.target.value
+                    )
+                  }
+                />
+                <InputField
+                  label="DWT (MT)"
+                  type="number"
+                  value={editData.dimensions?.dwt}
+                  onChange={(e) =>
+                    handleNestedEditChange("dimensions", "dwt", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Gross Tonnage (GT)"
+                  type="number"
+                  value={editData.dimensions?.grossTonnage}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "dimensions",
+                      "grossTonnage",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+            </ComponentCard>
+
+            {/* SECTION 3: PERFORMANCE */}
+            <ComponentCard title="Performance">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <InputField
+                  label="Design Speed (kn)"
+                  type="number"
+                  value={editData.performance?.designSpeed}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "performance",
+                      "designSpeed",
+                      e.target.value
+                    )
+                  }
+                />
+                <InputField
+                  label="Ballast Cons. (MT)"
+                  type="number"
+                  value={editData.performance?.ballastConsumption}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "performance",
+                      "ballastConsumption",
+                      e.target.value
+                    )
+                  }
+                />
+                <InputField
+                  label="Laden Cons. (MT)"
+                  type="number"
+                  value={editData.performance?.ladenConsumption}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "performance",
+                      "ladenConsumption",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+            </ComponentCard>
+
+            {/* SECTION 4: MACHINERY */}
+            <ComponentCard title="Machinery">
+              <div className="space-y-4">
+                <InputField
+                  label="Main Engine Model"
+                  value={editData.machinery?.mainEngine}
+                  onChange={(e) =>
+                    handleNestedEditChange(
+                      "machinery",
+                      "mainEngine",
+                      e.target.value
+                    )
+                  }
+                />
+
+                <div>
+                  <Label className="mb-2 block">Allowed Fuels</Label>
+                  <div className="flex flex-wrap gap-4">
+                    {["HFO", "VLSFO", "LSMGO", "MGO", "LNG"].map((fuel) => (
+                      <Checkbox
+                        key={fuel}
+                        label={fuel}
+                        checked={
+                          editData.machinery?.allowedFuels?.includes(fuel) ||
+                          false
+                        }
+                        onChange={() => handleFuelToggle(fuel)}
+                      />
+                    ))}
+                  </div>
                 </div>
-             </ComponentCard>
-
-             {/* SECTION 4: MACHINERY */}
-             <ComponentCard title="Machinery">
-                 <div className="space-y-4">
-                    <InputField label="Main Engine Model" value={editData.machinery?.mainEngine} onChange={e => handleNestedEditChange('machinery', 'mainEngine', e.target.value)} />
-                    
-                    <div>
-                        <Label className="mb-2 block">Allowed Fuels</Label>
-                        <div className="flex flex-wrap gap-4">
-                            {["HFO", "VLSFO", "LSMGO", "MGO", "LNG"].map((fuel) => (
-                            <Checkbox
-                                key={fuel}
-                                label={fuel}
-                                checked={editData.machinery?.allowedFuels?.includes(fuel) || false}
-                                onChange={() => handleFuelToggle(fuel)}
-                            />
-                            ))}
-                        </div>
-                    </div>
-                 </div>
-             </ComponentCard>
+              </div>
+            </ComponentCard>
           </div>
         )}
       </EditModal>
@@ -755,14 +1012,17 @@ export default function VesselTable({
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
-          loading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );
 }
 
 /* ================= HELPERS ================= */
-function InputField({ label, ...props }: { label: string } & React.ComponentProps<typeof Input>) {
+function InputField({
+  label,
+  ...props
+}: { label: string } & React.ComponentProps<typeof Input>) {
   return (
     <div>
       <Label>{label}</Label>

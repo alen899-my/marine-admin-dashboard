@@ -1,12 +1,17 @@
 "use client";
 
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import Image from "next/image"; // ✅ Import Image
 import { User as UserIcon } from "lucide-react"; // ✅ Import Icon for fallback
+import Image from "next/image"; // ✅ Import Image
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { toast } from "react-toastify";
 
 // --- Components ---
-import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
@@ -15,16 +20,16 @@ import UserFormModal from "@/components/Users/UserFormModal";
 
 // --- Permission Components ---
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
-import PermissionMatrixTable from "@/components/Users/components/PermissionMatrixTable"; 
 import PermissionLegend from "@/components/Users/components/PermissionLegend";
-import { useAuthorization } from "@/hooks/useAuthorization";
+import PermissionMatrixTable from "@/components/Users/components/PermissionMatrixTable";
 import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 // --- Types ---
 interface IPermission {
   _id: string;
   slug: string;
-   name: string;
+  name: string;
   description?: string;
   group: string;
 }
@@ -41,6 +46,7 @@ interface IUser {
   email: string;
   phone: string;
   role: any;
+  company?: { _id: string; name: string } | any;
   status: string;
   profilePicture?: string; // ✅ Added this
   lastLogin?: string;
@@ -69,7 +75,7 @@ export default function UserTable({
   // --- Data State ---
   const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // --- Metadata State ---
   const [rolesList, setRolesList] = useState<RoleData[]>([]);
   const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
@@ -80,7 +86,7 @@ export default function UserTable({
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -96,7 +102,7 @@ export default function UserTable({
       try {
         const [rolesRes, permsRes] = await Promise.all([
           fetch("/api/roles"),
-          fetch("/api/permissions")
+          fetch("/api/permissions"),
         ]);
 
         if (rolesRes.ok) {
@@ -117,9 +123,12 @@ export default function UserTable({
   // --- Helper: Format Role ---
   const formatRole = (role: any) => {
     if (!role) return "N/A";
-    if (typeof role === 'object' && role.name) return role.name;
-    if (typeof role === 'string') {
-      return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (typeof role === "object" && role.name) return role.name;
+    if (typeof role === "string") {
+      return role
+        .split("_")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
     }
     return "Unknown";
   };
@@ -127,16 +136,26 @@ export default function UserTable({
   // --- Helper: Get Permissions ---
   const getSelectedUserRolePermissions = () => {
     if (!selectedUser) return [];
-    const roleId = typeof selectedUser.role === 'object' ? selectedUser.role._id : selectedUser.role;
-    const roleObj = rolesList.find(r => r._id === roleId);
-    return roleObj?.permissions || (typeof selectedUser.role === 'object' ? selectedUser.role.permissions : []) || [];
+    const roleId =
+      typeof selectedUser.role === "object"
+        ? selectedUser.role._id
+        : selectedUser.role;
+    const roleObj = rolesList.find((r) => r._id === roleId);
+    return (
+      roleObj?.permissions ||
+      (typeof selectedUser.role === "object"
+        ? selectedUser.role.permissions
+        : []) ||
+      []
+    );
   };
 
   // --- Table Columns ---
   const columns = [
     {
       header: "S.No",
-      render: (_: IUser, index: number) => (currentPage - 1) * LIMIT + index + 1,
+      render: (_: IUser, index: number) =>
+        (currentPage - 1) * LIMIT + index + 1,
     },
     {
       header: "Full Name",
@@ -145,11 +164,11 @@ export default function UserTable({
           {/* ✅ Avatar Display in Table */}
           <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
             {u.profilePicture ? (
-              <Image 
-                src={u.profilePicture} 
-                alt={u.fullName} 
-                fill 
-                className="object-cover" 
+              <Image
+                src={u.profilePicture}
+                alt={u.fullName}
+                fill
+                className="object-cover"
                 unoptimized
               />
             ) : (
@@ -158,7 +177,9 @@ export default function UserTable({
               </div>
             )}
           </div>
-          <span className="font-medium text-gray-700 dark:text-gray-200">{u.fullName}</span>
+          <span className="font-medium text-gray-700 dark:text-gray-200">
+            {u.fullName}
+          </span>
         </div>
       ),
     },
@@ -167,10 +188,22 @@ export default function UserTable({
       render: (u: IUser) => u.email,
     },
     {
+      header: "Company",
+      render: (u: IUser) => {
+        const companyName =
+          typeof u.company === "object" ? u.company?.name : "N/A";
+        return (
+          <span className="font-medium text-gray-700 dark:text-gray-200">
+            {companyName || "N/A"}
+          </span>
+        );
+      },
+    },
+    {
       header: "Role",
       render: (user: any) => (
         <span className="font-medium text-gray-700 dark:text-gray-200">
-          {formatRole(user.role)} 
+          {formatRole(user.role)}
         </span>
       ),
     },
@@ -208,7 +241,7 @@ export default function UserTable({
 
         setUsers(result.data || []);
 
-           // UPDATE DYNAMIC COUNT
+        // UPDATE DYNAMIC COUNT
         if (setTotalCount) {
           setTotalCount(result.pagination?.total || result.length || 0);
         }
@@ -225,12 +258,12 @@ export default function UserTable({
   );
 
   const selectedUserRoleName =
-  typeof selectedUser?.role === "object"
-    ? selectedUser.role.name
-    : selectedUser?.role;
+    typeof selectedUser?.role === "object"
+      ? selectedUser.role.name
+      : selectedUser?.role;
 
   const isSelectedUserSuperAdmin =
-  selectedUserRoleName?.toLowerCase() === "super-admin";
+    selectedUserRoleName?.toLowerCase() === "super-admin";
 
   useEffect(() => {
     fetchUsers(1);
@@ -254,10 +287,12 @@ export default function UserTable({
 
   const handleDelete = async () => {
     if (!selectedUser) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
 
     try {
-      const res = await fetch(`/api/users/${selectedUser._id}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/${selectedUser._id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error();
       setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
       // UPDATE DYNAMIC COUNT ON DELETE
@@ -288,12 +323,16 @@ export default function UserTable({
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               onView={handleView}
-               onRowClick={handleView}
+              onRowClick={handleView}
               onEdit={canEditUser ? handleEdit : undefined}
-              onDelete={canDeleteUser ? (u: IUser) => {
-                setSelectedUser(u);
-                setOpenDelete(true);
-              } : undefined}
+              onDelete={
+                canDeleteUser
+                  ? (u: IUser) => {
+                      setSelectedUser(u);
+                      setOpenDelete(true);
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
@@ -306,76 +345,92 @@ export default function UserTable({
         title="User Details & Permissions"
       >
         <div className=" text-sm">
-        
-<div className="text-[13px] py-1">
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-    
-   {/* 1. PHOTO & NAME */}
-<section className="space-y-1.5 p-3">
-  <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
-    General Information
-  </h3>
-  <div className="flex items-center gap-4 py-2">
-    {/* Image Container must have 'relative' for Next.js Image fill to work */}
-    <div className="w-16 h-16 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-700 shadow-sm shrink-0">
-      {selectedUser?.profilePicture ? (
-        <Image 
-          src={selectedUser.profilePicture} 
-          alt="Profile" 
-          fill 
-          sizes="64px"
-          className="object-cover" 
-          priority
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
-           <span className="text-xl font-bold text-gray-400">
-             {selectedUser?.fullName?.charAt(0) || "U"}
-           </span>
-        </div>
-      )}
-    </div>
-    <div className="flex flex-col">
-      <span className="font-bold text-gray-900 dark:text-white text-sm">
-        {selectedUser?.fullName ?? "-"}
-      </span>
-      <span className="text-gray-500 text-[10px] uppercase tracking-tight">
-        User Profile
-      </span>
-    </div>
-  </div>
-</section>
+          <div className="text-[13px] py-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              {/* 1. PHOTO & NAME */}
+              <section className="space-y-1.5 p-3">
+                <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
+                  General Information
+                </h3>
+                <div className="flex items-center gap-4 py-2">
+                  {/* Image Container must have 'relative' for Next.js Image fill to work */}
+                  <div className="w-16 h-16 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-700 shadow-sm shrink-0">
+                    {selectedUser?.profilePicture ? (
+                      <Image
+                        src={selectedUser.profilePicture}
+                        alt="Profile"
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                        priority
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+                        <span className="text-xl font-bold text-gray-400">
+                          {selectedUser?.fullName?.charAt(0) || "U"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900 dark:text-white text-sm">
+                      {selectedUser?.fullName ?? "-"}
+                    </span>
+                    <span className="text-gray-500 text-[10px] uppercase tracking-tight">
+                      User Profile
+                    </span>
+                  </div>
+                </div>
+              </section>
 
-    {/* 2. CONTACT DETAILS */}
-    <section className="space-y-1.5 p-3">
-      <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
-        Contact Details
-      </h3>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500">Email Address</span>
-        <span className="font-medium text-right break-all">{selectedUser?.email ?? "-"}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500">Phone Number</span>
-        <span className="font-medium text-right">{selectedUser?.phone ?? "-"}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500">System Role</span>
-        <span className="font-medium text-right">{formatRole(selectedUser?.role || "")}</span>
-      </div>
-    </section>
+              {/* 2. CONTACT DETAILS */}
+              <section className="space-y-1.5 p-3">
+                <h3 className="text-[11px] font-bold text-gray-400  tracking-wider mb-2 border-b">
+                  Contact Details
+                </h3>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Email Address</span>
+                  <span className="font-medium text-right break-all">
+                    {selectedUser?.email ?? "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Phone Number</span>
+                  <span className="font-medium text-right">
+                    {selectedUser?.phone ?? "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Company</span>
+                  <span className="font-medium text-right">
+                    {typeof selectedUser?.company === "object"
+                      ? selectedUser.company.name
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">System Role</span>
+                  <span className="font-medium text-right">
+                    {formatRole(selectedUser?.role || "")}
+                  </span>
+                </div>
+              </section>
+            </div>
 
-   
-  </div>
-
-  {/* STATUS FOOTER */}
-  <div className=" p-3   dark: flex items-center justify-between">
-    <span className="text-[11px] font-bold text-gray-400  tracking-widest">Account Status</span>
-    <Badge color={selectedUser?.status === "active" ? "success" : "error"}>
-      <span className="capitalize">{selectedUser?.status || "inactive"}</span>
-    </Badge>
-  </div>
-</div>
+            {/* STATUS FOOTER */}
+            <div className=" p-3   dark: flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400  tracking-widest">
+                Account Status
+              </span>
+              <Badge
+                color={selectedUser?.status === "active" ? "success" : "error"}
+              >
+                <span className="capitalize">
+                  {selectedUser?.status || "inactive"}
+                </span>
+              </Badge>
+            </div>
+          </div>
 
           {/* 3. Permissions Matrix (Read Only) */}
           {selectedUser && (
@@ -386,21 +441,29 @@ export default function UserTable({
                   ? "All permissions are automatically granted for Super Admin."
                   : "Current effective permissions for this user."
               }
-              legend={!isSelectedUserSuperAdmin ? <PermissionLegend showAll={true} /> : null}
+              legend={
+                !isSelectedUserSuperAdmin ? (
+                  <PermissionLegend showAll={true} />
+                ) : null
+              }
             >
               <div className="space-y-6">
                 <PermissionMatrixTable
                   allPermissions={allPermissions}
                   rolePermissions={getSelectedUserRolePermissions()}
-                  additionalPermissions={selectedUser.additionalPermissions || []}
+                  additionalPermissions={
+                    selectedUser.additionalPermissions || []
+                  }
                   excludedPermissions={selectedUser.excludedPermissions || []}
                   onToggle={() => {}} // View-only
                   isReadOnly={true}
                 />
-                <DashboardWidgetSectionUser 
-                 allPermissions={allPermissions} 
+                <DashboardWidgetSectionUser
+                  allPermissions={allPermissions}
                   rolePermissions={getSelectedUserRolePermissions()}
-                  additionalPermissions={selectedUser.additionalPermissions || []}
+                  additionalPermissions={
+                    selectedUser.additionalPermissions || []
+                  }
                   excludedPermissions={selectedUser.excludedPermissions || []}
                   onToggle={() => {}} // Read-only
                   isReadOnly={true}
@@ -408,7 +471,6 @@ export default function UserTable({
               </div>
             </RoleComponentCard>
           )}
-
         </div>
       </ViewModal>
 
@@ -418,7 +480,7 @@ export default function UserTable({
         onSuccess={() => {
           fetchUsers(currentPage); // Refresh
         }}
-        initialData={userToEdit} 
+        initialData={userToEdit}
       />
 
       <ConfirmDeleteModal

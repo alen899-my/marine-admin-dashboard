@@ -4,6 +4,7 @@ import Vessel from "@/models/Vessel";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth"; // ✅ IMPORT AUTH
+import Company from "@/models/Company";
 /* ======================================
    UPDATE VESSEL (PATCH)
 ====================================== */
@@ -28,6 +29,11 @@ export async function PATCH(
 
     const body = await req.json();
 
+    const existingVessel = await Vessel.findById(id);
+    if (!existingVessel) {
+      return NextResponse.json({ error: "Vessel not found" }, { status: 404 });
+    }
+
     // ❌ REMOVED: Manual check for duplicate IMO. 
     // The DB update below will fail if Name or IMO is duplicate.
 
@@ -43,6 +49,27 @@ export async function PATCH(
       updatedBy: currentUserId,
     };
 
+    if (body.company && body.company !== existingVessel.company?.toString()) {
+      // Validate new company exists
+      const newCompany = await Company.findById(body.company);
+      if (!newCompany) {
+        return NextResponse.json({ error: "Invalid Company ID" }, { status: 400 });
+      }
+
+      updateData.company = body.company;
+
+      // Remove from old company list
+      if (existingVessel.company) {
+        await Company.findByIdAndUpdate(existingVessel.company, {
+          $pull: { vessels: id }
+        });
+      }
+
+      // Add to new company list
+      await Company.findByIdAndUpdate(body.company, {
+        $addToSet: { vessels: id }
+      });
+    }
     // ... (Keep your existing nested object logic for dimensions, performance, machinery)
     if (body.dimensions) {
       updateData.dimensions = { ...body.dimensions };
@@ -59,7 +86,10 @@ export async function PATCH(
       id,
       { $set: updateData },
       { new: true, runValidators: true }
-    );
+    )
+    .populate("company", "name") // ✅ ADD THIS: Return company object, not just ID
+    .populate("createdBy", "fullName") // ✅ Ensure consistency for UI display
+    .populate("updatedBy", "fullName");
 
     if (!updatedVessel) {
       return NextResponse.json({ error: "Vessel not found" }, { status: 404 });
@@ -115,6 +145,12 @@ export async function DELETE(
         { error: "Vessel not found" },
         { status: 404 }
       );
+    }
+
+    if (deletedVessel.company) {
+      await Company.findByIdAndUpdate(deletedVessel.company, {
+        $pull: { vessels: id }
+      });
     }
 
     return NextResponse.json({

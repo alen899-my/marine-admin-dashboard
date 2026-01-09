@@ -5,13 +5,14 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Checkbox from "@/components/form/input/Checkbox"; // Added Checkbox Import
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { vesselSchema } from "@/lib/validations/vesselSchema";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 interface AddVesselButtonProps {
@@ -23,10 +24,32 @@ export default function AddVesselButton({ onSuccess }: AddVesselButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { can, isReady } = useAuthorization();
+  const [companiesList, setCompaniesList] = useState<{ value: string; label: string }[]>([]);
+
+  // Fetch companies
+useEffect(() => {
+  async function fetchCompanies() {
+    try {
+      const res = await fetch("/api/companies");
+      if (res.ok) {
+        const json = await res.json();
+        const formatted = (json.data || []).map((c: any) => ({
+          value: c._id,
+          label: c.name,
+        }));
+        setCompaniesList(formatted);
+      }
+    } catch (error) {
+      console.error("Failed to load companies", error);
+    }
+  }
+  if (isOpen) fetchCompanies();
+}, [isOpen]);
 
   const initialFormState = {
     name: "",
     imo: "",
+    company: "",
     fleet: "",
     status: "active",
     callSign: "",
@@ -88,6 +111,7 @@ export default function AddVesselButton({ onSuccess }: AddVesselButtonProps) {
     const payload = {
       name: formData.name,
       imo: formData.imo,
+      company: formData.company,
       fleet: formData.fleet,
       status: formData.status,
       callSign: formData.callSign,
@@ -235,6 +259,18 @@ export default function AddVesselButton({ onSuccess }: AddVesselButtonProps) {
                     <p className="text-xs text-red-500 mt-1">{errors.imo}</p>
                   )}
                 </div>
+
+                <div>
+      <Label>Company <span className="text-red-500">*</span></Label>
+      <SearchableSelect
+        options={companiesList}
+        value={formData.company}
+        onChange={(val) => handleSelectChange("company", val)}
+        placeholder="Select Company"
+        error={!!errors.company}
+      />
+      {errors.company && <p className="text-xs text-red-500 mt-1">{errors.company}</p>}
+    </div>
 
                 <div>
                   <Label>Fleet</Label>

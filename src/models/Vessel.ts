@@ -9,7 +9,7 @@ export interface IVessel extends Document {
   mmsi: string;
   flag: string;
   yearBuilt: number;
-  companyId: mongoose.Types.ObjectId;
+  company: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   dimensions: {
@@ -50,7 +50,7 @@ const VesselSchema = new Schema<IVessel>(
       unique: true, // 🔒 Unique IMO Number
       trim: true,
     },
-    companyId: {
+    company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
       required: true, // ✅ Added to Schema
