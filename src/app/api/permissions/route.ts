@@ -6,6 +6,8 @@ import Resource from "@/models/Resource";
 
 export async function GET(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("permission.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Resource];
     const { searchParams } = new URL(req.url);

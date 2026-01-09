@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
+import Tooltip from "@/components/ui/tooltip/Tooltip"; // ✅ Tooltip imported
 
 // Match the permission interface used across your application
 interface IPermission {
@@ -17,7 +18,7 @@ interface IPermission {
 }
 
 interface DashboardWidgetSectionUserProps {
-  allPermissions: IPermission[]; // Added to allow dynamic filtering
+  allPermissions: IPermission[]; 
   rolePermissions: string[];
   additionalPermissions: string[];
   excludedPermissions: string[];
@@ -52,7 +53,7 @@ export default function DashboardWidgetSectionUser({
 
   return (
     <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-      <h3 className="text-xs font-bold uppercase text-gray-800 dark:text-gray-200 mb-3 tracking-wider">
+      <h3 className="text-xs font-bold uppercase text-gray-800 dark:text-white/90 mb-3 tracking-wider">
         General Permissions
       </h3>
 
@@ -64,53 +65,64 @@ export default function DashboardWidgetSectionUser({
 
           let isChecked = false;
           let variant: CheckboxVariant = "default";
-          let tooltip = "Click to Add";
+          let statusLabel = "Click to Add";
           
-          // Logic for variant colors and inheritance
           if (isExcluded) {
             isChecked = true;
             variant = "danger"; 
-            tooltip = "Manually Excluded";
+            statusLabel = "Manually Excluded";
           } 
           else if (isInherited) {
             isChecked = true;
             variant = "default"; 
-            tooltip = "Inherited from Role";
+            statusLabel = "Inherited from Role";
           } 
           else if (isAdditional) {
             isChecked = true;
             variant = "success"; 
-            tooltip = "Manually Added";
+            statusLabel = "Manually Added";
           }
 
           return (
-            <div 
+            /* ✅ Wrapped with Tooltip - Children nested inside */
+            <Tooltip
               key={perm._id}
-              onClick={() => !isReadOnly && onToggle(perm.slug)}
-              title={isReadOnly ? "" : tooltip}
-              className={`
-                flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800
-                hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none
-                ${isReadOnly ? 'opacity-80 cursor-default' : ''}
-              `}
+              position="top"
+              content={
+                <div className="">
+                  
+                  <p className="text-gray-300 leading-tight">
+                    {perm.description || `Grants the user ${perm.name} capability.`}
+                  </p>
+                </div>
+              }
             >
-              <div className="mt-0.5 pointer-events-none">
-                <Checkbox 
-                  checked={isChecked} 
-                  onChange={() => {}} 
-                  variant={variant}
-                />
-              </div>
+              <div 
+                onClick={() => !isReadOnly && onToggle(perm.slug)}
+                className={`
+                  flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800
+                  hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none
+                  ${isReadOnly ? 'opacity-80 cursor-default pointer-events-none' : ''}
+                `}
+              >
+                <div className="mt-0.5 pointer-events-none">
+                  <Checkbox 
+                    checked={isChecked} 
+                    onChange={() => {}} 
+                    variant={variant}
+                  />
+                </div>
 
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                  {perm.name}
-                </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
-                  {perm.description || `Access to ${perm.name}`}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    {perm.name}
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
+                    {perm.description || `Access to ${perm.name}`}
+                  </span>
+                </div>
               </div>
-            </div>
+            </Tooltip>
           );
         })}
       </div>

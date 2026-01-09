@@ -159,6 +159,8 @@ export async function POST(req: Request) {
 // --- GET: FETCH NORS ---
 export async function GET(req: Request) {
   try {
+     const authz = await authorizeRequest("nor.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Vessel, Voyage, User];
 

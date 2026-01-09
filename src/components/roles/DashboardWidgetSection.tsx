@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import Checkbox from "@/components/form/input/Checkbox";
-
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 // Define the shape of the permission object
 export interface IPermission {
   _id: string;
@@ -41,8 +41,7 @@ export default function GeneralPermissionsSection({
 
   // Hide the section if no general permissions are found
   if (generalPermissions.length === 0) return null;
-
-  return (
+return (
     <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
       <h3 className="text-xs font-bold uppercase text-gray-800 dark:text-gray-200 mb-3 tracking-wider">
         General Permissions
@@ -53,27 +52,40 @@ export default function GeneralPermissionsSection({
           const isChecked = selectedPermissions.includes(perm.slug);
 
           return (
-            <div 
+            /* ✅ Wrapped with Tooltip */
+            <Tooltip
               key={perm._id}
-              onClick={() => onToggle(perm.slug, !isChecked)}
-              className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none"
+              position="top"
+              content={
+                <div >
+               
+                  <p>
+                    {perm.description || `Grants the user ${perm.name} capability.`}
+                  </p>
+                </div>
+              }
             >
-              <div className="mt-0.5 pointer-events-none">
-                <Checkbox 
-                  checked={isChecked} 
-                  onChange={() => {}} 
-                />
-              </div>
+              <div 
+                onClick={() => onToggle(perm.slug, !isChecked)}
+                className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none h-full"
+              >
+                <div className="mt-0.5 pointer-events-none">
+                  <Checkbox 
+                    checked={isChecked} 
+                    onChange={() => {}} 
+                  />
+                </div>
 
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                  {perm.name}
-                </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
-                  {perm.description || `Access to ${perm.name}`}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    {perm.name}
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
+                    {perm.description || `Access to ${perm.name}`}
+                  </span>
+                </div>
               </div>
-            </div>
+            </Tooltip>
           );
         })}
       </div>

@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
-
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 // --- Types ---
 export interface IPermission {
   _id: string;
@@ -127,27 +127,40 @@ const filteredPermissions = useMemo(() => {
                 const isAssigned = selectedPermissions.includes(perm.slug);
                 const variant: CheckboxVariant = "default";
 
-                return (
+ return (
                   <div key={action} className="flex justify-center">
-                    <div
-                      title={isReadOnly ? "" : "Click to toggle"}
-                      onClick={() =>
-                        !isReadOnly && onToggle?.(perm.slug, !isAssigned)
+                    {/* ✅ Corrected Tooltip Nesting */}
+                    <Tooltip
+                      position="top"
+                      content={
+                        <div className="space-y-1">
+                          
+                          <p>
+                            {perm.description ||
+                              `Allows the user to ${action} ${groupName}.`}
+                          </p>
+                        </div>
                       }
-                      className={`relative flex items-center justify-center p-1 transition-transform 
+                    >
+                      <div
+                        onClick={() =>
+                          !isReadOnly && onToggle?.(perm.slug, !isAssigned)
+                        }
+                        className={`relative flex items-center justify-center p-1 transition-transform 
                         ${
                           !isReadOnly
                             ? "cursor-pointer active:scale-95"
                             : "cursor-default pointer-events-none opacity-90"
                         }`}
-                    >
-                      <Checkbox
-                        checked={isAssigned}
-                        onChange={() => {}} // Controlled by div click for better UX
-                        variant={variant}
-                        className={isReadOnly ? "pointer-events-none" : ""}
-                      />
-                    </div>
+                      >
+                        <Checkbox
+                          checked={isAssigned}
+                          onChange={() => {}} // Controlled by div click for better UX
+                          variant={variant}
+                          className={isReadOnly ? "pointer-events-none" : ""}
+                        />
+                      </div>
+                    </Tooltip>
                   </div>
                 );
               })}

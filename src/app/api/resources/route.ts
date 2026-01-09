@@ -9,7 +9,8 @@ import { authorizeRequest } from "@/lib/authorizeRequest";
 ====================================================== */
 export async function GET(req: NextRequest) {
   try {
-    
+    const authz = await authorizeRequest("resource.view");
+    if (!authz.ok) return authz.response;
     
     await dbConnect();
 

@@ -33,6 +33,8 @@ function parseDateString(dateStr?: string | null): Date | undefined {
 ====================================================== */
 export async function GET(req: NextRequest) {
   try {
+     const authz = await authorizeRequest("arrival.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const _ensureModels = [Vessel, Voyage, User, ReportDaily];
 
