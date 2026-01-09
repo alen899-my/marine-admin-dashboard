@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { Modal } from "@/components/ui/modal";
 import AddForm from "@/components/common/AddForm";
-import UserCardComponent from "@/components/Users/UserCardComponent";
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
+import Alert from "@/components/ui/alert/Alert";
+import { Modal } from "@/components/ui/modal";
+import UserCardComponent from "@/components/Users/UserCardComponent";
 import { userSchema } from "@/lib/validations/uservalidation/userSchema";
-import Alert from "@/components/ui/alert/Alert"; 
+import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
-import UserDetailsForm from "./components/UserDetailsForm";
-import RoleSelectionList from "./components/RoleSelectionList";
-import PermissionMatrixTable from "./components/PermissionMatrixTable";
-import PermissionLegend from "./components/PermissionLegend";
-import { useAuthorization } from "@/hooks/useAuthorization";
 import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
+import { useAuthorization } from "@/hooks/useAuthorization";
+import PermissionLegend from "./components/PermissionLegend";
+import PermissionMatrixTable from "./components/PermissionMatrixTable";
+import RoleSelectionList from "./components/RoleSelectionList";
+import UserDetailsForm from "./components/UserDetailsForm";
 // --- Types ---
 interface IUser {
   _id?: string;
   fullName: string;
   email: string;
   phone: string;
-  
   role: any;
+  company?: any;
   status: string;
   additionalPermissions?: string[];
   excludedPermissions?: string[];
@@ -32,14 +32,14 @@ interface IUser {
 interface RoleData {
   _id: string;
   name: string;
-  
+
   description?: string;
   permissions?: string[];
 }
 
 interface UserFormModalProps {
   isOpen: boolean;
- onClose: () => void;
+  onClose: () => void;
   onSuccess?: () => void;
   initialData?: IUser | null;
 }
@@ -52,33 +52,48 @@ interface IPermission {
   group: string;
 }
 
-export default function UserFormModal({ isOpen, onClose, onSuccess, initialData }: UserFormModalProps) {
+export default function UserFormModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialData,
+}: UserFormModalProps) {
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const { can, isReady } = useAuthorization();
   const isEditMode = !!initialData || !!createdUserId;
   const currentUserId = initialData?._id || createdUserId;
   const canEdit = can("users.edit");
   // ✅ CHANGED: Use an object to control Title/Message dynamically
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string } | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"details" | "roles">("details");
-  
+
   const [rolesList, setRolesList] = useState<RoleData[]>([]);
   const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
-  const [hasChanges, setHasChanges] = useState(false); 
-  
-  const [selectedRolePermissions, setSelectedRolePermissions] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState<
+    string[]
+  >([]);
   const [additionalPerms, setAdditionalPerms] = useState<string[]>([]);
   const [excludedPerms, setExcludedPerms] = useState<string[]>([]);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [companiesList, setCompaniesList] = useState<
+    { value: string; label: string }[]
+  >([]);
+
   const defaultState = {
     name: "",
     email: "",
     phone: "",
-    role: "", 
+    role: "",
+    company: "",
     status: "active",
     password: "",
     confirmPassword: "",
@@ -97,10 +112,31 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, initialData 
     }
   }, [isOpen]);
 
-const handleClose = () => {
-  setHasChanges(false);  // reset changes so closing won’t refresh/update
-  onClose?.();           // close only when user clicks close
-};
+  const handleClose = () => {
+    setHasChanges(false); // reset changes so closing won’t refresh/update
+    onClose?.(); // close only when user clicks close
+  };
+
+  // Fetch Companies
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const json = await res.json();
+          // Map the MongoDB data to the { value, label } format required by SearchableSelect
+          const formatted = (json.data || []).map((c: any) => ({
+            value: c._id,
+            label: c.name,
+          }));
+          setCompaniesList(formatted);
+        }
+      } catch (error) {
+        console.error("Failed to load companies", error);
+      }
+    }
+    if (isOpen) fetchCompanies();
+  }, [isOpen]);
 
   // --- 1. Fetch Roles ---
   useEffect(() => {
@@ -113,14 +149,16 @@ const handleClose = () => {
           setRolesList(roles);
 
           if (!initialData && isOpen && !createdUserId) {
-             const defaultRole = roles.find((r: RoleData) => 
-               r.name.toLowerCase() === "op-staff" || r.name.toLowerCase() === "op staff"
-             );
-             
-             if (defaultRole) {
-                setFormData(prev => ({ ...prev, role: defaultRole._id }));
-                setSelectedRolePermissions(defaultRole.permissions || []);
-             }
+            const defaultRole = roles.find(
+              (r: RoleData) =>
+                r.name.toLowerCase() === "op-staff" ||
+                r.name.toLowerCase() === "op staff"
+            );
+
+            if (defaultRole) {
+              setFormData((prev) => ({ ...prev, role: defaultRole._id }));
+              setSelectedRolePermissions(defaultRole.permissions || []);
+            }
           }
         }
       } catch (error) {
@@ -128,8 +166,8 @@ const handleClose = () => {
       }
     }
     if (isOpen) fetchRoles();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // --- 2. Fetch Permissions ---
   useEffect(() => {
@@ -150,7 +188,14 @@ const handleClose = () => {
   // --- 3. Initialize Data ---
   useEffect(() => {
     if (isOpen && initialData) {
-      const roleId = typeof initialData.role === 'object' && initialData.role ? initialData.role._id : initialData.role;
+      const roleId =
+        typeof initialData.role === "object" && initialData.role
+          ? initialData.role._id
+          : initialData.role;
+      const companyId =
+        typeof initialData.company === "object"
+          ? initialData.company?._id
+          : initialData.company;
       if (initialData.profilePicture) {
         setImagePreview(initialData.profilePicture);
       } else {
@@ -162,6 +207,7 @@ const handleClose = () => {
         email: initialData.email,
         phone: initialData.phone || "",
         role: roleId || "",
+        company: companyId || "",
         status: initialData.status || "active",
         password: "",
         confirmPassword: "",
@@ -170,11 +216,14 @@ const handleClose = () => {
       setAdditionalPerms(initialData.additionalPermissions || []);
       setExcludedPerms(initialData.excludedPermissions || []);
 
-      if (typeof initialData.role === 'object' && initialData.role.permissions) {
-         setSelectedRolePermissions(initialData.role.permissions);
+      if (
+        typeof initialData.role === "object" &&
+        initialData.role.permissions
+      ) {
+        setSelectedRolePermissions(initialData.role.permissions);
       } else if (roleId) {
-         const roleObj = rolesList.find(r => r._id === roleId);
-         if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
+        const roleObj = rolesList.find((r) => r._id === roleId);
+        if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
       }
     } else if (isOpen && !initialData && !createdUserId) {
       setFormData(defaultState);
@@ -184,29 +233,28 @@ const handleClose = () => {
       setExcludedPerms([]);
     }
     setErrors({});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialData, rolesList]);
 
-  const selectedRoleObj = rolesList.find(r => r._id === formData.role);
+  const selectedRoleObj = rolesList.find((r) => r._id === formData.role);
   const isSuperAdmin = selectedRoleObj?.name?.toLowerCase() === "super-admin";
 
-
   useEffect(() => {
-  if (!isSuperAdmin) return;
+    if (!isSuperAdmin) return;
 
-  // Super Admin always has ALL permissions
-  const allSlugs = allPermissions.map(p => p.slug);
+    // Super Admin always has ALL permissions
+    const allSlugs = allPermissions.map((p) => p.slug);
 
-  setSelectedRolePermissions(allSlugs);
-  setAdditionalPerms([]);
-  setExcludedPerms([]);
-}, [isSuperAdmin, allPermissions]);
+    setSelectedRolePermissions(allSlugs);
+    setAdditionalPerms([]);
+    setExcludedPerms([]);
+  }, [isSuperAdmin, allPermissions]);
   // --- HANDLERS ---
- const togglePermission = async (slug: string) => {
-  if (isSuperAdmin) {
-    toast.info("Super Admin permissions cannot be modified");
-    return;
-  }
+  const togglePermission = async (slug: string) => {
+    if (isSuperAdmin) {
+      toast.info("Super Admin permissions cannot be modified");
+      return;
+    }
     const isRolePermission = selectedRolePermissions.includes(slug);
     const isAdditional = additionalPerms.includes(slug);
     const isExcluded = excludedPerms.includes(slug);
@@ -216,32 +264,38 @@ const handleClose = () => {
 
     if (isRolePermission) {
       if (isExcluded) {
-        newExcluded = newExcluded.filter(p => p !== slug);
+        newExcluded = newExcluded.filter((p) => p !== slug);
       } else {
         newExcluded = [...newExcluded, slug];
-        newAdditional = newAdditional.filter(p => p !== slug); 
+        newAdditional = newAdditional.filter((p) => p !== slug);
       }
     } else {
       if (isAdditional) {
-        newAdditional = newAdditional.filter(p => p !== slug);
+        newAdditional = newAdditional.filter((p) => p !== slug);
       } else {
         newAdditional = [...newAdditional, slug];
-        newExcluded = newExcluded.filter(p => p !== slug);
+        newExcluded = newExcluded.filter((p) => p !== slug);
       }
     }
 
     setAdditionalPerms(newAdditional);
     setExcludedPerms(newExcluded);
-    setHasChanges(true); 
+    setHasChanges(true);
 
     if (currentUserId) {
       try {
         const formDataPayload = new FormData();
-      formDataPayload.append("additionalPermissions", JSON.stringify(newAdditional));
-      formDataPayload.append("excludedPermissions", JSON.stringify(newExcluded));
+        formDataPayload.append(
+          "additionalPermissions",
+          JSON.stringify(newAdditional)
+        );
+        formDataPayload.append(
+          "excludedPermissions",
+          JSON.stringify(newExcluded)
+        );
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
-          
+
           body: formDataPayload,
         });
         onSuccess?.();
@@ -252,7 +306,9 @@ const handleClose = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -263,54 +319,63 @@ const handleClose = () => {
     const objectUrl = URL.createObjectURL(file);
     setImagePreview(objectUrl);
   };
-const handleTabChange = (tab: "details" | "roles") => {
+  const handleTabChange = (tab: "details" | "roles") => {
     // If trying to go to Roles tab, but user is NOT created/editing yet
     if (tab === "roles" && !isEditMode) {
       toast.error("Please create the User Details first.");
-      return; 
+      return;
     }
     setActiveTab(tab);
   };
-const handleRoleChange = async (roleId: string) => {
-   
+  const handleRoleChange = async (roleId: string) => {
     const isUnchecking = formData.role === roleId;
     const newRoleId = isUnchecking ? "" : roleId;
 
     // 1. Get the new role's native permissions
-    const roleObj = rolesList.find(r => r._id === newRoleId);
-    const newRolePerms = roleObj?.permissions || []; 
+    const roleObj = rolesList.find((r) => r._id === newRoleId);
+    const newRolePerms = roleObj?.permissions || [];
 
     // 2. --- CLEANUP LOGIC START ---
-    
+
     // A. Clean Additional: If the new role ALREADY has this permission, remove it from 'additional'
-    const cleanedAdditional = additionalPerms.filter(slug => !newRolePerms.includes(slug));
+    const cleanedAdditional = additionalPerms.filter(
+      (slug) => !newRolePerms.includes(slug)
+    );
 
     // B. Clean Excluded: If the new role DOES NOT have this permission, we can't exclude it, so remove it.
-    const cleanedExcluded = excludedPerms.filter(slug => newRolePerms.includes(slug));
+    const cleanedExcluded = excludedPerms.filter((slug) =>
+      newRolePerms.includes(slug)
+    );
 
     // --- CLEANUP LOGIC END ---
 
     // 3. Update Local State
     setFormData((prev) => ({ ...prev, role: newRoleId }));
-    setSelectedRolePermissions(newRolePerms); 
-    
+    setSelectedRolePermissions(newRolePerms);
+
     // Set the cleaned versions!
-    setAdditionalPerms(cleanedAdditional); 
+    setAdditionalPerms(cleanedAdditional);
     setExcludedPerms(cleanedExcluded);
-    
-    setHasChanges(true); 
+
+    setHasChanges(true);
 
     // 4. Send Cleaned Data to Backend
     if (currentUserId && newRoleId) {
       try {
         const formDataPayload = new FormData();
         formDataPayload.append("role", newRoleId);
-        formDataPayload.append("additionalPermissions", JSON.stringify(cleanedAdditional));
-        formDataPayload.append("excludedPermissions", JSON.stringify(cleanedExcluded));
+        formDataPayload.append(
+          "additionalPermissions",
+          JSON.stringify(cleanedAdditional)
+        );
+        formDataPayload.append(
+          "excludedPermissions",
+          JSON.stringify(cleanedExcluded)
+        );
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
-         
-         body: formDataPayload,
+
+          body: formDataPayload,
         });
         onSuccess?.();
       } catch (error) {
@@ -319,7 +384,7 @@ const handleRoleChange = async (roleId: string) => {
     }
   };
 
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     setErrors({});
     setIsSubmitting(true);
     const newErrors: Record<string, string> = {};
@@ -336,11 +401,19 @@ const handleSubmit = async () => {
       }
     }
 
-    const { error } = userSchema.validate(formData, { abortEarly: false, allowUnknown: true });
+    const { error } = userSchema.validate(formData, {
+      abortEarly: false,
+      allowUnknown: true,
+    });
     if (error) {
       error.details.forEach((err) => {
-        if (isEditMode && (err.path[0] === 'password' || err.path[0] === 'confirmPassword') && !formData.password) return;
-        if (!isEditMode && err.path[0] === 'role') return;
+        if (
+          isEditMode &&
+          (err.path[0] === "password" || err.path[0] === "confirmPassword") &&
+          !formData.password
+        )
+          return;
+        if (!isEditMode && err.path[0] === "role") return;
         if (err.path[0]) newErrors[err.path[0] as string] = err.message;
       });
     }
@@ -367,6 +440,7 @@ const handleSubmit = async () => {
       formDataPayload.append("email", formData.email);
       formDataPayload.append("phone", formData.phone || "");
       formDataPayload.append("role", formData.role);
+      formDataPayload.append("company", formData.company);
       formDataPayload.append("status", formData.status);
 
       // Only append password if it was entered
@@ -375,8 +449,14 @@ const handleSubmit = async () => {
       }
 
       // Append Arrays (FormData requires strings, so we JSON.stringify arrays)
-      formDataPayload.append("additionalPermissions", JSON.stringify(additionalPerms));
-      formDataPayload.append("excludedPermissions", JSON.stringify(excludedPerms));
+      formDataPayload.append(
+        "additionalPermissions",
+        JSON.stringify(additionalPerms)
+      );
+      formDataPayload.append(
+        "excludedPermissions",
+        JSON.stringify(excludedPerms)
+      );
 
       // ✅ 3. Append the File (if one was selected)
       if (profileImage) {
@@ -385,9 +465,9 @@ const handleSubmit = async () => {
 
       // Determine URL and Method
       const url = isEditMode ? `/api/users/${currentUserId}` : "/api/users";
-      
+
       // Note: Ensure your backend PATCH route handles FormData (req.formData()) just like POST does.
-      const method = isEditMode ? "PATCH" : "POST"; 
+      const method = isEditMode ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
@@ -405,25 +485,24 @@ const handleSubmit = async () => {
         onSuccess?.();
         setAlertConfig({
           title: "User Updated Successfully",
-          message: "Your changes have been saved."
+          message: "Your changes have been saved.",
         });
       } else {
-        setCreatedUserId(data.userId); 
+        setCreatedUserId(data.userId);
         setAlertConfig({
           title: "User Created Successfully",
-          message: "You can now edit permissions below."
+          message: "You can now edit permissions below.",
         });
-        setActiveTab("roles");         
+        setActiveTab("roles");
       }
 
       if (data.roleId) {
-        setFormData(prev => ({ ...prev, role: data.roleId }));
-        const assignedRole = rolesList.find(r => r._id === data.roleId);
+        setFormData((prev) => ({ ...prev, role: data.roleId }));
+        const assignedRole = rolesList.find((r) => r._id === data.roleId);
         if (assignedRole) {
           setSelectedRolePermissions(assignedRole.permissions || []);
         }
       }
-
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Something went wrong");
@@ -433,12 +512,19 @@ const handleSubmit = async () => {
   };
 
   const DetailsTab = (
-    <UserDetailsForm 
+    <UserDetailsForm
       formData={formData}
       errors={errors}
       isEditMode={isEditMode}
       onChange={handleChange}
-      onStatusChange={(val) => setFormData(prev => ({...prev, status: val}))}
+      onStatusChange={(val) =>
+        setFormData((prev) => ({ ...prev, status: val }))
+      }
+      companies={companiesList}
+      onCompanyChange={(val) => {
+        setFormData((prev) => ({ ...prev, company: val }));
+        if (errors.company) setErrors((prev) => ({ ...prev, company: "" }));
+      }}
       imagePreview={imagePreview}
       onImageChange={handleImageChange}
     />
@@ -447,75 +533,85 @@ const handleSubmit = async () => {
   const RolesTab = (
     <div className="">
       <RoleComponentCard title="">
-         <RoleSelectionList 
-            rolesList={rolesList} 
-            selectedRoleId={formData.role} 
-            onRoleChange={handleRoleChange} 
-         />
+        <RoleSelectionList
+          rolesList={rolesList}
+          selectedRoleId={formData.role}
+          onRoleChange={handleRoleChange}
+        />
       </RoleComponentCard>
 
-     {formData.role && (
-  <RoleComponentCard 
-    title="Permissions"
-    desc={
-      isSuperAdmin
-        ? "All permissions are automatically granted for Super Admin."
-        : isEditMode
-          ? "Click icons to modify permissions."
-          : "View permissions for this role."
-    }
-    legend={
-      !isSuperAdmin ? <PermissionLegend showAll={isEditMode} /> : null
-    }
-  >
-    <div className="space-y-6">
-          
-        
-
-          <PermissionMatrixTable 
-            allPermissions={allPermissions}
-            rolePermissions={selectedRolePermissions}
-            additionalPermissions={additionalPerms}
-            excludedPermissions={excludedPerms}
-            onToggle={togglePermission}
-            isReadOnly={!isEditMode || isSuperAdmin}
-          />
-           <DashboardWidgetSectionUser 
-           allPermissions={allPermissions} 
-             rolePermissions={selectedRolePermissions}
-             additionalPermissions={additionalPerms}
-             excludedPermissions={excludedPerms}
-             onToggle={togglePermission} // Uses the exact same logic as the grid
-             isReadOnly={!isEditMode || isSuperAdmin}
-          />
-        </div>
-  </RoleComponentCard>
-)}
-
+      {formData.role && (
+        <RoleComponentCard
+          title="Permissions"
+          desc={
+            isSuperAdmin
+              ? "All permissions are automatically granted for Super Admin."
+              : isEditMode
+              ? "Click icons to modify permissions."
+              : "View permissions for this role."
+          }
+          legend={
+            !isSuperAdmin ? <PermissionLegend showAll={isEditMode} /> : null
+          }
+        >
+          <div className="space-y-6">
+            <PermissionMatrixTable
+              allPermissions={allPermissions}
+              rolePermissions={selectedRolePermissions}
+              additionalPermissions={additionalPerms}
+              excludedPermissions={excludedPerms}
+              onToggle={togglePermission}
+              isReadOnly={!isEditMode || isSuperAdmin}
+            />
+            <DashboardWidgetSectionUser
+              allPermissions={allPermissions}
+              rolePermissions={selectedRolePermissions}
+              additionalPermissions={additionalPerms}
+              excludedPermissions={excludedPerms}
+              onToggle={togglePermission} // Uses the exact same logic as the grid
+              isReadOnly={!isEditMode || isSuperAdmin}
+            />
+          </div>
+        </RoleComponentCard>
+      )}
     </div>
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-[850px] p-4 sm:p-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-[850px] p-4 sm:p-6"
+    >
       <AddForm
-  title={initialData ? "Edit User" : (createdUserId ? "Edit Permissions" : "Add New User")}
-  description={isEditMode ? "Update details and permissions" : "Enter user details to create account"}
-  
-  submitLabel={
-    isSubmitting 
-      ? "Saving..." 
-      : activeTab === "roles" 
-        ? "Save Role" // or "Add Role"
-        : (initialData || createdUserId ? "Update User" : "Create User")
-  }
-  onCancel={handleClose}
-  onSubmit={handleSubmit}
->
+        title={
+          initialData
+            ? "Edit User"
+            : createdUserId
+            ? "Edit Permissions"
+            : "Add New User"
+        }
+        description={
+          isEditMode
+            ? "Update details and permissions"
+            : "Enter user details to create account"
+        }
+        submitLabel={
+          isSubmitting
+            ? "Saving..."
+            : activeTab === "roles"
+            ? "Save Role" // or "Add Role"
+            : initialData || createdUserId
+            ? "Update User"
+            : "Create User"
+        }
+        onCancel={handleClose}
+        onSubmit={handleSubmit}
+      >
         <div className="max-h-[75vh] overflow-y-auto p-1 space-y-4">
-          
           {/* ✅ DYNAMIC SUCCESS ALERT */}
           {alertConfig && (
-            <Alert 
+            <Alert
               variant="success"
               title={alertConfig.title}
               message={alertConfig.message}
@@ -523,11 +619,11 @@ const handleSubmit = async () => {
           )}
 
           <UserCardComponent
-  userDetails={DetailsTab}
-  userRoles={RolesTab}
-  activeTab={activeTab}
-  onTabChange={handleTabChange} // <--- ADD THIS
-/>
+            userDetails={DetailsTab}
+            userRoles={RolesTab}
+            activeTab={activeTab}
+            onTabChange={handleTabChange} // <--- ADD THIS
+          />
         </div>
       </AddForm>
     </Modal>

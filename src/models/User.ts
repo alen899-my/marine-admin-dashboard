@@ -7,25 +7,23 @@ const userSchema = new Schema(
     phone: { type: String, required: false },
     password: { type: String, required: true },
 
-    companyId: {
+    company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
       required: true,
     },
-  
+
     role: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Role", 
+      ref: "Role",
       required: true,
     },
-
 
     additionalPermissions: {
       type: [String],
       default: [],
     },
 
-  
     excludedPermissions: {
       type: [String],
       default: [],
@@ -35,15 +33,14 @@ const userSchema = new Schema(
       default: 1, // backward-compatible
     },
 
-
     assignedVesselId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vessel",
       default: null,
     },
-    profilePicture: { 
-      type: String, 
-      default: null 
+    profilePicture: {
+      type: String,
+      default: null,
     },
 
     status: {
