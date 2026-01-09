@@ -18,6 +18,7 @@ export const authConfig = {
         session.user.role = token.role as string;
         session.user.permissions = token.permissions as string[];
         session.user.profilePicture = token.profilePicture as string | null;
+        session.user.company = token.company as { id: string, name: string } | null;
       }
       return session;
     },

@@ -5,6 +5,7 @@ import User from "@/models/User";
 import Role from "@/models/Role";
 import { dbConnect } from "@/lib/db";
 import { authConfig } from "./auth.config";
+import Company from "./models/Company";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -16,6 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await User.findOne({ email: credentials.email })
           .populate({ path: "role", model: Role })
+          .populate({ path: "company", model: Company })
           .lean();
 
         if (!user || !user.password) return null;
@@ -37,6 +39,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role?.name || "user",
           profilePicture: user.profilePicture,
           permissions,
+          company: user.company ? {
+            id: user.company._id.toString(),
+            name: user.company.name,
+          } : null,
         };
       },
     }),
@@ -51,6 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         token.permissions = user.permissions;
         token.profilePicture = user.profilePicture;
+        token.company = user.company;
       }
 
       // 2. Client-side Update (Update Profile)
@@ -63,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.id) {
         try {
           await dbConnect();
-          const dbUser = await User.findById(token.id).populate("role").lean();
+          const dbUser = await User.findById(token.id).populate("role").populate("company").lean();
 
           if (dbUser && dbUser.status === "active") {
             const basePerms = dbUser.role?.permissions || [];
@@ -76,6 +83,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.fullName = dbUser.fullName;
             token.profilePicture = dbUser.profilePicture;
             token.email = dbUser.email;
+            token.company = dbUser.company ? {
+              id: dbUser.company._id.toString(),
+              name: dbUser.company.name,
+            } : null;
           }
         } catch (error) {
           console.error("Auth Sync Error:", error);
