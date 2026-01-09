@@ -5,8 +5,11 @@ import { dbConnect } from "@/lib/db";
 import Voyage from "@/models/Voyage";
 import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi schema
 import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 export async function GET(req: Request) {
   try {
+     const authz = await authorizeRequest("vessels.view");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
     // 1. Extract Query Params
@@ -122,6 +125,8 @@ export async function GET(req: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authz = await authorizeRequest("vessels.create");
+    if (!authz.ok) return authz.response;
     await dbConnect();
     const session = await auth();
     

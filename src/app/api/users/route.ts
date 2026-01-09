@@ -147,6 +147,9 @@ export async function POST(req: NextRequest) {
 // ... GET function (Keep your existing GET function here)
 export async function GET(req: NextRequest) {
   try {
+    const authz = await authorizeRequest("users.view");
+    if (!authz.ok) return authz.response;
+
     await dbConnect();
     const { searchParams } = new URL(req.url);
 
