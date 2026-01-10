@@ -66,33 +66,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.profilePicture = session.user.profilePicture;
       }
 
-      // 3. Database Sync (Fetch fresh data every request)
-      if (token.id) {
-        try {
-          await dbConnect();
-          const dbUser = await User.findById(token.id).populate("role").populate("company").lean();
-
-          if (dbUser && dbUser.status === "active") {
-            const basePerms = dbUser.role?.permissions || [];
-            const additional = dbUser.additionalPermissions || [];
-            const excluded = dbUser.excludedPermissions || [];
-            
-            token.permissions = Array.from(new Set([...basePerms, ...additional]))
-              .filter((p) => !excluded.includes(p));
-            token.role = dbUser.role?.name || "user";
-            token.fullName = dbUser.fullName;
-            token.profilePicture = dbUser.profilePicture;
-            token.email = dbUser.email;
-            token.company = dbUser.company ? {
-              id: dbUser.company._id.toString(),
-              name: dbUser.company.name,
-            } : null;
-          }
-        } catch (error) {
-          console.error("Auth Sync Error:", error);
-        }
-      }
-
       return token;
     },
   },
