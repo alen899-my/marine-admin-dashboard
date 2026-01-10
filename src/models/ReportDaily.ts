@@ -114,10 +114,16 @@ const ReportDailySchema = new Schema<IReportDaily>(
       type: String,
       enum: ["active", "inactive"],
       default: "active",
+      index: true, // ✅ Index for Status filtering
     },
   },
   { timestamps: true }
 );
+
+// ✅ Compound Index for generic Vessel Lists sorted by Date
+ReportDailySchema.index({ vesselId: 1, reportDate: -1 });
+ReportDailySchema.index({ reportDate: -1 }); // Index for global date filtering
+ReportDailySchema.index({ createdAt: -1 });  // Index for default sorting
 
 export default mongoose.models.ReportDaily ||
   mongoose.model<IReportDaily>("ReportDaily", ReportDailySchema);

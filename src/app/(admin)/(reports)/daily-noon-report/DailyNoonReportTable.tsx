@@ -14,7 +14,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Types ---
@@ -114,6 +114,30 @@ export default function DailyNoonReportTable({
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
+
+  // ✅ OPTIMIZATION: Use Refs for filters to stabilize fetchReports dependency
+  const searchRef = useRef(search);
+  const statusRef = useRef(status);
+  const startDateRef = useRef(startDate);
+  const endDateRef = useRef(endDate);
+  const vesselIdRef = useRef(vesselId);
+  const voyageIdRef = useRef(voyageId);
+
+  useEffect(() => {
+    searchRef.current = search;
+    statusRef.current = status;
+    startDateRef.current = startDate;
+    endDateRef.current = endDate;
+    vesselIdRef.current = vesselId;
+    voyageIdRef.current = voyageId;
+
+    // Logic to prevent double-fetch while ensuring fetch happens
+    if (currentPage !== 1) {
+      setCurrentPage(1); // will trigger 'currentPage' effect
+    } else {
+      fetchReports(1);   // already on page 1, so forced trigger needed
+    }
+  }, [search, status, startDate, endDate, vesselId, voyageId]); // removed separate ref update effect
 
   // 1. Extract the string ID safely
   const currentVesselId = typeof editData?.vesselId === "object"
@@ -374,25 +398,26 @@ export default function DailyNoonReportTable({
   const [totalItems, setTotalItems] = useState(0); // Add this state
 
   // Inside DailyNoonReportTableProps interface, add:
-interface DailyNoonReportTableProps {
-  // ... existing props
-  setTotalCount?: (count: number) => void; 
-}
+  interface DailyNoonReportTableProps {
+    // ... existing props
+    setTotalCount?: (count: number) => void;
+  }
 
-// Inside DailyNoonReportTable component, update fetchReports:
-const fetchReports = useCallback(
+  // Inside DailyNoonReportTable component, update fetchReports:
+  // Inside DailyNoonReportTable component, update fetchReports:
+  const fetchReports = useCallback(
     async (page = 1) => {
       try {
         setLoading(true);
         const query = new URLSearchParams({
           page: page.toString(),
           limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId,
-          voyageId,
+          search: searchRef.current,
+          status: statusRef.current,
+          startDate: startDateRef.current,
+          endDate: endDateRef.current,
+          vesselId: vesselIdRef.current,
+          voyageId: voyageIdRef.current,
         });
 
         const res = await fetch(`/api/noon-report?${query.toString()}`);
@@ -423,25 +448,17 @@ const fetchReports = useCallback(
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, setTotalCount, vesselId, voyageId]
+    [LIMIT, onDataLoad, setTotalCount] // ✅ Dependencies reduced to stable props
   );
 
-  // Filter Trigger (Search, Status, Dates) - using props now
-  useEffect(() => {
-    fetchReports(1);
-    setCurrentPage(1);
-  }, [fetchReports]); // fetchReports dependency already includes search/status/dates
-
-  // Refresh Trigger
-  useEffect(() => {
-    fetchReports(1);
-    setCurrentPage(1);
-  }, [refresh, fetchReports]);
-
-  // Pagination Trigger
+  // ✅ Unified Data Fetching Trigger
+  // Runs when:
+  // 1. Page changes (via pagination or reset)
+  // 2. Refresh is triggered
+  // 3. fetchReports remains stable so it won't re-trigger unnecessarily
   useEffect(() => {
     fetchReports(currentPage);
-  }, [currentPage, fetchReports]);
+  }, [currentPage, refresh, fetchReports]);
 
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
@@ -542,36 +559,36 @@ const fetchReports = useCallback(
   }
 
   async function handleDelete() {
-    if (!selectedReport) return;
-     setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/noon-report/${selectedReport._id}`, {
-        method: "DELETE",
-      });
+    if (!selectedReport) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/noon-report/${selectedReport._id}`, {
+        method: "DELETE",
+      });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error();
 
-      // 1. Update local table data
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      // 1. Update local table data
+      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
 
       // 2. DYNAMICALLY UPDATE THE TOTAL COUNT IN THE HEADER
       if (setTotalCount) {
         setTotalCount((prev: number) => Math.max(0, prev - 1));
       }
 
-      toast.success("Noon report deleted successfully");
-    } catch {
-      toast.error("Failed to delete report");
-    } finally {
-      setOpenDelete(false);
-      setSelectedReport(null);
-       setIsDeleting(false);
-      
+      toast.success("Noon report deleted successfully");
+    } catch {
+      toast.error("Failed to delete report");
+    } finally {
+      setOpenDelete(false);
+      setSelectedReport(null);
+      setIsDeleting(false);
+
       // Optional: Re-fetch the current page to fill the gap left by the deleted row
       // fetchReports(currentPage); 
-    }
-  }
-  
+    }
+  }
+
   if (!isReady) return null;
   return (
     <>
@@ -825,62 +842,62 @@ const fetchReports = useCallback(
               </Badge>
             </div>
 
-           {/* ACTIONS (SHARE & DOWNLOAD) */}
-<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
-  {selectedReport && (
-    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-       <DownloadPdfButton
-        title={`Noon Report - ${getVesselName(selectedReport)}`}
-        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
-        buttonLabel="Download PDF"
-        data={{
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage Number": getVoyageNo(selectedReport),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Latitude": selectedReport.position?.lat || "-",
-          "Longitude": selectedReport.position?.long || "-",
-          "Next Port": selectedReport.navigation?.nextPort || "-",
-          "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-          "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-          "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-          "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-          "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-          "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
-          "Wind Condition": selectedReport.weather?.wind || "-",
-          "Sea State": selectedReport.weather?.seaState || "-",
-          "Weather Remarks": selectedReport.weather?.remarks || "-",
-          "General Remarks": selectedReport.remarks || "-"
-        }}
-      />
-      {/* 1. Share via WhatsApp */}
-      <SharePdfButton
-        title={`Noon Report - ${getVesselName(selectedReport)}`}
-        filename={`NoonReport_${getVoyageNo(selectedReport)}`}
-        data={{
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage Number": getVoyageNo(selectedReport),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Latitude": selectedReport.position?.lat || "-",
-          "Longitude": selectedReport.position?.long || "-",
-          "Next Port": selectedReport.navigation?.nextPort || "-",
-          "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-          "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-          "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-          "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-          "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-          "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
-          "Wind Condition": selectedReport.weather?.wind || "-",
-          "Sea State": selectedReport.weather?.seaState || "-",
-          "Weather Remarks": selectedReport.weather?.remarks || "-",
-          "General Remarks": selectedReport.remarks || "-"
-        }}
-      />
+            {/* ACTIONS (SHARE & DOWNLOAD) */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+              {selectedReport && (
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <DownloadPdfButton
+                    title={`Noon Report - ${getVesselName(selectedReport)}`}
+                    filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+                    buttonLabel="Download PDF"
+                    data={{
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage Number": getVoyageNo(selectedReport),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      "Latitude": selectedReport.position?.lat || "-",
+                      "Longitude": selectedReport.position?.long || "-",
+                      "Next Port": selectedReport.navigation?.nextPort || "-",
+                      "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+                      "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+                      "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+                      "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+                      "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+                      "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+                      "Wind Condition": selectedReport.weather?.wind || "-",
+                      "Sea State": selectedReport.weather?.seaState || "-",
+                      "Weather Remarks": selectedReport.weather?.remarks || "-",
+                      "General Remarks": selectedReport.remarks || "-"
+                    }}
+                  />
+                  {/* 1. Share via WhatsApp */}
+                  <SharePdfButton
+                    title={`Noon Report - ${getVesselName(selectedReport)}`}
+                    filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+                    data={{
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage Number": getVoyageNo(selectedReport),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      "Latitude": selectedReport.position?.lat || "-",
+                      "Longitude": selectedReport.position?.long || "-",
+                      "Next Port": selectedReport.navigation?.nextPort || "-",
+                      "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
+                      "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
+                      "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
+                      "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
+                      "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
+                      "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+                      "Wind Condition": selectedReport.weather?.wind || "-",
+                      "Sea State": selectedReport.weather?.seaState || "-",
+                      "Weather Remarks": selectedReport.weather?.remarks || "-",
+                      "General Remarks": selectedReport.remarks || "-"
+                    }}
+                  />
 
-      {/* 2. Download as PDF */}
-     
-    </div>
-  )}
-</div>
+                  {/* 2. Download as PDF */}
+
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
@@ -1198,7 +1215,7 @@ const fetchReports = useCallback(
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}
         onConfirm={handleDelete}
-         loading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

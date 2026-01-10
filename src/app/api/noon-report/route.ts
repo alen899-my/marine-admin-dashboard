@@ -89,18 +89,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const total = await ReportDaily.countDocuments(query);
-
-    const reports = await ReportDaily.find(query)
-
-      .populate("vesselId", "name")
-      .populate("voyageId", "voyageNo")
-      .populate("createdBy", "fullName") // ✅ Add this
-      .populate("updatedBy", "fullName") // ✅ Add this
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // ✅ OPTIMIZATION: Parallelize Queries
+    const [total, reports] = await Promise.all([
+      ReportDaily.countDocuments(query),
+      ReportDaily.find(query)
+        .populate("vesselId", "name")
+        .populate("voyageId", "voyageNo")
+        .populate("createdBy", "fullName")
+        .populate("updatedBy", "fullName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return NextResponse.json({
       data: reports,
