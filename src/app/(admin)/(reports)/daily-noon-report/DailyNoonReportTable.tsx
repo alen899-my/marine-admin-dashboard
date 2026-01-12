@@ -350,6 +350,7 @@ useEffect(() => {
 
 
 const fetchReports = useCallback(async (page = 1) => {
+  const start = performance.now();
     try {
       setLoading(true);
       const query = new URLSearchParams({
@@ -364,6 +365,8 @@ const fetchReports = useCallback(async (page = 1) => {
       });
 
       const res = await fetch(`/api/noon-report?${query.toString()}`);
+      const end = performance.now();
+      console.log(`🌐 API Request to /noon-report took: ${(end - start).toFixed(2)}ms`);
       if (!res.ok) throw new Error();
 
       const result = await res.json();

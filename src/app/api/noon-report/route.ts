@@ -35,137 +35,123 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 }
 
 // GET ALL NOON REPORTS
+// GET ALL NOON REPORTS
 export async function GET(req: NextRequest) {
+  const start = performance.now();
   try {
-    const authz = await authorizeRequest("noon.view");
+    // 1. Parallelize Auth and DB Connection
+    const t1 = performance.now();
+    const [authz, _] = await Promise.all([
+      authorizeRequest("noon.view"),
+      dbConnect()
+    ]);
     if (!authz.ok) return authz.response;
-    await dbConnect();
+    console.log(`⏱️ Auth & DB Setup: ${(performance.now() - t1).toFixed(2)}ms`);
 
-    // 🔒 1. Session & Multi-Tenancy Setup
     const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
+    // Ensure models are registered for population
     const _ensureModels = [Vessel, Voyage, User];
 
     const { searchParams } = new URL(req.url);
-
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 10;
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const selectedVessel = searchParams.get("vesselId");
-    const selectedVoyage = searchParams.get("voyageId");
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
     const skip = (page - 1) * limit;
 
     const query: Record<string, any> = {};
 
-    // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
-    // =========================================================
+    // 2. Multi-Tenancy Logic
+    const t2 = performance.now();
     if (!isSuperAdmin) {
-      if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
-        );
-      }
-
-      // Step A: Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      if (!userCompanyId) return NextResponse.json({ error: "No company assigned" }, { status: 403 });
+      
+      // Optimization: Fetch company vessel IDs using lean()
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
-
-      // Step B: Restrict the query to only these vessels
-      query.vesselId = { $in: companyVesselIds };
-
-      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
+      
+      const selectedVessel = searchParams.get("vesselId");
       if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+        // Ensure requested vessel belongs to user's company
+        if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
           query.vesselId = selectedVessel;
         } else {
-          // Accessing unauthorized vessel
-          return NextResponse.json({
-            data: [],
-            pagination: { page, limit, total: 0, totalPages: 0 },
-          });
+          return NextResponse.json({ data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
         }
+      } else {
+        query.vesselId = { $in: companyVesselIds };
       }
     } else {
-      // Super Admin: Use the selectedVessel filter directly if provided
+      const selectedVessel = searchParams.get("vesselId");
       if (selectedVessel) query.vesselId = selectedVessel;
     }
-    // =========================================================
+    console.log(`⏱️ Multi-Tenancy Logic: ${(performance.now() - t2).toFixed(2)}ms`);
 
-    if (status !== "all") {
-      query.status = status;
+    // 3. Selective Filter Building
+    const status = searchParams.get("status");
+    if (status && status !== "all") query.status = status;
+
+    const selectedVoyage = searchParams.get("voyageId");
+    if (selectedVoyage) query.voyageId = selectedVoyage;
+
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    if (startDate || endDate) {
+      const dateQuery: any = {};
+      const startD = parseDateString(startDate);
+      const endD = parseDateString(endDate);
+      if (startD) dateQuery.$gte = startD;
+      if (endD) {
+        endD.setHours(23, 59, 59, 999);
+        dateQuery.$lte = endD;
+      }
+      if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
     }
 
+    const search = searchParams.get("search")?.trim();
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } }, // Search the snapshot string
+        { voyageNo: { $regex: search, $options: "i" } },
         { "navigation.nextPort": { $regex: search, $options: "i" } },
       ];
     }
-    
-    if (selectedVoyage) {
-      query.voyageId = selectedVoyage;
-    }
 
-    if (startDate || endDate) {
-      const dateQuery: { $gte?: Date; $lte?: Date } = {};
-      if (startDate) {
-        const parsedStart = parseDateString(startDate);
-        if (parsedStart) dateQuery.$gte = parsedStart;
-      }
-      if (endDate) {
-        const parsedEnd = parseDateString(endDate);
-        if (parsedEnd) {
-          parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd;
-        }
-      }
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
-    }
-    
-    // ✅ OPTIMIZATION: Parallelize Queries
+    // 4. Execute Main Queries in Parallel
+    const t3 = performance.now();
     const [total, reports] = await Promise.all([
       ReportDaily.countDocuments(query),
       ReportDaily.find(query)
         .populate("vesselId", "name")
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
-        .populate("updatedBy", "fullName")
-        .sort({ createdAt: -1 })
+        .populate("updatedBy", "fullName") // Kept updatedBy as requested
+        .sort({ reportDate: -1 }) // Matches your compound index!
         .skip(skip)
         .limit(limit)
         .lean(),
     ]);
+    
+    console.log(`⏱️ Main DB Query: ${(performance.now() - t3).toFixed(2)}ms`);
+    const totalTime = (performance.now() - start).toFixed(2);
+    console.log(`✅ TOTAL API TIME: ${totalTime}ms`);
 
     return NextResponse.json({
       data: reports,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+      pagination: { 
+        page, 
+        limit, 
+        total, 
+        totalPages: Math.ceil(total / limit) 
       },
     });
-  } catch (error: unknown) {
-    console.error("GET NOON REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch reports" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("GET ERROR:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
