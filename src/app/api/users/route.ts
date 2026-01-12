@@ -204,7 +204,12 @@ export async function GET(req: NextRequest) {
     // =========================================================
     if (isSuperAdmin) {
       // Super Admin: Can see all or filter by a specific company if provided
-      if (companyIdParam && companyIdParam !== "undefined" && companyIdParam !== "null" && companyIdParam !== "all") {
+      if (
+        companyIdParam &&
+        companyIdParam !== "undefined" &&
+        companyIdParam !== "null" &&
+        companyIdParam !== "all"
+      ) {
         query.company = companyIdParam;
       }
     } else {

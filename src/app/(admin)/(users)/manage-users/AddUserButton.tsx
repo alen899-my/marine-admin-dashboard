@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import Button from "@/components/ui/button/Button";
 import UserFormModal from "@/components/Users/UserFormModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useState } from "react";
 
-export default function AddUserButton({ onSuccess }: { onSuccess: () => void }) {
+export default function AddUserButton({
+  onSuccess,
+}: {
+  onSuccess: () => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const { can, isReady } = useAuthorization();
-
 
   if (!isReady) return null;
 

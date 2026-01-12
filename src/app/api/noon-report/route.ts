@@ -34,12 +34,23 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
 
-//  GET ALL NOON REPORTS
+// GET ALL NOON REPORTS
 export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("noon.view");
     if (!authz.ok) return authz.response;
     await dbConnect();
+
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const _ensureModels = [Vessel, Voyage, User];
 
     const { searchParams } = new URL(req.url);
@@ -54,7 +65,43 @@ export async function GET(req: NextRequest) {
     const selectedVoyage = searchParams.get("voyageId");
     const skip = (page - 1) * limit;
 
-    const query: Record<string, unknown> = {};
+    const query: Record<string, any> = {};
+
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      // Step A: Find all vessels belonging to the user's company
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      // Step B: Restrict the query to only these vessels
+      query.vesselId = { $in: companyVesselIds };
+
+      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
+      if (selectedVessel) {
+        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+          query.vesselId = selectedVessel;
+        } else {
+          // Accessing unauthorized vessel
+          return NextResponse.json({
+            data: [],
+            pagination: { page, limit, total: 0, totalPages: 0 },
+          });
+        }
+      }
+    } else {
+      // Super Admin: Use the selectedVessel filter directly if provided
+      if (selectedVessel) query.vesselId = selectedVessel;
+    }
+    // =========================================================
 
     if (status !== "all") {
       query.status = status;
@@ -67,10 +114,11 @@ export async function GET(req: NextRequest) {
         { "navigation.nextPort": { $regex: search, $options: "i" } },
       ];
     }
-    if (selectedVessel) query.vesselId = selectedVessel;
+    
     if (selectedVoyage) {
       query.voyageId = selectedVoyage;
     }
+
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
       if (startDate) {

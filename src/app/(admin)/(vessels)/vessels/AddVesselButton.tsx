@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { vesselSchema } from "@/lib/validations/vesselSchema";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -24,6 +25,10 @@ export default function AddVesselButton({ onSuccess }: AddVesselButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { can, isReady } = useAuthorization();
+  const { data: session } = useSession();
+  const loggedInUserRole = session?.user?.role?.toLowerCase();
+  const loggedInUserCompanyId = session?.user?.company?.id;
+  const isActorSuperAdmin = loggedInUserRole === "super-admin";
   const [companiesList, setCompaniesList] = useState<{ value: string; label: string }[]>([]);
 
   // Fetch companies
@@ -69,6 +74,34 @@ useEffect(() => {
   };
 
   const [formData, setFormData] = useState(initialFormState);
+
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const json = await res.json();
+          let formatted = (json.data || []).map((c: any) => ({
+            value: c._id,
+            label: c.name,
+          }));
+
+          // 🔒 FILTER: Only show their own company if not super admin
+          if (!isActorSuperAdmin && loggedInUserCompanyId) {
+            formatted = formatted.filter((c: any) => c.value === loggedInUserCompanyId);
+            
+            // ✅ AUTO-FILL: Pre-select the company in the form state
+            setFormData(prev => ({ ...prev, company: loggedInUserCompanyId }));
+          }
+          
+          setCompaniesList(formatted);
+        }
+      } catch (error) {
+        console.error("Failed to load companies", error);
+      }
+    }
+    if (isOpen) fetchCompanies();
+  }, [isOpen, isActorSuperAdmin, loggedInUserCompanyId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -261,16 +294,18 @@ useEffect(() => {
                 </div>
 
                 <div>
-      <Label>Company <span className="text-red-500">*</span></Label>
-      <SearchableSelect
-        options={companiesList}
-        value={formData.company}
-        onChange={(val) => handleSelectChange("company", val)}
-        placeholder="Select Company"
-        error={!!errors.company}
-      />
-      {errors.company && <p className="text-xs text-red-500 mt-1">{errors.company}</p>}
-    </div>
+                  <Label>Company <span className="text-red-500">*</span></Label>
+                  <SearchableSelect
+                    options={companiesList}
+                    value={formData.company}
+                    onChange={(val) => handleSelectChange("company", val)}
+                    placeholder={isActorSuperAdmin ? "Select Company" : "Your Organization"}
+                    error={!!errors.company}
+                    // Optional: keep it enabled or disabled based on your preference
+                    // disabled={!isActorSuperAdmin} 
+                  />
+                  {errors.company && <p className="text-xs text-red-500 mt-1">{errors.company}</p>}
+                </div>
 
                 <div>
                   <Label>Fleet</Label>

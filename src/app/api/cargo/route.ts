@@ -10,6 +10,7 @@ import { existsSync } from "fs";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
+import Vessel from "@/models/Vessel";
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -156,6 +157,17 @@ export async function GET(req: Request) {
     const authz = await authorizeRequest("cargo.view");
     if (!authz.ok) return authz.response;
     await dbConnect();
+
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -170,21 +182,56 @@ export async function GET(req: Request) {
 
     const query: any = {};
 
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      // Find all vessels belonging to the user's company
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      // Restrict query to these vessels only
+      query.vesselId = { $in: companyVesselIds };
+
+      // If a specific vessel was selected in UI, verify ownership
+      if (selectedVessel) {
+        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+          query.vesselId = selectedVessel;
+        } else {
+          // If trying to access unauthorized vessel, return empty data
+          return NextResponse.json({
+            data: [],
+            pagination: { total: 0, page, limit, totalPages: 0 },
+          });
+        }
+      }
+    } else {
+      // Super Admin: Use selectedVessel filter directly if provided
+      if (selectedVessel) query.vesselId = selectedVessel;
+    }
+    // =========================================================
+
     if (status !== "all") query.status = status;
 
-    // Search logic needs to search on fields that exist
+    // Search logic
     if (search) {
       query.$or = [
-        // Note: Searching populated fields usually requires aggregate,
-        // for simplicity we search portName here.
-        // To search vesselName dynamically, you'd strictly need aggregation.
         { portName: { $regex: search, $options: "i" } },
+        { "file.originalName": { $regex: search, $options: "i" } }, // Also search filename
       ];
     }
-    if (selectedVessel) query.vesselId = selectedVessel;
+
     if (selectedVoyage) {
       query.voyageId = selectedVoyage;
     }
+
     if (startDate || endDate) {
       const dateQuery: any = {};
       if (startDate) dateQuery.$gte = parseDateString(startDate);
@@ -199,7 +246,6 @@ export async function GET(req: Request) {
     }
 
     const data = await Document.find(query)
-
       .populate("vesselId", "name")
       .populate("voyageId", "voyageNo")
       .populate("createdBy", "fullName")
@@ -220,6 +266,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (error: any) {
+    console.error("GET DOCUMENTS ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

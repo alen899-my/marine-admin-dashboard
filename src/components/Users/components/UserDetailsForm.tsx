@@ -20,6 +20,7 @@ interface UserDetailsFormProps {
   onImageChange: (file: File) => void;
   companies: { value: string; label: string }[];
   onCompanyChange: (val: string) => void;
+  isSuperAdminActor: boolean;
 }
 
 export default function UserDetailsForm({
@@ -32,6 +33,7 @@ export default function UserDetailsForm({
   onImageChange, // ✅ Destructured
   companies,
   onCompanyChange,
+  isSuperAdminActor,
 }: UserDetailsFormProps) {
   // ✅ Ref for hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,9 +144,7 @@ export default function UserDetailsForm({
               />
             </div>
             <div>
-              <Label>
-                Company <span className="text-red-500">*</span>
-              </Label>
+              <Label>Company <span className="text-red-500">*</span></Label>
               <SearchableSelect
                 options={companies}
                 value={formData.company}

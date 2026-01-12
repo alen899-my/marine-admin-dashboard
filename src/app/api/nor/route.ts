@@ -159,9 +159,21 @@ export async function POST(req: Request) {
 // --- GET: FETCH NORS ---
 export async function GET(req: Request) {
   try {
-     const authz = await authorizeRequest("nor.view");
+    const authz = await authorizeRequest("nor.view");
     if (!authz.ok) return authz.response;
+    
     await dbConnect();
+
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const _ensureModels = [Vessel, Voyage, User];
 
     const { searchParams } = new URL(req.url);
@@ -173,25 +185,59 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-          const selectedVessel = searchParams.get("vesselId");
-const selectedVoyage = searchParams.get("voyageId");
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedVoyage = searchParams.get("voyageId");
 
+    const query: Record<string, any> = { eventType: "nor" };
 
-    const query: Record<string, unknown> = { eventType: "nor" };
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      // Find all vessels belonging to the user's company
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      // Restrict query to these vessels only
+      query.vesselId = { $in: companyVesselIds };
+
+      // If a specific vessel was selected in UI, verify ownership
+      if (selectedVessel) {
+        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+          query.vesselId = selectedVessel;
+        } else {
+          // If trying to access unauthorized vessel, return empty result
+          return NextResponse.json({
+            data: [],
+            pagination: { total: 0, page, totalPages: 0 },
+          });
+        }
+      }
+    } else {
+      // Super Admin: Use selectedVessel filter directly if provided
+      if (selectedVessel) query.vesselId = selectedVessel;
+    }
+    // =========================================================
 
     if (status !== "all") {
       query.status = status;
     }
-     if (selectedVessel) query.vesselId = selectedVessel;
-          if (selectedVoyage) {
-          query.voyageId = selectedVoyage;
-        }
 
-    // 1. ✅ FIX SEARCH LOGIC
+    if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
+    }
+
+    // ✅ SEARCH LOGIC
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        // Search 'voyageNo' (string), NOT 'voyageId' (ObjectId)
         { voyageNo: { $regex: search, $options: "i" } }, 
         { portName: { $regex: search, $options: "i" } },
       ];
@@ -217,12 +263,12 @@ const selectedVoyage = searchParams.get("voyageId");
 
     const total = await ReportOperational.countDocuments(query);
 
-    // 2. ✅ POPULATE VOYAGE ID
+    // ✅ POPULATE VOYAGE ID & AUDIT FIELDS
     const reports = await ReportOperational.find(query)
       .populate("voyageId", "voyageNo") 
       .populate("vesselId", "name")
-      .populate("createdBy", "fullName") // ✅ Add this
-    .populate("updatedBy", "fullName") // ✅ Add this
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

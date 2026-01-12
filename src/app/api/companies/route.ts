@@ -135,11 +135,41 @@ export async function POST(req: NextRequest) {
 // --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
 export async function GET(req: NextRequest) {
   try {
-    const authz = await authorizeRequest("company.view");
-    if (!authz.ok) return authz.response;
+    // 1. Get current user session
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
 
     await dbConnect();
     const { searchParams } = new URL(req.url);
+
+    // =========================================================
+    // 🔒 MULTI-TENANCY & AUTHORIZATION LOGIC
+    // =========================================================
+    const query: any = {};
+
+    if (!isSuperAdmin) {
+      // Regular users don't need 'company.view' permission to see their OWN company
+      // (Required for dropdowns in User/Vessel forms)
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Forbidden: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+      // Force filter to ONLY their company
+      query._id = userCompanyId;
+    } else {
+      // Super Admin: Perform standard permission check for the management list
+      const authz = await authorizeRequest("company.view");
+      if (!authz.ok) return authz.response;
+    }
+    // =========================================================
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
@@ -149,7 +179,6 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     const skip = (page - 1) * limit;
-    const query: any = {};
 
     if (status !== "all") query.status = status;
 

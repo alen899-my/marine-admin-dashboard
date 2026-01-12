@@ -8,10 +8,10 @@ import { userSchema } from "@/lib/validations/uservalidation/userSchema";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-import Alert from "@/components/ui/alert/Alert"; 
-import { useSession } from "next-auth/react";
+import Alert from "@/components/ui/alert/Alert";
 import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useSession } from "next-auth/react";
 import PermissionLegend from "./components/PermissionLegend";
 import PermissionMatrixTable from "./components/PermissionMatrixTable";
 import RoleSelectionList from "./components/RoleSelectionList";
@@ -61,7 +61,12 @@ export default function UserFormModal({
 }: UserFormModalProps) {
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const { can, isReady } = useAuthorization();
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
+
+  const loggedInUserRole = session?.user?.role?.toLowerCase();
+  const loggedInUserCompanyId = session?.user?.company?.id;
+  const isActorSuperAdmin = loggedInUserRole === "super-admin";
+
   const isEditMode = !!initialData || !!createdUserId;
   const currentUserId = initialData?._id || createdUserId;
   const canEdit = can("users.edit");
@@ -119,18 +124,23 @@ export default function UserFormModal({
     onClose?.(); // close only when user clicks close
   };
 
-  // Fetch Companies
+  // Fetch and Filter Companies
   useEffect(() => {
     async function fetchCompanies() {
       try {
         const res = await fetch("/api/companies");
         if (res.ok) {
           const json = await res.json();
-          // Map the MongoDB data to the { value, label } format required by SearchableSelect
-          const formatted = (json.data || []).map((c: any) => ({
+          let formatted = (json.data || []).map((c: any) => ({
             value: c._id,
             label: c.name,
           }));
+
+          // 🔒 MULTI-TENANCY FILTER
+          if (!isActorSuperAdmin && loggedInUserCompanyId) {
+            formatted = formatted.filter((c: any) => c.value === loggedInUserCompanyId);
+          }
+
           setCompaniesList(formatted);
         }
       } catch (error) {
@@ -138,7 +148,7 @@ export default function UserFormModal({
       }
     }
     if (isOpen) fetchCompanies();
-  }, [isOpen]);
+  }, [isOpen, isActorSuperAdmin, loggedInUserCompanyId]);
 
   // --- 1. Fetch Roles ---
   useEffect(() => {
@@ -228,7 +238,11 @@ export default function UserFormModal({
         if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
       }
     } else if (isOpen && !initialData && !createdUserId) {
-      setFormData(defaultState);
+      // ✅ MODIFIED: Check if actor is Super Admin, otherwise pre-fill company
+      setFormData({
+        ...defaultState,
+        company: !isActorSuperAdmin && loggedInUserCompanyId ? loggedInUserCompanyId : "",
+      });
       setImagePreview(null);
       setProfileImage(null);
       setAdditionalPerms([]);
@@ -236,7 +250,7 @@ export default function UserFormModal({
     }
     setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialData, rolesList]);
+  }, [isOpen, initialData, rolesList, isActorSuperAdmin, loggedInUserCompanyId]);
 
   const selectedRoleObj = rolesList.find((r) => r._id === formData.role);
   const isSuperAdmin = selectedRoleObj?.name?.toLowerCase() === "super-admin";
@@ -529,6 +543,7 @@ export default function UserFormModal({
       }}
       imagePreview={imagePreview}
       onImageChange={handleImageChange}
+      isSuperAdminActor={isActorSuperAdmin}
     />
   );
 
