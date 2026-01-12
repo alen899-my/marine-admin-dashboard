@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         query.reportDate = dateQuery;
       }
     }
-
+    
     // ✅ OPTIMIZATION: Parallelize Queries
     const [total, reports] = await Promise.all([
       ReportDaily.countDocuments(query),

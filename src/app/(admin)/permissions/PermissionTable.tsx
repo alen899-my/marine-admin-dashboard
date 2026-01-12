@@ -57,18 +57,19 @@ interface PermissionTableProps {
   status: string;
   module: string;
    setTotalCount?: Dispatch<SetStateAction<number>>;
+   resourceOptions: { id: string; name: string }[];
 }
 export default function PermissionTable({
   refresh,
   search,
   status,
   module,
-  setTotalCount
+  setTotalCount,resourceOptions
 }: PermissionTableProps) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [resourceOptions, setResourceOptions] = useState<{value: string, label: string}[]>([]);
+ 
   // Modals
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -102,23 +103,9 @@ const canDelete = can("permission.delete");
   };
 
 
-
-useEffect(() => {
-  const fetchResources = async () => {
-    try {
-      const res = await fetch("/api/resources?limit=none&status=active");
-      const data = await res.json();
-      const resourceList = Array.isArray(data) ? data : (data.data || []);
-      setResourceOptions(resourceList.map((r: any) => ({
-        value: r._id,
-        label: r.name
-      })));
-    } catch (error) {
-      console.error("Failed to fetch resources", error);
-    }
-  };
-  fetchResources();
-}, []);
+const selectOptions = useMemo(() => 
+    resourceOptions.map(m => ({ value: m.id, label: m.name })), 
+  [resourceOptions]);
 
   /* ================= COLUMNS ================= */
   const columns = [
@@ -196,22 +183,15 @@ const fetchPermissions = useCallback(async () => {
   }
 }, [currentPage, search, status, module]); // Remove setTotalCount from deps
 
-// 2. Optimized Effect Logic
 useEffect(() => {
-  // Only reset if we aren't already on page 1
-  if (currentPage !== 1) {
+ 
+  if (currentPage !== 1 && (search || status !== 'all' || module)) {
     setCurrentPage(1);
-  } else {
-    // If we are already on page 1, manually trigger the fetch 
-    // because the currentPage change won't trigger the effect below
-    fetchPermissions();
+    return;
   }
-}, [search, status, module]);
-
-useEffect(() => {
-  // This handles the initial mount and whenever currentPage or refresh changes
+  
   fetchPermissions();
-}, [currentPage, refresh]);
+}, [currentPage, refresh, search, status, module, fetchPermissions]);
 
   /* ================= ACTIONS ================= */
   const handleEdit = (p: Permission) => {
@@ -404,7 +384,7 @@ onDelete={
 <div>
   <Label>Resource</Label>
   <SearchableSelect
-    options={resourceOptions}
+   options={selectOptions}
     /* editData.resourceId is already a string because of the EditFormData interface override */
     value={editData.resourceId || ""} 
     onChange={(val) => {

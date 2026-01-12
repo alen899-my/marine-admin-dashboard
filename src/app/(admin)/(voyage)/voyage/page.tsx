@@ -5,7 +5,7 @@ import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import AddVoyage from "./AddVoyage";
 import VoyageTable from "./VoyageTable";
 import { useAuthorization } from "@/hooks/useAuthorization"; 
@@ -23,13 +23,24 @@ export default function VoyageManagement() {
   // ✅ Permissions logic
   const canView = can("permission.view"); 
   const canAdd = can("permission.create");
-
+  const [vessels, setVessels] = useState<any[]>([]);
   // --- Filter State ---
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
+  useEffect(() => {
+    async function fetchVessels() {
+      try {
+        const res = await fetch("/api/vessels?status=active&fields=name,_id"); // ⚡ Projection for speed
+        if (res.ok) {
+          const result = await res.json();
+          setVessels(Array.isArray(result) ? result : result.data || []);
+        }
+      } catch (err) { console.error(err); }
+    }
+    if (isReady) fetchVessels();
+  }, [isReady]);
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   // 1. Wait for Auth check
@@ -56,10 +67,10 @@ export default function VoyageManagement() {
           {/* Shared Filter Toggle */}
           <FilterToggleButton
             isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible}
+            onToggle={setIsFilterVisible} 
           />
           {/* ✅ Check permission for adding */}
-          {canAdd && <AddVoyage onSuccess={handleRefresh} />}
+          {canAdd && <AddVoyage onSuccess={handleRefresh}  vesselList={vessels}/>}
         </div>
       </div>
 
@@ -90,6 +101,7 @@ export default function VoyageManagement() {
           refresh={refresh}
           search={search}
           status={status}
+          vesselList={vessels}
           startDate={startDate}
           endDate={endDate}
           setTotalCount={setTotalCount}

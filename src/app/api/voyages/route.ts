@@ -34,9 +34,7 @@ export async function GET(req: Request) {
     // 🟢 MODE A: DROPDOWN FILTERING (Specific Vessel)
     // =========================================================
     if (vesselId) {
-      // If the frontend asks for a specific vessel, we return ONLY that vessel's data.
-      // We ignore pagination mostly because dropdowns usually need the full list 
-      // (or a generous limit) to show history.
+     
       
       query.vesselId = vesselId;
 
@@ -48,10 +46,7 @@ export async function GET(req: Request) {
       return NextResponse.json(voyages);
     }
 
-    // =========================================================
-    // 🔵 MODE B: TABLE LISTING (Standard Search)
-    // =========================================================
-
+    
     // --- Filter by Status ---
     if (status && status !== "all") {
       query.status = status;
@@ -87,7 +82,7 @@ export async function GET(req: Request) {
         .populate("vesselId", "name imo")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
-        .sort({ "schedule.eta": -1 })
+       .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
