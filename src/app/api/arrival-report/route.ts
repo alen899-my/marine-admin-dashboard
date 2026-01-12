@@ -33,9 +33,20 @@ function parseDateString(dateStr?: string | null): Date | undefined {
 ====================================================== */
 export async function GET(req: NextRequest) {
   try {
-     const authz = await authorizeRequest("arrival.view");
+    const authz = await authorizeRequest("arrival.view");
     if (!authz.ok) return authz.response;
     await dbConnect();
+
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const _ensureModels = [Vessel, Voyage, User, ReportDaily];
 
     // Force model registration (Next.js dev safety)
@@ -51,14 +62,51 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const vesselId = searchParams.get("vesselId");
+    const vesselIdParam = searchParams.get("vesselId");
     const voyageId = searchParams.get("voyageId");
 
     /* ------------------ BUILD QUERY ------------------ */
     const query: any = { eventType: "arrival" };
 
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      // Step A: Find all vessels belonging to the user's company
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      // Step B: Restrict the query to only these vessels
+      query.vesselId = { $in: companyVesselIds };
+
+      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
+      if (vesselIdParam) {
+        if (companyVesselIds.some((id) => id.toString() === vesselIdParam)) {
+          query.vesselId = vesselIdParam;
+        } else {
+          // Accessing unauthorized vessel
+          return NextResponse.json({
+            data: [],
+            pagination: { page, limit, total: 0, totalPages: 0 },
+          });
+        }
+      }
+    } else {
+      // Super Admin: Use the vesselId param directly if provided
+      if (vesselIdParam) {
+        query.vesselId = vesselIdParam;
+      }
+    }
+    // =========================================================
+
     if (status !== "all") query.status = status;
-    if (vesselId) query.vesselId = vesselId;
     if (voyageId) query.voyageId = voyageId;
 
     if (search) {
@@ -103,7 +151,7 @@ export async function GET(req: NextRequest) {
     }
 
     /* ======================================================
-       BULK METRICS CALCULATION (ONLY 2 EXTRA QUERIES)
+        BULK METRICS CALCULATION (ONLY 2 EXTRA QUERIES)
     ====================================================== */
 
     const voyageIds = arrivals
@@ -111,7 +159,7 @@ export async function GET(req: NextRequest) {
       .filter(Boolean)
       .map(id => id.toString());
 
-    // 1️⃣ Fetch ALL departures at once
+    // Fetch ALL departures at once
     const departures = await ReportOperational.find({
       voyageId: { $in: voyageIds },
       eventType: "departure",
@@ -122,7 +170,7 @@ export async function GET(req: NextRequest) {
       departures.map(d => [d.voyageId.toString(), d])
     );
 
-    // 2️⃣ Fetch ALL noon reports at once
+    // Fetch ALL noon reports at once
     const noonReports = await ReportDaily.find({
       voyageId: { $in: voyageIds },
       status: "active",
@@ -137,29 +185,29 @@ export async function GET(req: NextRequest) {
 
     /* ------------------ MERGE METRICS ------------------ */
     const reportsWithMetrics = arrivals.map(report => {
-  const vId = report.voyageId?._id?.toString();
-  if (!vId) return { ...report, metrics: null };
+      const vId = report.voyageId?._id?.toString();
+      if (!vId) return { ...report, metrics: null };
 
-  const departure = departureMap.get(vId);
-  if (!departure) return { ...report, metrics: null };
+      const departure = departureMap.get(vId);
+      if (!departure) return { ...report, metrics: null };
 
-  // 1. Define times FIRST
-  const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-  const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+      // 1. Define times FIRST
+      const arrTime = new Date(report.eventTime || report.reportDate).getTime();
+      const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
 
-  // 2. Now you can use them in the filter
- const noonList = (noonMap.get(vId) || []).filter(n => {
-  const noonTime = new Date(n.reportDate).getTime();
-  // Buffer the start/end by 1 hour to catch reports exactly on the edge
-  const buffer = 3600000; 
-  return noonTime >= (depTime - buffer) && noonTime <= (arrTime + buffer);
-});
+      // 2. Now you can use them in the filter
+      const noonList = (noonMap.get(vId) || []).filter(n => {
+        const noonTime = new Date(n.reportDate).getTime();
+        // Buffer the start/end by 1 hour to catch reports exactly on the edge
+        const buffer = 3600000; 
+        return noonTime >= (depTime - buffer) && noonTime <= (arrTime + buffer);
+      });
 
-  const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
-const totalDistance = noonList.reduce(
-  (sum, n) => sum + (Number(n.navigation?.distLast24h) || 0),
-  0
-);
+      const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
+      const totalDistance = noonList.reduce(
+        (sum, n) => sum + (Number(n.navigation?.distLast24h) || 0),
+        0
+      );
 
       const fuel = (t: "Vlsfo" | "Lsmgo") => {
         const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;

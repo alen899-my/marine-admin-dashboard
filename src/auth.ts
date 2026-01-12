@@ -1,9 +1,9 @@
+import { dbConnect } from "@/lib/db";
+import Role from "@/models/Role";
+import User from "@/models/User";
+import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import User from "@/models/User";
-import Role from "@/models/Role";
-import { dbConnect } from "@/lib/db";
 import { authConfig } from "./auth.config";
 import Company from "./models/Company";
 
@@ -22,15 +22,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || !user.password) return null;
 
-        const isValid = await bcrypt.compare(credentials.password as string, user.password);
+        const isValid = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        );
         if (!isValid) return null;
 
         // Calculate Permissions
         const basePerms = user.role?.permissions || [];
         const additional = user.additionalPermissions || [];
         const excluded = user.excludedPermissions || [];
-        const permissions = Array.from(new Set([...basePerms, ...additional]))
-          .filter((p) => !excluded.includes(p));
+        const permissions = Array.from(
+          new Set([...basePerms, ...additional])
+        ).filter((p) => !excluded.includes(p));
 
         return {
           id: user._id.toString(),
@@ -39,10 +43,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role?.name || "user",
           profilePicture: user.profilePicture,
           permissions,
-          company: user.company ? {
-            id: user.company._id.toString(),
-            name: user.company.name,
-          } : null,
+          company: user.company
+            ? {
+                id: user.company._id.toString(),
+                name: user.company.name,
+              }
+            : null,
         };
       },
     }),

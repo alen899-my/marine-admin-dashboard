@@ -21,8 +21,8 @@ export default function VoyageManagement() {
     useFilterPersistence("voyage");
 
   // ✅ Permissions logic
-  const canView = can("permission.view"); 
-  const canAdd = can("permission.create");
+  const canView = can("voyage.view"); 
+  const canAdd = can("voyage.create");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");

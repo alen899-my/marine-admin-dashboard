@@ -7,13 +7,24 @@ import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Company from "@/models/Company";
+
 export async function GET(req: Request) {
   try {
-     const authz = await authorizeRequest("vessels.view");
+    // 1. Authorization & Session Check
+    const authz = await authorizeRequest("vessels.view");
     if (!authz.ok) return authz.response;
-    await dbConnect();
 
-    // 1. Extract Query Params
+    await dbConnect();
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
+    // 2. Extract Query Params
     const { searchParams } = new URL(req.url);
     const fetchAll = searchParams.get("all") === "true"; // 🟢 Check for Dropdown Mode
 
@@ -21,19 +32,38 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
-    const companyId = searchParams.get("companyId");
+    const companyIdParam = searchParams.get("companyId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // 2. Build Filter Object
+    // 3. Build Filter Object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = {};
+
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (isSuperAdmin) {
+      // Super Admin: Can filter by any company if provided
+      if (companyIdParam && companyIdParam !== "undefined" && companyIdParam !== "null" && companyIdParam !== "all") {
+        query.company = companyIdParam;
+      }
+    } else {
+      // Regular User: Restricted to their own company
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+      query.company = userCompanyId;
+    }
+    // =========================================================
 
     let vesselQuery;
 
     if (fetchAll) {
       // 🟢 MODE A: DROPDOWN (Optimized for Speed)
-      // Only fetch active vessels and ONLY the fields we need (ID, Name)
       query.status = "active";
       
       vesselQuery = Vessel.find(query)
@@ -44,7 +74,7 @@ export async function GET(req: Request) {
     } else {
       // 🔵 MODE B: ADMIN LIST (Full Details + Pagination)
       if (status && status !== "all") query.status = status;
-      if (companyId) query.company = companyId;
+      // Note: query.company is already handled by multi-tenancy block above
       
       if (search) {
         query.$or = [
@@ -61,7 +91,7 @@ export async function GET(req: Request) {
       }
 
       vesselQuery = Vessel.find(query)
-      .populate("company", "name")
+        .populate("company", "name")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
         .sort({ createdAt: -1 })
@@ -70,44 +100,37 @@ export async function GET(req: Request) {
         .lean();
     }
 
-    // 3. Execute Queries
+    // 4. Execute Queries
     const [vessels, total] = await Promise.all([
       vesselQuery.exec(),
       Vessel.countDocuments(query),
     ]);
 
     // =========================================================
-    // 🌟 4. ATTACH ACTIVE VOYAGE (Application-Side Join)
+    // 🌟 5. ATTACH ACTIVE VOYAGE (Application-Side Join)
     // =========================================================
     
-    // Get IDs of the vessels found
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vesselIds = vessels.map((v: any) => v._id);
 
-    // Find Active Voyages for these vessels only
     const activeVoyages = await Voyage.find({
-  vesselId: { $in: vesselIds },
-  status: "active",
-})
-.select("vesselId voyageNo schedule.startDate") // 👈 Fetch Start Date too
-.lean();
+      vesselId: { $in: vesselIds },
+      status: "active",
+    })
+    .select("vesselId voyageNo schedule.startDate")
+    .lean();
 
-    // Create a Lookup Map (VesselID -> VoyageNo)
     const voyageMap = new Map();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     activeVoyages.forEach((voy: any) => {
       voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
     });
 
-    // Merge Data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = vessels.map((v: any) => ({
       ...v,
       activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
     }));
     // =========================================================
 
-    // 5. Return Response
+    // 6. Return Response
     return NextResponse.json({
       data,
       pagination: {

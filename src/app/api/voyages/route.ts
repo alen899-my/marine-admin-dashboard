@@ -15,6 +15,16 @@ export async function GET(req: Request) {
     if (!authz.ok) return authz.response;
     await dbConnect();
 
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
     const { searchParams } = new URL(req.url);
     
     // 🟢 NEW: Check for vesselId (used by Dropdowns)
@@ -31,6 +41,41 @@ export async function GET(req: Request) {
     const query: any = {};
 
     // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      // Step A: Find all vessels belonging to the user's company
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      // Step B: Restrict the query to only these vessels
+      query.vesselId = { $in: companyVesselIds };
+
+      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
+      if (vesselId) {
+        if (companyVesselIds.some((id) => id.toString() === vesselId)) {
+          query.vesselId = vesselId;
+        } else {
+          // If trying to access a vessel outside their company, return empty or error
+          return NextResponse.json([], { status: 200 }); 
+        }
+      }
+    } else {
+      // Super Admin: Use the vesselId param directly if provided
+      if (vesselId) {
+        query.vesselId = vesselId;
+      }
+    }
+    // =========================================================
+
+    // =========================================================
     // 🟢 MODE A: DROPDOWN FILTERING (Specific Vessel)
     // =========================================================
     if (vesselId) {
@@ -38,8 +83,6 @@ export async function GET(req: Request) {
       // We ignore pagination mostly because dropdowns usually need the full list 
       // (or a generous limit) to show history.
       
-      query.vesselId = vesselId;
-
       const voyages = await Voyage.find(query)
         .select("voyageNo status vesselId schedule.startDate") // Select minimal fields
         .sort({ "schedule.startDate": -1 }) // Newest first
@@ -67,10 +110,16 @@ export async function GET(req: Request) {
 
     // --- Search Logic ---
     if (search) {
-      const matchingVessels = await Vessel.find({
+      const vesselSearchQuery: any = {
         name: { $regex: search, $options: "i" },
-      }).select("_id");
+      };
 
+      // 🔒 Ensure vessel search is also restricted by company for non-admins
+      if (!isSuperAdmin) {
+        vesselSearchQuery.company = userCompanyId;
+      }
+
+      const matchingVessels = await Vessel.find(vesselSearchQuery).select("_id");
       const vesselIds = matchingVessels.map((v) => v._id);
 
       query.$or = [
@@ -110,6 +159,7 @@ export async function GET(req: Request) {
     );
   }
 }
+
 /* ======================================
    POST: Create Voyage (for AddForm)
 ====================================== */

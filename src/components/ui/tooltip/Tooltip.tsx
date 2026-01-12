@@ -21,8 +21,9 @@ export default function Tooltip({
 
   useEffect(() => {
     const handleResize = () => {
-      // If mobile, force position to 'left'
-      if (window.innerWidth < 640) {
+      // If the screen is smaller than desktop (1024px), force position to 'left'
+      // Otherwise, use the preferredPosition
+      if (window.innerWidth < 1024) {
         setCoords("left");
       } else {
         setCoords(preferredPosition);

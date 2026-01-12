@@ -223,39 +223,36 @@ export default function UserTable({
 
   // --- Fetch Users ---
   const fetchUsers = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-        });
+  async (page = 1) => {
+    try {
+      setLoading(true);
+      const query = new URLSearchParams({
+        page: page.toString(),
+        limit: LIMIT.toString(),
+        search,
+        status,
+        startDate,
+        endDate,
+      });
 
-        const res = await fetch(`/api/users?${query.toString()}`);
-        if (!res.ok) throw new Error("Failed to fetch");
-        const result = await res.json();
+      const res = await fetch(`/api/users?${query.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const result = await res.json();
 
-        setUsers(result.data || []);
-
-        // UPDATE DYNAMIC COUNT
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.length || 0);
-        }
-
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-        setUsers([]);
-      } finally {
-        setLoading(false);
+      setUsers(result.data || []);
+      if (setTotalCount) {
+        setTotalCount(result.pagination?.total || result.length || 0);
       }
-    },
-    [LIMIT, search, status, startDate, endDate, setTotalCount]
-  );
+      setTotalPages(result.pagination?.totalPages || 1);
+    } catch (err) {
+      console.error(err);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  },
+  [LIMIT, search, status, startDate, endDate, setTotalCount] // fetchUsers changes if these change
+);
 
   const selectedUserRoleName =
     typeof selectedUser?.role === "object"
@@ -266,13 +263,12 @@ export default function UserTable({
     selectedUserRoleName?.toLowerCase() === "super-admin";
 
   useEffect(() => {
-    fetchUsers(1);
-    setCurrentPage(1);
-  }, [fetchUsers, refresh]);
+  setCurrentPage(1);
+}, [search, status, startDate, endDate, refresh]);
 
   useEffect(() => {
-    fetchUsers(currentPage);
-  }, [currentPage, fetchUsers]);
+  fetchUsers(currentPage);
+}, [currentPage, fetchUsers]);
 
   // --- HANDLERS ---
   const handleView = (user: IUser) => {
