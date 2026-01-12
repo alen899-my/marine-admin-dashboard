@@ -99,7 +99,7 @@ export default function CragoStowageCargoDocuments() {
             exportMap={excelMapping}
            />
           {/* ✅ Check permission for creating cargo documents */}
-          {canCreate && <AddCargoButton onSuccess={handleRefresh} />}
+          {canCreate && <AddCargoButton onSuccess={handleRefresh} vesselList={vessels}/>}
         </div>
       </div>
       <ComponentCard

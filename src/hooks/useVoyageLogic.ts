@@ -1,33 +1,7 @@
-// src/hooks/useVoyageLogic.ts
-import { useState, useEffect, useRef } from "react";
-
-interface VesselOption {
-  _id: string;
-  name: string;
-}
+import { useState, useEffect } from "react";
 
 export function useVoyageLogic(vesselId: string | undefined, reportDate: string | undefined) {
-  const [vessels, setVessels] = useState<VesselOption[]>([]);
   const [suggestedVoyageNo, setSuggestedVoyageNo] = useState<string>("");
-    
-
-  const isFirstRun = useRef(true);
-
-  // 1. Fetch Vessels List (Optimized)
-  useEffect(() => {
-    async function loadVessels() {
-      try {
-        const res = await fetch("/api/vessels?all=true");
-        if (res.ok) {
-          const result = await res.json();
-          setVessels(Array.isArray(result) ? result : result.data || []);
-        }
-      } catch (err) {
-        console.error("Failed to load vessels", err);
-      }
-    }
-    loadVessels();
-  }, []);
 
   useEffect(() => {
     // Stop if missing data
@@ -40,7 +14,6 @@ export function useVoyageLogic(vesselId: string | undefined, reportDate: string 
 
     async function lookup() {
       try {
-        // ✅ FIX: Manually build the object or ensure string types
         const params = new URLSearchParams({
           vesselId: vesselId || "", 
           date: reportDate || ""
@@ -53,7 +26,6 @@ export function useVoyageLogic(vesselId: string | undefined, reportDate: string 
         if (res.ok) {
           const data = await res.json();
           setSuggestedVoyageNo(data.voyageNo || "");
-          
         }
       } catch (error: any) {
         if (error.name !== "AbortError") console.error(error);
@@ -63,5 +35,6 @@ export function useVoyageLogic(vesselId: string | undefined, reportDate: string 
     lookup();
     return () => controller.abort();
   }, [vesselId, reportDate]);
-  return { vessels, suggestedVoyageNo };
+
+  return { suggestedVoyageNo };
 }

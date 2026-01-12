@@ -16,10 +16,11 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
+  vesselList: any[];
 }
 
 export default function AddArrivalReportButton({
-  onSuccess,
+  onSuccess,vesselList
 }: AddArrivalReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +52,7 @@ export default function AddArrivalReportButton({
     remarks: "",
   });
   // ✅ 2. CALL HOOK (Now it can see formData)
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
+const { suggestedVoyageNo } = useVoyageLogic(
     formData.vesselId,
     formData.reportDate
   );
@@ -151,7 +152,7 @@ export default function AddArrivalReportButton({
   };
 
   const handleVesselChange = (selectedName: string) => {
-    const selectedVessel = vessels.find((v) => v.name === selectedName);
+    const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
     setFormData((prev) => ({
       ...prev,
       vesselName: selectedName,
@@ -300,10 +301,10 @@ export default function AddArrivalReportButton({
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                   options={vesselList.map((v: any) => ({ // ⚡ Use 'vesselList' prop
+    value: v.name,
+    label: v.name,
+  }))}
                     placeholder="Select or search Vessel"
                     value={formData.vesselName}
                     onChange={handleVesselChange}

@@ -17,7 +17,7 @@ import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-
+import SearchableSelect from "@/components/form/SearchableSelect";
 // Form Components
 import DatePicker from "@/components/form/date-picker";
 import Input from "@/components/form/input/InputField";
@@ -110,6 +110,7 @@ interface VoyageTableProps {
   startDate: string;
   endDate: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  vesselList: any[];
 }
 
 export default function VoyageTable({
@@ -118,7 +119,7 @@ export default function VoyageTable({
   status,
   startDate,
   endDate,
-  setTotalCount,
+  setTotalCount,vesselList
 }: VoyageTableProps) {
   const [voyages, setVoyages] = useState<Voyage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -340,46 +341,25 @@ export default function VoyageTable({
     [search, status, startDate, endDate]
   );
 
-  useEffect(() => {
-    fetchVoyages(1);
-    setCurrentPage(1);
-  }, [fetchVoyages]);
 
-  useEffect(() => {
-    if (currentPage > 1) fetchVoyages(currentPage);
-  }, [currentPage, fetchVoyages]);
-
-  useEffect(() => {
-    if (refresh) {
-      fetchVoyages(1);
-      setCurrentPage(1);
-    }
-  }, [refresh, fetchVoyages]);
 
   /* ================= ACTIONS ================= */
   function handleView(voyage: Voyage) {
     setSelectedVoyage(voyage);
     setOpenView(true);
   }
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        // Fetch active vessels
-        const res = await fetch("/api/vessels?status=active&limit=100");
-        if (res.ok) {
-          const result = await res.json();
-          if (Array.isArray(result)) {
-            setVessels(result);
-          } else if (result.data && Array.isArray(result.data)) {
-            setVessels(result.data);
-          }
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
+useEffect(() => {
+    if (!isReady) return;
+
+    // Logic: If filter changes and we aren't on page 1, reset page
+    const filtersActive = !!(search || status !== "all" || startDate || endDate);
+    if (currentPage !== 1 && filtersActive) {
+      setCurrentPage(1);
+      return; 
     }
-    fetchVessels();
-  }, []);
+
+    fetchVoyages(currentPage);
+  }, [currentPage, refresh, fetchVoyages, isReady, search, status, startDate, endDate]);
 
   function handleEdit(voyage: Voyage) {
     setSelectedVoyage(voyage);
@@ -727,14 +707,16 @@ export default function VoyageTable({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Vessel</Label>
-                  <Select
-                    options={vessels.map((v) => ({
-                      value: v._id,
-                      label: v.name,
-                    }))}
-                    value={editData.vesselId}
-                    onChange={(val) => handleEditChange("vesselId", val)}
-                  />
+                 <SearchableSelect
+   options={vesselList?.map((v: any) => ({
+      value: v._id?.toString(), 
+      label: v.name,
+    })) || []}
+   
+    value={editData.vesselId?.toString()}
+    onChange={(val) => handleEditChange("vesselId", val)}
+    placeholder="Search Vessel"
+  />
                 </div>
                 <InputField
                   label="Voyage No"

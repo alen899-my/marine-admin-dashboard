@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import ResourceFilters from "@/components/resources/ResourceFilters";
 import AddResource from "./AddResource";
@@ -24,6 +24,7 @@ export default function ResourceManagement() {
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
+
   const [status, setStatus] = useState("all");
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
@@ -80,12 +81,12 @@ export default function ResourceManagement() {
           <TableCount count={totalCount} label="resources" />
         </div>
         
-        <ResourceTable 
-          refresh={refresh} 
-          search={search} 
-          status={status} 
-          setTotalCount={setTotalCount}
-        />
+       <ResourceTable
+  refresh={refresh}
+  search={search}
+  status={status}
+  setTotalCount={setTotalCount}
+/>
       </ComponentCard>
     </div>
   );

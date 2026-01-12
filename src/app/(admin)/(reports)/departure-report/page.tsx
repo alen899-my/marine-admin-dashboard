@@ -113,7 +113,7 @@ export default function DepartureReport() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for adding departure reports */}
-          {canCreate && <AddDepartureReportButton onSuccess={handleRefresh} />}
+          {canCreate && <AddDepartureReportButton  vesselList={vessels} onSuccess={handleRefresh} />}
         </div>
       </div>
       <ComponentCard

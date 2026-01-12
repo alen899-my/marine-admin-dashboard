@@ -32,16 +32,5 @@ const permissionSchema = new Schema(
   },
   { timestamps: true }
 );
-permissionSchema.index({ slug: 1 });
 
-
-permissionSchema.index({ resourceId: 1 });
-
-
-permissionSchema.index({ status: 1 });
-
-
-permissionSchema.index({ createdAt: -1 });
-
-permissionSchema.index({ resourceId: 1, status: 1 });
 export default models.Permission || mongoose.model("Permission", permissionSchema);

@@ -107,13 +107,15 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
     }
   }, [currentPage, search, status,setTotalCount]); // Dependencies updated
 
- useEffect(() => {
-  setCurrentPage(1);
+  useEffect(() => {
+  if (currentPage !== 1) {
+    setCurrentPage(1);
+  }
 }, [search, status]);
-
 useEffect(() => {
   fetchResources();
-}, [currentPage, refresh]);
+}, [currentPage, refresh, search, status]);
+
 
   const handleView = (r: Resource) => {
   setSelectedResource(r);

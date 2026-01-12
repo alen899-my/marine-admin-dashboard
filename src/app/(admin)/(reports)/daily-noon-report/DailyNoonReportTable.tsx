@@ -115,40 +115,13 @@ export default function DailyNoonReportTable({
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
 
-  // ✅ OPTIMIZATION: Use Refs for filters to stabilize fetchReports dependency
-  const searchRef = useRef(search);
-  const statusRef = useRef(status);
-  const startDateRef = useRef(startDate);
-  const endDateRef = useRef(endDate);
-  const vesselIdRef = useRef(vesselId);
-  const voyageIdRef = useRef(voyageId);
 
-  useEffect(() => {
-    searchRef.current = search;
-    statusRef.current = status;
-    startDateRef.current = startDate;
-    endDateRef.current = endDate;
-    vesselIdRef.current = vesselId;
-    voyageIdRef.current = voyageId;
 
-    // Logic to prevent double-fetch while ensuring fetch happens
-    if (currentPage !== 1) {
-      setCurrentPage(1); // will trigger 'currentPage' effect
-    } else {
-      fetchReports(1);   // already on page 1, so forced trigger needed
-    }
-  }, [search, status, startDate, endDate, vesselId, voyageId]); // removed separate ref update effect
+  
 
   // 1. Extract the string ID safely
-  const currentVesselId = typeof editData?.vesselId === "object"
-    ? editData?.vesselId._id
-    : editData?.vesselId;
-
-  // 2. Pass the resolved string to the hook
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    currentVesselId,
-    editData?.reportDate
-  );
+ const currentVesselId = typeof editData?.vesselId === "object" ? editData?.vesselId._id : editData?.vesselId;
+  const { suggestedVoyageNo } = useVoyageLogic(currentVesselId, editData?.reportDate);
 
   const canEdit = can("noon.edit");
   const canDelete = can("noon.delete");
@@ -223,54 +196,26 @@ export default function DailyNoonReportTable({
       );
     }
   }, [suggestedVoyageNo]);
-  useEffect(() => {
+useEffect(() => {
     async function fetchAndFilterVoyages() {
-      // Stop if no vessel is selected (in edit data)
       if (!editData?.vesselId) {
         setVoyageList([]);
         return;
       }
-
       try {
         const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
-
         if (res.ok) {
           const result = await res.json();
           const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === editData.vesselId) ||
-              (v.vesselName && v.vesselName === editData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === editData.voyageNo
-
-            return isRelevant;
-          });
-
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
+          const filtered = allVoyages.filter((v: any) => v.status === "active" || v.voyageNo === editData.voyageNo);
+          setVoyageList(filtered.map((v: any) => ({ value: v.voyageNo, label: v.voyageNo })));
         }
       } catch (error) {
         console.error("Failed to load voyages", error);
-        setVoyageList([]);
       }
     }
-
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageId]);
+  }, [editData?.vesselId, editData?.voyageId]);
   // Helper functions moved up to be available for render
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -403,63 +348,45 @@ export default function DailyNoonReportTable({
     setTotalCount?: (count: number) => void;
   }
 
-  // Inside DailyNoonReportTable component, update fetchReports:
-  // Inside DailyNoonReportTable component, update fetchReports:
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search: searchRef.current,
-          status: statusRef.current,
-          startDate: startDateRef.current,
-          endDate: endDateRef.current,
-          vesselId: vesselIdRef.current,
-          voyageId: voyageIdRef.current,
-        });
 
-        const res = await fetch(`/api/noon-report?${query.toString()}`);
-        if (!res.ok) throw new Error();
+const fetchReports = useCallback(async (page = 1) => {
+    try {
+      setLoading(true);
+      const query = new URLSearchParams({
+        page: page.toString(),
+        limit: LIMIT.toString(),
+        search: search || "",
+        status: status || "all",
+        startDate: startDate || "",
+        endDate: endDate || "",
+        vesselId: vesselId || "",
+        voyageId: voyageId || ""
+      });
 
-        const result = await res.json();
-        const fetchedData = result.data || [];
+      const res = await fetch(`/api/noon-report?${query.toString()}`);
+      if (!res.ok) throw new Error();
 
-        setReports(fetchedData);
-        if (onDataLoad) onDataLoad(fetchedData);
+      const result = await res.json();
+      setReports(result.data || []);
+      if (onDataLoad) onDataLoad(result.data || []);
+      if (setTotalCount) setTotalCount(result.pagination?.total || 0);
+      setTotalPages(result.pagination?.totalPages || 1);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setReports([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [LIMIT, search, status, startDate, endDate, vesselId, voyageId, onDataLoad, setTotalCount]);
 
-        // 3. UPDATE COUNT DYNAMICALLY FROM API PAGINATION
-        if (setTotalCount) {
-          // result.pagination.total comes from your backend route
-          setTotalCount(result.pagination?.total || 0);
-        }
-
-        if (!result.data || result.data.length === 0) {
-          setTotalPages(1);
-        } else {
-          setTotalPages(result.pagination?.totalPages || 1);
-        }
-      } catch (err) {
-        console.error(err);
-        setReports([]);
-        if (setTotalCount) setTotalCount(0);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [LIMIT, onDataLoad, setTotalCount] // ✅ Dependencies reduced to stable props
-  );
-
-  // ✅ Unified Data Fetching Trigger
-  // Runs when:
-  // 1. Page changes (via pagination or reset)
-  // 2. Refresh is triggered
-  // 3. fetchReports remains stable so it won't re-trigger unnecessarily
-  useEffect(() => {
+useEffect(() => {
+    // Reset to page 1 if any filter changes
+    if (currentPage !== 1 && (search || status !== "all" || vesselId || voyageId || startDate || endDate)) {
+      setCurrentPage(1);
+      return; 
+    }
     fetchReports(currentPage);
   }, [currentPage, refresh, fetchReports]);
-
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
     setSelectedReport(report);
@@ -470,7 +397,7 @@ export default function DailyNoonReportTable({
     setSelectedReport(report);
 
     // Find the vessel object so we can get its ID for the edit state
-    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
+ const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
     const vesselIdStr = typeof report.vesselId === 'object'
       ? report.vesselId._id
       : report.vesselId;
@@ -928,14 +855,14 @@ export default function DailyNoonReportTable({
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                   options={vesselList.map((v: { name: string; _id: string }) => ({
+  value: v.name,
+  label: v.name,
+}))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vessels.find(v => v.name === val);
+                      const selected = vesselList.find((v: any) => v.name === val);
                       setEditData({
                         ...editData,
                         vesselName: val,

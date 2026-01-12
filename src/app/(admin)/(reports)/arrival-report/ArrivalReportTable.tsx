@@ -332,28 +332,19 @@ useEffect(() => {
   return () => window.removeEventListener('resize', checkMobile);
 }, []);
 
-  // Trigger fetch when filters change (Reset to page 1)
-  useEffect(() => {
-    fetchReports(1);
+ useEffect(() => {
+  if (!isReady) return;
+
+  // Logic: If any filter changes and we aren't on page 1, reset page first
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  
+  if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
-  }, [fetchReports]);
+    return; // Exit: the currentPage change will re-trigger this effect
+  }
 
-  // Trigger fetch when page changes
-  useEffect(() => {
-    // We strictly check currentPage > 1 to avoid double fetching
-    // because the first useEffect handles the initial load (page 1)
-    if (currentPage > 1) {
-      fetchReports(currentPage);
-    }
-  }, [currentPage, fetchReports]);
-
-  // Trigger fetch when parent forces refresh
-  useEffect(() => {
-    if (refresh) {
-      fetchReports(1);
-      setCurrentPage(1);
-    }
-  }, [refresh, fetchReports]);
+  fetchReports(currentPage);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -375,7 +366,7 @@ useEffect(() => {
 
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
-    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
+   const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
     // Check if Arrival and NOR are the same to toggle the checkbox
     const isSame = report.eventTime === report.norDetails?.norTime;
     setEditNorSameAsArrival(isSame);
@@ -399,10 +390,10 @@ useEffect(() => {
 
     setOpenEdit(true);
   }
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId,
-    editData?.reportDate
-  );
+ const { suggestedVoyageNo } = useVoyageLogic(
+  editData?.vesselId,
+  editData?.reportDate
+);
   useEffect(() => {
     if (
       editData &&
@@ -1021,16 +1012,14 @@ useEffect(() => {
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                   options={vesselList.map((v: any) => ({
+    value: v.name,
+    label: v.name,
+  }))}
                     placeholder="Select or search Vessel"
                     value={editData.vesselName}
                     onChange={(selectedName) => {
-                      const selectedVessel = vessels.find(
-                        (v) => v.name === selectedName
-                      );
+                      const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
 
                       setEditData({
                         ...editData,

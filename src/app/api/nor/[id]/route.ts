@@ -152,7 +152,9 @@ export async function PATCH(
       { new: true, runValidators: true }
     )
     // ✅ POPULATE VOYAGE ID (Crucial for frontend display)
-    .populate("voyageId", "voyageNo");
+    .populate("voyageId", "voyageNo")
+    .populate("createdBy", "fullName") 
+.populate("updatedBy", "fullName"); // 
 
     return NextResponse.json({ report });
   } catch (error: unknown) {

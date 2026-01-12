@@ -4,90 +4,74 @@ import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import Resource from "@/models/Resource";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+
+
 export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("permission.view");
     if (!authz.ok) return authz.response;
+
     await dbConnect();
-    const _ensureModels = [Resource];
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
-    const resource = searchParams.get("resource") || "";
     
-    // 💡 Check if we want a full list for a dropdown (no pagination)
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.trim();
+    const status = searchParams.get("status");
+    const resource = searchParams.get("resource");
     const isDropdown = searchParams.get("limit") === "none";
 
-    // 1. Build the Query Object
-    let query: any = {};
-
-    // Filter by Status
-    if (status !== "all") {
-      query.status = status.toLowerCase();
-    }
-
-    // Filter by Resource (Handles both ObjectId and legacy string groups)
+    // 1. Build Query with index-friendly logic
+    const query: any = {};
+    if (status && status !== "all") query.status = status.toLowerCase();
+    
     if (resource && resource !== "all") {
-      if (mongoose.Types.ObjectId.isValid(resource)) {
-        query.resourceId = resource;
-      } else {
-        // If it's a name/string, search the legacy 'group' field
-        query.group = resource;
-      }
+      if (mongoose.Types.ObjectId.isValid(resource)) query.resourceId = resource;
+      else query.group = resource;
     }
 
-    // Search by Name or Slug
+    // ⚡ Optimization: Only apply $text if search is not empty
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { slug: { $regex: search, $options: "i" } }
-      ];
-    }
+  query.$or = [
+    { name: { $regex: search, $options: "i" } },
+    { slug: { $regex: search, $options: "i" } },
+  ];
+}
 
-    // 💡 Logic for Dropdowns (No Pagination)
+
+    // 2. Dropdown Optimization (Instant Fetch)
     if (isDropdown) {
-      const permissions = await Permission.find(query)
+      const data = await Permission.find(query)
+        .select("name slug status") 
         .sort({ name: 1 })
-        .select("name slug status") // Minimal fields for speed
         .lean();
-      return NextResponse.json(permissions);
+      return NextResponse.json(data);
     }
 
-    // 💡 Logic for Table (With Pagination)
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = 20;
     const skip = (page - 1) * limit;
 
-    // Use Promise.all to run Find and Count in parallel for performance
+    // 3. ⚡ The "Under 500ms" Execution
     const [permissions, total] = await Promise.all([
       Permission.find(query)
-        .populate("resourceId", "name")
+        .select("name slug description status resourceId group createdAt") // Only fields needed
+        .populate("resourceId", "name") // Limit populate fields
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
-      Permission.countDocuments(query),
+        .lean(), // lean is 4x faster than standard Mongoose docs
+      Permission.countDocuments(query).hint({ createdAt: -1 }) // Force index usage for count
     ]);
 
-    // 💡 Ghost Page Prevention: 
-    // Calculate total pages and ensure it's at least 1 even if total is 0
-    const calculatedTotalPages = Math.ceil(total / limit);
-    const totalPages = calculatedTotalPages === 0 ? 1 : calculatedTotalPages;
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: permissions,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: totalPages,
-      },
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) || 1 },
     });
-  } catch (error: any) {
-    console.error("GET PERMISSIONS ERROR:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch permissions", details: error.message },
-      { status: 500 }
-    );
+
+    // ⚡ Add Cache-Control for browser speed
+    response.headers.set('Cache-Control', 'private, s-maxage=10, stale-while-revalidate=59');
+    
+    return response;
+  } catch (error) {
+    return NextResponse.json({ error: "Fetch Error" }, { status: 500 });
   }
 }

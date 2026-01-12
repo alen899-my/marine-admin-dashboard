@@ -21,13 +21,15 @@ export async function GET(req: NextRequest) {
     // Check if we want a full list for a dropdown
     const isDropdown = searchParams.get("limit") === "none";
 
-    let query: any = { isDeleted: { $ne: true } };
-    if (search) {
-      query.name = { $regex: search, $options: "i" };
-    }
-    if (status !== "all") {
-      query.status = status.toLowerCase(); 
-    }
+  let query: any = { isDeleted: { $ne: true } };
+
+if (search.trim()) {
+  query.name = { $regex: search.trim(), $options: "i" };
+}
+
+if (status !== "all") {
+  query.status = status.toLowerCase();
+}
 
     // 💡 Logic for Dropdowns (No Pagination)
     if (isDropdown) {
@@ -51,14 +53,14 @@ export async function GET(req: NextRequest) {
         .lean(),
       Resource.countDocuments(query),
     ]);
-
+const totalPages = Math.max(1, Math.ceil(total / limit));
     return NextResponse.json({
       data: resources,
       pagination: {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+           totalPages,
       },
     });
   } catch (error: any) {

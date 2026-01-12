@@ -23,9 +23,10 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 
 interface AddNORReportButtonProps {
   onSuccess: () => void;
+  vesselList: any[];
 }
 
-export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
+export default function AddNORButton({ onSuccess,vesselList }: AddNORReportButtonProps) {
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -56,10 +57,10 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
     remarks: "",
   });
   // ✅ 1. CALL THE HOOK
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    formData.vesselId,
-    formData.reportDate
-  );
+  const { suggestedVoyageNo } = useVoyageLogic(
+  formData.vesselId || undefined,
+  formData.reportDate
+);
   const [voyageList, setVoyageList] = useState<
     { value: string; label: string }[]
   >([]);
@@ -151,8 +152,7 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
   // ***** NEW: Specific handler for the custom Select component *****
   const handleVesselChange = (selectedName: string) => {
     // Find the ID based on the name from the HOOK's vessel list
-    const selectedVessel = vessels.find((v) => v.name === selectedName);
-
+ const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
     setFormData((prev) => ({
       ...prev,
       vesselName: selectedName,
@@ -372,14 +372,14 @@ export default function AddNORButton({ onSuccess }: AddNORReportButtonProps) {
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-            options={vessels.map((v) => ({
-              value: v.name,
-              label: v.name,
-            }))}
+            options={vesselList.map((v: any) => ({ // ⚡ Use vesselList prop
+    value: v.name,
+    label: v.name,
+  }))}
             placeholder="Search Vessel"
             value={formData.vesselName}
             onChange={(val) => {
-              const selected = vessels.find((v) => v.name === val);
+            const selected = vesselList.find((v: any) => v.name === val);
               setFormData((prev) => ({
                 ...prev,
                 vesselName: val,

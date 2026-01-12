@@ -405,10 +405,10 @@ export default function DepartureReportTable({
       ? editData?.vesselId?._id
       : editData?.vesselId;
 
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    vesselIdForLookup || undefined,
-    editData?.reportDate
-  );
+  const { suggestedVoyageNo } = useVoyageLogic(
+  vesselIdForLookup || undefined,
+  editData?.reportDate
+);
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       if (!editData?.vesselId) {
@@ -474,22 +474,19 @@ export default function DepartureReportTable({
     }
   }, [suggestedVoyageNo]);
 
-  // Filter Trigger
-  useEffect(() => {
-    fetchReports(1);
-    setCurrentPage(1);
-  }, [fetchReports]); // Dependency is now safe via useCallback
+ useEffect(() => {
+  if (!isReady) return;
 
-  // Pagination Trigger
-  useEffect(() => {
-    fetchReports(currentPage);
-  }, [currentPage, fetchReports]);
-
-  // Refresh Trigger
-  useEffect(() => {
-    fetchReports(1);
+  // If any filter changes and we aren't on page 1, reset to page 1
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  
+  if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
-  }, [refresh, fetchReports]);
+    return; // Exit: the currentPage change will re-trigger this effect
+  }
+
+  fetchReports(currentPage);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -506,7 +503,7 @@ export default function DepartureReportTable({
     setSelectedReport(report);
 
     // Try to find vessel in the list as fallback
-    const matchedVessel = vessels.find((v) => v.name === report.vesselName);
+   const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
     const voyageIdString = getVoyageDisplay(report);
     const vesselIdStr =
       typeof report.vesselId === "object"
@@ -943,14 +940,14 @@ export default function DepartureReportTable({
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                   options={vesselList.map((v: any) => ({ // FIX: Use vesselList
+    value: v.name,
+    label: v.name,
+  }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vessels.find((v) => v.name === val);
+                     const selected = vesselList.find((v: any) => v.name === val);
                       setEditData({
                         ...editData,
                         vesselName: val,

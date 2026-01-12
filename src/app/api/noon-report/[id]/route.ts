@@ -9,8 +9,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth(); // ✅ Get session
-    const currentUserId = session?.user?.id;
+    // 1. Authentication & Session logic (Mirroring Voyage logic)
+    const session = await auth();
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const currentUserId = session.user.id;
+
+    // 2. Authorization
     const authz = await authorizeRequest("noon.edit");
     if (!authz.ok) return authz.response;
     
@@ -19,12 +25,10 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
 
-    // 1. Prepare Snapshot Data
-    // Frontend sends 'voyageId' as a string (voyageNo) in the edit state
+    // 3. Prepare Voyage Linkage
     const voyageNoString = body.voyageNo || body.voyageId; 
     const vesselId = body.vesselId;
 
-    // 2. Lookup the correct Voyage ObjectId (Linkage)
     let voyageObjectId = null;
     if (vesselId && voyageNoString) {
       const foundVoyage = await Voyage.findOne({
@@ -36,73 +40,59 @@ export async function PATCH(
         voyageObjectId = foundVoyage._id;
       }
     }
-    // 🔥 BLOCK INVALID UPDATE
-if (!voyageObjectId) {
-  return NextResponse.json(
-    { error: "Voyage not found for selected vessel" },
-    { status: 400 }
-  );
-}
 
-    // 3. Update with Population
-    // .populate ensures the frontend receives the objects needed for display helpers
+    // Block if data integrity is at risk
+    if (!voyageObjectId) {
+      return NextResponse.json(
+        { error: "Voyage not found for selected vessel" },
+        { status: 400 }
+      );
+    }
+
+    // 4. Construct Update Object (Ensures updatedBy is handled properly)
+    const updateData: any = {
+      vesselId: vesselId, 
+      voyageId: voyageObjectId, 
+      updatedBy: currentUserId, // Persistence fix
+      vesselName: body.vesselName,
+      voyageNo: voyageNoString, 
+      type: body.type,
+      status: body.status,
+      reportDate: body.reportDate ? new Date(body.reportDate) : undefined,
+      remarks: body.remarks,
+    };
+
+    // Safely map nested objects
+    if (body.position) updateData.position = { ...body.position };
+    if (body.navigation) updateData.navigation = { ...body.navigation };
+    if (body.consumption) updateData.consumption = { ...body.consumption };
+    if (body.weather) updateData.weather = { ...body.weather };
+
+    // 5. Perform the Update with $set
     const updated = await ReportDaily.findByIdAndUpdate(
       id,
-      {
-        // ✅ Relation Fields
-        vesselId: vesselId, 
-        voyageId: voyageObjectId, 
-        updatedBy: currentUserId,
-
-        // ✅ Snapshot Fields
-        vesselName: body.vesselName,
-        voyageNo: voyageNoString, 
-
-        type: body.type,
-        status: body.status,
-        reportDate: body.reportDate ? new Date(body.reportDate) : undefined,
-
-        position: {
-          lat: body.position?.lat,
-          long: body.position?.long,
-        },
-
-        navigation: {
-          distLast24h: body.navigation?.distLast24h,
-          engineDist: body.navigation?.engineDist,
-          slip: body.navigation?.slip,
-          distToGo: body.navigation?.distToGo,
-          nextPort: body.navigation?.nextPort,
-        },
-
-        consumption: {
-          vlsfo: body.consumption?.vlsfo,
-          lsmgo: body.consumption?.lsmgo,
-        },
-
-        weather: {
-          wind: body.weather?.wind,
-          seaState: body.weather?.seaState,
-          remarks: body.weather?.remarks,
-        },
-
-        remarks: body.remarks,
-      },
+      { $set: updateData },
       { new: true, runValidators: true }
     )
     .populate("vesselId", "name")
-    .populate("voyageId", "voyageNo");
+    .populate("voyageId", "voyageNo")
+    .populate("createdBy", "fullName")
+    .populate("updatedBy", "fullName");
 
     if (!updated) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // Return the populated report so the state update in React is seamless
-    return NextResponse.json({ success: true, report: updated });
-  } catch (error) {
-    console.error("UPDATE ERROR →", error);
+    return NextResponse.json({ 
+      success: true, 
+      report: updated,
+      message: "Report updated successfully"
+    });
+
+  } catch (error: any) {
+    console.error("UPDATE NOON REPORT ERROR →", error);
     return NextResponse.json(
-      { error: "Failed to update report" },
+      { error: error.message || "Failed to update report" },
       { status: 500 }
     );
   }

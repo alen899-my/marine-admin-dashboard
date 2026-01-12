@@ -19,6 +19,7 @@ import { Info } from "lucide-react";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
+  vesselList: any[];
 }
 
 interface APIErrorDetail {
@@ -27,7 +28,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDailyNoonReportButton({
-  onSuccess,
+  onSuccess,vesselList
 }: AddDailyNoonReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -67,8 +68,8 @@ export default function AddDailyNoonReportButton({
     generalRemarks: "",
   });
 
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    form.vesselId || undefined, // Ensure empty string becomes undefined for the hook
+  const { suggestedVoyageNo } = useVoyageLogic(
+    form.vesselId || undefined,
     form.reportDate
   );
   // ✅ 2. Sync Logic (Auto-fill Voyage)
@@ -141,7 +142,7 @@ export default function AddDailyNoonReportButton({
   };
 
   const handleVesselChange = (val: string) => {
-    const selected = vessels.find((v) => v.name === val);
+   const selected = vesselList.find((v: any) => v.name === val);
     setForm((prev) => ({
       ...prev,
       vesselName: val,
@@ -291,7 +292,7 @@ export default function AddDailyNoonReportButton({
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
+                    options={vesselList.map((v: any) => ({
                       value: v.name,
                       label: v.name,
                     }))}

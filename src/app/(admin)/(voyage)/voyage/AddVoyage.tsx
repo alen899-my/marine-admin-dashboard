@@ -13,18 +13,19 @@ import { useModal } from "@/hooks/useModal";
 import { voyageSchema } from "@/lib/validations/voyageSchema";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-
+import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddVoyageProps {
   onSuccess: () => void;
+  vesselList: { _id: string; name: string }[];
 }
 
-export default function AddVoyage({ onSuccess }: AddVoyageProps) {
+export default function AddVoyage({ onSuccess ,vesselList}: AddVoyageProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { can, isReady } = useAuthorization();
   
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+  
 
   const initialFormState = {
     vesselId: "",
@@ -48,24 +49,7 @@ export default function AddVoyage({ onSuccess }: AddVoyageProps) {
 
   const [formData, setFormData] = useState(initialFormState);
 
-  useEffect(() => {
-    async function fetchVessels() {
-      try {
-        const res = await fetch("/api/vessels?status=active&limit=100");
-        if (res.ok) {
-          const result = await res.json();
-          if (Array.isArray(result)) {
-            setVessels(result);
-          } else if (result.data && Array.isArray(result.data)) {
-            setVessels(result.data);
-          }
-        }
-      } catch (err) {
-        console.error("Error loading vessels:", err);
-      }
-    }
-    fetchVessels();
-  }, []);
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -204,13 +188,16 @@ export default function AddVoyage({ onSuccess }: AddVoyageProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Vessel <span className="text-red-500">*</span></Label>
-                  <Select
-                    options={vessels.map(v => ({ value: v._id, label: v.name }))}
-                    value={formData.vesselId}
-                    onChange={(val) => handleSelectChange("vesselId", val)}
-                    placeholder="Select Vessel"
-                    className={errors.vesselId ? "border-red-500" : ""}
-                  />
+                  <SearchableSelect
+        options={vesselList.map((v) => ({ 
+          value: v._id, 
+          label: v.name 
+        }))}
+        value={formData.vesselId}
+        onChange={(val) => handleSelectChange("vesselId", val)}
+        placeholder="Search and Select Vessel"
+        error={!!errors.vesselId} // Displays red border if error exists
+      />
                   {errors.vesselId && <p className="text-xs text-red-500 mt-1">{errors.vesselId}</p>}
                 </div>
 

@@ -80,7 +80,7 @@ const handleSubmit = async (e: FormEvent) => {
       return;
     }
 
-    setSuccessMessage("Login successful! Redirecting...");
+    
 
     setTimeout(() => {
       router.push("/");

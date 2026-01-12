@@ -18,6 +18,7 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
+  vesselList: any[];
 }
 
 interface APIErrorDetail {
@@ -26,7 +27,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDepartureReportButton({
-  onSuccess,
+  onSuccess,vesselList
 }: AddDepartureReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -63,10 +64,10 @@ export default function AddDepartureReportButton({
   });
 
   // ✅ 2. CALL HOOK (Now it can see formData)
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    formData.vesselId,
-    formData.reportDate
-  );
+  const { suggestedVoyageNo } = useVoyageLogic(
+     formData.vesselId || undefined,
+     formData.reportDate
+   );
 
   // ✅ 3. SYNC LOGIC (Auto-fill Voyage)
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function AddDepartureReportButton({
   // ✅ 4. VESSEL SELECTION HANDLER
   const handleVesselChange = (selectedName: string) => {
     // Find the ID based on the name from the HOOK's vessel list
-    const selectedVessel = vessels.find((v) => v.name === selectedName);
+  const selectedVessel = vesselList.find((v: any) => v.name === selectedName);;
 
     setFormData((prev) => ({
       ...prev,
@@ -308,7 +309,7 @@ export default function AddDepartureReportButton({
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-  options={vessels.map((v) => ({
+ options={vesselList.map((v: any) => ({
     value: v.name,
     label: v.name,
   }))}

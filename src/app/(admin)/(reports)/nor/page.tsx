@@ -107,7 +107,7 @@ export default function NoticeOfReadiness() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for creating NOR */}
-          {canCreate && <AddNORButton onSuccess={handleRefresh} />}
+          {canCreate && <AddNORButton onSuccess={handleRefresh} vesselList={vessels} />}
         </div>
       </div>
 

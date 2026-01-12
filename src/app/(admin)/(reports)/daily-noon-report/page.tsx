@@ -98,7 +98,7 @@ export default function DailyNoonReport() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for creating noon reports */}
-          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} />}
+          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} vesselList={vessels}/>}
         </div>
       </div>
 

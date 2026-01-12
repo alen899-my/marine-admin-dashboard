@@ -114,7 +114,7 @@ export default function ArrivalReport() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for creating arrival reports */}
-          {canCreate && <AddArrivalReportButton onSuccess={handleRefresh} />}
+          {canCreate && <AddArrivalReportButton onSuccess={handleRefresh} vesselList={vessels}/>}
         </div>
       </div>
 

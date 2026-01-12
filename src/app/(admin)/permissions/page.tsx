@@ -51,7 +51,7 @@ export default function PermissionManagement() {
       }
     }
     if (isReady) fetchFilterData();
-  }, [refresh, isReady, canView]);
+  }, [ isReady, canView]);
 
   // 1. Wait for Auth to load
   if (!isReady) return null;
@@ -100,6 +100,7 @@ export default function PermissionManagement() {
               module={module}
               setModule={setModule}
               modules={modules}
+              
             />
           ) : null
         }
@@ -113,6 +114,7 @@ export default function PermissionManagement() {
           status={status}
           module={module}
           setTotalCount={setTotalCount}
+          resourceOptions={modules}
         />
       </ComponentCard>
     </div>

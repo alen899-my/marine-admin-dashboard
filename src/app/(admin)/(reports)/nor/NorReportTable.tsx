@@ -123,10 +123,10 @@ export default function NorReportTable({
   const { can, isReady } = useAuthorization();
   const canEdit = can("nor.edit");
   const canDelete = can("nor.delete");
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId,
-    editData?.reportDate
-  );
+  const { suggestedVoyageNo } = useVoyageLogic(
+  editData?.vesselId,
+  editData?.reportDate
+);
 
   useEffect(() => {
     // ✅ FIX 2: Update 'voyageNo' in state
@@ -396,6 +396,7 @@ export default function NorReportTable({
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
     setNewFile(null);
+    const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
     // Set initial preview to existing document URL
     setPreviewUrl(report.norDetails?.documentUrl || null);
     const vId =
@@ -406,7 +407,7 @@ export default function NorReportTable({
     setEditData({
       status: report.status ?? "active",
       vesselName: getVesselName(report),
-      vesselId: vId || "",
+      vesselId: vId || matchedVessel?._id || "",
       voyageNo: voyNo === "-" ? "" : voyNo, // Use the string for dropdown
       // Note: we removed the old 'voyageId' from editData as it was confusing. We use 'voyageNo' string for editing.
       portName: report.portName ?? "",
@@ -492,20 +493,19 @@ export default function NorReportTable({
     }
   }
 
-  // ✅ Date Filter Addition: Added dates to dependency array to refetch on change
   useEffect(() => {
-    fetchReports(1);
-    setCurrentPage(1);
-  }, [fetchReports]);
+  if (!isReady) return;
 
-  useEffect(() => {
-    fetchReports(currentPage);
-  }, [currentPage, fetchReports]);
-
-  useEffect(() => {
-    fetchReports(1);
+  // Logic: If any filter changes and we aren't on page 1, reset page first
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  
+  if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
-  }, [refresh, fetchReports]);
+    return; // Exit: the currentPage change will re-trigger this effect
+  }
+
+  fetchReports(currentPage);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
   const getFileMeta = (url?: string) => {
@@ -718,6 +718,39 @@ export default function NorReportTable({
                 {selectedReport?.remarks || "No remarks provided."}
               </p>
             </section>
+            {/* NorReportTable ViewModal Audit Section */}
+{/* ================= SYSTEM INFORMATION (EXACT STYLE MATCH) ================= */}
+<section className="md:col-span-2 space-y-1.5 pt-1 mt-4 border-t border-gray-200 dark:border-white/10">
+  <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+    System Information
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
+    <div className="flex justify-between gap-4">
+      <span className="text-gray-500">Created By</span>
+      <span className="font-medium text-gray-700 dark:text-gray-300">
+        {selectedReport?.createdBy?.fullName || "System"}
+      </span>
+    </div>
+    <div className="flex justify-between gap-4">
+      <span className="text-gray-500">Created At</span>
+      <span className="font-medium text-gray-700 dark:text-gray-300">
+        {formatDate(selectedReport?.createdAt)}
+      </span>
+    </div>
+    <div className="flex justify-between gap-4">
+      <span className="text-gray-500">Last Updated By</span>
+      <span className="font-medium text-gray-700 dark:text-gray-300">
+        {selectedReport?.updatedBy?.fullName || "-"}
+      </span>
+    </div>
+    <div className="flex justify-between gap-4">
+      <span className="text-gray-500">Last Updated At</span>
+      <span className="font-medium text-gray-700 dark:text-gray-300">
+        {formatDate(selectedReport?.updatedAt)}
+      </span>
+    </div>
+  </div>
+</section>
           </div>
 
           {/* ================= FOOTER: STATUS & SHARE ================= */}
@@ -825,14 +858,14 @@ export default function NorReportTable({
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                   options={vesselList.map((v: any) => ({
+    value: v.name,
+    label: v.name,
+  }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vessels.find((v) => v.name === val);
+                     const selected = vesselList.find((v: any) => v.name === val);
                       setEditData({
                         ...editData,
                         vesselName: val,

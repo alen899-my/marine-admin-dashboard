@@ -174,10 +174,10 @@ export default function CargoReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    editData?.vesselId,
-    editData?.reportDate
-  );
+ const { suggestedVoyageNo } = useVoyageLogic(
+  editData?.vesselId,
+  editData?.reportDate
+);
 
   // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
   useEffect(() => {
@@ -467,25 +467,19 @@ export default function CargoReportTable({
     }
   }
 
-  // 4. Fix useEffect dependencies
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    fetchReports(1);
-    setCurrentPage(1);
-  }, [fetchReports]);
+ useEffect(() => {
+  if (!isReady) return;
 
-  // Fetch when page changes (skip if it's page 1 as the previous effect handles that transition often, but logic here is fine)
-  useEffect(() => {
-    if (currentPage > 1) {
-      fetchReports(currentPage);
-    }
-  }, [currentPage, fetchReports]);
-
-  // Handle Refresh prop
-  useEffect(() => {
-    fetchReports(1);
+  // Logic: Reset to page 1 if any filter changes
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  
+  if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
-  }, [refresh, fetchReports]);
+    return; // Stop here: the currentPage change will re-trigger this effect
+  }
+
+  fetchReports(currentPage);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };
@@ -506,12 +500,12 @@ export default function CargoReportTable({
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
-
+    const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
     const vesselIdStr = typeof report.vesselId === 'object' ? report.vesselId._id : report.vesselId;
     const voyageIdStr = typeof report.voyageId === 'object' ? report.voyageId.voyageNo : ""; // Use Voyage No string for dropdown logic
     setEditData({
       status: report.status ?? "active",
-      vesselId: vesselIdStr,
+      vesselId: vesselIdStr || matchedVessel?._id || "",
       voyageNo: voyageIdStr,
       vesselName: getVesselName(report),
       reportDate: formatForInput(report.reportDate),
@@ -861,14 +855,14 @@ export default function CargoReportTable({
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                    options={vessels.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                    }))}
+                    options={vesselList.map((v: any) => ({
+    value: v.name,
+    label: v.name,
+  }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vessels.find(v => v.name === val);
+                      const selected = vesselList.find((v: any) => v.name === val);
                       setEditData({
                         ...editData,
                         vesselName: val,

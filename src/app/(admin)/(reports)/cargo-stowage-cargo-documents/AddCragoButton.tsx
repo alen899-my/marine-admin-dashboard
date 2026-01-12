@@ -19,10 +19,11 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
+  vesselList: any[];
 }
 
 export default function AddCargoButton({
-  onSuccess,
+  onSuccess,vesselList
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,11 +52,10 @@ export default function AddCargoButton({
     documentDate: "",
     remarks: "",
   });
-
-  const { vessels, suggestedVoyageNo } = useVoyageLogic(
-    formData.vesselId,
-    formData.reportDate
-  );
+const { suggestedVoyageNo } = useVoyageLogic(
+  formData.vesselId,
+  formData.reportDate
+);
 
   // ✅ 4. SYNC LOGIC (Auto-fill Voyage)
   useEffect(() => {
@@ -178,7 +178,7 @@ export default function AddCargoButton({
 
   const handleVesselChange = (value: string) => {
     // Find the ID based on the name from the HOOK's vessel list
-    const selectedVessel = vessels.find((v) => v.name === value);
+    const selectedVessel = vesselList.find((v: any) => v.name === value);
 
     setFormData((prev) => ({
       ...prev,
@@ -407,14 +407,14 @@ export default function AddCargoButton({
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-            options={vessels.map((v) => ({
-              value: v.name,
-              label: v.name,
-            }))}
+           options={vesselList.map((v: any) => ({ // ⚡ Use vesselList prop
+    value: v.name,
+    label: v.name,
+  }))}
             placeholder="Search Vessel"
             value={formData.vesselName}
             onChange={(val) => {
-              const selectedVessel = vessels.find((v) => v.name === val);
+             const selectedVessel = vesselList.find((v: any) => v.name === val);
               setFormData((prev) => ({
                 ...prev,
                 vesselName: val,
