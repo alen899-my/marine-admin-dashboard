@@ -67,6 +67,8 @@ export default function RolesTable({
   const [editData, setEditData] = useState<IRole | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isSelectedRoleSuperAdmin = selectedRole?.name?.toLowerCase() === "super-admin";
+const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
   // Status Options
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -353,6 +355,7 @@ export default function RolesTable({
 
             <RoleComponentCard
               title="Permissions"
+  desc={isEditingSuperAdmin ? "Super Admin has all permissions by default." : "..."}
               className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
               legend={<PermissionLegend />}
             >
@@ -365,7 +368,7 @@ export default function RolesTable({
                   <PermissionGrid
                     allPermissions={allPermissions}
                     selectedPermissions={editData.permissions}
-                    isReadOnly={false}
+                    isReadOnly={isEditingSuperAdmin}
                     onToggle={(slug, checked) => {
                       const newPerms = checked
                         ? [...editData.permissions, slug]
@@ -375,6 +378,7 @@ export default function RolesTable({
                   />
                 </div>
                  <DashboardWidgetSection 
+                 isReadOnly={isEditingSuperAdmin}
                  allPermissions={allPermissions}
                   selectedPermissions={editData.permissions}
                   onToggle={(slug, checked) => {

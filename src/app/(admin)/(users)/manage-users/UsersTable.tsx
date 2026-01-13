@@ -268,7 +268,7 @@ export default function UserTable({
 
   useEffect(() => {
   fetchUsers(currentPage);
-}, [currentPage, fetchUsers]);
+}, [currentPage, fetchUsers,refresh]);
 
   // --- HANDLERS ---
   const handleView = (user: IUser) => {

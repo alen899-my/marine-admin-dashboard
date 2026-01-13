@@ -14,7 +14,7 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState, useRef } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState, useRef,useMemo } from "react";
 import { toast } from "react-toastify";
 import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Types ---
@@ -230,7 +230,7 @@ useEffect(() => {
     });
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       header: "S.No",
       render: (_: IDailyNoonReport, index: number) =>
@@ -325,7 +325,7 @@ useEffect(() => {
         </Badge>
       ),
     },
-  ];
+ ], [currentPage]);
 
   // ***** CHANGE: Force IST for input fields *****
   const formatForInput = (dateString?: string) => {

@@ -38,10 +38,13 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 
 export async function GET(req: NextRequest) {
+ 
   try {
+    const t1 = performance.now();
     const authz = await authorizeRequest("departure.view");
     if (!authz.ok) return authz.response;
     await dbConnect();
+   
 
     // 🔒 1. Session & Multi-Tenancy Setup
     const session = await auth();
@@ -72,6 +75,7 @@ export async function GET(req: NextRequest) {
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
+    const t2 = performance.now();
     if (!isSuperAdmin) {
       if (!userCompanyId) {
         return NextResponse.json(
@@ -81,7 +85,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Step A: Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
 
       // Step B: Restrict the query to only these vessels
@@ -103,6 +107,7 @@ export async function GET(req: NextRequest) {
       // Super Admin: Use the vesselId param directly if provided
       if (selectedVessel) query.vesselId = selectedVessel;
     }
+ 
     // =========================================================
 
     // 3. Apply Filters
@@ -145,6 +150,8 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Fetch Data
+    const t3 = performance.now();
+    // ✅ Note: Consider using Promise.all here if count + find takes too long
     const total = await ReportOperational.countDocuments(query);
 
     const reports = await ReportOperational.find(query)
@@ -156,6 +163,11 @@ export async function GET(req: NextRequest) {
       .skip(skip)
       .limit(limit)
       .lean();
+    
+
+    
+    
+   
 
     return NextResponse.json({
       data: reports,

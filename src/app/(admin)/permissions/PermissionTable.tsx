@@ -184,13 +184,11 @@ const fetchPermissions = useCallback(async () => {
 }, [currentPage, search, status, module]); // Remove setTotalCount from deps
 
 useEffect(() => {
- 
-  if (currentPage !== 1 && (search || status !== 'all' || module)) {
+  if (currentPage !== 1 && (search || status !== "all" || module)) {
     setCurrentPage(1);
-    return;
+  } else {
+    fetchPermissions();
   }
-  
-  fetchPermissions();
 }, [currentPage, refresh, search, status, module, fetchPermissions]);
 
   /* ================= ACTIONS ================= */
@@ -212,52 +210,94 @@ useEffect(() => {
   setOpenView(true);
 };
 
- const handleUpdate = async (force = false) => {
+const handleUpdate = async (force = false) => {
   if (!selectedPermission || !editData) return;
 
-  // 1. Detect Slug Change
+  // 1️⃣ Detect slug change
   const isSlugChanged = editData.slug !== selectedPermission.slug;
 
-  // 2. If slug changed and not yet confirmed, show the warning modal
+  // 2️⃣ Ask confirmation if slug changed
   if (isSlugChanged && !force) {
     setOpenSlugConfirm(true);
     return;
   }
 
   setSaving(true);
+
   try {
-    const res = await fetch(`/api/permissions/${selectedPermission._id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editData),
-    });
+    const res = await fetch(
+      `/api/permissions/${selectedPermission._id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editData),
+      }
+    );
+
+    const result = await res.json();
+
     if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Update failed");
+      throw new Error(result.error || "Update failed");
     }
+
+    // ✅ 3️⃣ INSTANT UI UPDATE (optimistic replace)
+    setPermissions(prev =>
+      prev.map(p =>
+        p._id === selectedPermission._id ? result.data : p
+      )
+    );
+
     toast.success("Permission updated");
+
+    // ✅ 4️⃣ Clean close
     setOpenEdit(false);
-    setOpenSlugConfirm(false); // Close warning if open
-    fetchPermissions();
+    setOpenSlugConfirm(false);
+    setSelectedPermission(null);
+
   } catch (err: any) {
     toast.error(err.message);
-  } finally { setSaving(false); }
+  } finally {
+    setSaving(false);
+  }
 };
 
-  const handleDelete = async () => {
-    if (!selectedPermission) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/permissions/${selectedPermission._id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      setPermissions(prev => prev.filter(p => p._id !== selectedPermission._id));
-      toast.success("Permission removed");
-      setOpenDelete(false);
-      fetchPermissions();
-    } catch {
-      toast.error("Delete failed");
-    } finally { setIsDeleting(false); }
-  };
+const handleDelete = async () => {
+  if (!selectedPermission) return;
+
+  setIsDeleting(true);
+
+  try {
+    const res = await fetch(
+      `/api/permissions/${selectedPermission._id}`,
+      { method: "DELETE" }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error || "Delete failed");
+    }
+
+    // ✅ INSTANT UI UPDATE (optimistic remove)
+    setPermissions(prev =>
+      prev.filter(p => p._id !== selectedPermission._id)
+    );
+
+    // ✅ Update total count if provided
+    setTotalCount?.(count => Math.max(count - 1, 0));
+
+    toast.success("Permission removed");
+
+    // ✅ Clean close
+    setOpenDelete(false);
+    setSelectedPermission(null);
+
+  } catch (err: any) {
+    toast.error(err.message || "Delete failed");
+  } finally {
+    setIsDeleting(false);
+  }
+};
 
   if (!isReady) return null;
 
@@ -344,7 +384,7 @@ onDelete={
 
           {/* ================= FOOTER: STATUS ================= */}
           <div className="mt-8 pt-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest text-gray-400">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ">
                Status
             </span>
             <Badge color={selectedPermission?.status === "active" ? "success" : "default"}>

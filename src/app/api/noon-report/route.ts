@@ -34,19 +34,17 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
 
-// GET ALL NOON REPORTS
-// GET ALL NOON REPORTS
+
 export async function GET(req: NextRequest) {
-  const start = performance.now();
+ 
   try {
-    // 1. Parallelize Auth and DB Connection
-    const t1 = performance.now();
+    
     const [authz, _] = await Promise.all([
       authorizeRequest("noon.view"),
       dbConnect()
     ]);
     if (!authz.ok) return authz.response;
-    console.log(`⏱️ Auth & DB Setup: ${(performance.now() - t1).toFixed(2)}ms`);
+ 
 
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -89,8 +87,7 @@ export async function GET(req: NextRequest) {
       const selectedVessel = searchParams.get("vesselId");
       if (selectedVessel) query.vesselId = selectedVessel;
     }
-    console.log(`⏱️ Multi-Tenancy Logic: ${(performance.now() - t2).toFixed(2)}ms`);
-
+   
     // 3. Selective Filter Building
     const status = searchParams.get("status");
     if (status && status !== "all") query.status = status;
@@ -136,9 +133,7 @@ export async function GET(req: NextRequest) {
         .lean(),
     ]);
     
-    console.log(`⏱️ Main DB Query: ${(performance.now() - t3).toFixed(2)}ms`);
-    const totalTime = (performance.now() - start).toFixed(2);
-    console.log(`✅ TOTAL API TIME: ${totalTime}ms`);
+    
 
     return NextResponse.json({
       data: reports,

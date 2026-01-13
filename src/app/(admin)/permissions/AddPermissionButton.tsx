@@ -110,49 +110,54 @@ export default function AddPermissionButton({ onSuccess }: AddPermissionButtonPr
   };
 
   const handleSubmit = async () => {
-    setErrors({});
-    const newErrors: Record<string, string> = {};
+  setErrors({});
+  const newErrors: Record<string, string> = {};
 
-    if (!resourceId) newErrors["resourceId"] = "Please select a resource";
+  if (!resourceId) newErrors["resourceId"] = "Please select a resource";
 
-    permissions.forEach((p, index) => {
-      if (!p.name.trim()) newErrors[`${index}-name`] = "Name required";
-      if (!p.slug.trim()) newErrors[`${index}-slug`] = "Slug required";
-      if (p.slug && !p.slug.includes(".")) {
-        newErrors[`${index}-slug`] = "Format: module.action";
-      }
+  permissions.forEach((p, index) => {
+    if (!p.name.trim()) newErrors[`${index}-name`] = "Name required";
+    if (!p.slug.trim()) newErrors[`${index}-slug`] = "Slug required";
+    if (p.slug && !p.slug.includes(".")) {
+      newErrors[`${index}-slug`] = "Format: module.action";
+    }
+  });
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+
+  setIsSubmitting(true);
+  const payload = permissions.map(p => ({ ...p, resourceId }));
+
+  try {
+    const res = await fetch("/api/permissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to save");
     }
 
-    setIsSubmitting(true);
-    // Payload matches your new schema: uses resourceId
-    const payload = permissions.map(p => ({ ...p, resourceId }));
-
-    try {
-      const res = await fetch("/api/permissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data?.error || "Failed to save");
-      }
-
-      toast.success(`${permissions.length} Permissions added successfully`);
-      onSuccess();
-      handleClose();
-    } catch (error: any) {
-      toast.error(error.message || "Error creating permissions");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    toast.success(`${permissions.length} Permissions added successfully`);
+    
+    // 1. Trigger Parent Refresh (This updates the Table)
+    onSuccess(); 
+    
+    // 2. Clear Form and Close Modal
+    handleClose(); 
+    
+  } catch (error: any) {
+    toast.error(error.message || "Error creating permissions");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const canCreate = isReady && can("permission.create");
   if (!isReady || !canCreate) return null;
 

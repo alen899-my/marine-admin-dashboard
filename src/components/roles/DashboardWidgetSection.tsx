@@ -19,12 +19,13 @@ interface GeneralPermissionsSectionProps {
   allPermissions: IPermission[];
   selectedPermissions: string[];
   onToggle: (slug: string, checked: boolean) => void;
+  isReadOnly?: boolean;
 }
 
 export default function GeneralPermissionsSection({ 
   allPermissions = [], 
   selectedPermissions, 
-  onToggle 
+  onToggle ,isReadOnly = false
 }: GeneralPermissionsSectionProps) {
 
   // 🟢 Change: Filter out CRUD slugs (.create, .view, .edit, .delete)
@@ -49,8 +50,7 @@ return (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {generalPermissions.map((perm) => {
-          const isChecked = selectedPermissions.includes(perm.slug);
-
+          const isChecked = isReadOnly ? true : selectedPermissions.includes(perm.slug);
           return (
             /* ✅ Wrapped with Tooltip */
             <Tooltip
@@ -66,8 +66,13 @@ return (
               }
             >
               <div 
-                onClick={() => onToggle(perm.slug, !isChecked)}
-                className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none h-full"
+               onClick={() => !isReadOnly && onToggle(perm.slug, !isChecked)}
+              className={`flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 transition-colors h-full ${
+                isReadOnly 
+                  ? "cursor-default pointer-events-none opacity-100" 
+                  : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-60"
+              }`}
+               
               >
                 <div className="mt-0.5 pointer-events-none">
                   <Checkbox 
