@@ -1,0 +1,607 @@
+
+
+
+                                <table id="recent-orders" class="table table-striped table-bordered table-hover table-sm">
+
+                                    <thead>
+
+                                        <tr class="text-center">
+
+                                            <th class="border-top-0 ">Date</th>
+
+                                            <th class="border-top-0">Day</th>
+                                                                                            <th class="border-top-0">Alen</th>
+                                            
+
+
+                                        </tr>
+
+                                    </thead>
+
+
+
+                                    <tbody>
+                                                                                        <tr>
+                                                    <td class="text-center">01</td>
+                                                    <td class="text-center">Saturday</td>
+                                                                                                                <td id="" class="border-top-0 text-center bg-dark white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">02</td>
+                                                    <td class="text-center">Sunday</td>
+                                                                                                                <td id="11149" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">03</td>
+                                                    <td class="text-center">Monday</td>
+                                                                                                                <td id="" class="border-top-0 text-center bg-dark white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">04</td>
+                                                    <td class="text-center">Tuesday</td>
+                                                                                                                <td id="11196" class="border-top-0 text-center bg-success white" title="Alen Present on 04-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">05</td>
+                                                    <td class="text-center">Wednesday</td>
+                                                                                                                <td id="11197" class="border-top-0 text-center bg-success white" title="Alen Present on 05-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">06</td>
+                                                    <td class="text-center">Thursday</td>
+                                                                                                                <td id="11214" class="border-top-0 text-center bg-success white" title="Alen Present on 06-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">07</td>
+                                                    <td class="text-center">Friday</td>
+                                                                                                                <td id="11233" class="border-top-0 text-center bg-success white" title="Alen Present on 07-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">08</td>
+                                                    <td class="text-center">Saturday</td>
+                                                                                                                <td id="11151" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">09</td>
+                                                    <td class="text-center">Sunday</td>
+                                                                                                                <td id="11153" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">10</td>
+                                                    <td class="text-center">Monday</td>
+                                                                                                                <td id="11249" class="border-top-0 text-center bg-success white" title="Alen Present on 10-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">11</td>
+                                                    <td class="text-center">Tuesday</td>
+                                                                                                                <td id="11269" class="border-top-0 text-center bg-success white" title="Alen Present on 11-11-2025">
+
+
+
+
+                                                                                                                                    <span>P</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                                                                                                                                                                                </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">12</td>
+                                                    <td class="text-center">Wednesday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">13</td>
+                                                    <td class="text-center">Thursday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">14</td>
+                                                    <td class="text-center">Friday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">15</td>
+                                                    <td class="text-center">Saturday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">16</td>
+                                                    <td class="text-center">Sunday</td>
+                                                                                                                <td id="11155" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">17</td>
+                                                    <td class="text-center">Monday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">18</td>
+                                                    <td class="text-center">Tuesday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">19</td>
+                                                    <td class="text-center">Wednesday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">20</td>
+                                                    <td class="text-center">Thursday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">21</td>
+                                                    <td class="text-center">Friday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">22</td>
+                                                    <td class="text-center">Saturday</td>
+                                                                                                                <td id="11157" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">23</td>
+                                                    <td class="text-center">Sunday</td>
+                                                                                                                <td id="11159" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">24</td>
+                                                    <td class="text-center">Monday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">25</td>
+                                                    <td class="text-center">Tuesday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">26</td>
+                                                    <td class="text-center">Wednesday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">27</td>
+                                                    <td class="text-center">Thursday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">28</td>
+                                                    <td class="text-center">Friday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">29</td>
+                                                    <td class="text-center">Saturday</td>
+                                                                                                                <td id="" class="border-top-0 text-center  white" title="">
+
+
+
+
+                                                                                                                                    <span></span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                            <b>
+
+                                                                                                                                                    </b>
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                            <tr>
+                                                    <td class="text-center">30</td>
+                                                    <td class="text-center">Sunday</td>
+                                                                                                                <td id="11161" class="border-top-0 text-center bg-warning white" title="">
+
+
+
+
+                                                                                                                                    <span>H</span>
+                                                                                                                                <span class="font-weight-light" style="font-weight-light;font-size:xx-small !important;">
+                                                                                                                                    </span>
+                                                                                                                                <!-- The Modal -->
+
+                                                            </td>
+
+                                                    
+                                                </tr>
+                                                                                </tbody>
+
+                                </table>
+
+                            

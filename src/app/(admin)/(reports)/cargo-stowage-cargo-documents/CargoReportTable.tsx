@@ -11,7 +11,7 @@ import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { File, FileSpreadsheet, FileText, FileWarning, ImageIcon } from "lucide-react";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState,useRef } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
@@ -71,6 +71,7 @@ interface CargoReportTableProps {
   vesselList: any[];    // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
+  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
 }
 
 export default function CargoReportTable({
@@ -84,12 +85,13 @@ export default function CargoReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,
+  companyId,onFilterDataLoad
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   // Modal States
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -118,7 +120,7 @@ export default function CargoReportTable({
   // New File State for Edit Mode
   const [newFile, setNewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
+const hasLoadedFilters = useRef(false);
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -345,6 +347,7 @@ export default function CargoReportTable({
     async (page = 1) => {
       try {
         setLoading(true);
+        const shouldFetchFilters = !hasLoadedFilters.current;
         const query = new URLSearchParams({
           page: page.toString(),
           limit: LIMIT.toString(),
@@ -355,6 +358,7 @@ export default function CargoReportTable({
           vesselId, // Added to query
           voyageId, // Added to query
           companyId,
+         all: shouldFetchFilters ? "true" : "false",
         });
 
         const res = await fetch(`/api/cargo?${query.toString()}`);
@@ -363,9 +367,18 @@ export default function CargoReportTable({
 
         const result = await res.json();
         const fetchedData = result.data || [];
+        setReports(fetchedData);
+        if (onDataLoad) onDataLoad(fetchedData);
 
         setReports(result.data || []);
-        if (onDataLoad) onDataLoad(fetchedData);
+      if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+        onFilterDataLoad({
+          vessels: result.vessels || [],
+          companies: result.companies || [],
+          voyages: result.voyages || [],
+        });
+        hasLoadedFilters.current = true; // Mark as loaded so next calls use all=false
+      }
 
         // Update Dynamic Count
         if (setTotalCount) {
@@ -381,7 +394,7 @@ export default function CargoReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId]
+    [LIMIT, search, status, startDate, endDate,isFirstLoad, onDataLoad, vesselId, voyageId, companyId]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
@@ -394,7 +407,6 @@ export default function CargoReportTable({
       formData.append("vesselName", editData.vesselName);
       formData.append("vesselId", editData.vesselId || "");
 
-      // ✅ FIX: Send voyageNo as string
       formData.append("voyageNo", editData.voyageNo);
 
       formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");

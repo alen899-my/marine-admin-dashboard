@@ -20,6 +20,7 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+  
 }
 
 export default function AddCargoButton({
