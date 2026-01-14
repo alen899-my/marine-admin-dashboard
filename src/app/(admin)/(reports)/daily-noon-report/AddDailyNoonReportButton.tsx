@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState ,useMemo} from "react";
 import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
@@ -19,7 +19,8 @@ import { Info } from "lucide-react";
 
 interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
-  vesselList: any[];
+ vesselList: any[];
+  allVoyages: any[]; 
 }
 
 interface APIErrorDetail {
@@ -28,7 +29,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDailyNoonReportButton({
-  onSuccess,vesselList
+  onSuccess,vesselList,allVoyages
 }: AddDailyNoonReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -84,38 +85,16 @@ export default function AddDailyNoonReportButton({
       setForm((prev) => ({ ...prev, voyageNo: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
-
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      if (!form.vesselId) {
-        setVoyageList([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${form.vesselId}`);
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          const filtered = allVoyages.filter((v: any) => {
-            const isCorrectVessel = (v.vesselId && v.vesselId === form.vesselId) || (v.vesselName && v.vesselName === form.vesselName);
-            if (!isCorrectVessel) return false;
-            return v.status === "active" || v.voyageNo === suggestedVoyageNo || v.voyageNo === form.voyageNo;
-          });
-
-          setVoyageList(filtered.map((v: any) => ({
-            value: v.voyageNo,
-            label: v.voyageNo,
-          })));
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
-    }
-    fetchAndFilterVoyages();
-  }, [form.vesselId, form.vesselName, suggestedVoyageNo, form.voyageNo]);
+  const filteredVoyageOptions = useMemo(() => {
+    if (!form.vesselId) return [];
+    return allVoyages
+      .filter((v: any) => v.vesselId === form.vesselId)
+      .map((v: any) => ({
+        value: v.voyageNo,
+        label: v.voyageNo,
+      }));
+  }, [form.vesselId, allVoyages]);
+ 
 
   useEffect(() => {
     const engineDist = parseFloat(form.engineDistance);
@@ -316,11 +295,11 @@ export default function AddDailyNoonReportButton({
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                    options={voyageList}
+                    options={filteredVoyageOptions}
                     placeholder={
                       !form.vesselId
                         ? "Select Vessel first"
-                        : voyageList.length === 0
+                        : filteredVoyageOptions.length === 0
                         ? "No active voyages found"
                         : "Search Voyage"
                     }

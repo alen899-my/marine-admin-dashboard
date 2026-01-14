@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState,useMemo } from "react";
 import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
@@ -19,6 +19,7 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+  allVoyages: any[];
 }
 
 interface APIErrorDetail {
@@ -27,7 +28,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDepartureReportButton({
-  onSuccess,vesselList
+  onSuccess,vesselList,allVoyages
 }: AddDepartureReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -68,13 +69,19 @@ export default function AddDepartureReportButton({
      formData.vesselId || undefined,
      formData.reportDate
    );
+   const filteredVoyageOptions = useMemo(() => {
+    if (!formData.vesselId) return [];
 
-  // ✅ 3. SYNC LOGIC (Auto-fill Voyage)
-  useEffect(() => {
+    return allVoyages
+      .filter((v: any) => v.vesselId === formData.vesselId)
+      .map((v: any) => ({
+        value: v.voyageNo,
+        label: v.voyageNo,
+      }));
+  }, [formData.vesselId, allVoyages]);
+
+useEffect(() => {
     if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageId) {
-      if (suggestedVoyageNo) {
-        
-      }
       setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
@@ -332,11 +339,11 @@ export default function AddDepartureReportButton({
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-  options={voyageList}
+ options={filteredVoyageOptions}
   placeholder={
     !formData.vesselId
       ? "Select Vessel first"
-      : voyageList.length === 0
+      : filteredVoyageOptions.length === 0
       ? "No active voyages found"
       : "Search Voyage"
   }

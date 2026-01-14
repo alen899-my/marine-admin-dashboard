@@ -83,6 +83,7 @@ interface DailyNoonReportTableProps {
   vesselList: any[];    // Added this
   companyId?: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
 }
 
 export default function DailyNoonReportTable({
@@ -95,8 +96,9 @@ export default function DailyNoonReportTable({
   endDate, vesselId,
   voyageId,
   vesselList,
-  companyId,
+  companyId,onFilterDataLoad,
 }: DailyNoonReportTableProps) {
+  const hasLoadedFilters = useRef(false);
   // Apply interfaces to state
   const [reports, setReports] = useState<IDailyNoonReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -349,46 +351,57 @@ useEffect(() => {
     // ... existing props
     setTotalCount?: (count: number) => void;
   }
-
-
 const fetchReports = useCallback(async (page = 1) => {
-  const start = performance.now();
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search: search || "",
-        status: status || "all",
-        startDate: startDate || "",
-        endDate: endDate || "",
-        vesselId: vesselId || "",
-        voyageId: voyageId || "",
-        companyId: companyId || "",
+  try {
+    setLoading(true);
+    // 🟢 Step 1: Check the ref to see if we already got the dropdown data
+    const shouldFetchFilters = !hasLoadedFilters.current; 
+
+    const queryParams: Record<string, string> = {
+      page: page.toString(),
+      limit: LIMIT.toString(),
+      search: search || "",
+      status: status || "all",
+      startDate: startDate || "",
+      endDate: endDate || "",
+      vesselId: vesselId || "",
+      voyageId: voyageId || "",
+      companyId: companyId || "all",
+      all: shouldFetchFilters ? "true" : "false"
+    };
+
+    const query = new URLSearchParams(queryParams);
+    const res = await fetch(`/api/noon-report?${query.toString()}`);
+    const result = await res.json();
+
+    setReports(result.data || []);
+    if (onDataLoad) onDataLoad(result.data || []);
+
+    // 🟢 Step 2: Set the ref to true FIRST to break the loop
+    if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+      hasLoadedFilters.current = true; 
+      onFilterDataLoad({
+        vessels: result.vessels || [],
+        companies: result.companies || [],
+        voyages: result.voyages || []
       });
-
-      const res = await fetch(`/api/noon-report?${query.toString()}`);
-      const end = performance.now();
-      console.log(`🌐 API Request to /noon-report took: ${(end - start).toFixed(2)}ms`);
-      if (!res.ok) throw new Error();
-
-      const result = await res.json();
-      setReports(result.data || []);
-      if (onDataLoad) onDataLoad(result.data || []);
-      if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setReports([]);
-    } finally {
-      setLoading(false);
     }
-  }, [LIMIT, search, status, startDate, endDate, vesselId, voyageId, companyId, onDataLoad, setTotalCount]);
+
+    if (setTotalCount) setTotalCount(result.pagination?.total || 0);
+    setTotalPages(result.pagination?.totalPages || 1);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+  // 🟢 Step 3: Remove onFilterDataLoad from deps if it changes every render
+}, [search, status, startDate, endDate, vesselId, voyageId, companyId]); 
+
+
 
 useEffect(() => {
     if (!isReady) return;
 
-    // Reset to page 1 if any filter (including company) changes
     const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
     
     if (currentPage !== 1 && filtersActive) {
@@ -397,6 +410,7 @@ useEffect(() => {
     }
     
     fetchReports(currentPage);
+    // 🟢 CRITICAL: Remove 'vesselList' and 'onFilterDataLoad' from here
 }, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   // ACTIONS

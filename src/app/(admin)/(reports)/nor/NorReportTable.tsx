@@ -20,7 +20,7 @@ import {
   Dispatch,
   SetStateAction,
   useCallback,
-  useEffect,
+  useEffect,useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
@@ -80,6 +80,7 @@ interface NORReportTableProps {
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
+  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
 }
 
 export default function NorReportTable({
@@ -93,8 +94,9 @@ export default function NorReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,
+  companyId,onFilterDataLoad
 }: NORReportTableProps) {
+  const hasLoadedFilters = useRef(false);
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -354,48 +356,46 @@ export default function NorReportTable({
 
   /* ================= 2. API FUNCTIONS ================= */
 
-  // Wrapped in useCallback to fix useEffect dependency
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId, // Added to query
-          voyageId, // Added to query
-          companyId,
-        });
+const fetchReports = useCallback(async (page = 1) => {
+  try {
+    setLoading(true);
+    const shouldFetchFilters = !hasLoadedFilters.current;
 
-        const res = await fetch(`/api/nor?${query.toString()}`);
+    const query = new URLSearchParams({
+      page: page.toString(),
+      limit: LIMIT.toString(),
+      search, status, startDate, endDate, vesselId, voyageId, companyId,
+      all: shouldFetchFilters ? "true" : "false"
+    });
 
-        if (!res.ok) throw new Error(`Error: ${res.status}`);
+    const res = await fetch(`/api/nor?${query.toString()}`);
+    const result = await res.json();
 
-        const result = await res.json();
-        const fetchedData = result.data || [];
+    const fetchedData = result.data || [];
+    setReports(fetchedData);
+    
+    // Call the parent callbacks
+    if (onDataLoad) onDataLoad(fetchedData);
 
-        setReports(result.data || []);
-        if (onDataLoad) onDataLoad(fetchedData);
+    if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+      // We set the ref to true BEFORE calling the parent to be safe
+      hasLoadedFilters.current = true; 
+      onFilterDataLoad({
+        vessels: result.vessels || [],
+        companies: result.companies || [],
+        voyages: result.voyages || []
+      });
+    }
 
-        // Update Total Count
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || 0);
-        }
+    if (setTotalCount) setTotalCount(result.pagination?.total || 0);
+    setTotalPages(result.pagination?.totalPages || 1);
+  } catch (err) {
+    console.error(err);
+  } finally { setLoading(false); }
+  // 🟢 REMOVED onFilterDataLoad and onDataLoad from here to prevent identity-based loops
+}, [search, status, startDate, endDate, vesselId, voyageId, companyId, setTotalCount]);
 
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId, setTotalCount]
-  );
+
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
     setNewFile(null);
@@ -496,18 +496,18 @@ export default function NorReportTable({
     }
   }
 
-  useEffect(() => {
+ useEffect(() => {
   if (!isReady) return;
 
-  // Logic: If any filter changes and we aren't on page 1, reset page first
   const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
   
   if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
-    return; // Exit: the currentPage change will re-trigger this effect
+    return;
   }
 
   fetchReports(currentPage);
+
 }, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */

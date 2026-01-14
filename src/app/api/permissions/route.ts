@@ -3,7 +3,7 @@ import Permission from "@/models/Permission";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import Resource from "@/models/Resource";
-
+import Role from "@/models/Role"
 export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("permission.view");
@@ -64,24 +64,35 @@ export async function POST(req: NextRequest) {
       }, { status: 409 }); 
     }
 
-    
     const operations = validPermissions.map((perm) => ({
       insertOne: {
         document: { 
           slug: perm.slug,
           name: perm.name,
           description: perm.description, 
-          resourceId: perm.resourceId, // ✅ Changed from group to resourceId
+          resourceId: perm.resourceId,
           status: perm.status || "active" 
         }
       },
     }));
 
+    // Execute Bulk Write to create Permissions
     const result = await Permission.bulkWrite(operations, { ordered: false });
+
+    // 🟢 3. AUTOMATICALLY ASSIGN SLUGS TO SUPER ADMIN
+    if (result.insertedCount > 0) {
+      await Role.findOneAndUpdate(
+        { name: "super-admin" }, 
+        { 
+          // ✅ Use $each with incomingSlugs (the strings), NOT IDs
+          $addToSet: { permissions: { $each: incomingSlugs } } 
+        }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      message: `${result.insertedCount} New permissions added.`,
+      message: `${result.insertedCount} New permissions added and assigned to super-admin.`,
     }, { status: 201 });
 
   } catch (error: any) {

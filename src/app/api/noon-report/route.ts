@@ -10,6 +10,27 @@ import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import ReportDaily from "@/models/ReportDaily"
+import Company from "@/models/Company";
+const sendResponse = (
+  status: number,
+  message: string,
+  data: any = null,
+  success: boolean = true
+) => {
+  return NextResponse.json(
+    {
+      success,
+      message,
+      ...data, // Spreads data (reports), companies, vessels, voyages, and pagination
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: "1.0.0",
+        path: "/api//noon-report",
+      },
+    },
+    { status }
+  );
+};
 
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
@@ -37,82 +58,76 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 // GET ALL NOON REPORTS
 
 export async function GET(req: NextRequest) {
- 
   try {
-    
     const [authz, _] = await Promise.all([
       authorizeRequest("noon.view"),
       dbConnect()
     ]);
-    if (!authz.ok) return authz.response;
- 
+    
+    if (!authz.ok) {
+      return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+    }
 
     const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return sendResponse(401, "Unauthorized access", null, false);
+    }
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
     // Ensure models are registered for population
-    const _ensureModels = [Vessel, Voyage, User];
+    const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
 
     const { searchParams } = new URL(req.url);
+    const fetchAll = searchParams.get("all") === "true"; // Flag for Dropdowns
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
     const skip = (page - 1) * limit;
 
     const query: Record<string, any> = {};
 
-    // 2. Multi-Tenancy Logic (UPDATED FOR SUPER ADMIN COMPANY FILTER)
-    const t2 = performance.now();
+    // 1. Multi-Tenancy Logic
     const selectedVessel = searchParams.get("vesselId");
-    const selectedCompany = searchParams.get("companyId"); // New: capture company filter
+    const selectedCompany = searchParams.get("companyId");
 
     if (!isSuperAdmin) {
-      if (!userCompanyId) return NextResponse.json({ error: "No company assigned" }, { status: 403 });
+      if (!userCompanyId) return sendResponse(403, "No company assigned to profile", null, false);
       
-      // Optimization: Fetch company vessel IDs using lean()
       const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
       
       if (selectedVessel) {
-        // Ensure requested vessel belongs to user's company
         if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
           query.vesselId = selectedVessel;
         } else {
-          return NextResponse.json({ data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+          return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
         }
       } else {
         query.vesselId = { $in: companyVesselIds };
       }
     } else {
       // Super Admin Logic
-      // 🟢 Logic for SUPER ADMIN with Company Filter
       if (selectedCompany && selectedCompany !== "all") {
-        // Find all vessels belonging to the selected company
         const companyVessels = await Vessel.find({ company: selectedCompany }).select("_id").lean();
         const companyVesselIds = companyVessels.map((v) => v._id);
         
         if (selectedVessel) {
-          // If a specific vessel is also selected, ensure it belongs to that company
           if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
             query.vesselId = selectedVessel;
           } else {
-            // Mismatch between selected company and selected vessel
-            return NextResponse.json({ data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+            return sendResponse(200, "Vessel mismatch for company", { data: [], pagination: { total: 0, page, totalPages: 0 } });
           }
         } else {
-          // Filter by all vessels in that company
           query.vesselId = { $in: companyVesselIds };
         }
       } else if (selectedVessel) {
-        // If no company is selected but a specific vessel is
         query.vesselId = selectedVessel;
       }
     }
    
-    // 3. Selective Filter Building
+    // 2. Build Report Filters
     const status = searchParams.get("status");
     if (status && status !== "all") query.status = status;
 
@@ -142,35 +157,89 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // 4. Execute Main Queries in Parallel
-    const t3 = performance.now();
-    const [total, reports] = await Promise.all([
+    // 3. Parallel Execution (Main Data + Filter Data)
+    const promises: any[] = [
       ReportDaily.countDocuments(query),
       ReportDaily.find(query)
         .populate("vesselId", "name")
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName") 
-        .sort({ reportDate: -1 }) // Matches your compound index!
+        .sort({ reportDate: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-    ]);
-    
-    
+    ];
 
-    return NextResponse.json({
+    if (fetchAll) {
+      // Add Company lookup to parallel queue
+      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+
+      // Add Vessel lookup to parallel queue
+      const vesselFilter: any = { status: "active" };
+      if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+      else if (selectedCompany && selectedCompany !== "all") vesselFilter.company = selectedCompany;
+      promises.push(Vessel.find(vesselFilter).select("_id name company status").sort({ name: 1 }).lean());
+    }
+
+    const results = await Promise.all(promises);
+    const total = results[0];
+    const reports = results[1];
+    
+    let companies: any[] = [];
+    let vessels: any[] = [];
+    let voyages: any[] = [];
+
+    // 4. Process Extra Filter Data (Voyage Mapping)
+    if (fetchAll) {
+      companies = results[2] || [];
+      const rawVessels = (results[3] || []) as any[];
+      const vesselIds = rawVessels.map((v) => v._id);
+
+      const activeVoyages = await Voyage.find({
+        vesselId: { $in: vesselIds },
+        status: "active",
+      })
+      .select("vesselId voyageNo schedule.startDate")
+      .lean();
+
+      const voyageMap = new Map<string, string>();
+      activeVoyages.forEach((voy) => {
+        if (voy.vesselId) voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
+      });
+
+      // Map Vessels with activeVoyageNo
+      vessels = rawVessels.map((v) => ({
+        ...v,
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+      }));
+
+      // Flatten Voyages for dropdown
+      voyages = activeVoyages.map(v => ({
+        _id: v._id,
+        vesselId: v.vesselId,
+        voyageNo: v.voyageNo
+      }));
+    }
+
+    // 5. Standardized Return
+    return sendResponse(200, "Noon reports retrieved successfully", {
       data: reports,
+      companies,
+      vessels,
+      voyages,
       pagination: { 
+        total, 
         page, 
         limit, 
-        total, 
         totalPages: Math.ceil(total / limit) 
       },
     });
-  } catch (error) {
-    console.error("GET ERROR:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+
+  } catch (error: any) {
+    console.error("GET NOON REPORTS ERROR:", error);
+    return sendResponse(500, error.message || "Internal Server Error", null, false);
   }
 }
 

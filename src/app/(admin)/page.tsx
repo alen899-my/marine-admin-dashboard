@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   
-  // ✅ UPDATED: Added <CompanyOption[]> to the state definition to fix the 'never' error
+
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   
   const isSuperAdmin = session?.user?.role?.toLowerCase() === "super-admin";

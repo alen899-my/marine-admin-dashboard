@@ -32,39 +32,11 @@ export default function NoticeOfReadiness() {
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
   const [companyId, setCompanyId] = useState("all");
-  const [companies, setCompanies] = useState([]);
-  const [vessels, setVessels] = useState([]);
+ const [companies, setCompanies] = useState<any[]>([]); 
+const [vessels, setVessels] = useState<any[]>([]);
+  const [voyages, setVoyages] = useState<any[]>([]);
 
-  // Fetch Companies for Super Admin
-  useEffect(() => {
-    async function fetchCompanies() {
-      try {
-        const res = await fetch("/api/companies");
-        if (res.ok) {
-          const result = await res.json();
-          setCompanies(result.data || []);
-        }
-      } catch (error) { console.error(error); }
-    }
-    if (isReady && isSuperAdmin) fetchCompanies();
-  }, [isReady, isSuperAdmin]);
-
-  useEffect(() => {
-    async function fetchVessels() {
-      if (!canView) return;
-      try {
-        const url = isSuperAdmin && companyId !== "all" 
-          ? `/api/vessels?companyId=${companyId}` 
-          : "/api/vessels";
-        const res = await fetch(url);
-        if (res.ok) {
-          const result = await res.json();
-          setVessels(Array.isArray(result) ? result : result.data || []);
-        }
-      } catch (error) { console.error(error); }
-    }
-    if (isReady) fetchVessels();
-  }, [isReady, canView, companyId, isSuperAdmin]);
+ 
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -123,7 +95,7 @@ export default function NoticeOfReadiness() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for creating NOR */}
-          {canCreate && <AddNORButton onSuccess={handleRefresh} vesselList={vessels} />}
+         {canCreate && <AddNORButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={voyages} />}
         </div>
       </div>
 
@@ -168,6 +140,11 @@ export default function NoticeOfReadiness() {
           voyageId={voyageId}
           companyId={companyId}
           vesselList={vessels}
+          onFilterDataLoad={(data) => {
+    setVessels(data.vessels);
+    setCompanies(data.companies);
+    setVoyages(data.voyages);
+  }}
         />
       </ComponentCard>
     </div>

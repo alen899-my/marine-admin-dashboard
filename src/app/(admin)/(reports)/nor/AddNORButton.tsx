@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect ,useMemo} from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 // Imports - Adjust paths to match your project structure
@@ -24,9 +24,10 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 interface AddNORReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+  allVoyages: any[]; 
 }
 
-export default function AddNORButton({ onSuccess,vesselList }: AddNORReportButtonProps) {
+export default function AddNORButton({ onSuccess,vesselList,allVoyages }: AddNORReportButtonProps) {
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -74,60 +75,16 @@ export default function AddNORButton({ onSuccess,vesselList }: AddNORReportButto
     }
   }, [suggestedVoyageNo]);
 
-  // ✅ 4. FETCH & FILTER VOYAGES (Client-Side Firewall)
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      // Stop if no vessel selected
-      if (!formData.vesselId) {
-        setVoyageList([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
-
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === formData.vesselId) ||
-              (v.vesselName && v.vesselName === formData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === formData.voyageNo;
-
-            return isRelevant;
-          });
-
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
-    }
-
-    fetchAndFilterVoyages();
-  }, [
-    formData.vesselId,
-    formData.vesselName,
-    suggestedVoyageNo,
-    formData.voyageNo,
-  ]);
+  const filteredVoyageOptions = useMemo(() => {
+  if (!formData.vesselId) return [];
+  
+  return allVoyages
+    .filter((v: any) => v.vesselId === formData.vesselId)
+    .map((v: any) => ({
+      value: v.voyageNo,
+      label: v.voyageNo,
+    }));
+}, [formData.vesselId, allVoyages]);
 
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -404,11 +361,11 @@ export default function AddNORButton({ onSuccess,vesselList }: AddNORReportButto
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                  <SearchableSelect
-            options={voyageList}
+           options={filteredVoyageOptions}
             placeholder={
               !formData.vesselId
                 ? "Select Vessel first"
-                : voyageList.length === 0
+                : filteredVoyageOptions.length === 0
                 ? "No active voyages found"
                 : "Search Voyage"
             }

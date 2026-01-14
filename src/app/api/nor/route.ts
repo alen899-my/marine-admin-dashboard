@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 
-
+import Company from "@/models/Company";
 import mongoose from "mongoose"; // ✅ Import Mongoose
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
@@ -13,6 +13,27 @@ import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage"; 
 import ReportOperational from "@/models/ReportOperational";
+const sendResponse = (
+  status: number,
+  message: string,
+  data: any = null,
+  success: boolean = true
+) => {
+  return NextResponse.json(
+    {
+      success,
+      message,
+      
+      ...data, // Spreads pagination, data, companies, etc.
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: "1.0.0",
+        path: "/api/nor",
+      },
+    },
+    { status }
+  );
+};
 
 
 
@@ -34,6 +55,211 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
 
+
+
+// --- GET: FETCH NORS ---
+export async function GET(req: Request) {
+  try {
+    const authz = await authorizeRequest("nor.view");
+    if (!authz.ok) {
+      return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+    }
+    
+    await dbConnect();
+
+    // 🔒 1. Session & Multi-Tenancy Setup
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
+    const _ensureModels = [Vessel, Voyage, User, Company]; // Added Company to ensure model registration
+
+    const { searchParams } = new URL(req.url);
+    const fetchAll = searchParams.get("all") === "true"; // 🟢 Capture dropdown flag
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
+    const search = searchParams.get("search")?.trim() || "";
+    const status = searchParams.get("status") || "all";
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedVoyage = searchParams.get("voyageId");
+    const companyId = searchParams.get("companyId"); 
+
+    const query: Record<string, any> = { eventType: "nor" };
+
+    // =========================================================
+    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // =========================================================
+    if (!isSuperAdmin) {
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Access denied: No company assigned to your profile." },
+          { status: 403 }
+        );
+      }
+
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      query.vesselId = { $in: companyVesselIds };
+
+      if (selectedVessel) {
+        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+          query.vesselId = selectedVessel;
+        } else {
+          return NextResponse.json({
+            data: [],
+            pagination: { total: 0, page, totalPages: 0 },
+          });
+        }
+      }
+    } else {
+      if (companyId && companyId !== "all") {
+        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVesselIds = targetVessels.map((v) => v._id);
+
+        if (selectedVessel) {
+          if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            return NextResponse.json({
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
+          }
+        } else {
+          query.vesselId = { $in: targetVesselIds };
+        }
+      } else if (selectedVessel) {
+        query.vesselId = selectedVessel;
+      }
+    }
+    // =========================================================
+
+    if (status !== "all") {
+      query.status = status;
+    }
+
+    if (selectedVoyage) {
+      query.voyageId = selectedVoyage;
+    }
+
+    if (search) {
+      query.$or = [
+        { vesselName: { $regex: search, $options: "i" } },
+        { voyageNo: { $regex: search, $options: "i" } }, 
+        { portName: { $regex: search, $options: "i" } },
+      ];
+    }
+    
+    if (startDate || endDate) {
+      const dateQuery: { $gte?: Date; $lte?: Date } = {};
+      if (startDate) {
+        const parsedStart = parseDateString(startDate);
+        if (parsedStart) dateQuery.$gte = parsedStart;
+      }
+      if (endDate) {
+        const parsedEnd = parseDateString(endDate);
+        if (parsedEnd) {
+          parsedEnd.setHours(23, 59, 59, 999);
+          dateQuery.$lte = parsedEnd;
+        }
+      }
+      if (dateQuery.$gte || dateQuery.$lte) {
+        query.reportDate = dateQuery;
+      }
+    }
+
+    // =========================================================
+    // 🚀 EXECUTE QUERIES (Combined with Vessel Dropdown logic)
+    // =========================================================
+    const promises: any[] = [
+      ReportOperational.countDocuments(query),
+      ReportOperational.find(query)
+        .populate("voyageId", "voyageNo") 
+        .populate("vesselId", "name")
+        .populate("createdBy", "fullName")
+        .populate("updatedBy", "fullName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ];
+
+    // 🟢 Step: Add Filter lists if fetchAll is true
+    if (fetchAll) {
+      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+
+      const vesselFilter: any = { status: "active" };
+      if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+      else if (companyId && companyId !== "all") vesselFilter.company = companyId;
+      promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
+    }
+
+    const results = await Promise.all(promises);
+    const total = results[0];
+    const reports = results[1];
+    
+    let companies: any[] = [];
+    let vessels: any[] = [];
+  let voyages: any[] = [];
+
+    // 🌟 5. Process Extra Dropdown Data (Same as Vessel/Cargo Logic)
+    if (fetchAll) {
+      companies = results[2] || [];
+      const rawVessels = results[3] || [];
+      const vesselIds = rawVessels.map((v:any) => v._id);
+
+      const activeVoyages = await Voyage.find({
+        vesselId: { $in: vesselIds },
+        status: "active",
+      })
+      .select("vesselId voyageNo schedule.startDate")
+      .lean();
+
+      const voyageMap = new Map();
+      activeVoyages.forEach((voy) => {
+        voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
+      });
+
+      vessels = rawVessels.map((v:any) => ({
+        ...v,
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+      }));
+
+      voyages = activeVoyages.map(voy => ({
+        _id: voy._id,
+        vesselId: voy.vesselId,
+        voyageNo: voy.voyageNo
+      }));
+    }
+
+    // FINAL STANDARDIZED SUCCESS RESPONSE
+    return sendResponse(200, "Operational reports retrieved successfully", {
+      data: reports,
+      companies,
+      vessels,
+      voyages,
+      pagination: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("GET NOR ERROR:", error);
+    return sendResponse(500, "Failed to fetch data", null, false);
+  }
+}
 export async function POST(req: Request) {
   try {
     const session = await auth(); // ✅ Get session
@@ -153,165 +379,5 @@ export async function POST(req: Request) {
     console.error("Error saving NOR:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json({ error: "Failed to save record", details: errorMessage }, { status: 500 });
-  }
-}
-
-// --- GET: FETCH NORS ---
-export async function GET(req: Request) {
-  try {
-    const authz = await authorizeRequest("nor.view");
-    if (!authz.ok) return authz.response;
-    
-    await dbConnect();
-
-    // 🔒 1. Session & Multi-Tenancy Setup
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { user } = session;
-    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    const userCompanyId = user.company?.id;
-
-    const _ensureModels = [Vessel, Voyage, User];
-
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const skip = (page - 1) * limit;
-
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const selectedVessel = searchParams.get("vesselId");
-    const selectedVoyage = searchParams.get("voyageId");
-    const companyId = searchParams.get("companyId"); // ✅ Added to extract companyId
-
-    const query: Record<string, any> = { eventType: "nor" };
-
-    // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
-    // =========================================================
-    if (!isSuperAdmin) {
-      if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
-        );
-      }
-
-      // Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-
-      // Restrict query to these vessels only
-      query.vesselId = { $in: companyVesselIds };
-
-      // If a specific vessel was selected in UI, verify ownership
-      if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
-          query.vesselId = selectedVessel;
-        } else {
-          // If trying to access unauthorized vessel, return empty result
-          return NextResponse.json({
-            data: [],
-            pagination: { total: 0, page, totalPages: 0 },
-          });
-        }
-      }
-    } else {
-      // Super Admin Logic
-      // 🟢 Logic for SUPER ADMIN with Company Filter
-      if (companyId && companyId !== "all") {
-        // Find all vessels belonging to the selected company
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
-        const targetVesselIds = targetVessels.map((v) => v._id);
-
-        if (selectedVessel) {
-          // If a specific vessel is also selected, ensure it belongs to that company
-          if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
-            query.vesselId = selectedVessel;
-          } else {
-            // Mismatch between selected company and selected vessel
-            return NextResponse.json({
-              data: [],
-              pagination: { total: 0, page, totalPages: 0 },
-            });
-          }
-        } else {
-          // Filter reports by all vessels in that company
-          query.vesselId = { $in: targetVesselIds };
-        }
-      } else if (selectedVessel) {
-        // Super Admin: Use selectedVessel filter directly if provided (and no company filter active)
-        query.vesselId = selectedVessel;
-      }
-    }
-    // =========================================================
-
-    if (status !== "all") {
-      query.status = status;
-    }
-
-    if (selectedVoyage) {
-      query.voyageId = selectedVoyage;
-    }
-
-    // ✅ SEARCH LOGIC
-    if (search) {
-      query.$or = [
-        { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } }, 
-        { portName: { $regex: search, $options: "i" } },
-      ];
-    }
-    
-    if (startDate || endDate) {
-      const dateQuery: { $gte?: Date; $lte?: Date } = {};
-      if (startDate) {
-        const parsedStart = parseDateString(startDate);
-        if (parsedStart) dateQuery.$gte = parsedStart;
-      }
-      if (endDate) {
-        const parsedEnd = parseDateString(endDate);
-        if (parsedEnd) {
-          parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd;
-        }
-      }
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
-    }
-
-    const total = await ReportOperational.countDocuments(query);
-
-    // ✅ POPULATE VOYAGE ID & AUDIT FIELDS
-    const reports = await ReportOperational.find(query)
-      .populate("voyageId", "voyageNo") 
-      .populate("vesselId", "name")
-      .populate("createdBy", "fullName")
-      .populate("updatedBy", "fullName")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    return NextResponse.json({
-      data: reports,
-      pagination: {
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error("GET NOR ERROR:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch data" },
-      { status: 500 }
-    );
   }
 }

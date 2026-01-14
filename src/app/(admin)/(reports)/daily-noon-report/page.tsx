@@ -15,7 +15,7 @@ export default function DailyNoonReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState("all");
-  const [companies, setCompanies] = useState([]);
+
   
   // ✅ Authorization logic
   const { can, isReady, user } = useAuthorization();
@@ -31,31 +31,11 @@ export default function DailyNoonReport() {
   const [endDate, setEndDate] = useState("");
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
-  const [vessels, setVessels] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
-
-  useEffect(() => {
-    async function fetchVessels() {
-      if (!canView) return;
-      try {
-        // If Super Admin selects a company, filter vessels by that company in the dropdown
-        const url = isSuperAdmin && companyId && companyId !== "all"
-          ? `/api/vessels?companyId=${companyId}`
-          : "/api/vessels";
-        
-        const res = await fetch(url);
-        if (res.ok) {
-          const result = await res.json();
-          setVessels(Array.isArray(result) ? result : result.data || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch vessels", error);
-      }
-    }
-    
-    if (isReady) fetchVessels();
-  }, [isReady, canView, companyId, isSuperAdmin]);
-
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [vessels, setVessels] = useState<any[]>([]);
+  const [allVoyages, setAllVoyages] = useState<any[]>([]);
+  
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   const excelMapping = (r: any) => ({
@@ -88,21 +68,6 @@ export default function DailyNoonReport() {
     );
   }
 
-  useEffect(() => {
-    async function fetchCompanies() {
-      if (!isSuperAdmin) return;
-      try {
-        const res = await fetch("/api/companies");
-        if (res.ok) {
-          const result = await res.json();
-          setCompanies(Array.isArray(result) ? result : result.data || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch companies", error);
-      }
-    }
-    if (isReady) fetchCompanies();
-  }, [isReady, isSuperAdmin]);
 
   return (
     <div className="space-y-6">
@@ -121,7 +86,7 @@ export default function DailyNoonReport() {
             exportMap={excelMapping}
           />
           {/* ✅ Check permission for creating noon reports */}
-          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} vesselList={vessels}/>}
+          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={allVoyages}/>}
         </div>
       </div>
 
@@ -166,6 +131,12 @@ export default function DailyNoonReport() {
           voyageId={voyageId}
           vesselList={vessels}
           companyId={companyId}
+          onFilterDataLoad={(filterData) => {
+            // 🟢 This correctly populates your filters from the Single API call
+            setVessels(filterData.vessels);
+            setCompanies(filterData.companies);
+            setAllVoyages(filterData.voyages);
+          }}
         />
       </ComponentCard>
     </div>

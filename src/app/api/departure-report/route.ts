@@ -7,9 +7,8 @@ import mongoose from "mongoose"; // ✅ Import Mongoose
 import User from "@/models/User"; 
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage"; 
+import Company from "@/models/Company"
 import ReportOperational from "@/models/ReportOperational";
-
-// VALIDATION
 import { departureReportSchema } from "@/lib/validations/departureReportSchema";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 // ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
@@ -35,114 +34,103 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   const fallbackDate = new Date(dateStr);
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
-
+const sendResponse = (status: number, message: string, data: any = null, success: boolean = true) => {
+  return NextResponse.json(
+    {
+      success,
+      message,
+      ...data,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: "1.0.0",
+        path: "/api/reports/departure",
+      },
+    },
+    { status }
+  );
+};
 
 export async function GET(req: NextRequest) {
- 
   try {
-    const t1 = performance.now();
+    // 1. Authorization & DB Connection
     const authz = await authorizeRequest("departure.view");
-    if (!authz.ok) return authz.response;
-    await dbConnect();
-   
+    if (!authz.ok) {
+      return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+    }
 
-    // 🔒 1. Session & Multi-Tenancy Setup
+    await dbConnect();
+
+    // 2. Session & Model Registration
     const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return sendResponse(401, "Unauthorized access", null, false);
     }
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
-    const _ensureModels = [Vessel, Voyage, User];
+    // ✅ Ensure all models are registered for population
+    const _ensureModels = [Vessel, Voyage, User, Company, ReportOperational];
+
     const { searchParams } = new URL(req.url);
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 10;
+    const fetchAll = searchParams.get("all") === "true"; // Flag for Dropdowns
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
     const skip = (page - 1) * limit;
 
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const selectedVessel = searchParams.get("vesselId");
-    const selectedVoyage = searchParams.get("voyageId");
-    const companyId = searchParams.get("companyId"); // ✅ Added to extract companyId
-
-    // 2. Initialize Query
     const query: Record<string, any> = { eventType: "departure" };
 
     // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // 🔒 3. MULTI-TENANCY FILTERING LOGIC
     // =========================================================
-    const t2 = performance.now();
-    if (!isSuperAdmin) {
-      if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
-        );
-      }
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedCompany = searchParams.get("companyId");
 
-      // Step A: Find all vessels belonging to the user's company
+    if (!isSuperAdmin) {
+      if (!userCompanyId) return sendResponse(403, "No company assigned", null, false);
+      
       const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
-
-      // Step B: Restrict the query to only these vessels
-      query.vesselId = { $in: companyVesselIds };
-
-      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
+      
       if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+        if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
           query.vesselId = selectedVessel;
         } else {
-          // If trying to access unauthorized vessel, return empty result
-          return NextResponse.json({
-            data: [],
-            pagination: { page, limit, total: 0, totalPages: 0 },
-          });
+          return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
         }
+      } else {
+        query.vesselId = { $in: companyVesselIds };
       }
     } else {
-      // Super Admin: Use the vesselId param directly if provided
-      // 🟢 Logic for SUPER ADMIN with Company Filter
-      if (companyId && companyId !== "all") {
-        // Find all vessels belonging to the selected company
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id").lean();
+      if (selectedCompany && selectedCompany !== "all") {
+        const targetVessels = await Vessel.find({ company: selectedCompany }).select("_id").lean();
         const targetVesselIds = targetVessels.map((v) => v._id);
-
+        
         if (selectedVessel) {
-          // If a specific vessel is also selected, ensure it belongs to that company
-          if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
+          if (targetVesselIds.some(id => id.toString() === selectedVessel)) {
             query.vesselId = selectedVessel;
           } else {
-            // Mismatch between selected company and selected vessel
-            return NextResponse.json({
-              data: [],
-              pagination: { page, limit, total: 0, totalPages: 0 },
-            });
+            return sendResponse(200, "Vessel mismatch", { data: [], pagination: { total: 0, page, totalPages: 0 } });
           }
         } else {
-          // Filter reports by all vessels in that company
           query.vesselId = { $in: targetVesselIds };
         }
       } else if (selectedVessel) {
         query.vesselId = selectedVessel;
       }
     }
- 
+
     // =========================================================
+    // 🔍 4. APPLY ADDITIONAL FILTERS
+    // =========================================================
+    const status = searchParams.get("status") || "all";
+    if (status !== "all") query.status = status;
 
-    // 3. Apply Filters
-    if (status !== "all") {
-      query.status = status;
-    }
-    
-    if (selectedVoyage) {
-      query.voyageId = selectedVoyage;
-    }
+    const selectedVoyage = searchParams.get("voyageId");
+    if (selectedVoyage) query.voyageId = selectedVoyage;
 
+    const search = searchParams.get("search")?.trim();
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
@@ -151,59 +139,102 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // 4. Date Filter
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
     if (startDate || endDate) {
-      const dateQuery: { $gte?: Date; $lte?: Date } = {};
-
-      if (startDate) {
-        const parsedStart = parseDateString(startDate);
-        if (parsedStart) dateQuery.$gte = parsedStart;
+      const dateQuery: any = {};
+      const startD = parseDateString(startDate);
+      const endD = parseDateString(endDate);
+      if (startD) dateQuery.$gte = startD;
+      if (endD) {
+        endD.setHours(23, 59, 59, 999);
+        dateQuery.$lte = endD;
       }
-
-      if (endDate) {
-        const parsedEnd = parseDateString(endDate);
-        if (parsedEnd) {
-          parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd; 
-        }
-      }
-
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
+      query.reportDate = dateQuery;
     }
 
-    // 5. Fetch Data
-    const t3 = performance.now();
-    // ✅ Note: Consider using Promise.all here if count + find takes too long
-    const total = await ReportOperational.countDocuments(query);
+    // =========================================================
+    // 🚀 5. PARALLEL EXECUTION (MAIN DATA + FILTERS)
+    // =========================================================
+    const promises: any[] = [
+      ReportOperational.countDocuments(query),
+      ReportOperational.find(query)
+        .populate("voyageId", "voyageNo")
+        .populate("vesselId", "name")
+        .populate("createdBy", "fullName") 
+        .populate("updatedBy", "fullName") 
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+    ];
 
-    const reports = await ReportOperational.find(query)
-      .populate("voyageId", "voyageNo")
-      .populate("vesselId", "name")
-      .populate("createdBy", "fullName") 
-      .populate("updatedBy", "fullName") 
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    if (fetchAll) {
+      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+
+      const vesselFilter: any = { status: "active" };
+      if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+      else if (selectedCompany && selectedCompany !== "all") vesselFilter.company = selectedCompany;
+      promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
+    }
+
+    const results = await Promise.all(promises);
+    const total = results[0];
+    const reports = results[1];
     
+    let companies: any[] = [];
+    let vessels: any[] = [];
+    let voyages: any[] = [];
 
-    return NextResponse.json({
+    // =========================================================
+    // 🌟 6. PROCESS FILTER DATA (VOYAGE MAPPING)
+    // =========================================================
+    if (fetchAll) {
+      companies = results[2] || [];
+      const rawVessels = (results[3] || []) as any[];
+      const vIds = rawVessels.map(v => v._id);
+
+      const activeVoyages = await Voyage.find({
+        vesselId: { $in: vIds },
+        status: "active",
+      })
+      .select("vesselId voyageNo")
+      .lean();
+
+      const voyageMap = new Map<string, string>();
+      activeVoyages.forEach((voy: any) => {
+        if (voy.vesselId) voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
+      });
+
+      vessels = rawVessels.map((v: any) => ({
+        ...v,
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+      }));
+
+      voyages = activeVoyages.map(v => ({
+        _id: v._id,
+        vesselId: v.vesselId,
+        voyageNo: v.voyageNo
+      }));
+    }
+
+    return sendResponse(200, "Departure reports retrieved successfully", {
       data: reports,
+      companies,
+      vessels,
+      voyages,
       pagination: {
+        total,
         page,
         limit,
-        total,
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error("GET DEPARTURE REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch departure reports" },
-      { status: 500 }
-    );
+
+  } catch (error: any) {
+    console.error("GET DEPARTURE REPORTS ERROR:", error);
+    return sendResponse(500, error.message || "Internal Server Error", null, false);
   }
 }
 
