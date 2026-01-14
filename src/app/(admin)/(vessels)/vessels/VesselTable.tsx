@@ -337,8 +337,7 @@ export default function VesselTable({
           limit: LIMIT.toString(),
           search,
           status: status === "all" ? "" : status,
-          // Start/End date might refer to 'createdAt' or 'yearBuilt' depending on backend logic
-          // Passing them anyway if API supports it
+          
           startDate,
           endDate,
         });
