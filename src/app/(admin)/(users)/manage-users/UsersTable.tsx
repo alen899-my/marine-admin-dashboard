@@ -59,6 +59,7 @@ interface UserTableProps {
   refresh: number;
   search: string;
   status: string;
+  companyId: string;
   startDate: string;
   endDate: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
@@ -68,6 +69,7 @@ export default function UserTable({
   refresh,
   search,
   status,
+  companyId,
   startDate,
   endDate,
   setTotalCount,
@@ -231,6 +233,7 @@ export default function UserTable({
         limit: LIMIT.toString(),
         search,
         status,
+        companyId,
         startDate,
         endDate,
       });
@@ -251,7 +254,7 @@ export default function UserTable({
       setLoading(false);
     }
   },
-  [LIMIT, search, status, startDate, endDate, setTotalCount] // fetchUsers changes if these change
+  [LIMIT, search, status, companyId, startDate, endDate, setTotalCount] // fetchUsers changes if these change
 );
 
   const selectedUserRoleName =
@@ -264,7 +267,7 @@ export default function UserTable({
 
   useEffect(() => {
   setCurrentPage(1);
-}, [search, status, startDate, endDate, refresh]);
+}, [search, status, companyId, startDate, endDate, refresh]);
 
   useEffect(() => {
   fetchUsers(currentPage);

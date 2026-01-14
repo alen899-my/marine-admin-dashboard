@@ -35,7 +35,6 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 }
 
 // GET ALL NOON REPORTS
-// GET ALL NOON REPORTS
 export async function GET(req: NextRequest) {
   const start = performance.now();
   try {
@@ -65,8 +64,11 @@ export async function GET(req: NextRequest) {
 
     const query: Record<string, any> = {};
 
-    // 2. Multi-Tenancy Logic
+    // 2. Multi-Tenancy Logic (UPDATED FOR SUPER ADMIN COMPANY FILTER)
     const t2 = performance.now();
+    const selectedVessel = searchParams.get("vesselId");
+    const selectedCompany = searchParams.get("companyId"); // New: capture company filter
+
     if (!isSuperAdmin) {
       if (!userCompanyId) return NextResponse.json({ error: "No company assigned" }, { status: 403 });
       
@@ -74,7 +76,6 @@ export async function GET(req: NextRequest) {
       const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
       
-      const selectedVessel = searchParams.get("vesselId");
       if (selectedVessel) {
         // Ensure requested vessel belongs to user's company
         if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
@@ -86,8 +87,21 @@ export async function GET(req: NextRequest) {
         query.vesselId = { $in: companyVesselIds };
       }
     } else {
-      const selectedVessel = searchParams.get("vesselId");
-      if (selectedVessel) query.vesselId = selectedVessel;
+      // Logic for Super Admin
+      if (selectedCompany) {
+        // If Super Admin selects a company, filter by that company's vessels
+        const companyVessels = await Vessel.find({ company: selectedCompany }).select("_id").lean();
+        const companyVesselIds = companyVessels.map((v) => v._id);
+        
+        if (selectedVessel) {
+          query.vesselId = selectedVessel;
+        } else {
+          query.vesselId = { $in: companyVesselIds };
+        }
+      } else if (selectedVessel) {
+        // If no company is selected but a specific vessel is
+        query.vesselId = selectedVessel;
+      }
     }
     console.log(`⏱️ Multi-Tenancy Logic: ${(performance.now() - t2).toFixed(2)}ms`);
 
@@ -129,7 +143,7 @@ export async function GET(req: NextRequest) {
         .populate("vesselId", "name")
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
-        .populate("updatedBy", "fullName") // Kept updatedBy as requested
+        .populate("updatedBy", "fullName") 
         .sort({ reportDate: -1 }) // Matches your compound index!
         .skip(skip)
         .limit(limit)
