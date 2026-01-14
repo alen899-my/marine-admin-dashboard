@@ -87,15 +87,23 @@ export async function GET(req: NextRequest) {
         query.vesselId = { $in: companyVesselIds };
       }
     } else {
-      // Logic for Super Admin
-      if (selectedCompany) {
-        // If Super Admin selects a company, filter by that company's vessels
+      // Super Admin Logic
+      // 🟢 Logic for SUPER ADMIN with Company Filter
+      if (selectedCompany && selectedCompany !== "all") {
+        // Find all vessels belonging to the selected company
         const companyVessels = await Vessel.find({ company: selectedCompany }).select("_id").lean();
         const companyVesselIds = companyVessels.map((v) => v._id);
         
         if (selectedVessel) {
-          query.vesselId = selectedVessel;
+          // If a specific vessel is also selected, ensure it belongs to that company
+          if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            // Mismatch between selected company and selected vessel
+            return NextResponse.json({ data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+          }
         } else {
+          // Filter by all vessels in that company
           query.vesselId = { $in: companyVesselIds };
         }
       } else if (selectedVessel) {

@@ -383,16 +383,22 @@ const fetchReports = useCallback(async (page = 1) => {
     } finally {
       setLoading(false);
     }
-  }, [LIMIT, search, status, startDate, endDate, vesselId, voyageId, onDataLoad, setTotalCount]);
+  }, [LIMIT, search, status, startDate, endDate, vesselId, voyageId, companyId, onDataLoad, setTotalCount]);
 
 useEffect(() => {
-    // Reset to page 1 if any filter changes
-    if (currentPage !== 1 && (search || status !== "all" || vesselId || voyageId || startDate || endDate)) {
+    if (!isReady) return;
+
+    // Reset to page 1 if any filter (including company) changes
+    const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
+    
+    if (currentPage !== 1 && filtersActive) {
       setCurrentPage(1);
       return; 
     }
+    
     fetchReports(currentPage);
-  }, [currentPage, refresh, fetchReports, companyId]);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
     setSelectedReport(report);

@@ -14,7 +14,7 @@ import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 export default function DailyNoonReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]);
-  const [companyId, setCompanyId] = useState("");
+  const [companyId, setCompanyId] = useState("all");
   const [companies, setCompanies] = useState([]);
   
   // ✅ Authorization logic
@@ -36,11 +36,14 @@ export default function DailyNoonReport() {
 
   useEffect(() => {
     async function fetchVessels() {
-      // Only fetch if user has view permission
       if (!canView) return;
-
       try {
-        const res = await fetch("/api/vessels");
+        // If Super Admin selects a company, filter vessels by that company in the dropdown
+        const url = isSuperAdmin && companyId && companyId !== "all"
+          ? `/api/vessels?companyId=${companyId}`
+          : "/api/vessels";
+        
+        const res = await fetch(url);
         if (res.ok) {
           const result = await res.json();
           setVessels(Array.isArray(result) ? result : result.data || []);
@@ -49,9 +52,9 @@ export default function DailyNoonReport() {
         console.error("Failed to fetch vessels", error);
       }
     }
-     if (!isFilterVisible || vessels.length > 0) return;
-  fetchVessels();
-  }, [isFilterVisible, canView]);
+    
+    if (isReady) fetchVessels();
+  }, [isReady, canView, companyId, isSuperAdmin]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -140,9 +143,10 @@ export default function DailyNoonReport() {
               voyageId={voyageId}
               setVoyageId={setVoyageId}
               vessels={vessels}
+              isSuperAdmin={isSuperAdmin}
+              companies={isSuperAdmin ? companies : []}
               companyId={companyId}
               setCompanyId={setCompanyId}
-              companies={isSuperAdmin ? companies : []}
             />
           ) : null
         }

@@ -76,6 +76,7 @@ interface DepartureReportTableProps {
   voyageId: string; // Added this
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  companyId: string;
 }
 
 export default function DepartureReportTable({
@@ -89,6 +90,7 @@ export default function DepartureReportTable({
   voyageId,
   vesselList,
   setTotalCount,
+  companyId,
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDepartureReport[]>([]);
@@ -281,6 +283,7 @@ export default function DepartureReportTable({
           endDate,
           vesselId, // Added to query
           voyageId, // Added to query
+          companyId,
         });
 
         const res = await fetch(`/api/departure-report?${query.toString()}`);
@@ -320,6 +323,7 @@ export default function DepartureReportTable({
       onDataLoad,
       vesselId,
       voyageId,
+      companyId,
       setTotalCount,
     ]
   );
@@ -478,7 +482,7 @@ export default function DepartureReportTable({
   if (!isReady) return;
 
   // If any filter changes and we aren't on page 1, reset to page 1
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
   
   if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
@@ -486,7 +490,7 @@ export default function DepartureReportTable({
   }
 
   fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, voyageId, startDate, endDate]);
 
   const statusOptions = [
     { value: "active", label: "Active" },

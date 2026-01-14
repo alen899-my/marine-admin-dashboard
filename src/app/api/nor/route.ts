@@ -187,6 +187,7 @@ export async function GET(req: Request) {
     const endDate = searchParams.get("endDate");
     const selectedVessel = searchParams.get("vesselId");
     const selectedVoyage = searchParams.get("voyageId");
+    const companyId = searchParams.get("companyId"); // ✅ Added to extract companyId
 
     const query: Record<string, any> = { eventType: "nor" };
 
@@ -221,8 +222,32 @@ export async function GET(req: Request) {
         }
       }
     } else {
-      // Super Admin: Use selectedVessel filter directly if provided
-      if (selectedVessel) query.vesselId = selectedVessel;
+      // Super Admin Logic
+      // 🟢 Logic for SUPER ADMIN with Company Filter
+      if (companyId && companyId !== "all") {
+        // Find all vessels belonging to the selected company
+        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVesselIds = targetVessels.map((v) => v._id);
+
+        if (selectedVessel) {
+          // If a specific vessel is also selected, ensure it belongs to that company
+          if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            // Mismatch between selected company and selected vessel
+            return NextResponse.json({
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
+          }
+        } else {
+          // Filter reports by all vessels in that company
+          query.vesselId = { $in: targetVesselIds };
+        }
+      } else if (selectedVessel) {
+        // Super Admin: Use selectedVessel filter directly if provided (and no company filter active)
+        query.vesselId = selectedVessel;
+      }
     }
     // =========================================================
 

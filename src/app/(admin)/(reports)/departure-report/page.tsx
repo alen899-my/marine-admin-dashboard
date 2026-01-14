@@ -17,7 +17,8 @@ export default function DepartureReport() {
   const [totalCount, setTotalCount] = useState(0);
 
   // ✅ Authorization logic
-  const { can, isReady } = useAuthorization();
+  const { can, isReady, user } = useAuthorization();
+  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   const canView = can("departure.view");
   const canCreate = can("departure.create");
 
@@ -30,25 +31,40 @@ export default function DepartureReport() {
   const [endDate, setEndDate] = useState("");
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
+  const [companyId, setCompanyId] = useState("all");
+  const [companies, setCompanies] = useState([]);
   const [vessels, setVessels] = useState([]);
+
+  // Fetch Companies for Super Admin
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const result = await res.json();
+          setCompanies(result.data || []);
+        }
+      } catch (error) { console.error(error); }
+    }
+    if (isReady && isSuperAdmin) fetchCompanies();
+  }, [isReady, isSuperAdmin]);
 
   useEffect(() => {
     async function fetchVessels() {
-      // Only fetch if user is authorized to view
-      if (!canView) return;
-
+      if (!can("departure.view")) return;
       try {
-        const res = await fetch("/api/vessels");
+        const url = isSuperAdmin && companyId !== "all" 
+          ? `/api/vessels?companyId=${companyId}` 
+          : "/api/vessels";
+        const res = await fetch(url);
         if (res.ok) {
           const result = await res.json();
           setVessels(Array.isArray(result) ? result : result.data || []);
         }
-      } catch (error) {
-        console.error("Failed to fetch vessels", error);
-      }
+      } catch (error) { console.error(error); }
     }
     if (isReady) fetchVessels();
-  }, [isReady, canView]);
+  }, [isReady, companyId, isSuperAdmin]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -134,6 +150,10 @@ export default function DepartureReport() {
               voyageId={voyageId}
               setVoyageId={setVoyageId}
               vessels={vessels}
+              isSuperAdmin={isSuperAdmin}
+              companies={companies}
+              companyId={companyId}
+              setCompanyId={setCompanyId}
             />
           ) : null
         }
@@ -151,6 +171,7 @@ export default function DepartureReport() {
           setTotalCount={setTotalCount}
           vesselId={vesselId}
           voyageId={voyageId}
+          companyId={companyId}
           vesselList={vessels}
         />
       </ComponentCard>

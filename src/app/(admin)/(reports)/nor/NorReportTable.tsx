@@ -79,6 +79,7 @@ interface NORReportTableProps {
   voyageId: string; // Added this
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  companyId: string;
 }
 
 export default function NorReportTable({
@@ -92,6 +93,7 @@ export default function NorReportTable({
   voyageId,
   vesselList,
   setTotalCount,
+  companyId,
 }: NORReportTableProps) {
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
@@ -366,6 +368,7 @@ export default function NorReportTable({
           endDate,
           vesselId, // Added to query
           voyageId, // Added to query
+          companyId,
         });
 
         const res = await fetch(`/api/nor?${query.toString()}`);
@@ -391,7 +394,7 @@ export default function NorReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, setTotalCount]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId, setTotalCount]
   );
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
@@ -497,7 +500,7 @@ export default function NorReportTable({
   if (!isReady) return;
 
   // Logic: If any filter changes and we aren't on page 1, reset page first
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
   
   if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
@@ -505,7 +508,7 @@ export default function NorReportTable({
   }
 
   fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
   const getFileMeta = (url?: string) => {

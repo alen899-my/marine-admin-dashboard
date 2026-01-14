@@ -80,6 +80,7 @@ interface ArrivalReportTableProps {
   voyageId: string; // Added this
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  companyId: string;
 }
 
 interface VoyageMetrics {
@@ -101,6 +102,7 @@ export default function ArrivalReportTable({
   voyageId,
   vesselList,
   setTotalCount,
+  companyId,
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -293,6 +295,7 @@ export default function ArrivalReportTable({
           endDate,
           vesselId,
           voyageId,
+          companyId,
         });
 
         const res = await fetch(`/api/arrival-report?${query.toString()}`);
@@ -320,7 +323,7 @@ export default function ArrivalReportTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId, setTotalCount]
+    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId, setTotalCount]
   );
 
   const [isMobile, setIsMobile] = useState(false);
@@ -336,7 +339,7 @@ useEffect(() => {
   if (!isReady) return;
 
   // Logic: If any filter changes and we aren't on page 1, reset page first
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
   
   if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
@@ -344,7 +347,7 @@ useEffect(() => {
   }
 
   fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
