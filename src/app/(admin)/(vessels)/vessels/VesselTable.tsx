@@ -73,6 +73,7 @@ interface VesselTableProps {
   refresh: number;
   search: string;
   status: string;
+  companyId: string;
   startDate: string;
   endDate: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
@@ -82,6 +83,7 @@ export default function VesselTable({
   refresh,
   search,
   status,
+  companyId,
   startDate,
   endDate,
   setTotalCount,
@@ -337,6 +339,7 @@ export default function VesselTable({
           limit: LIMIT.toString(),
           search,
           status: status === "all" ? "" : status,
+          companyId: companyId === "all" ? "" : companyId,
           // Start/End date might refer to 'createdAt' or 'yearBuilt' depending on backend logic
           // Passing them anyway if API supports it
           startDate,
@@ -372,13 +375,13 @@ export default function VesselTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate]
+    [search, status, startDate, endDate, companyId]
   );
 
   useEffect(() => {
     fetchVessels(1);
     setCurrentPage(1);
-  }, [fetchVessels]);
+  }, [fetchVessels, companyId]);
 
   useEffect(() => {
     if (currentPage > 1) fetchVessels(currentPage);
@@ -409,7 +412,10 @@ export default function VesselTable({
       mmsi: vessel.mmsi,
       flag: vessel.flag,
       yearBuilt: vessel.yearBuilt,
-      company: typeof vessel.company === 'object' ? vessel.company?._id : vessel.company,
+      company:
+        typeof vessel.company === "object"
+          ? vessel.company?._id
+          : vessel.company,
       dimensions: { ...vessel.dimensions },
       performance: { ...vessel.performance },
       machinery: {
@@ -579,26 +585,26 @@ export default function VesselTable({
                 General Information
               </h3>
               <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Vessel Name</span>
-          <span className="font-medium">
-            {selectedVessel?.name || "-"}
-          </span>
-        </div>
+                <span className="text-gray-500">Vessel Name</span>
+                <span className="font-medium">
+                  {selectedVessel?.name || "-"}
+                </span>
+              </div>
 
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">IMO Number</span>
-          <span className="font-medium">
-            {selectedVessel?.imo || "-"}
-          </span>
-        </div>
               <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Company</span>
-          <span className="font-medium">
-            {typeof selectedVessel?.company === "object" 
-              ? selectedVessel.company.name 
-              : "-"}
-          </span>
-        </div>
+                <span className="text-gray-500">IMO Number</span>
+                <span className="font-medium">
+                  {selectedVessel?.imo || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Company</span>
+                <span className="font-medium">
+                  {typeof selectedVessel?.company === "object"
+                    ? selectedVessel.company.name
+                    : "-"}
+                </span>
+              </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500">Fleet</span>
                 <span className="font-medium">

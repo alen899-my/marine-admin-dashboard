@@ -70,6 +70,7 @@ interface CargoReportTableProps {
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
+  companyId: string;
 }
 
 export default function CargoReportTable({
@@ -83,6 +84,7 @@ export default function CargoReportTable({
   voyageId,
   vesselList,
   setTotalCount,
+  companyId,
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
@@ -352,6 +354,7 @@ export default function CargoReportTable({
           endDate,
           vesselId, // Added to query
           voyageId, // Added to query
+          companyId,
         });
 
         const res = await fetch(`/api/cargo?${query.toString()}`);
@@ -378,7 +381,7 @@ export default function CargoReportTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId]
+    [LIMIT, search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
@@ -471,7 +474,7 @@ export default function CargoReportTable({
   if (!isReady) return;
 
   // Logic: Reset to page 1 if any filter changes
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || startDate || endDate);
+  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || companyId !== "all" || startDate || endDate);
   
   if (currentPage !== 1 && filtersActive) {
     setCurrentPage(1);
@@ -479,7 +482,7 @@ export default function CargoReportTable({
   }
 
   fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, startDate, endDate]);
+}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };

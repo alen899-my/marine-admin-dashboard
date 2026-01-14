@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server"; // ✅ Added NextRequest
 import { dbConnect } from "@/lib/db";
 import { auth } from "@/auth";
 
@@ -8,7 +8,7 @@ import ReportOperational from "@/models/ReportOperational";
 import Document from "@/models/Document";
 import Vessel from "@/models/Vessel";
 
-export async function GET() {
+export async function GET(req: NextRequest) { // ✅ Added req parameter
   try {
     await dbConnect();
 
@@ -22,13 +22,18 @@ export async function GET() {
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
+    // ✅ Get companyId from URL for Super Admin filtering
+    const { searchParams } = new URL(req.url);
+    const selectedCompanyId = searchParams.get("companyId");
+
     // 2. Build Base Query Filter
     const filter: any = { status: "active" };
 
     // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // 🔒 MULTI-TENANCY & FILTERING LOGIC
     // =========================================================
     if (!isSuperAdmin) {
+      // 🔵 FOR COMPANY ADMINS: Strictly force their own company
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
@@ -36,13 +41,18 @@ export async function GET() {
         );
       }
 
-      // Find all vessels belonging to the user's company
       const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
+      filter.vesselId = { $in: companyVesselIds };
 
-      // Restrict all counts to these specific vessels
+    } else if (selectedCompanyId && selectedCompanyId !== "all") {
+      // 🟢 FOR SUPER ADMINS: Only filter if a specific company is selected
+      const companyVessels = await Vessel.find({ company: selectedCompanyId }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
       filter.vesselId = { $in: companyVesselIds };
     }
+    // If Super Admin and no companyId is provided, 'filter' remains empty ({status: "active"}), 
+    // showing global stats for all companies.
     // =========================================================
 
     // 3. Fire all queries simultaneously using Promise.all with the filtered query

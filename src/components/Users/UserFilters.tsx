@@ -11,6 +11,9 @@ interface UserFiltersProps {
   setSearch: (v: string) => void;
   status: string;
   setStatus: (v: string) => void;
+  companyId: string;
+  setCompanyId: (v: string) => void;
+  isSuperAdmin: boolean;
   startDate: string;
   setStartDate: (v: string) => void;
   endDate: string;
@@ -22,6 +25,8 @@ export default function UserFilters({
   setSearch,
   status,
   setStatus,
+  companyId, setCompanyId,
+  isSuperAdmin,
   startDate,
   setStartDate,
   endDate,
@@ -32,16 +37,34 @@ export default function UserFilters({
   const [localStatus, setLocalStatus] = useState(status);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
+  const [localCompanyId, setLocalCompanyId] = useState(companyId);
+  const [companies, setCompanies] = useState<{value: string, label: string}[]>([]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetch("/api/companies") // Ensure you have this GET endpoint
+        .then(res => res.json())
+        .then(json => {
+          const list = (json.data || []).map((c: any) => ({
+            value: c._id,
+            label: c.name
+          }));
+          setCompanies([{ value: "all", label: "All Companies" }, ...list]);
+        });
+    }
+  }, [isSuperAdmin]);
 
   // Sync local state if parent state changes externally (e.g. refresh)
   useEffect(() => { setLocalSearch(search); }, [search]);
   useEffect(() => { setLocalStatus(status); }, [status]);
+  useEffect(() => { setLocalCompanyId(companyId); }, [companyId]);
   useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
   useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
 
   const handleApplyFilters = () => {
     setSearch(localSearch);
     setStatus(localStatus);
+    setCompanyId(localCompanyId);
     setStartDate(localStartDate);
     setEndDate(localEndDate);
   };
@@ -49,12 +72,14 @@ export default function UserFilters({
   const handleClear = () => {
     setLocalSearch("");
     setLocalStatus("all");
+    setLocalCompanyId("all");
     setLocalStartDate("");
     setLocalEndDate("");
     
     // Immediately clear parent state too
     setSearch("");
     setStatus("all");
+    setCompanyId("all");
     setStartDate("");
     setEndDate("");
   };
@@ -97,6 +122,21 @@ export default function UserFilters({
           ]}
         />
       </div>
+
+      {isSuperAdmin && (
+        <div className="w-full sm:w-auto min-w-[210px] shrink-0">
+          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+            Company
+          </label>
+          <Select
+            className="w-full"
+            value={localCompanyId}
+            onChange={setLocalCompanyId}
+            placeholder="Select Company"
+            options={companies}
+          />
+        </div>
+      )}
 
       {/* JOINED DATE FROM - (Kept commented out as per your code)
       <div className="w-full sm:w-auto min-w-[180px] shrink-0">

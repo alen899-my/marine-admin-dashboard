@@ -29,6 +29,7 @@ export async function GET(req: Request) {
     
     // 🟢 NEW: Check for vesselId (used by Dropdowns)
     const vesselId = searchParams.get("vesselId");
+    const companyId = searchParams.get("companyId");
 
     // Existing params
     const page = parseInt(searchParams.get("page") || "1");
@@ -68,8 +69,25 @@ export async function GET(req: Request) {
         }
       }
     } else {
-      // Super Admin: Use the vesselId param directly if provided
-      if (vesselId) {
+      // Super Admin Logic
+      // 🟢 NEW: Filter by Company if companyId is provided
+      if (companyId && companyId !== "all") {
+        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVesselIds = targetVessels.map((v) => v._id);
+        
+        // If a specific vesselId is also provided, ensure it belongs to that company
+        if (vesselId) {
+          if (targetVesselIds.some((id) => id.toString() === vesselId)) {
+            query.vesselId = vesselId;
+          } else {
+            // Company and Vessel ID mismatch
+            return NextResponse.json({ data: [], pagination: { total: 0, page, totalPages: 0 } });
+          }
+        } else {
+          query.vesselId = { $in: targetVesselIds };
+        }
+      } else if (vesselId) {
+        // Super Admin: Use the vesselId param directly if provided (and no companyId filter is active)
         query.vesselId = vesselId;
       }
     }
@@ -78,9 +96,7 @@ export async function GET(req: Request) {
     // =========================================================
     // 🟢 MODE A: DROPDOWN FILTERING (Specific Vessel)
     // =========================================================
-    if (vesselId) {
-     
-      
+    if (vesselId && !searchParams.get("page")) { // Added check to ensure it doesn't trigger on table load
       const voyages = await Voyage.find(query)
         .select("voyageNo status vesselId schedule.startDate") // Select minimal fields
         .sort({ "schedule.startDate": -1 }) // Newest first

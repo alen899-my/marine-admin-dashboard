@@ -13,8 +13,11 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [companyId, setCompanyId] = useState("all");
   
-  const { can, isReady } = useAuthorization();
+  const { can, isReady, user } = useAuthorization();
+  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } =
@@ -31,6 +34,20 @@ export default function VoyageManagement() {
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const json = await res.json();
+          setCompanies(json.data || []);
+        }
+      } catch (err) { console.error("Failed to load companies", err); }
+    }
+    if (isReady && isSuperAdmin) fetchCompanies();
+  }, [isReady, isSuperAdmin]);
+
   useEffect(() => {
     async function fetchVessels() {
       try {
@@ -89,6 +106,10 @@ export default function VoyageManagement() {
               setStartDate={setStartDate}
               endDate={endDate}
               setEndDate={setEndDate}
+              isSuperAdmin={isSuperAdmin}
+              companies={companies}
+              companyId={companyId}
+              setCompanyId={setCompanyId}
               // Updated search prop for Voyage context
               searchVoyage={true}
               optionOff={true}
@@ -106,6 +127,7 @@ export default function VoyageManagement() {
           vesselList={vessels}
           startDate={startDate}
           endDate={endDate}
+          companyId={companyId}
           setTotalCount={setTotalCount}
         />
       </ComponentCard>
