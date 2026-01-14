@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 
 interface AddPermissionButtonProps {
   onSuccess: () => void;
+  resourceOptions: { id: string; name: string }[];
 }
 
 interface PermissionEntry {
@@ -26,40 +27,19 @@ interface PermissionEntry {
   status: string;
 }
 
-export default function AddPermissionButton({ onSuccess }: AddPermissionButtonProps) {
+export default function AddPermissionButton({ onSuccess,resourceOptions }: AddPermissionButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({}); // Error state
   const { can, isReady } = useAuthorization();
   const [resourceId, setResourceId] = useState("");
-  const [resourceOptions, setResourceOptions] = useState<{value: string, label: string}[]>([]);
+  
   const [moduleName, setModuleName] = useState("");
+  const [hasLoadedResources, setHasLoadedResources] = useState(false);
   const [permissions, setPermissions] = useState<PermissionEntry[]>([
     { name: "", slug: "", description: "", status: "active" },
   ]);
-  useEffect(() => {
-  const fetchResources = async () => {
-    try {
-     
-      const res = await fetch("/api/resources?limit=none&status=active");
-      const data = await res.json();
-      
-     
-      const resourceList = Array.isArray(data) ? data : (data.data || []);
 
-      const options = resourceList.map((r: any) => ({
-        value: r._id,
-        label: r.name
-      }));
-      
-      setResourceOptions(options);
-    } catch (error) {
-      console.error("Failed to fetch resources", error);
-    }
-  };
-
-  if (isOpen) fetchResources();
-}, [isOpen]);
 
   const addPermissionRow = () => {
     setPermissions([{ name: "", slug: "", description: "", status: "active" }, ...permissions]);
@@ -108,6 +88,10 @@ export default function AddPermissionButton({ onSuccess }: AddPermissionButtonPr
     setIsSubmitting(false);
     closeModal();
   };
+  const selectOptions = resourceOptions.map(r => ({
+    value: r.id,
+    label: r.name
+  }));
 
   const handleSubmit = async () => {
   setErrors({});
@@ -146,8 +130,8 @@ export default function AddPermissionButton({ onSuccess }: AddPermissionButtonPr
 
     toast.success(`${permissions.length} Permissions added successfully`);
     
-    // 1. Trigger Parent Refresh (This updates the Table)
-    onSuccess(); 
+ 
+   onSuccess();
     
     // 2. Clear Form and Close Modal
     handleClose(); 
@@ -185,7 +169,7 @@ export default function AddPermissionButton({ onSuccess }: AddPermissionButtonPr
               <div className="max-w-md">
                 <Label>Resource Name <span className="text-red-500">*</span></Label>
                <SearchableSelect
-      options={resourceOptions}
+     options={selectOptions}
       value={resourceId}
       onChange={(val) => {
         setResourceId(val);

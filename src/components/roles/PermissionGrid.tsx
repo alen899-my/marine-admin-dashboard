@@ -150,7 +150,7 @@ const variant: CheckboxVariant = "default";
                         ${
                           !isReadOnly
                             ? "cursor-pointer active:scale-95"
-                            : "cursor-default pointer-events-none opacity-60"
+                            : "cursor-default pointer-events-none opacity-80"
                         }`}
                       >
                         <Checkbox

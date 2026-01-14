@@ -70,7 +70,7 @@ return (
               className={`flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 transition-colors h-full ${
                 isReadOnly 
                   ? "cursor-default pointer-events-none opacity-100" 
-                  : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-60"
+                  : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-100"
               }`}
                
               >

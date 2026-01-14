@@ -12,11 +12,12 @@ import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-
+import ModalBasedAlerts from "@/components/example/ModalExample/ModalBasedAlerts"
 // Form Components
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
+import ConfirmModal from "@/components/modal/ConfirmModal";
 
 // --- Types ---
 interface UserRef {
@@ -57,14 +58,15 @@ interface PermissionTableProps {
   status: string;
   module: string;
    setTotalCount?: Dispatch<SetStateAction<number>>;
-   resourceOptions: { id: string; name: string }[];
+ setResourceOptions: Dispatch<SetStateAction<{ id: string; name: string }[]>>; // Added this
+  resourceOptions: { id: string; name: string }[];
 }
 export default function PermissionTable({
   refresh,
   search,
   status,
   module,
-  setTotalCount,resourceOptions
+  setTotalCount,resourceOptions,setResourceOptions
 }: PermissionTableProps) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   
@@ -155,6 +157,8 @@ const selectOptions = useMemo(() =>
     },
   ];
 const fetchPermissions = useCallback(async () => {
+  const controller = new AbortController();
+
   try {
     setLoading(true);
     const params = new URLSearchParams({
@@ -162,34 +166,61 @@ const fetchPermissions = useCallback(async () => {
       limit: "20",
       search: search || "",
       status: status || "all",
-      resource: module || ""
+      resource: module || "",
+      // ✅ Add this line to force the browser to fetch fresh data
+      t: refresh.toString() 
     });
 
-    const res = await fetch(`/api/permissions/all-permission?${params.toString()}`);
+    const res = await fetch(`/api/permissions/all-permission?${params.toString()}`, {
+      signal: controller.signal,
+      // ✅ Explicitly tell the browser not to cache
+      cache: 'no-store' 
+    });
+
     if (!res.ok) throw new Error();
     const result = await res.json();
     
     setPermissions(result.data || []);
+
+    // Sync resources to parent
+    if (result.resources && Array.isArray(result.resources)) {
+      const formattedResources = result.resources.map((r: any) => ({
+        id: r._id,
+        name: r.name
+      }));
+      
+      setResourceOptions(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(formattedResources)) return prev;
+        return formattedResources;
+      });
+    }
     
-    // Check for actual change before calling parent state update
-    if (setTotalCount && result.pagination?.total !== undefined) {
+    if (setTotalCount && typeof result.pagination?.total === 'number') {
       setTotalCount(result.pagination.total);
     }
+
     setTotalPages(result.pagination?.totalPages || 1);
-  } catch (err) {
-    toast.error("Failed to load permissions");
+
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      toast.error("Failed to load permissions");
+    }
   } finally {
     setLoading(false);
   }
-}, [currentPage, search, status, module]); // Remove setTotalCount from deps
+
+  return () => controller.abort();
+  // ✅ Ensure refresh is here!
+}, [currentPage, search, status, module, setTotalCount, setResourceOptions, refresh]); 
 
 useEffect(() => {
+  // ✅ Simple and direct
+  fetchPermissions();
+  
   if (currentPage !== 1 && (search || status !== "all" || module)) {
     setCurrentPage(1);
-  } else {
-    fetchPermissions();
   }
-}, [currentPage, refresh, search, status, module, fetchPermissions]);
+}, [refresh, search, status, module, fetchPermissions]); // Removed currentPage from here to avoid double-fetch
 
   /* ================= ACTIONS ================= */
   const handleEdit = (p: Permission) => {
@@ -419,8 +450,6 @@ onDelete={
             />
           </div>
 
-          {/* 🟢 CHANGED: Resources Input replaced with SearchableSelect */}
-         {/* Resource SearchableSelect */}
 <div>
   <Label>Resource</Label>
   <SearchableSelect
@@ -482,13 +511,15 @@ onDelete={
         loading={isDeleting}
         description="This permission defines access to a system resource. Deactivating it will remove this capability from all associated roles and may disable related system features."
       />
-      <ConfirmDeleteModal
+   <ConfirmModal
   isOpen={openSlugConfirm}
   onClose={() => setOpenSlugConfirm(false)}
-  onConfirm={() => handleUpdate(true)} // Pass 'true' to bypass the check
+  onConfirm={() => handleUpdate(true)} // Force update after warning
   loading={saving}
-  title="Warning: Slug Change Detected"
-  description="Changing this slug may break features in the application code that rely on the old name. Are you sure you want to change it?"
+  variant="warning"
+  title="Critical: Slug Change"
+  confirmLabel="Update Anyway"
+  description="Changing the slug will break any code-level permission checks (e.g., can('old.slug')). This action is discouraged unless you are updating the source code accordingly."
 />
     </>
   );

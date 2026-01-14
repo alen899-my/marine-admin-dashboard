@@ -12,7 +12,7 @@ const permissionSchema = new Schema(
       required: true, 
       unique: true, 
       trim: true ,
-      immutable: true
+   
     },
     
     description: { type: String, required: true },

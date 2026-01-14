@@ -355,7 +355,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
 
             <RoleComponentCard
               title="Permissions"
-  desc={isEditingSuperAdmin ? "Super Admin has all permissions by default." : "..."}
+  desc={isEditingSuperAdmin ? "Super Admin has all permissions by default." : "Assign permissions to this role by selecting from the list below."}
               className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
               legend={<PermissionLegend />}
             >

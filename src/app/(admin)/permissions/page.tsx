@@ -23,7 +23,7 @@ export default function PermissionManagement() {
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("permission");
-
+  const [hasFetchedModules, setHasFetchedModules] = useState(false);
   // --- Filter State ---
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -32,26 +32,7 @@ export default function PermissionManagement() {
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
-  useEffect(() => {
-    async function fetchFilterData() {
-      // Only fetch if user can actually view
-      if (!canView) return; 
 
-      try {
-        const resResources = await fetch("/api/resources?limit=none&status=active");
-        const resourcesData = await resResources.json();
-        const resourceList = Array.isArray(resourcesData) ? resourcesData : (resourcesData.data || []);
-        const finalModules = resourceList.map((r: any) => ({
-          id: r._id,
-          name: r.name
-        }));
-        setModules(finalModules.sort((a: any, b: any) => a.name.localeCompare(b.name)));
-      } catch (err) {
-        console.error("Failed to load filter modules", err);
-      }
-    }
-    if (isReady) fetchFilterData();
-  }, [ isReady, canView]);
 
   // 1. Wait for Auth to load
   if (!isReady) return null;
@@ -84,7 +65,7 @@ export default function PermissionManagement() {
             onToggle={setIsFilterVisible} 
           />
           {/* ✅ Check permission for adding */}
-          {canAdd && <AddPermissionButton onSuccess={handleRefresh} />}
+          {canAdd && <AddPermissionButton onSuccess={handleRefresh} resourceOptions={modules} />}
         </div>
       </div>
 
@@ -115,6 +96,7 @@ export default function PermissionManagement() {
           module={module}
           setTotalCount={setTotalCount}
           resourceOptions={modules}
+          setResourceOptions={setModules}
         />
       </ComponentCard>
     </div>
