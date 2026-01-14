@@ -7,8 +7,11 @@ import ReportDaily from "@/models/ReportDaily";
 import ReportOperational from "@/models/ReportOperational";
 import Document from "@/models/Document";
 import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import User from "@/models/User";
+import Company from "@/models/Company";
 
-export async function GET(req: NextRequest) { // ✅ Added req parameter
+export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
@@ -28,6 +31,9 @@ export async function GET(req: NextRequest) { // ✅ Added req parameter
 
     // 2. Build Base Query Filter
     const filter: any = { status: "active" };
+    
+    // Additional filters for global entities (Users/Vessels) that don't use 'vesselId'
+    const companyFilter: any = {}; 
 
     // =========================================================
     // 🔒 MULTI-TENANCY & FILTERING LOGIC
@@ -41,15 +47,17 @@ export async function GET(req: NextRequest) { // ✅ Added req parameter
         );
       }
 
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({ company: userCompanyId, status: "active" }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
       filter.vesselId = { $in: companyVesselIds };
+      companyFilter.company = userCompanyId;
 
     } else if (selectedCompanyId && selectedCompanyId !== "all") {
       // 🟢 FOR SUPER ADMINS: Only filter if a specific company is selected
-      const companyVessels = await Vessel.find({ company: selectedCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({ company: selectedCompanyId, status: "active" }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
       filter.vesselId = { $in: companyVesselIds };
+      companyFilter.company = selectedCompanyId;
     }
     // If Super Admin and no companyId is provided, 'filter' remains empty ({status: "active"}), 
     // showing global stats for all companies.
@@ -62,7 +70,11 @@ export async function GET(req: NextRequest) { // ✅ Added req parameter
       arrival,
       nor,
       cargoStowage,
-      cargoDocuments
+      cargoDocuments,
+      totalVessels,
+      totalVoyages,
+      totalUsers,
+      totalCompanies
     ] = await Promise.all([
       // 1) Daily Noon
       ReportDaily.countDocuments({ ...filter, type: "noon" }),
@@ -80,9 +92,40 @@ export async function GET(req: NextRequest) { // ✅ Added req parameter
       Document.countDocuments({ ...filter, documentType: "stowage_plan" }),
       
       // 6) Cargo Documents
-      Document.countDocuments({ ...filter, documentType: "cargo_documents" })
+      Document.countDocuments({ ...filter, documentType: "cargo_documents" }),
+
+      // 7) Total Vessels (Filtered by status: active)
+      Vessel.countDocuments({
+        status: "active",
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
+          ? {} 
+          : { company: companyFilter.company })
+      }),
+
+      // 8) Total Voyages (Filtered by status: active)
+      Voyage.countDocuments({
+        status: "active",
+        ...(filter.vesselId ? { vesselId: filter.vesselId } : {})
+      }),
+
+      // 9) Total Users (Filtered by status: active)
+      User.countDocuments({
+        status: "active",
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
+          ? {} 
+          : { company: companyFilter.company })
+      }),
+
+      // 10) Total Companies (Filtered by status: active)
+      Company.countDocuments({
+        status: "active",
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
+          ? {} 
+          : { _id: companyFilter.company })
+      })
     ]);
 
+    // ✅ FIXED: Mapping names to match the Frontend IMetrics interface
     return NextResponse.json({
       dailyNoon,
       departure,
@@ -90,6 +133,10 @@ export async function GET(req: NextRequest) { // ✅ Added req parameter
       nor,
       cargoStowage,
       cargoDocuments,
+      vesselCount: totalVessels,   
+      voyageCount: totalVoyages,   
+      userCount: totalUsers,     
+      companyCount: totalCompanies, 
     });
   } catch (error) {
     console.error("METRICS API ERROR:", error);
