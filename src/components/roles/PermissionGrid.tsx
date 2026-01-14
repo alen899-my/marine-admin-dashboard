@@ -124,8 +124,8 @@ const filteredPermissions = useMemo(() => {
                   );
                 }
 
-                const isAssigned = selectedPermissions.includes(perm.slug);
-                const variant: CheckboxVariant = "default";
+               const isAssigned = isReadOnly ? true : selectedPermissions.includes(perm.slug);
+const variant: CheckboxVariant = "default";
 
  return (
                   <div key={action} className="flex justify-center">
@@ -150,14 +150,14 @@ const filteredPermissions = useMemo(() => {
                         ${
                           !isReadOnly
                             ? "cursor-pointer active:scale-95"
-                            : "cursor-default pointer-events-none opacity-90"
+                            : "cursor-default pointer-events-none opacity-60"
                         }`}
                       >
                         <Checkbox
                           checked={isAssigned}
                           onChange={() => {}} // Controlled by div click for better UX
                           variant={variant}
-                          className={isReadOnly ? "pointer-events-none" : ""}
+                         className={isReadOnly ? "pointer-events-none" : ""}
                         />
                       </div>
                     </Tooltip>

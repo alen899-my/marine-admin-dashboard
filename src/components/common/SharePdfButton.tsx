@@ -101,7 +101,7 @@ export default function SharePdfButton({
         ? `📄 *${title}*\n\n✅ Click here to view report:\n${vercelUrl}`
         : `📄 *${title}*\n\nReport generated but link failed to generate.`;
 
-      const whatsappLink = `https://wa.me/918921837945?text=${encodeURIComponent(message)}`;
+    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
       // Open WhatsApp Link
       const anchor = document.createElement("a");

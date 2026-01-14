@@ -74,11 +74,21 @@ const handleSubmit = async (e: FormEvent) => {
       password: form.password,
     });
 
-    if (result?.error) {
-      setFieldErrors({ general: "Invalid email or password" });
-      setLoading(false);
-      return;
-    }
+   if (result?.error) {
+  if (result.error === "USER_INACTIVE") {
+    setFieldErrors({
+      general: "Your account is inactive. Please contact the administrator.",
+    });
+  } else {
+    setFieldErrors({
+      general: "Invalid email or password",
+    });
+  }
+
+  setLoading(false);
+  return;
+}
+
 
     
 

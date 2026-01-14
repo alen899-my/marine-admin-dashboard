@@ -49,8 +49,9 @@ export default function DailyNoonReport() {
         console.error("Failed to fetch vessels", error);
       }
     }
-    if (isReady) fetchVessels();
-  }, [isReady, canView]);
+     if (!isFilterVisible || vessels.length > 0) return;
+  fetchVessels();
+  }, [isFilterVisible, canView]);
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
