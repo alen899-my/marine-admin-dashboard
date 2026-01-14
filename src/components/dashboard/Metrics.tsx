@@ -36,17 +36,36 @@ interface IMetrics {
   companyCount: number;
 }
 
+// ✅ Updated to accept selectedCompanyId prop
 export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) => {
   const [metrics, setMetrics] = useState<IMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { can, isReady } = useAuthorization();
 
+  // ✅ Helper logic to determine if the user can see ANY card in the sections
+  const hasFleetAccess = isReady && (
+    can("stats.vessels") || 
+    can("stats.voyages") || 
+    can("stats.users") || 
+    can("stats.companies")
+  );
+
+  const hasOpsAccess = isReady && (
+    can("stats.noon") || 
+    can("stats.departure") || 
+    can("stats.arrival") || 
+    can("stats.nor") || 
+    can("stats.cargo_stowage") || 
+    can("stats.cargo_docs")
+  );
+
   useEffect(() => {
     async function loadMetrics() {
       try {
         setLoading(true);
         
+        // ✅ Construct URL with companyId if it exists
         const url = selectedCompanyId 
           ? `/api/dashboard/metrics?companyId=${selectedCompanyId}`
           : "/api/dashboard/metrics";
@@ -61,24 +80,31 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
       }
     }
     
+    // ✅ Re-fetch when selectedCompanyId changes
     loadMetrics();
   }, [selectedCompanyId]);
 
+  // ✅ Updated Skeleton Logic: Headers are now conditional based on access
   if (loading || !isReady) {
     return (
       <div className="space-y-8 w-full">
-        <div>
-          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4 ml-1 animate-pulse"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {[...Array(4)].map((_, i) => <SkeletonCard key={`mgmt-${i}`} />)}
+        {hasFleetAccess && (
+          <div>
+            <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4 ml-1 animate-pulse"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(4)].map((_, i) => <SkeletonCard key={`mgmt-skeleton-${i}`} />)}
+            </div>
           </div>
-        </div>
-        <div>
-          <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-4 ml-1 animate-pulse"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-            {[...Array(6)].map((_, i) => <SkeletonCard key={`ops-${i}`} />)}
+        )}
+        
+        {hasOpsAccess && (
+          <div>
+            <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-4 ml-1 animate-pulse"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
+              {[...Array(6)].map((_, i) => <SkeletonCard key={`ops-skeleton-${i}`} />)}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
@@ -90,120 +116,124 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
   return (
     <div className="space-y-8 w-full max-w-full">
       
-      {/* --- Section 1: Fleet & Management (Matches Sidebar Icons) --- */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Fleet & Management</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {can("stats.vessels") && (
-            <MetricCard
-              icon={<Ship size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Vessels"
-              value={metrics.vesselCount}
-              path="/vessels"
-            />
-          )}
-          {can("stats.voyages") && (
-            <MetricCard
-              icon={<Map size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Voyages"
-              value={metrics.voyageCount}
-              path="/voyage"
-            />
-          )}
-          {can("stats.users") && (
-            <MetricCard
-              icon={<Users2 size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Active Users"
-              value={metrics.userCount}
-              path="/manage-users"
-            />
-          )}
-          {can("stats.companies") && (
-            <MetricCard
-              icon={<Building2 size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Companies"
-              value={metrics.companyCount}
-              path="/manage-companies"
-            />
-          )}
+      {/* --- Section 1: Fleet & Management (Conditional Header & Grid) --- */}
+      {hasFleetAccess && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Fleet & Management</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {can("stats.vessels") && (
+              <MetricCard
+                icon={<Ship size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Vessels"
+                value={metrics.vesselCount}
+                path="/vessels"
+              />
+            )}
+            {can("stats.voyages") && (
+              <MetricCard
+                icon={<Map size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Voyages"
+                value={metrics.voyageCount}
+                path="/voyage"
+              />
+            )}
+            {can("stats.users") && (
+              <MetricCard
+                icon={<Users2 size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Users"
+                value={metrics.userCount}
+                path="/manage-users"
+              />
+            )}
+            {can("stats.companies") && (
+              <MetricCard
+                icon={<Building2 size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Companies"
+                value={metrics.companyCount}
+                path="/manage-companies"
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* --- Section 2: Operational Reports --- */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Operational Reports</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-          {/* 1. Daily Noon Stat Check */}
-          {can("stats.noon") && (
-            <MetricCard
-              icon={<FileText size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Daily Noon"
-              value={metrics.dailyNoon}
-              path="/daily-noon-report"
-            />
-          )}
+      {/* --- Section 2: Operational Reports (Conditional Header & Grid) --- */}
+      {hasOpsAccess && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Operational Reports</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
+            {/* 1. Daily Noon Stat Check */}
+            {can("stats.noon") && (
+              <MetricCard
+                icon={<FileText size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Daily Noon Reports"
+                value={metrics.dailyNoon}
+                path="/daily-noon-report"
+              />
+            )}
 
-          {/* 2. Departure Stat Check */}
-          {can("stats.departure") && (
-            <MetricCard
-              icon={<SquareArrowUpLeft size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Departure"
-              value={metrics.departure}
-              path="/departure-report"
-            />
-          )}
+            {/* 2. Departure Stat Check */}
+            {can("stats.departure") && (
+              <MetricCard
+                icon={<SquareArrowUpLeft size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Departure Reports"
+                value={metrics.departure}
+                path="/departure-report"
+              />
+            )}
 
-          {/* 3. Arrival Stat Check */}
-          {can("stats.arrival") && (
-            <MetricCard
-              icon={<SquareArrowDownRight size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Arrival"
-              value={metrics.arrival}
-              path="/arrival-report"
-            />
-          )}
+            {/* 3. Arrival Stat Check */}
+            {can("stats.arrival") && (
+              <MetricCard
+                icon={<SquareArrowDownRight size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Arrival Reports"
+                value={metrics.arrival}
+                path="/arrival-report"
+              />
+            )}
 
-          {/* 4. NOR Stat Check */}
-          {can("stats.nor") && (
-            <MetricCard
-              icon={<Flag size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="NOR"
-              value={metrics.nor}
-              path="/nor"
-            />
-          )}
+            {/* 4. NOR Stat Check */}
+            {can("stats.nor") && (
+              <MetricCard
+                icon={<Flag size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="NOR Reports"
+                value={metrics.nor}
+                path="/nor"
+              />
+            )}
 
-          {/* 5. Cargo Stowage Stat Check */}
-          {can("stats.cargo_stowage") && (
-            <MetricCard
-              icon={<Boxes size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Cargo Stowage"
-              value={metrics.cargoStowage}
-              path="/cargo-stowage-cargo-documents"
-            />
-          )}
+            {/* 5. Cargo Stowage Stat Check */}
+            {can("stats.cargo_stowage") && (
+              <MetricCard
+                icon={<Boxes size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Cargo Stowage Reports"
+                value={metrics.cargoStowage}
+                path="/cargo-stowage-cargo-documents"
+              />
+            )}
 
-          {/* 6. Cargo Documents Stat Check */}
-          {can("stats.cargo_docs") && (
-            <MetricCard
-              icon={<CalendarCheck size={24} className="text-teal-600 dark:text-teal-400" />}
-              iconBg="bg-teal-50 dark:bg-teal-900/20"
-              title="Cargo Docs"
-              value={metrics.cargoDocuments}
-              path="/cargo-stowage-cargo-documents"
-            />
-          )}
+            {/* 6. Cargo Documents Stat Check */}
+            {can("stats.cargo_docs") && (
+              <MetricCard
+                icon={<FileStack size={24} className="text-teal-600 dark:text-teal-400" />}
+                iconBg="bg-teal-50 dark:bg-teal-900/20"
+                title="Cargo Documents"
+                value={metrics.cargoDocuments}
+                path="/cargo-stowage-cargo-documents"
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
