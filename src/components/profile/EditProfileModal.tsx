@@ -6,6 +6,7 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { toast } from "react-toastify";
+import { User as UserIcon } from "lucide-react"; // Import for the profile icon
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
     email: "",
     phone: "",
     roleName: "",
+    companyName: "",
     password: "",
     confirmPassword: "",
   });
@@ -35,8 +37,10 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
         email: initialData.email || "",
         phone: initialData.phone || "",
         roleName: initialData.role?.name || "Team Member",
+        companyName: initialData.company?.name || "Independent", // Populating company name
       }));
-      setPreviewImage(initialData.profilePicture || "/images/user/owner.jpg");
+      // Replaced string path with empty string logic to trigger the Icon component
+      setPreviewImage(initialData.profilePicture || ""); 
     }
   }, [initialData, isOpen]);
 
@@ -92,8 +96,12 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
           <div className="flex flex-col gap-8 lg:flex-row">
             {/* Left Column: Compact Profile */}
             <div className="flex flex-col items-center w-full lg:w-1/3 lg:border-r lg:border-gray-200 lg:dark:border-gray-800 lg:pr-8">
-              <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-gray-100 dark:border-gray-800 shadow-sm">
-                <Image fill src={previewImage} alt="Profile" className="object-cover" unoptimized />
+              <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+                {previewImage ? (
+                  <Image fill src={previewImage} alt="Profile" className="object-cover" unoptimized />
+                ) : (
+                  <UserIcon size={56} className="text-gray-400 dark:text-gray-500" />
+                )}
               </div>
               <label className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600">
                 Update Photo
@@ -107,6 +115,8 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
               <div className="mt-4 text-center">
                 <p className="text-lg font-bold text-gray-800 dark:text-white">{formData.fullName || "User"}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{formData.roleName}</p>
+                {/* Displaying Company Name below Role */}
+                <p className="text-xs font-medium text-gray-500 mt-1 uppercase tracking-wide">{formData.companyName}</p>
               </div>
             </div>
 

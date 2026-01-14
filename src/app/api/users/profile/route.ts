@@ -4,6 +4,7 @@ import User from "@/models/User";
 import { auth } from "@/auth"; 
 import { put } from "@vercel/blob";
 import bcrypt from "bcryptjs"; 
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
     const user = await User.findById(session.user.id)
       .select("-password")
       .populate("role", "name") // Fetch the role name (e.g. "Admin", "Manager")
+      .populate("company", "name")
       .lean();
 
     if (!user) {
