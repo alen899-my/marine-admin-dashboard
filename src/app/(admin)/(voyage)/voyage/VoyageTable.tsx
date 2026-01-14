@@ -109,6 +109,7 @@ interface VoyageTableProps {
   status: string;
   startDate: string;
   endDate: string;
+  companyId: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
   vesselList: any[];
 }
@@ -119,6 +120,7 @@ export default function VoyageTable({
   status,
   startDate,
   endDate,
+  companyId,
   setTotalCount,vesselList
 }: VoyageTableProps) {
   const [voyages, setVoyages] = useState<Voyage[]>([]);
@@ -308,6 +310,7 @@ export default function VoyageTable({
           limit: LIMIT.toString(),
           search,
           status: status === "all" ? "" : status,
+          companyId: companyId === "all" ? "" : companyId,
           startDate,
           endDate,
         });
@@ -338,7 +341,7 @@ export default function VoyageTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate]
+    [search, status, startDate, endDate, companyId]
   );
 
 
@@ -352,14 +355,14 @@ useEffect(() => {
     if (!isReady) return;
 
     // Logic: If filter changes and we aren't on page 1, reset page
-    const filtersActive = !!(search || status !== "all" || startDate || endDate);
+    const filtersActive = !!(search || status !== "all" || companyId !== "all" || startDate || endDate);
     if (currentPage !== 1 && filtersActive) {
       setCurrentPage(1);
       return; 
     }
 
     fetchVoyages(currentPage);
-  }, [currentPage, refresh, fetchVoyages, isReady, search, status, startDate, endDate]);
+  }, [currentPage, refresh, fetchVoyages, isReady, search, status, companyId, startDate, endDate]);
 
   function handleEdit(voyage: Voyage) {
     setSelectedVoyage(voyage);

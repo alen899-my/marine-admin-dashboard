@@ -15,9 +15,10 @@ export default function UserManagement() {
   const [totalCount, setTotalCount] = useState(0);
 
   // ✅ Authorization logic
-  const { can, isReady } = useAuthorization();
+  const { can, isReady, user } = useAuthorization();
   const canView = can("users.view");
   const canAdd = can("users.create");
+  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
 
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("users");
@@ -25,6 +26,7 @@ export default function UserManagement() {
   // --- Filter State ---
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [companyId, setCompanyId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -69,6 +71,9 @@ export default function UserManagement() {
               setSearch={setSearch}
               status={status}
               setStatus={setStatus}
+              companyId={companyId}
+              setCompanyId={setCompanyId}
+              isSuperAdmin={isSuperAdmin}
               startDate={startDate}
               setStartDate={setStartDate}
               endDate={endDate}
@@ -84,6 +89,7 @@ export default function UserManagement() {
           refresh={refresh}
           search={search}
           status={status}
+          companyId={companyId}
           startDate={startDate}
           endDate={endDate}
           setTotalCount={setTotalCount}

@@ -1,10 +1,10 @@
 "use client";
 
 import DatePicker from "@/components/form/date-picker";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
-import SearchableSelect from "@/components/form/SearchableSelect";
 
 // Define the Props Interface
 interface FilterProps {
@@ -26,7 +26,10 @@ interface FilterProps {
   setVoyageId?: (v: string) => void;
 
   vessels?: any[];
-  
+  companyId?: string;
+  setCompanyId?: (v: string) => void;
+  companies?: any[];
+  isSuperAdmin?: boolean;
 }
 
 export default function Filters({
@@ -42,12 +45,16 @@ export default function Filters({
   searchVoyage,
   optionOff,
   vesselId = "",
-  setVesselId = () => { },
+  setVesselId = () => {},
 
   voyageId = "",
-  setVoyageId = () => { },
+  setVoyageId = () => {},
 
   vessels = [],
+  companyId = "",
+  setCompanyId = () => {},
+  companies = [],
+  isSuperAdmin = false,
 }: FilterProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
@@ -55,14 +62,32 @@ export default function Filters({
   const [localEndDate, setLocalEndDate] = useState(endDate);
   const [localVesselId, setLocalVesselId] = useState(vesselId);
   const [localVoyageId, setLocalVoyageId] = useState(voyageId);
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [localCompanyId, setLocalCompanyId] = useState(companyId);
 
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
-  useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
-  useEffect(() => { setLocalVesselId(vesselId); }, [vesselId]);
-  useEffect(() => { setLocalVoyageId(voyageId); }, [voyageId]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalStartDate(startDate);
+  }, [startDate]);
+  useEffect(() => {
+    setLocalEndDate(endDate);
+  }, [endDate]);
+  useEffect(() => {
+    setLocalVesselId(vesselId);
+  }, [vesselId]);
+  useEffect(() => {
+    setLocalVoyageId(voyageId);
+  }, [voyageId]);
+  useEffect(() => {
+    setLocalCompanyId(companyId);
+  }, [companyId]);
 
   useEffect(() => {
     async function fetchAndFilterVoyages() {
@@ -96,6 +121,7 @@ export default function Filters({
     setEndDate(localEndDate);
     setVesselId(localVesselId);
     setVoyageId(localVoyageId);
+    setCompanyId(localCompanyId);
   };
 
   const handleClear = () => {
@@ -111,6 +137,8 @@ export default function Filters({
     setEndDate("");
     setVesselId("");
     setVoyageId("");
+    setLocalCompanyId("");
+    setCompanyId("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -150,114 +178,141 @@ export default function Filters({
 
   return (
     <div className="flex flex-wrap items-end gap-4 p-4 w-full">
-  {/* SEARCH: Now fixed to 200px minimum, same as others */}
-  <div className="w-full sm:w-auto min-w-[200px]">
-    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-      Search
-    </label>
-    <Input
-      placeholder={getSearchPlaceholder()}
-      className="w-full"
-      value={localSearch}
-      onChange={(e) => setLocalSearch(e.target.value)}
-      onKeyDown={handleKeyDown}
-    />
-  </div>
-
-  {/* STATUS */}
-  <div className="w-full sm:w-auto min-w-[210px]">
-    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-      Status
-    </label>
-    <Select
-      className="w-full"
-      value={localStatus}
-      onChange={setLocalStatus}
-      placeholder="Select status"
-      options={getStatusOptions()}
-    />
-  </div>
-
-  {!optionOff && (
-    <>
-      {/* VESSEL NAME */}
+      {/* SEARCH: Now fixed to 200px minimum, same as others */}
       <div className="w-full sm:w-auto min-w-[200px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Vessel Name
+          Search
         </label>
-        <SearchableSelect
-          options={(vessels || []).map((v: any) => ({
-            value: v.name,
-            label: v.name,
-          }))}
-          placeholder="Select Vessel"
-          value={(vessels || []).find(v => v._id === localVesselId)?.name || ""}
-          onChange={(selectedName) => {
-            const selectedVessel = (vessels || []).find((v: any) => v.name === selectedName);
-            setLocalVesselId(selectedVessel?._id || "");
-            setLocalVoyageId("");
-          }}
+        <Input
+          placeholder={getSearchPlaceholder()}
+          className="w-full"
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </div>
 
-      {/* VOYAGE ID */}
-      <div className="w-full sm:w-auto min-w-[200px]">
+      {/* STATUS */}
+      <div className="w-full sm:w-auto min-w-[210px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Voyage ID
+          Status
         </label>
-        <SearchableSelect
-          options={voyageList}
-          placeholder={!localVesselId ? "Select Vessel first" : "Search Voyage"}
-          value={localVoyageId}
-          onChange={setLocalVoyageId}
+        <Select
+          className="w-full"
+          value={localStatus}
+          onChange={setLocalStatus}
+          placeholder="Select status"
+          options={getStatusOptions()}
         />
       </div>
 
-      {/* DATE FROM */}
-      <div className="w-full sm:w-auto min-w-[180px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          {searchVoyage ? "ETA From" : "Date From"}
-        </label>
-        <DatePicker
-          key={localStartDate}
-          id="filter-start-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localStartDate}
-          onChange={(_, dateStr) => setLocalStartDate(dateStr)}
-        />
-      </div>
+      {isSuperAdmin && companies.length > 0 && (
+        <div className="w-full sm:w-auto min-w-[200px]">
+          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+            Company
+          </label>
+          <SearchableSelect
+            options={companies.map((c: any) => ({
+              value: c._id,
+              label: c.name,
+            }))}
+            placeholder="All Companies"
+            value={localCompanyId} // Should be the ID
+            onChange={(val) => {
+              setLocalCompanyId(val || "all");
+              setLocalVesselId("");
+              setLocalVoyageId("");
+            }}
+          />
+        </div>
+      )}
 
-      {/* DATE TO */}
-      <div className="w-full sm:w-auto min-w-[180px]">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          {searchVoyage ? "ETA To" : "Date To"}
-        </label>
-        <DatePicker
-          key={localEndDate}
-          id="filter-end-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localEndDate}
-          onChange={(_, dateStr) => setLocalEndDate(dateStr)}
-        />
-      </div>
-    </>
-  )}
+      {!optionOff && (
+        <>
+          {/* VESSEL NAME */}
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Vessel Name
+            </label>
+            <SearchableSelect
+              options={(vessels || []).map((v: any) => ({
+                value: v.name,
+                label: v.name,
+              }))}
+              placeholder="Select Vessel"
+              value={
+                (vessels || []).find((v) => v._id === localVesselId)?.name || ""
+              }
+              onChange={(selectedName) => {
+                const selectedVessel = (vessels || []).find(
+                  (v: any) => v.name === selectedName
+                );
+                setLocalVesselId(selectedVessel?._id || "");
+                setLocalVoyageId("");
+              }}
+            />
+          </div>
 
-  {/* BUTTONS */}
-  <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
-    <button
-      onClick={handleApplyFilters}
-      className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-    >
-      Search
-    </button>
-    <button
-      onClick={handleClear}
-      className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-    >
-      Reset
-    </button>
-  </div>
-</div>
+          {/* VOYAGE ID */}
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              Voyage ID
+            </label>
+            <SearchableSelect
+              options={voyageList}
+              placeholder={
+                !localVesselId ? "Select Vessel first" : "Search Voyage"
+              }
+              value={localVoyageId}
+              onChange={setLocalVoyageId}
+            />
+          </div>
+
+          {/* DATE FROM */}
+          <div className="w-full sm:w-auto min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              {searchVoyage ? "ETA From" : "Date From"}
+            </label>
+            <DatePicker
+              key={localStartDate}
+              id="filter-start-date"
+              placeholder="dd/mm/yyyy"
+              defaultDate={localStartDate}
+              onChange={(_, dateStr) => setLocalStartDate(dateStr)}
+            />
+          </div>
+
+          {/* DATE TO */}
+          <div className="w-full sm:w-auto min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+              {searchVoyage ? "ETA To" : "Date To"}
+            </label>
+            <DatePicker
+              key={localEndDate}
+              id="filter-end-date"
+              placeholder="dd/mm/yyyy"
+              defaultDate={localEndDate}
+              onChange={(_, dateStr) => setLocalEndDate(dateStr)}
+            />
+          </div>
+        </>
+      )}
+
+      {/* BUTTONS */}
+      <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-auto sm:ml-0">
+        <button
+          onClick={handleApplyFilters}
+          className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+        >
+          Search
+        </button>
+        <button
+          onClick={handleClear}
+          className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 font-medium px-6 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
   );
 }

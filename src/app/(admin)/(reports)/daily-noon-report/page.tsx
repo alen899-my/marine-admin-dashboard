@@ -14,9 +14,12 @@ import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 export default function DailyNoonReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]);
+  const [companyId, setCompanyId] = useState("");
+  const [companies, setCompanies] = useState([]);
   
   // ✅ Authorization logic
-  const { can, isReady } = useAuthorization();
+  const { can, isReady, user } = useAuthorization();
+  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   const canView = can("noon.view");
   const canCreate = can("noon.create");
 
@@ -82,6 +85,22 @@ export default function DailyNoonReport() {
     );
   }
 
+  useEffect(() => {
+    async function fetchCompanies() {
+      if (!isSuperAdmin) return;
+      try {
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const result = await res.json();
+          setCompanies(Array.isArray(result) ? result : result.data || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch companies", error);
+      }
+    }
+    if (isReady) fetchCompanies();
+  }, [isReady, isSuperAdmin]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -121,6 +140,9 @@ export default function DailyNoonReport() {
               voyageId={voyageId}
               setVoyageId={setVoyageId}
               vessels={vessels}
+              companyId={companyId}
+              setCompanyId={setCompanyId}
+              companies={isSuperAdmin ? companies : []}
             />
           ) : null
         }
@@ -139,6 +161,7 @@ export default function DailyNoonReport() {
           vesselId={vesselId}
           voyageId={voyageId}
           vesselList={vessels}
+          companyId={companyId}
         />
       </ComponentCard>
     </div>

@@ -22,7 +22,8 @@ interface IMetrics {
   cargoDocuments: number;
 }
 
-export const Metrics = () => {
+// ✅ Updated to accept selectedCompanyId prop
+export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) => {
   const [metrics, setMetrics] = useState<IMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +32,14 @@ export const Metrics = () => {
   useEffect(() => {
     async function loadMetrics() {
       try {
-        const res = await fetch("/api/dashboard/metrics");
+        setLoading(true);
+        
+        // ✅ Construct URL with companyId if it exists
+        const url = selectedCompanyId 
+          ? `/api/dashboard/metrics?companyId=${selectedCompanyId}`
+          : "/api/dashboard/metrics";
+
+        const res = await fetch(url);
         const data = await res.json();
         setMetrics(data);
       } catch (err) {
@@ -40,8 +48,10 @@ export const Metrics = () => {
         setLoading(false);
       }
     }
+    
+    // ✅ Re-fetch when selectedCompanyId changes
     loadMetrics();
-  }, []);
+  }, [selectedCompanyId]);
 
   if (loading || !isReady) {
     return (

@@ -81,6 +81,7 @@ interface DailyNoonReportTableProps {
   vesselId: string;  // Added this
   voyageId: string;  // Added this
   vesselList: any[];    // Added this
+  companyId?: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
 }
 
@@ -94,6 +95,7 @@ export default function DailyNoonReportTable({
   endDate, vesselId,
   voyageId,
   vesselList,
+  companyId,
 }: DailyNoonReportTableProps) {
   // Apply interfaces to state
   const [reports, setReports] = useState<IDailyNoonReport[]>([]);
@@ -361,7 +363,8 @@ const fetchReports = useCallback(async (page = 1) => {
         startDate: startDate || "",
         endDate: endDate || "",
         vesselId: vesselId || "",
-        voyageId: voyageId || ""
+        voyageId: voyageId || "",
+        companyId: companyId || "",
       });
 
       const res = await fetch(`/api/noon-report?${query.toString()}`);
@@ -389,7 +392,7 @@ useEffect(() => {
       return; 
     }
     fetchReports(currentPage);
-  }, [currentPage, refresh, fetchReports]);
+  }, [currentPage, refresh, fetchReports, companyId]);
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
     setSelectedReport(report);
