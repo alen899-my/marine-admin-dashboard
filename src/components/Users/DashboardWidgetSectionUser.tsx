@@ -57,7 +57,7 @@ export default function DashboardWidgetSectionUser({
         General Permissions
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {generalPermissions.map((perm) => {
           const isInherited = rolePermissions.includes(perm.slug);
           const isAdditional = additionalPermissions.includes(perm.slug);
@@ -100,8 +100,8 @@ export default function DashboardWidgetSectionUser({
               <div 
                 onClick={() => !isReadOnly && onToggle(perm.slug)}
                 className={`
-                  flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800
-                  hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none
+                  flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700
+                  hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none h-full w-full
                   ${isReadOnly ? 'opacity-80 cursor-default pointer-events-none' : ''}
                 `}
               >
@@ -113,7 +113,7 @@ export default function DashboardWidgetSectionUser({
                   />
                 </div>
 
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                     {perm.name}
                   </span>

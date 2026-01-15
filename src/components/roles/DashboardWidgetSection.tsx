@@ -48,7 +48,7 @@ return (
         General Permissions
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {generalPermissions.map((perm) => {
           const isChecked = isReadOnly ? true : selectedPermissions.includes(perm.slug);
           return (
@@ -67,7 +67,7 @@ return (
             >
               <div 
                onClick={() => !isReadOnly && onToggle(perm.slug, !isChecked)}
-              className={`flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 transition-colors h-full ${
+              className={`flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors  w-full h-full ${
                 isReadOnly 
                   ? "cursor-default pointer-events-none opacity-100" 
                   : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-100"
@@ -81,7 +81,7 @@ return (
                   />
                 </div>
 
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                     {perm.name}
                   </span>
