@@ -6,6 +6,7 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
@@ -137,6 +138,7 @@ export default function VoyageTable({
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // Pagination
+  const prevFiltersRef = useRef({ search, status, startDate, endDate, companyId });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
@@ -352,17 +354,41 @@ export default function VoyageTable({
     setOpenView(true);
   }
 useEffect(() => {
-    if (!isReady) return;
+  if (!isReady) return;
 
-    // Logic: If filter changes and we aren't on page 1, reset page
-    const filtersActive = !!(search || status !== "all" || companyId !== "all" || startDate || endDate);
-    if (currentPage !== 1 && filtersActive) {
+  // 1. Detect if the filters actually changed since the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.startDate !== startDate ||
+    prevFiltersRef.current.endDate !== endDate ||
+    prevFiltersRef.current.companyId !== companyId;
+
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    // Update the ref with the new values
+    prevFiltersRef.current = { search, status, startDate, endDate, companyId };
+    
+    if (currentPage !== 1) {
       setCurrentPage(1);
-      return; 
+      return; // The change in currentPage will re-trigger this effect
     }
+  }
 
-    fetchVoyages(currentPage);
-  }, [currentPage, refresh, fetchVoyages, isReady, search, status, companyId, startDate, endDate]);
+  // 3. Fetch the data for the current page
+  fetchVoyages(currentPage);
+
+}, [
+  currentPage,
+  refresh,
+  fetchVoyages,
+  isReady,
+  search,
+  status,
+  companyId,
+  startDate,
+  endDate,
+]);
 
   function handleEdit(voyage: Voyage) {
     setSelectedVoyage(voyage);

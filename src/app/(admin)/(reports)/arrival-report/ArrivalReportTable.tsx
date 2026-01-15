@@ -115,6 +115,7 @@ export default function ArrivalReportTable({
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
   const hasLoadedFilters = useRef(false);
+  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -380,38 +381,45 @@ const fetchReports = useCallback(
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+  if (!isReady) return;
 
-    // Logic: If any filter changes and we aren't on page 1, reset page first
-    const filtersActive = !!(
-      search ||
-      status !== "all" ||
-      vesselId ||
-      voyageId ||
-      (companyId && companyId !== "all") ||
-      startDate ||
-      endDate
-    );
+  // 1. Detect if the filters actually changed compared to the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.startDate !== startDate ||
+    prevFiltersRef.current.endDate !== endDate ||
+    prevFiltersRef.current.vesselId !== vesselId ||
+    prevFiltersRef.current.voyageId !== voyageId ||
+    prevFiltersRef.current.companyId !== companyId;
 
-    if (currentPage !== 1 && filtersActive) {
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    // Update ref with new filter values
+    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
+    
+    if (currentPage !== 1) {
       setCurrentPage(1);
-      return; // Exit: the currentPage change will re-trigger this effect
+      return; // Stop here; the currentPage change will re-trigger this effect
     }
+  }
 
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
+  // 3. If we are here, either the page changed or the filters stayed the same
+  fetchReports(currentPage);
+
+}, [
+  currentPage,
+  refresh,
+  fetchReports,
+  isReady,
+  search,
+  status,
+  vesselId,
+  voyageId,
+  companyId,
+  startDate,
+  endDate,
+]);
 
   const statusOptions = [
     { value: "active", label: "Active" },

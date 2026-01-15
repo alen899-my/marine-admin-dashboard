@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo,Dispatch,
-  SetStateAction, } from "react";
+  SetStateAction,
+  useRef, } from "react";
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import SearchableSelect from "@/components/form/SearchableSelect";
@@ -84,6 +85,7 @@ export default function PermissionTable({
   const [editData, setEditData] = useState<EditFormData | null>(null);
 
   // Pagination
+  const prevFiltersRef = useRef({ search, status, module });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
@@ -214,13 +216,29 @@ const fetchPermissions = useCallback(async () => {
 }, [currentPage, search, status, module, setTotalCount, setResourceOptions, refresh]); 
 
 useEffect(() => {
-  // ✅ Simple and direct
-  fetchPermissions();
-  
-  if (currentPage !== 1 && (search || status !== "all" || module)) {
-    setCurrentPage(1);
+  if (!isReady) return;
+
+  // 1. Detect if the actual filter values changed since the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.module !== module;
+
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    // Update ref immediately with the new values
+    prevFiltersRef.current = { search, status, module };
+    
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return; // Stop here; the currentPage change will re-trigger this effect
+    }
   }
-}, [refresh, search, status, module, fetchPermissions]); // Removed currentPage from here to avoid double-fetch
+
+  // 3. Fetch data for the current page (either we are on page 1 or user clicked Next/Prev)
+  fetchPermissions();
+
+}, [refresh, search, status, module, fetchPermissions, currentPage, isReady]);
 
   /* ================= ACTIONS ================= */
   const handleEdit = (p: Permission) => {

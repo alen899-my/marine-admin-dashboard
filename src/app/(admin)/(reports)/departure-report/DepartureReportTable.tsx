@@ -109,6 +109,7 @@ export default function DepartureReportTable({
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const hasLoadedFilters = useRef(false);
+  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
   const [reports, setReports] = useState<IDepartureReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [openView, setOpenView] = useState(false);
@@ -496,38 +497,44 @@ export default function DepartureReportTable({
 
   // ✅ Corrected Trigger Effect
   useEffect(() => {
-    if (!isReady) return;
+  if (!isReady) return;
 
-    const filtersActive = !!(
-      search ||
-      status !== "all" ||
-      vesselId ||
-      voyageId ||
-      (companyId && companyId !== "all") ||
-      startDate ||
-      endDate
-    );
+  // 1. Detect if the filters actually changed compared to the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.startDate !== startDate ||
+    prevFiltersRef.current.endDate !== endDate ||
+    prevFiltersRef.current.vesselId !== vesselId ||
+    prevFiltersRef.current.voyageId !== voyageId ||
+    prevFiltersRef.current.companyId !== companyId;
 
-    if (currentPage !== 1 && filtersActive) {
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
+    
+    if (currentPage !== 1) {
       setCurrentPage(1);
-      return;
+      return; // Exit and wait for the next cycle triggered by currentPage change
     }
+  }
 
-    fetchReports(currentPage);
-    // 🟢 CRITICAL: Removed vesselList and onFilterDataLoad from here
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
+  // 3. Otherwise, fetch the data for the current page
+  fetchReports(currentPage);
+
+}, [
+  currentPage,
+  refresh,
+  fetchReports,
+  isReady,
+  search,
+  status,
+  vesselId,
+  voyageId,
+  companyId,
+  startDate,
+  endDate,
+]);
 
   const statusOptions = [
     { value: "active", label: "Active" },

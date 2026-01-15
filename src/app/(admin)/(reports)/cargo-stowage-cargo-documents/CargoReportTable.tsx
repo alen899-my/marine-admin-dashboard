@@ -147,6 +147,7 @@ export default function CargoReportTable({
   const [newFile, setNewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const hasLoadedFilters = useRef(false);
+  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -554,38 +555,44 @@ export default function CargoReportTable({
   }
 
   useEffect(() => {
-    if (!isReady) return;
+  if (!isReady) return;
 
-    // Logic: Reset to page 1 if any filter changes
-    const filtersActive = !!(
-      search ||
-      status !== "all" ||
-      vesselId ||
-      voyageId ||
-      companyId !== "all" ||
-      startDate ||
-      endDate
-    );
+  // 1. Detect if the filters actually changed compared to the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.startDate !== startDate ||
+    prevFiltersRef.current.endDate !== endDate ||
+    prevFiltersRef.current.vesselId !== vesselId ||
+    prevFiltersRef.current.voyageId !== voyageId ||
+    prevFiltersRef.current.companyId !== companyId;
 
-    if (currentPage !== 1 && filtersActive) {
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    // Update ref immediately with new values
+    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
+    
+    if (currentPage !== 1) {
       setCurrentPage(1);
-      return; // Stop here: the currentPage change will re-trigger this effect
+      return; // Exit and wait for the effect to re-run with currentPage = 1
     }
+  }
 
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
+  // 3. Fetch data for the current page
+  fetchReports(currentPage);
+}, [
+  currentPage,
+  refresh,
+  fetchReports,
+  isReady,
+  search,
+  status,
+  vesselId,
+  voyageId,
+  companyId,
+  startDate,
+  endDate,
+]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };

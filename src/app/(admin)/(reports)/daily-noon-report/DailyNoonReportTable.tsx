@@ -115,6 +115,15 @@ export default function DailyNoonReportTable({
   onFilterDataLoad,
 }: DailyNoonReportTableProps) {
   const hasLoadedFilters = useRef(false);
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    vesselId,
+    voyageId,
+    companyId,
+  });
   // Apply interfaces to state
   const [reports, setReports] = useState<IDailyNoonReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -446,23 +455,37 @@ export default function DailyNoonReportTable({
   useEffect(() => {
     if (!isReady) return;
 
-    const filtersActive = !!(
-      search ||
-      status !== "all" ||
-      vesselId ||
-      voyageId ||
-      (companyId && companyId !== "all") ||
-      startDate ||
-      endDate
-    );
+    // Check if any actual filter value changed
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.vesselId !== vesselId ||
+      prevFiltersRef.current.voyageId !== voyageId ||
+      prevFiltersRef.current.companyId !== companyId;
 
-    if (currentPage !== 1 && filtersActive) {
-      setCurrentPage(1);
-      return;
+    if (filtersChanged) {
+      // Save the new filter values to the ref
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+        companyId,
+      };
+
+      // Reset to page 1 only if we aren't already there
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // Exit and let the next effect cycle (triggered by currentPage change) handle the fetch
+      }
     }
 
+    // Fetch the data for the current page
     fetchReports(currentPage);
-    // 🟢 CRITICAL: Remove 'vesselList' and 'onFilterDataLoad' from here
   }, [
     currentPage,
     refresh,

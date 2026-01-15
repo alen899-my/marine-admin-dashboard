@@ -110,6 +110,7 @@ export default function NorReportTable({
   onFilterDataLoad,
 }: NORReportTableProps) {
   const hasLoadedFilters = useRef(false);
+  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -551,37 +552,45 @@ export default function NorReportTable({
   }
 
   useEffect(() => {
-    if (!isReady) return;
+  if (!isReady) return;
 
-    const filtersActive = !!(
-      search ||
-      status !== "all" ||
-      vesselId ||
-      voyageId ||
-      (companyId && companyId !== "all") ||
-      startDate ||
-      endDate
-    );
+  // 1. Detect if the filters actually changed compared to the last render
+  const filtersChanged =
+    prevFiltersRef.current.search !== search ||
+    prevFiltersRef.current.status !== status ||
+    prevFiltersRef.current.startDate !== startDate ||
+    prevFiltersRef.current.endDate !== endDate ||
+    prevFiltersRef.current.vesselId !== vesselId ||
+    prevFiltersRef.current.voyageId !== voyageId ||
+    prevFiltersRef.current.companyId !== companyId;
 
-    if (currentPage !== 1 && filtersActive) {
+  // 2. If filters changed, reset to page 1
+  if (filtersChanged) {
+    // Update ref with new filter values immediately
+    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
+    
+    if (currentPage !== 1) {
       setCurrentPage(1);
-      return;
+      return; // Stop here; the currentPage change will re-trigger this effect
     }
+  }
 
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
+  // 3. Fetch the data for the current page
+  fetchReports(currentPage);
+
+}, [
+  currentPage,
+  refresh,
+  fetchReports,
+  isReady,
+  search,
+  status,
+  vesselId,
+  voyageId,
+  companyId,
+  startDate,
+  endDate,
+]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
   const getFileMeta = (url?: string) => {
