@@ -41,33 +41,37 @@ export default function DepartureReport() {
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
   // Define Departure Report Excel Columns
-  const excelMapping = (r: any) => ({
-    "Vessel Name":
-      typeof r.vesselId === "object" ? r.vesselId.name : r.vesselName,
-    "Voyage ID":
-      typeof r.voyageId === "object" ? r.voyageId.voyageNo : r.voyageNo,
-    "Current Port": r.portName || "-",
-    "Last Port": r.lastPort || "-",
-    "Departure Time": r.eventTime
-      ? new Date(r.eventTime).toLocaleString("en-IN")
-      : "-",
-    "Report Date": r.reportDate
-      ? new Date(r.reportDate).toLocaleString("en-IN")
-      : "-",
-    "Dist to Next Port (NM)": r.navigation?.distanceToNextPortNm || 0,
-    "ETA Next Port": r.navigation?.etaNextPort
-      ? new Date(r.navigation.etaNextPort).toLocaleString("en-IN")
-      : "-",
-    "ROB VLSFO (MT)": r.departureStats?.robVlsfo || 0,
-    "ROB LSMGO (MT)": r.departureStats?.robLsmgo || 0,
-    "Bunkers Recv VLSFO": r.departureStats?.bunkersReceivedVlsfo || 0,
-    "Bunkers Recv LSMGO": r.departureStats?.bunkersReceivedLsmgo || 0,
-    "Cargo Loaded (MT)": r.departureStats?.cargoQtyLoadedMt || 0,
-    "Cargo Unloaded (MT)": r.departureStats?.cargoQtyUnloadedMt || 0,
-    "Cargo Summary": r.departureStats?.cargoSummary || "-",
-    Status: r.status === "active" ? "Active" : "Inactive",
-    Remarks: r.remarks || "",
-  });
+const excelMapping = (r: any) => ({
+  "Vessel Name":
+    typeof r.vesselId === "object" && r.vesselId !== null 
+      ? r.vesselId.name 
+      : r.vesselName || "-",
+  "Voyage ID":
+    typeof r.voyageId === "object" && r.voyageId !== null 
+      ? r.voyageId.voyageNo 
+      : r.voyageNo || "-",
+  "Current Port": r.portName || "-",
+  "Last Port": r.lastPort || "-",
+  "Departure Time": r.eventTime
+    ? new Date(r.eventTime).toLocaleString("en-IN")
+    : "-",
+  "Report Date": r.reportDate
+    ? new Date(r.reportDate).toLocaleString("en-IN")
+    : "-",
+  "Dist to Next Port (NM)": r.navigation?.distanceToNextPortNm ?? 0,
+  "ETA Next Port": r.navigation?.etaNextPort
+    ? new Date(r.navigation.etaNextPort).toLocaleString("en-IN")
+    : "-",
+  "ROB VLSFO (MT)": r.departureStats?.robVlsfo ?? 0,
+  "ROB LSMGO (MT)": r.departureStats?.robLsmgo ?? 0,
+  "Bunkers Recv VLSFO": r.departureStats?.bunkersReceivedVlsfo ?? 0,
+  "Bunkers Recv LSMGO": r.departureStats?.bunkersReceivedLsmgo ?? 0,
+  "Cargo Loaded (MT)": r.departureStats?.cargoQtyLoadedMt ?? 0,
+  "Cargo Unloaded (MT)": r.departureStats?.cargoQtyUnloadedMt ?? 0,
+  "Cargo Summary": r.departureStats?.cargoSummary || "-",
+  Status: r.status === "active" ? "Active" : "Inactive",
+  Remarks: r.remarks || "",
+});
 
   // 1. Wait for Auth load
   if (!isReady) return null;
