@@ -1,17 +1,17 @@
 import { dbConnect } from "@/lib/db";
 
-import mongoose from "mongoose";
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import mongoose from "mongoose";
+import { NextRequest, NextResponse } from "next/server";
 
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
-import User from "@/models/User"; 
+import ReportDaily from "@/models/ReportDaily";
+import ReportOperational from "@/models/ReportOperational";
+import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
-import ReportOperational from "@/models/ReportOperational";
-import ReportDaily from "@/models/ReportDaily";
+
 import Company from "@/models/Company";
 
 
@@ -146,6 +146,14 @@ export async function GET(req: NextRequest) {
         .populate("vesselId", "name")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
+        .populate({
+        path: "vesselId",
+        select: "name company",
+        populate: {
+          path: "company",
+          select: "name",
+        },
+      })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

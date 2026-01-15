@@ -20,7 +20,8 @@ import {
   Dispatch,
   SetStateAction,
   useCallback,
-  useEffect,useRef,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
@@ -37,7 +38,14 @@ interface UserRef {
 }
 interface INorReport {
   _id: string;
-  vesselId: string | { _id: string; name: string } | null;
+  vesselId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        company?: { name: string };
+      }
+    | null;
   voyageId: string | { _id: string; voyageNo: string } | null;
 
   vesselName?: string;
@@ -80,7 +88,11 @@ interface NORReportTableProps {
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
-  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
+  onFilterDataLoad?: (data: {
+    vessels: any[];
+    companies: any[];
+    voyages: any[];
+  }) => void;
 }
 
 export default function NorReportTable({
@@ -94,7 +106,8 @@ export default function NorReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,onFilterDataLoad
+  companyId,
+  onFilterDataLoad,
 }: NORReportTableProps) {
   const hasLoadedFilters = useRef(false);
   // Apply interfaces
@@ -128,9 +141,9 @@ export default function NorReportTable({
   const canEdit = can("nor.edit");
   const canDelete = can("nor.delete");
   const { suggestedVoyageNo } = useVoyageLogic(
-  editData?.vesselId,
-  editData?.reportDate
-);
+    editData?.vesselId,
+    editData?.reportDate
+  );
 
   useEffect(() => {
     // ✅ FIX 2: Update 'voyageNo' in state
@@ -186,6 +199,16 @@ export default function NorReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
+
+  // Helper to get trimmed company name
+  const getCompanyName = (r: INorReport) => {
+    if (r.vesselId && typeof r.vesselId === "object" && r.vesselId.company) {
+      const name = r.vesselId.company.name;
+      return name.length > 20 ? `${name.substring(0, 20)}...` : name;
+    }
+    return "-";
+  };
+
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       // Stop if no vessel selected
@@ -256,6 +279,16 @@ export default function NorReportTable({
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
             ID: {getVoyageNo(r)}
+          </span>
+          <span
+            className="text-xs text-gray-500"
+            title={
+              r.vesselId && typeof r.vesselId === "object"
+                ? r.vesselId.company?.name
+                : ""
+            }
+          >
+            {getCompanyName(r)}
           </span>
         </div>
       ),
@@ -356,50 +389,71 @@ export default function NorReportTable({
 
   /* ================= 2. API FUNCTIONS ================= */
 
-const fetchReports = useCallback(async (page = 1) => {
-  try {
-    setLoading(true);
-    const shouldFetchFilters = !hasLoadedFilters.current;
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const shouldFetchFilters = !hasLoadedFilters.current;
 
-    const query = new URLSearchParams({
-      page: page.toString(),
-      limit: LIMIT.toString(),
-      search, status, startDate, endDate, vesselId, voyageId, companyId,
-      all: shouldFetchFilters ? "true" : "false"
-    });
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+          vesselId,
+          voyageId,
+          companyId,
+          all: shouldFetchFilters ? "true" : "false",
+        });
 
-    const res = await fetch(`/api/nor?${query.toString()}`);
-    const result = await res.json();
+        const res = await fetch(`/api/nor?${query.toString()}`);
+        const result = await res.json();
 
-    const fetchedData = result.data || [];
-    setReports(fetchedData);
-    
-    // Call the parent callbacks
-    if (onDataLoad) onDataLoad(fetchedData);
+        const fetchedData = result.data || [];
+        setReports(fetchedData);
 
-    if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-      // We set the ref to true BEFORE calling the parent to be safe
-      hasLoadedFilters.current = true; 
-      onFilterDataLoad({
-        vessels: result.vessels || [],
-        companies: result.companies || [],
-        voyages: result.voyages || []
-      });
-    }
+        // Call the parent callbacks
+        if (onDataLoad) onDataLoad(fetchedData);
 
-    if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-    setTotalPages(result.pagination?.totalPages || 1);
-  } catch (err) {
-    console.error(err);
-  } finally { setLoading(false); }
-  // 🟢 REMOVED onFilterDataLoad and onDataLoad from here to prevent identity-based loops
-}, [search, status, startDate, endDate, vesselId, voyageId, companyId, setTotalCount]);
+        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+          // We set the ref to true BEFORE calling the parent to be safe
+          hasLoadedFilters.current = true;
+          onFilterDataLoad({
+            vessels: result.vessels || [],
+            companies: result.companies || [],
+            voyages: result.voyages || [],
+          });
+        }
 
+        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+      // 🟢 REMOVED onFilterDataLoad and onDataLoad from here to prevent identity-based loops
+    },
+    [
+      search,
+      status,
+      startDate,
+      endDate,
+      vesselId,
+      voyageId,
+      companyId,
+      setTotalCount,
+    ]
+  );
 
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
     setNewFile(null);
-    const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
+    const matchedVessel = vesselList.find(
+      (v: any) => v.name === report.vesselName
+    );
     // Set initial preview to existing document URL
     setPreviewUrl(report.norDetails?.documentUrl || null);
     const vId =
@@ -496,19 +550,38 @@ const fetchReports = useCallback(async (page = 1) => {
     }
   }
 
- useEffect(() => {
-  if (!isReady) return;
+  useEffect(() => {
+    if (!isReady) return;
 
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
-  
-  if (currentPage !== 1 && filtersActive) {
-    setCurrentPage(1);
-    return;
-  }
+    const filtersActive = !!(
+      search ||
+      status !== "all" ||
+      vesselId ||
+      voyageId ||
+      (companyId && companyId !== "all") ||
+      startDate ||
+      endDate
+    );
 
-  fetchReports(currentPage);
+    if (currentPage !== 1 && filtersActive) {
+      setCurrentPage(1);
+      return;
+    }
 
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
   const getFileMeta = (url?: string) => {
@@ -659,7 +732,7 @@ const fetchReports = useCallback(async (page = 1) => {
                   No file attached
                 </span>
               ) : (
-               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
                   <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
                     {fileMeta.isImage && (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -722,38 +795,38 @@ const fetchReports = useCallback(async (page = 1) => {
               </p>
             </section>
             {/* NorReportTable ViewModal Audit Section */}
-{/* ================= SYSTEM INFORMATION (EXACT STYLE MATCH) ================= */}
-<section className="md:col-span-2 space-y-1.5 pt-1 mt-4 border-t border-gray-200 dark:border-white/10">
-  <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-    System Information
-  </h3>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500">Created By</span>
-      <span className="font-medium text-gray-700 dark:text-gray-300">
-        {selectedReport?.createdBy?.fullName || "System"}
-      </span>
-    </div>
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500">Created At</span>
-      <span className="font-medium text-gray-700 dark:text-gray-300">
-        {formatDate(selectedReport?.createdAt)}
-      </span>
-    </div>
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500">Last Updated By</span>
-      <span className="font-medium text-gray-700 dark:text-gray-300">
-        {selectedReport?.updatedBy?.fullName || "-"}
-      </span>
-    </div>
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500">Last Updated At</span>
-      <span className="font-medium text-gray-700 dark:text-gray-300">
-        {formatDate(selectedReport?.updatedAt)}
-      </span>
-    </div>
-  </div>
-</section>
+            {/* ================= SYSTEM INFORMATION (EXACT STYLE MATCH) ================= */}
+            <section className="md:col-span-2 space-y-1.5 pt-1 mt-4 border-t border-gray-200 dark:border-white/10">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                System Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1.5">
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.createdBy?.fullName || "System"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Created At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.createdAt)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated By</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {selectedReport?.updatedBy?.fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Last Updated At</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatDate(selectedReport?.updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </section>
           </div>
 
           {/* ================= FOOTER: STATUS & SHARE ================= */}
@@ -861,14 +934,16 @@ const fetchReports = useCallback(async (page = 1) => {
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                   options={vesselList.map((v: any) => ({
-    value: v.name,
-    label: v.name,
-  }))}
+                    options={vesselList.map((v: any) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                     const selected = vesselList.find((v: any) => v.name === val);
+                      const selected = vesselList.find(
+                        (v: any) => v.name === val
+                      );
                       setEditData({
                         ...editData,
                         vesselName: val,

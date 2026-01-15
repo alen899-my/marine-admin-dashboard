@@ -20,8 +20,9 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
-  useRef,useMemo
 } from "react";
 import { toast } from "react-toastify";
 // --- Interfaces ---
@@ -48,7 +49,14 @@ interface IDepartureReport {
   _id: string;
   vesselName: string;
   // ✅ FIX: Allow Populated Objects
-  vesselId: string | { _id: string; name: string } | null;
+  vesselId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        company?: { name: string }; // Added company nested object
+      }
+    | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
   voyageNo?: string;
 
@@ -78,7 +86,11 @@ interface DepartureReportTableProps {
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
-  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
+  onFilterDataLoad?: (data: {
+    vessels: any[];
+    companies: any[];
+    voyages: any[];
+  }) => void;
 }
 
 export default function DepartureReportTable({
@@ -160,6 +172,16 @@ export default function DepartureReportTable({
     }
     return r.vesselName || "-";
   };
+
+  // Get trimmed Company name
+  const getCompanyName = (r: IDepartureReport) => {
+    if (r.vesselId && typeof r.vesselId === "object" && r.vesselId.company) {
+      const name = r.vesselId.company.name;
+      return name.length > 20 ? `${name.substring(0, 20)}...` : name;
+    }
+    return "-";
+  };
+
   /* ================= TABLE COLUMNS ================= */
   const columns = [
     {
@@ -178,6 +200,16 @@ export default function DepartureReportTable({
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
             {/* ✅ Use Helper */}
             ID: {getVoyageDisplay(r)}
+          </span>
+          <span
+            className="text-xs text-gray-500"
+            title={
+              r.vesselId && typeof r.vesselId === "object"
+                ? r.vesselId.company?.name
+                : ""
+            }
+          >
+            {getCompanyName(r)}
           </span>
         </div>
       ),
@@ -280,20 +312,20 @@ export default function DepartureReportTable({
         setLoading(true);
         const shouldFetchFilters = !hasLoadedFilters.current;
 
-      const queryParams: Record<string, string> = {
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search: search || "",
-        status: status || "all",
-        startDate: startDate || "",
-        endDate: endDate || "",
-        vesselId: vesselId || "",
-        voyageId: voyageId || "",
-        companyId: companyId || "all",
-        all: shouldFetchFilters ? "true" : "false" // 🟢 Send the flag
-      };
+        const queryParams: Record<string, string> = {
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search: search || "",
+          status: status || "all",
+          startDate: startDate || "",
+          endDate: endDate || "",
+          vesselId: vesselId || "",
+          voyageId: voyageId || "",
+          companyId: companyId || "all",
+          all: shouldFetchFilters ? "true" : "false", // 🟢 Send the flag
+        };
 
-      const query = new URLSearchParams(queryParams);
+        const query = new URLSearchParams(queryParams);
 
         const res = await fetch(`/api/departure-report?${query.toString()}`);
 
@@ -305,13 +337,13 @@ export default function DepartureReportTable({
         setReports(result.data || []);
         if (onDataLoad) onDataLoad(fetchedData);
         if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-        hasLoadedFilters.current = true; // Stop future calls from sending all=true
-        onFilterDataLoad({
-          vessels: result.vessels || [],
-          companies: result.companies || [],
-          voyages: result.voyages || []
-        });
-      }
+          hasLoadedFilters.current = true; // Stop future calls from sending all=true
+          onFilterDataLoad({
+            vessels: result.vessels || [],
+            companies: result.companies || [],
+            voyages: result.voyages || [],
+          });
+        }
 
         // Update Total Count
         if (setTotalCount) {
@@ -331,7 +363,7 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-   [search, status, startDate, endDate, vesselId, voyageId, companyId]
+    [search, status, startDate, endDate, vesselId, voyageId, companyId]
   );
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -410,38 +442,45 @@ export default function DepartureReportTable({
       setSaving(false);
     }
   }
-  
 
- const vesselIdForLookup = useMemo(() => {
-  return typeof editData?.vesselId === "object"
-    ? editData?.vesselId?._id
-    : editData?.vesselId;
-}, [editData?.vesselId]);
+  const vesselIdForLookup = useMemo(() => {
+    return typeof editData?.vesselId === "object"
+      ? editData?.vesselId?._id
+      : editData?.vesselId;
+  }, [editData?.vesselId]);
 
-const { suggestedVoyageNo } = useVoyageLogic(
-  vesselIdForLookup || undefined,
-  editData?.reportDate
-);
- const memoizedVoyageList = useMemo(() => {
-  if (!vesselIdForLookup) return [];
-  
-  // Find the selected vessel from the list to get its current active voyage
-  const selectedVessel = vesselList.find(v => v._id === vesselIdForLookup);
-  const activeVoyage = selectedVessel?.activeVoyageNo;
+  const { suggestedVoyageNo } = useVoyageLogic(
+    vesselIdForLookup || undefined,
+    editData?.reportDate
+  );
+  const memoizedVoyageList = useMemo(() => {
+    if (!vesselIdForLookup) return [];
 
-  // If you have the full voyages array from the parent, you can use that.
-  // Otherwise, ensure the dropdown at least shows the current and active voyage.
-  const options = [];
-  if (activeVoyage) options.push({ value: activeVoyage, label: activeVoyage });
-  
-  // Add the current report's voyage if it's different
-  const currentVoyage = getVoyageDisplay(selectedReport);
-  if (currentVoyage && currentVoyage !== activeVoyage && currentVoyage !== "-") {
-    options.push({ value: currentVoyage, label: `${currentVoyage} (Reported)` });
-  }
+    // Find the selected vessel from the list to get its current active voyage
+    const selectedVessel = vesselList.find((v) => v._id === vesselIdForLookup);
+    const activeVoyage = selectedVessel?.activeVoyageNo;
 
-  return options;
-}, [vesselIdForLookup, vesselList, selectedReport]);
+    // If you have the full voyages array from the parent, you can use that.
+    // Otherwise, ensure the dropdown at least shows the current and active voyage.
+    const options = [];
+    if (activeVoyage)
+      options.push({ value: activeVoyage, label: activeVoyage });
+
+    // Add the current report's voyage if it's different
+    const currentVoyage = getVoyageDisplay(selectedReport);
+    if (
+      currentVoyage &&
+      currentVoyage !== activeVoyage &&
+      currentVoyage !== "-"
+    ) {
+      options.push({
+        value: currentVoyage,
+        label: `${currentVoyage} (Reported)`,
+      });
+    }
+
+    return options;
+  }, [vesselIdForLookup, vesselList, selectedReport]);
 
   useEffect(() => {
     if (
@@ -455,20 +494,40 @@ const { suggestedVoyageNo } = useVoyageLogic(
     }
   }, [suggestedVoyageNo]);
 
- // ✅ Corrected Trigger Effect
-useEffect(() => {
-  if (!isReady) return;
+  // ✅ Corrected Trigger Effect
+  useEffect(() => {
+    if (!isReady) return;
 
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
-  
-  if (currentPage !== 1 && filtersActive) {
-    setCurrentPage(1);
-    return; 
-  }
+    const filtersActive = !!(
+      search ||
+      status !== "all" ||
+      vesselId ||
+      voyageId ||
+      (companyId && companyId !== "all") ||
+      startDate ||
+      endDate
+    );
 
-  fetchReports(currentPage);
-  // 🟢 CRITICAL: Removed vesselList and onFilterDataLoad from here
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+    if (currentPage !== 1 && filtersActive) {
+      setCurrentPage(1);
+      return;
+    }
+
+    fetchReports(currentPage);
+    // 🟢 CRITICAL: Removed vesselList and onFilterDataLoad from here
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -485,7 +544,9 @@ useEffect(() => {
     setSelectedReport(report);
 
     // Try to find vessel in the list as fallback
-   const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
+    const matchedVessel = vesselList.find(
+      (v: any) => v.name === report.vesselName
+    );
     const voyageIdString = getVoyageDisplay(report);
     const vesselIdStr =
       typeof report.vesselId === "object"
@@ -922,14 +983,17 @@ useEffect(() => {
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                   options={vesselList.map((v: any) => ({ // FIX: Use vesselList
-    value: v.name,
-    label: v.name,
-  }))}
+                    options={vesselList.map((v: any) => ({
+                      // FIX: Use vesselList
+                      value: v.name,
+                      label: v.name,
+                    }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                     const selected = vesselList.find((v: any) => v.name === val);
+                      const selected = vesselList.find(
+                        (v: any) => v.name === val
+                      );
                       setEditData({
                         ...editData,
                         vesselName: val,
@@ -943,10 +1007,20 @@ useEffect(() => {
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
                   <SearchableSelect
-                  options={memoizedVoyageList}
-                    placeholder={!editData.vesselId ? "Select Vessel first" : "Search Voyage"}
-  value={typeof editData.voyageId === "string" ? editData.voyageId : editData.voyageId?.voyageNo ?? ""}
-  onChange={(val) => setEditData({ ...editData, voyageId: val })}
+                    options={memoizedVoyageList}
+                    placeholder={
+                      !editData.vesselId
+                        ? "Select Vessel first"
+                        : "Search Voyage"
+                    }
+                    value={
+                      typeof editData.voyageId === "string"
+                        ? editData.voyageId
+                        : editData.voyageId?.voyageNo ?? ""
+                    }
+                    onChange={(val) =>
+                      setEditData({ ...editData, voyageId: val })
+                    }
                   />
                 </div>
 
