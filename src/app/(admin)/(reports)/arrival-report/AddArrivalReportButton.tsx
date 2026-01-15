@@ -12,15 +12,19 @@ import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
+
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+  allVoyages: any[]; // ✅ Added from parent
 }
 
 export default function AddArrivalReportButton({
-  onSuccess,vesselList
+  onSuccess,
+  vesselList,
+  allVoyages, // ✅ Destructured
 }: AddArrivalReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,9 +32,6 @@ export default function AddArrivalReportButton({
   const { can, isReady } = useAuthorization();
   const [norSameAsArrival, setNorSameAsArrival] = useState(true);
 
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -40,96 +41,54 @@ export default function AddArrivalReportButton({
 
   const [formData, setFormData] = useState({
     vesselName: "",
-    vesselId: "", // 👈 Crucial for the hook
+    vesselId: "", 
     voyageId: "",
     portName: "",
     reportDate: getCurrentDateTime(),
     arrivalTime: "",
-    norTime: "", // NEW
-    arrivalCargoQty: "", // NEW
+    norTime: "",
+    arrivalCargoQty: "",
     robVlsfo: "",
     robLsmgo: "",
     remarks: "",
   });
-  // ✅ 2. CALL HOOK (Now it can see formData)
-const { suggestedVoyageNo } = useVoyageLogic(
-    formData.vesselId,
+
+  // ✅ 1. SUGGESTION HOOK
+  const { suggestedVoyageNo } = useVoyageLogic(
+    formData.vesselId || undefined,
     formData.reportDate
   );
 
-  // ✅ 3. SYNC LOGIC (Auto-fill Voyage)
+  // ✅ 2. NEW: Local Filter Logic (Replaces the manual fetch useEffect)
+const filteredVoyageOptions = useMemo(() => {
+    if (!formData.vesselId) return [];
+
+    const options = allVoyages
+      .filter((v: any) => v.vesselId?.toString() === formData.vesselId?.toString())
+      .map((v: any) => ({
+        value: v.voyageNo,
+        label: v.voyageNo,
+      }));
+
+    // Fallback to ensure suggested voyage is always selectable/visible
+    if (suggestedVoyageNo && !options.some(opt => opt.value === suggestedVoyageNo)) {
+      options.unshift({
+        value: suggestedVoyageNo,
+        label: suggestedVoyageNo,
+      });
+    }
+
+    return options;
+  }, [formData.vesselId, allVoyages, suggestedVoyageNo]);
+
+  // ✅ 3. SYNC Suggested Voyage
   useEffect(() => {
-    if (
-      suggestedVoyageNo !== undefined &&
-      suggestedVoyageNo !== formData.voyageId
-    ) {
-      if (suggestedVoyageNo) {
-      }
+    if (suggestedVoyageNo && suggestedVoyageNo !== formData.voyageId) {
       setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
 
-  // ✅ NEW: Fetch & Filter Voyages (Client-Side Firewall)
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      // 1. Stop if no vessel is selected
-      if (!formData.vesselId) {
-        setVoyageList([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
-
-        if (res.ok) {
-          const result = await res.json();
-          // Handle different API response structures (array vs { data: [] })
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Check 1: Must match the selected Vessel ID
-            // (We check both ID and Name to be extra safe)
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === formData.vesselId) ||
-              (v.vesselName && v.vesselName === formData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Check 2: Must be Active OR be the specific one we are looking for
-            // (We keep the auto-suggested voyage even if it is inactive/closed)
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === formData.voyageId;
-
-            return isRelevant;
-          });
-
-          // Map to dropdown format
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              // Label shows status if it's not active
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
-    }
-
-    fetchAndFilterVoyages();
-  }, [
-    formData.vesselId,
-    formData.vesselName,
-    suggestedVoyageNo,
-    formData.voyageId,
-  ]);
-
-  // Effect to sync NOR Time with Arrival Time
+  // ✅ 4. SYNC NOR Time with Arrival Time
   useEffect(() => {
     if (norSameAsArrival && formData.arrivalTime) {
       setFormData((prev) => ({ ...prev, norTime: formData.arrivalTime }));
@@ -141,11 +100,6 @@ const { suggestedVoyageNo } = useVoyageLogic(
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Handle Checkbox separately if needed, though we use state here
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error for the field being edited
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -157,6 +111,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
       ...prev,
       vesselName: selectedName,
       vesselId: selectedVessel?._id || "",
+      voyageId: "", // Reset voyage when vessel changes to trigger new suggestion
     }));
     if (errors.vesselName) setErrors((prev) => ({ ...prev, vesselName: "" }));
   };
@@ -177,6 +132,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
       robLsmgo: "",
       remarks: "",
     });
+    setNorSameAsArrival(true);
     closeModal();
   };
 
@@ -194,18 +150,11 @@ const { suggestedVoyageNo } = useVoyageLogic(
           voyageId: formData.voyageId,
           portName: formData.portName,
           reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
-          arrivalTime: formData.arrivalTime
-            ? `${formData.arrivalTime}+05:30`
-            : "",
+          arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
           norTime: formData.norTime ? `${formData.norTime}+05:30` : "",
-          arrivalCargoQty:
-            formData.arrivalCargoQty === ""
-              ? undefined
-              : Number(formData.arrivalCargoQty),
-          robVlsfo:
-            formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
-          robLsmgo:
-            formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
+          arrivalCargoQty: formData.arrivalCargoQty === "" ? undefined : Number(formData.arrivalCargoQty),
+          robVlsfo: formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
+          robLsmgo: formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
           remarks: formData.remarks,
         }),
       });
@@ -236,14 +185,10 @@ const { suggestedVoyageNo } = useVoyageLogic(
       setIsSubmitting(false);
     }
   };
+
   const canCreate = isReady && can("arrival.create");
 
-  // 3️⃣ EARLY RETURNS (AFTER ALL HOOKS)
-  if (!isReady) {
-    return null; // or loader
-  }
-
-  if (!canCreate) {
+  if (!isReady || !canCreate) {
     return null;
   }
   return (
@@ -323,11 +268,11 @@ const { suggestedVoyageNo } = useVoyageLogic(
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                    options={voyageList}
+                   options={filteredVoyageOptions}
                     placeholder={
                       !formData.vesselId
                         ? "Select Vessel first"
-                        : voyageList.length === 0
+                        : filteredVoyageOptions.length === 0
                         ? "No active voyages found"
                         : "Search Voyage"
                     }
