@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
+import { NextResponse } from "next/server";
 
+import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import Company from "@/models/Company";
+import ReportOperational from "@/models/ReportOperational";
+import User from "@/models/User";
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import { put } from "@vercel/blob";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
 import mongoose from "mongoose"; // ✅ Import Mongoose
 import path from "path";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import { put } from "@vercel/blob";
-import { authorizeRequest } from "@/lib/authorizeRequest";
-import { auth } from "@/auth";
-import User from "@/models/User"; 
-import Vessel from "@/models/Vessel";
-import Voyage from "@/models/Voyage"; 
-import ReportOperational from "@/models/ReportOperational";
 const sendResponse = (
   status: number,
   message: string,
@@ -23,7 +23,7 @@ const sendResponse = (
     {
       success,
       message,
-      
+
       ...data, // Spreads pagination, data, companies, etc.
       metadata: {
         timestamp: new Date().toISOString(),
@@ -34,9 +34,6 @@ const sendResponse = (
     { status }
   );
 };
-
-
-
 
 // ... (keep parseDateString helper exactly as is) ...
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
@@ -55,16 +52,19 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
   return isNaN(fallbackDate.getTime()) ? undefined : fallbackDate;
 }
 
-
-
 // --- GET: FETCH NORS ---
 export async function GET(req: Request) {
   try {
     const authz = await authorizeRequest("nor.view");
     if (!authz.ok) {
-      return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+      return sendResponse(
+        403,
+        "Forbidden: Insufficient permissions",
+        null,
+        false
+      );
     }
-    
+
     await dbConnect();
 
     // 🔒 1. Session & Multi-Tenancy Setup
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     const endDate = searchParams.get("endDate");
     const selectedVessel = searchParams.get("vesselId");
     const selectedVoyage = searchParams.get("voyageId");
-    const companyId = searchParams.get("companyId"); 
+    const companyId = searchParams.get("companyId");
 
     const query: Record<string, any> = { eventType: "nor" };
 
@@ -106,7 +106,9 @@ export async function GET(req: Request) {
         );
       }
 
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+      }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
 
       query.vesselId = { $in: companyVesselIds };
@@ -123,7 +125,9 @@ export async function GET(req: Request) {
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVessels = await Vessel.find({ company: companyId }).select(
+          "_id"
+        );
         const targetVesselIds = targetVessels.map((v) => v._id);
 
         if (selectedVessel) {
@@ -155,11 +159,11 @@ export async function GET(req: Request) {
     if (search) {
       query.$or = [
         { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } }, 
+        { voyageNo: { $regex: search, $options: "i" } },
         { portName: { $regex: search, $options: "i" } },
       ];
     }
-    
+
     if (startDate || endDate) {
       const dateQuery: { $gte?: Date; $lte?: Date } = {};
       if (startDate) {
@@ -184,8 +188,15 @@ export async function GET(req: Request) {
     const promises: any[] = [
       ReportOperational.countDocuments(query),
       ReportOperational.find(query)
-        .populate("voyageId", "voyageNo") 
-        .populate("vesselId", "name")
+        .populate("voyageId", "voyageNo")
+        .populate({
+          path: "vesselId",
+          select: "name company", // Get name and company ID from Vessel
+          populate: {
+            path: "company", // Nested populate Company
+            select: "name", // Only get the company name
+          },
+        })
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
         .sort({ createdAt: -1 })
@@ -197,49 +208,60 @@ export async function GET(req: Request) {
     // 🟢 Step: Add Filter lists if fetchAll is true
     if (fetchAll) {
       const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
-      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+      promises.push(
+        Company.find(companyFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean()
+      );
 
       const vesselFilter: any = { status: "active" };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
-      else if (companyId && companyId !== "all") vesselFilter.company = companyId;
-      promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
+      else if (companyId && companyId !== "all")
+        vesselFilter.company = companyId;
+      promises.push(
+        Vessel.find(vesselFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean()
+      );
     }
 
     const results = await Promise.all(promises);
     const total = results[0];
     const reports = results[1];
-    
+
     let companies: any[] = [];
     let vessels: any[] = [];
-  let voyages: any[] = [];
+    let voyages: any[] = [];
 
     // 🌟 5. Process Extra Dropdown Data (Same as Vessel/Cargo Logic)
     if (fetchAll) {
       companies = results[2] || [];
       const rawVessels = results[3] || [];
-      const vesselIds = rawVessels.map((v:any) => v._id);
+      const vesselIds = rawVessels.map((v: any) => v._id);
 
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vesselIds },
         status: "active",
       })
-      .select("vesselId voyageNo schedule.startDate")
-      .lean();
+        .select("vesselId voyageNo schedule.startDate")
+        .lean();
 
       const voyageMap = new Map();
       activeVoyages.forEach((voy) => {
         voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
       });
 
-      vessels = rawVessels.map((v:any) => ({
+      vessels = rawVessels.map((v: any) => ({
         ...v,
-        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "",
       }));
 
-      voyages = activeVoyages.map(voy => ({
+      voyages = activeVoyages.map((voy) => ({
         _id: voy._id,
         vesselId: voy.vesselId,
-        voyageNo: voy.voyageNo
+        voyageNo: voy.voyageNo,
       }));
     }
 
@@ -266,7 +288,7 @@ export async function POST(req: Request) {
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.create");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const formData = await req.formData();
 
@@ -274,10 +296,10 @@ export async function POST(req: Request) {
     // ✅ 1. Get vesselId from form data
     const vesselIdString = formData.get("vesselId") as string;
     const vesselName = formData.get("vesselName") as string;
-    
+
     // This is the string (e.g. "OP-1225") from the frontend dropdown
-    const voyageNoString = formData.get("voyageNo") as string; 
-    
+    const voyageNoString = formData.get("voyageNo") as string;
+
     const portName = formData.get("portName") as string;
     const remarks = formData.get("remarks") as string;
     const reportDate = formData.get("reportDate") as string;
@@ -293,7 +315,10 @@ export async function POST(req: Request) {
 
     if (file && file.size > 0) {
       if (file.size > 500 * 1024) {
-        return NextResponse.json({ error: "File size exceeds the 500 KB limit." }, { status: 400 });
+        return NextResponse.json(
+          { error: "File size exceeds the 500 KB limit." },
+          { status: 400 }
+        );
       }
       const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
@@ -304,14 +329,20 @@ export async function POST(req: Request) {
         await writeFile(path.join(uploadDir, filename), buffer);
         finalDocumentUrl = `/uploads/nor/${filename}`;
       } else {
-        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+        const blob = await put(filename, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
         finalDocumentUrl = blob.url;
       }
     }
 
     const parsedReportDate = parseDateString(reportDate);
     if (!parsedReportDate) {
-        return NextResponse.json({ error: "Invalid Date Format." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid Date Format." },
+        { status: 400 }
+      );
     }
 
     // ==========================================
@@ -320,24 +351,27 @@ export async function POST(req: Request) {
     let voyageObjectId = null;
 
     if (vesselIdString && voyageNoString) {
-       const vId = new mongoose.Types.ObjectId(vesselIdString);
-       
-       // Find the Voyage Document to get its _id
-       const foundVoyage = await Voyage.findOne({ 
-          vesselId: vId, 
-          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
-       }).select("_id");
-       
-       if (foundVoyage) {
-          voyageObjectId = foundVoyage._id;
-       } else {
-          return NextResponse.json(
-            { error: `Voyage ${voyageNoString} not found for this vessel.` },
-            { status: 404 }
-          );
-       }
+      const vId = new mongoose.Types.ObjectId(vesselIdString);
+
+      // Find the Voyage Document to get its _id
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vId,
+        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+      }).select("_id");
+
+      if (foundVoyage) {
+        voyageObjectId = foundVoyage._id;
+      } else {
+        return NextResponse.json(
+          { error: `Voyage ${voyageNoString} not found for this vessel.` },
+          { status: 404 }
+        );
+      }
     } else {
-       return NextResponse.json({ error: "Missing Vessel ID or Voyage Number" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing Vessel ID or Voyage Number" },
+        { status: 400 }
+      );
     }
 
     // Create Record
@@ -348,7 +382,7 @@ export async function POST(req: Request) {
       updatedBy: currentUserId,
       // ✅ IDs
       vesselId: vesselIdString,
-      voyageId: voyageObjectId, 
+      voyageId: voyageObjectId,
 
       // ✅ Snapshots
       vesselName,
@@ -357,7 +391,7 @@ export async function POST(req: Request) {
       portName,
       eventTime: norTenderTime ? new Date(norTenderTime) : new Date(),
       reportDate: parsedReportDate,
-      
+
       norDetails: {
         pilotStation: pilotStation,
         documentUrl: finalDocumentUrl,
@@ -377,7 +411,11 @@ export async function POST(req: Request) {
     );
   } catch (error: unknown) {
     console.error("Error saving NOR:", error);
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ error: "Failed to save record", details: errorMessage }, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json(
+      { error: "Failed to save record", details: errorMessage },
+      { status: 500 }
+    );
   }
 }

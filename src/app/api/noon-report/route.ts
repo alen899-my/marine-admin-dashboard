@@ -1,16 +1,16 @@
-import { dbConnect } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/db";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
+import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRequest } from "@/lib/authorizeRequest";
 
-import mongoose from "mongoose";
-import User from "@/models/User"; 
+import Company from "@/models/Company";
+import ReportDaily from "@/models/ReportDaily";
+import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
-import ReportDaily from "@/models/ReportDaily"
-import Company from "@/models/Company";
+import mongoose from "mongoose";
 const sendResponse = (
   status: number,
   message: string,
@@ -61,11 +61,16 @@ export async function GET(req: NextRequest) {
   try {
     const [authz, _] = await Promise.all([
       authorizeRequest("noon.view"),
-      dbConnect()
+      dbConnect(),
     ]);
-    
+
     if (!authz.ok) {
-      return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+      return sendResponse(
+        403,
+        "Forbidden: Insufficient permissions",
+        null,
+        false
+      );
     }
 
     const session = await auth();
@@ -93,16 +98,22 @@ export async function GET(req: NextRequest) {
     const selectedCompany = searchParams.get("companyId");
 
     if (!isSuperAdmin) {
-      if (!userCompanyId) return sendResponse(403, "No company assigned to profile", null, false);
-      
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
+      if (!userCompanyId)
+        return sendResponse(403, "No company assigned to profile", null, false);
+
+      const companyVessels = await Vessel.find({ company: userCompanyId })
+        .select("_id")
+        .lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
-      
+
       if (selectedVessel) {
-        if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
+        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
           query.vesselId = selectedVessel;
         } else {
-          return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+          return sendResponse(200, "Unauthorized vessel access", {
+            data: [],
+            pagination: { total: 0, page, totalPages: 0 },
+          });
         }
       } else {
         query.vesselId = { $in: companyVesselIds };
@@ -110,14 +121,19 @@ export async function GET(req: NextRequest) {
     } else {
       // Super Admin Logic
       if (selectedCompany && selectedCompany !== "all") {
-        const companyVessels = await Vessel.find({ company: selectedCompany }).select("_id").lean();
+        const companyVessels = await Vessel.find({ company: selectedCompany })
+          .select("_id")
+          .lean();
         const companyVesselIds = companyVessels.map((v) => v._id);
-        
+
         if (selectedVessel) {
-          if (companyVesselIds.some(id => id.toString() === selectedVessel)) {
+          if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
             query.vesselId = selectedVessel;
           } else {
-            return sendResponse(200, "Vessel mismatch for company", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+            return sendResponse(200, "Vessel mismatch for company", {
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
           }
         } else {
           query.vesselId = { $in: companyVesselIds };
@@ -126,7 +142,7 @@ export async function GET(req: NextRequest) {
         query.vesselId = selectedVessel;
       }
     }
-   
+
     // 2. Build Report Filters
     const status = searchParams.get("status");
     if (status && status !== "all") query.status = status;
@@ -161,10 +177,17 @@ export async function GET(req: NextRequest) {
     const promises: any[] = [
       ReportDaily.countDocuments(query),
       ReportDaily.find(query)
-        .populate("vesselId", "name")
+        .populate({
+          path: "vesselId",
+          select: "name company", // Select name and company ID from Vessel
+          populate: {
+            path: "company", // Nested populate the Company model
+            select: "name", // Only fetch the company name
+          },
+        })
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
-        .populate("updatedBy", "fullName") 
+        .populate("updatedBy", "fullName")
         .sort({ reportDate: -1 })
         .skip(skip)
         .limit(limit)
@@ -174,19 +197,30 @@ export async function GET(req: NextRequest) {
     if (fetchAll) {
       // Add Company lookup to parallel queue
       const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
-      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+      promises.push(
+        Company.find(companyFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean()
+      );
 
       // Add Vessel lookup to parallel queue
       const vesselFilter: any = { status: "active" };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
-      else if (selectedCompany && selectedCompany !== "all") vesselFilter.company = selectedCompany;
-      promises.push(Vessel.find(vesselFilter).select("_id name company status").sort({ name: 1 }).lean());
+      else if (selectedCompany && selectedCompany !== "all")
+        vesselFilter.company = selectedCompany;
+      promises.push(
+        Vessel.find(vesselFilter)
+          .select("_id name company status")
+          .sort({ name: 1 })
+          .lean()
+      );
     }
 
     const results = await Promise.all(promises);
     const total = results[0];
     const reports = results[1];
-    
+
     let companies: any[] = [];
     let vessels: any[] = [];
     let voyages: any[] = [];
@@ -201,8 +235,8 @@ export async function GET(req: NextRequest) {
         vesselId: { $in: vesselIds },
         status: "active",
       })
-      .select("vesselId voyageNo schedule.startDate")
-      .lean();
+        .select("vesselId voyageNo schedule.startDate")
+        .lean();
 
       const voyageMap = new Map<string, string>();
       activeVoyages.forEach((voy) => {
@@ -212,14 +246,14 @@ export async function GET(req: NextRequest) {
       // Map Vessels with activeVoyageNo
       vessels = rawVessels.map((v) => ({
         ...v,
-        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "",
       }));
 
       // Flatten Voyages for dropdown
-      voyages = activeVoyages.map(v => ({
+      voyages = activeVoyages.map((v) => ({
         _id: v._id,
         vesselId: v.vesselId,
-        voyageNo: v.voyageNo
+        voyageNo: v.voyageNo,
       }));
     }
 
@@ -229,17 +263,21 @@ export async function GET(req: NextRequest) {
       companies,
       vessels,
       voyages,
-      pagination: { 
-        total, 
-        page, 
-        limit, 
-        totalPages: Math.ceil(total / limit) 
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     });
-
   } catch (error: any) {
     console.error("GET NOON REPORTS ERROR:", error);
-    return sendResponse(500, error.message || "Internal Server Error", null, false);
+    return sendResponse(
+      500,
+      error.message || "Internal Server Error",
+      null,
+      false
+    );
   }
 }
 

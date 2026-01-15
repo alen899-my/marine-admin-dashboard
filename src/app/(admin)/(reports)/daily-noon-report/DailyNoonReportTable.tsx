@@ -2,6 +2,7 @@
 
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import EditModal from "@/components/common/EditModal";
 import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
@@ -14,9 +15,16 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState, useRef,useMemo } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
-import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 // --- Types ---
 interface IPosition {
   lat: string;
@@ -49,8 +57,13 @@ interface IWeather {
 interface IDailyNoonReport {
   _id: string;
   vesselName: string;
-  vesselId: string | { _id: string; name: string };
-
+  vesselId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        company?: { name: string }; // Added this
+      };
   type: string;
   status: string;
   reportDate: string;
@@ -65,9 +78,6 @@ interface IDailyNoonReport {
   updatedBy?: UserRef;
   createdAt?: string;
   updatedAt?: string;
-
-
-
 }
 
 // Updated Props Interface
@@ -78,12 +88,16 @@ interface DailyNoonReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: IDailyNoonReport[]) => void;
-  vesselId: string;  // Added this
-  voyageId: string;  // Added this
-  vesselList: any[];    // Added this
+  vesselId: string; // Added this
+  voyageId: string; // Added this
+  vesselList: any[]; // Added this
   companyId?: string;
   setTotalCount?: Dispatch<SetStateAction<number>>;
-  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
+  onFilterDataLoad?: (data: {
+    vessels: any[];
+    companies: any[];
+    voyages: any[];
+  }) => void;
 }
 
 export default function DailyNoonReportTable({
@@ -93,10 +107,12 @@ export default function DailyNoonReportTable({
   startDate,
   onDataLoad,
   setTotalCount,
-  endDate, vesselId,
+  endDate,
+  vesselId,
   voyageId,
   vesselList,
-  companyId,onFilterDataLoad,
+  companyId,
+  onFilterDataLoad,
 }: DailyNoonReportTableProps) {
   const hasLoadedFilters = useRef(false);
   // Apply interfaces to state
@@ -105,7 +121,9 @@ export default function DailyNoonReportTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(
     null
   );
@@ -119,13 +137,15 @@ export default function DailyNoonReportTable({
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
 
-
-
-  
-
   // 1. Extract the string ID safely
- const currentVesselId = typeof editData?.vesselId === "object" ? editData?.vesselId._id : editData?.vesselId;
-  const { suggestedVoyageNo } = useVoyageLogic(currentVesselId, editData?.reportDate);
+  const currentVesselId =
+    typeof editData?.vesselId === "object"
+      ? editData?.vesselId._id
+      : editData?.vesselId;
+  const { suggestedVoyageNo } = useVoyageLogic(
+    currentVesselId,
+    editData?.reportDate
+  );
 
   const canEdit = can("noon.edit");
   const canDelete = can("noon.delete");
@@ -167,40 +187,38 @@ export default function DailyNoonReportTable({
         setEditData((prev) =>
           prev
             ? {
-              ...prev,
-              navigation: { ...prev.navigation!, slip: slipVal },
-            }
+                ...prev,
+                navigation: { ...prev.navigation!, slip: slipVal },
+              }
             : null
         );
       }
     } else if (engineDist === 0 || isNaN(engineDist)) {
-
       if (editData.navigation.slip !== "") {
         setEditData((prev) =>
           prev
             ? {
-              ...prev,
-              navigation: { ...prev.navigation!, slip: "" },
-            }
+                ...prev,
+                navigation: { ...prev.navigation!, slip: "" },
+              }
             : null
         );
       }
     }
   }, [editData?.navigation?.engineDist, editData?.navigation?.distLast24h]);
 
-
   useEffect(() => {
     if (
       editData &&
-      !editData.voyageNo &&   // only when empty
+      !editData.voyageNo && // only when empty
       suggestedVoyageNo
     ) {
-      setEditData(prev =>
+      setEditData((prev) =>
         prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
       );
     }
   }, [suggestedVoyageNo]);
-useEffect(() => {
+  useEffect(() => {
     async function fetchAndFilterVoyages() {
       if (!editData?.vesselId) {
         setVoyageList([]);
@@ -211,8 +229,13 @@ useEffect(() => {
         if (res.ok) {
           const result = await res.json();
           const allVoyages = Array.isArray(result) ? result : result.data || [];
-          const filtered = allVoyages.filter((v: any) => v.status === "active" || v.voyageNo === editData.voyageNo);
-          setVoyageList(filtered.map((v: any) => ({ value: v.voyageNo, label: v.voyageNo })));
+          const filtered = allVoyages.filter(
+            (v: any) =>
+              v.status === "active" || v.voyageNo === editData.voyageNo
+          );
+          setVoyageList(
+            filtered.map((v: any) => ({ value: v.voyageNo, label: v.voyageNo }))
+          );
         }
       } catch (error) {
         console.error("Failed to load voyages", error);
@@ -234,102 +257,125 @@ useEffect(() => {
     });
   };
 
-  const columns = useMemo(() => [
-    {
-      header: "S.No",
-      render: (_: IDailyNoonReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
-    },
-    {
-      header: "Vessel & Voyage ID",
-      render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col">
-          <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-            {getVesselName(r)}
-          </span>
-          <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            ID: {getVoyageNo(r)}
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Report Date",
-      render: (r: IDailyNoonReport) => (
-        <div className="text-[13px] leading-tight text-gray-700 dark:text-gray-300">
-          {formatDate(r.reportDate)}
-        </div>
-      ),
-    },
-    {
-      header: "Position",
-      render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col text-xs font-mono">
-          <span>Lat: {r?.position?.lat ?? "-"}</span>
-          <span>Long: {r?.position?.long ?? "-"}</span>
-        </div>
-      ),
-    },
-    {
-      header: "Navigation",
-      render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col text-xs leading-relaxed">
-          <span className="font-bold">
-            Next Port: {r?.navigation?.nextPort ?? "-"}
-          </span>
-          <span>
-            Observed Distance: <b>{r?.navigation?.distLast24h ?? 0}</b> NM
-          </span>
-          <span>
-            Engine Distance: <b>{r?.navigation?.engineDist ?? 0}</b> NM
-          </span>
-          <span>
-            Slip: <b>{r?.navigation?.slip ? `${r.navigation.slip}%` : "-"}</b>
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Fuel Consumed (24h)",
-      render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col text-xs">
-          <span>
-            VLSFO:{" "}
-            <b className="text-gray-900 dark:text-gray-100">
-              {r?.consumption?.vlsfo ?? 0}
-            </b>{" "}
-            MT
-          </span>
-          <span>
-            LSMGO:{" "}
-            <b className="text-gray-900 dark:text-gray-100">
-              {r?.consumption?.lsmgo ?? 0}
-            </b>{" "}
-            MT
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Weather",
-      render: (r: IDailyNoonReport) => (
-        <div className="flex flex-col text-xs max-w-[150px]">
-          <span className="truncate">Wind: {r?.weather?.wind ?? "-"}</span>
-          <span className="truncate text-gray-500">
-            Sea: {r?.weather?.seaState ?? "-"}
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Status",
-      render: (r: IDailyNoonReport) => (
-        <Badge color={r.status === "active" ? "success" : "error"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
-    },
- ], [currentPage]);
+  // Trimmed Company Name Helper
+  const getCompanyName = (r: IDailyNoonReport) => {
+    if (r.vesselId && typeof r.vesselId === "object" && r.vesselId.company) {
+      const name = r.vesselId.company.name;
+      // Trim to 20 characters and add ellipsis if needed
+      return name.length > 20 ? `${name.substring(0, 20)}...` : name;
+    }
+    return "-";
+  };
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "S.No",
+        render: (_: IDailyNoonReport, index: number) =>
+          (currentPage - 1) * LIMIT + index + 1,
+      },
+      {
+        header: "Vessel & Voyage ID",
+        render: (r: IDailyNoonReport) => (
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
+              {getVesselName(r)}
+            </span>
+            <span className="text-xs text-gray-500 uppercase tracking-tighter">
+              ID: {getVoyageNo(r)}
+            </span>
+            <span
+              className="text-xs text-gray-500"
+              title={
+                r.vesselId && typeof r.vesselId === "object"
+                  ? r.vesselId.company?.name
+                  : ""
+              }
+            >
+              {getCompanyName(r)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: "Report Date",
+        render: (r: IDailyNoonReport) => (
+          <div className="text-[13px] leading-tight text-gray-700 dark:text-gray-300">
+            {formatDate(r.reportDate)}
+          </div>
+        ),
+      },
+      {
+        header: "Position",
+        render: (r: IDailyNoonReport) => (
+          <div className="flex flex-col text-xs font-mono">
+            <span>Lat: {r?.position?.lat ?? "-"}</span>
+            <span>Long: {r?.position?.long ?? "-"}</span>
+          </div>
+        ),
+      },
+      {
+        header: "Navigation",
+        render: (r: IDailyNoonReport) => (
+          <div className="flex flex-col text-xs leading-relaxed">
+            <span className="font-bold">
+              Next Port: {r?.navigation?.nextPort ?? "-"}
+            </span>
+            <span>
+              Observed Distance: <b>{r?.navigation?.distLast24h ?? 0}</b> NM
+            </span>
+            <span>
+              Engine Distance: <b>{r?.navigation?.engineDist ?? 0}</b> NM
+            </span>
+            <span>
+              Slip: <b>{r?.navigation?.slip ? `${r.navigation.slip}%` : "-"}</b>
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: "Fuel Consumed (24h)",
+        render: (r: IDailyNoonReport) => (
+          <div className="flex flex-col text-xs">
+            <span>
+              VLSFO:{" "}
+              <b className="text-gray-900 dark:text-gray-100">
+                {r?.consumption?.vlsfo ?? 0}
+              </b>{" "}
+              MT
+            </span>
+            <span>
+              LSMGO:{" "}
+              <b className="text-gray-900 dark:text-gray-100">
+                {r?.consumption?.lsmgo ?? 0}
+              </b>{" "}
+              MT
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: "Weather",
+        render: (r: IDailyNoonReport) => (
+          <div className="flex flex-col text-xs max-w-[150px]">
+            <span className="truncate">Wind: {r?.weather?.wind ?? "-"}</span>
+            <span className="truncate text-gray-500">
+              Sea: {r?.weather?.seaState ?? "-"}
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: "Status",
+        render: (r: IDailyNoonReport) => (
+          <Badge color={r.status === "active" ? "success" : "error"}>
+            {r.status === "active" ? "Active" : "Inactive"}
+          </Badge>
+        ),
+      },
+    ],
+    [currentPage]
+  );
 
   // ***** CHANGE: Force IST for input fields *****
   const formatForInput = (dateString?: string) => {
@@ -340,9 +386,6 @@ useEffect(() => {
       .slice(0, 16);
   };
 
-
-
-
   // Wrap fetchReports in useCallback to fix dependency warnings
   const [totalItems, setTotalItems] = useState(0); // Add this state
 
@@ -351,67 +394,88 @@ useEffect(() => {
     // ... existing props
     setTotalCount?: (count: number) => void;
   }
-const fetchReports = useCallback(async (page = 1) => {
-  try {
-    setLoading(true);
-    // 🟢 Step 1: Check the ref to see if we already got the dropdown data
-    const shouldFetchFilters = !hasLoadedFilters.current; 
+  const fetchReports = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        // 🟢 Step 1: Check the ref to see if we already got the dropdown data
+        const shouldFetchFilters = !hasLoadedFilters.current;
 
-    const queryParams: Record<string, string> = {
-      page: page.toString(),
-      limit: LIMIT.toString(),
-      search: search || "",
-      status: status || "all",
-      startDate: startDate || "",
-      endDate: endDate || "",
-      vesselId: vesselId || "",
-      voyageId: voyageId || "",
-      companyId: companyId || "all",
-      all: shouldFetchFilters ? "true" : "false"
-    };
+        const queryParams: Record<string, string> = {
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search: search || "",
+          status: status || "all",
+          startDate: startDate || "",
+          endDate: endDate || "",
+          vesselId: vesselId || "",
+          voyageId: voyageId || "",
+          companyId: companyId || "all",
+          all: shouldFetchFilters ? "true" : "false",
+        };
 
-    const query = new URLSearchParams(queryParams);
-    const res = await fetch(`/api/noon-report?${query.toString()}`);
-    const result = await res.json();
+        const query = new URLSearchParams(queryParams);
+        const res = await fetch(`/api/noon-report?${query.toString()}`);
+        const result = await res.json();
 
-    setReports(result.data || []);
-    if (onDataLoad) onDataLoad(result.data || []);
+        setReports(result.data || []);
+        if (onDataLoad) onDataLoad(result.data || []);
 
-    // 🟢 Step 2: Set the ref to true FIRST to break the loop
-    if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-      hasLoadedFilters.current = true; 
-      onFilterDataLoad({
-        vessels: result.vessels || [],
-        companies: result.companies || [],
-        voyages: result.voyages || []
-      });
-    }
+        // 🟢 Step 2: Set the ref to true FIRST to break the loop
+        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+          hasLoadedFilters.current = true;
+          onFilterDataLoad({
+            vessels: result.vessels || [],
+            companies: result.companies || [],
+            voyages: result.voyages || [],
+          });
+        }
 
-    if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-    setTotalPages(result.pagination?.totalPages || 1);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-  // 🟢 Step 3: Remove onFilterDataLoad from deps if it changes every render
-}, [search, status, startDate, endDate, vesselId, voyageId, companyId]); 
+        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+      // 🟢 Step 3: Remove onFilterDataLoad from deps if it changes every render
+    },
+    [search, status, startDate, endDate, vesselId, voyageId, companyId]
+  );
 
-
-
-useEffect(() => {
+  useEffect(() => {
     if (!isReady) return;
 
-    const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
-    
+    const filtersActive = !!(
+      search ||
+      status !== "all" ||
+      vesselId ||
+      voyageId ||
+      (companyId && companyId !== "all") ||
+      startDate ||
+      endDate
+    );
+
     if (currentPage !== 1 && filtersActive) {
       setCurrentPage(1);
-      return; 
+      return;
     }
-    
+
     fetchReports(currentPage);
     // 🟢 CRITICAL: Remove 'vesselList' and 'onFilterDataLoad' from here
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
@@ -423,10 +487,13 @@ useEffect(() => {
     setSelectedReport(report);
 
     // Find the vessel object so we can get its ID for the edit state
- const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
-    const vesselIdStr = typeof report.vesselId === 'object'
-      ? report.vesselId._id
-      : report.vesselId;
+    const matchedVessel = vesselList.find(
+      (v: any) => v.name === report.vesselName
+    );
+    const vesselIdStr =
+      typeof report.vesselId === "object"
+        ? report.vesselId._id
+        : report.vesselId;
 
     // 2. Safely extract the Voyage Number (string) using your helper
     const voyageNoStr = getVoyageNo(report);
@@ -438,8 +505,6 @@ useEffect(() => {
 
       // ✅ FIX 2: Map the voyageId (the reference field) to the string for the dropdown
       voyageId: voyageNoStr,
-
-
 
       type: report.type,
       status: report.status,
@@ -538,7 +603,7 @@ useEffect(() => {
       setIsDeleting(false);
 
       // Optional: Re-fetch the current page to fill the gap left by the deleted row
-      // fetchReports(currentPage); 
+      // fetchReports(currentPage);
     }
   }
 
@@ -564,14 +629,13 @@ useEffect(() => {
               onDelete={
                 canDelete
                   ? (r: IDailyNoonReport) => {
-                    setSelectedReport(r);
-                    setOpenDelete(true);
-                  }
+                      setSelectedReport(r);
+                      setOpenDelete(true);
+                    }
                   : undefined
               }
               onRowClick={handleView}
             />
-
           </div>
         </div>
       </div>
@@ -580,12 +644,9 @@ useEffect(() => {
         isOpen={openView}
         onClose={() => setOpenView(false)}
         title="Noon Report Details"
-
         headerRight={
           selectedReport && (
-
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-
               <span className="font-bold">{getVesselName(selectedReport)}</span>
               <span>|</span>
               <span>{getVoyageNo(selectedReport)}</span>
@@ -782,14 +843,15 @@ useEffect(() => {
           </div>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
-
             {/* STATUS */}
             <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
               <Badge
-                color={selectedReport?.status === "active" ? "success" : "error"}
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
               >
                 {selectedReport?.status === "active" ? "Active" : "Inactive"}
               </Badge>
@@ -807,19 +869,25 @@ useEffect(() => {
                       "Vessel Name": getVesselName(selectedReport),
                       "Voyage Number": getVoyageNo(selectedReport),
                       "Report Date": formatDate(selectedReport.reportDate),
-                      "Latitude": selectedReport.position?.lat || "-",
-                      "Longitude": selectedReport.position?.long || "-",
+                      Latitude: selectedReport.position?.lat || "-",
+                      Longitude: selectedReport.position?.long || "-",
                       "Next Port": selectedReport.navigation?.nextPort || "-",
-                      "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-                      "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-                      "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-                      "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-                      "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-                      "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+                      "Observed Distance":
+                        (selectedReport.navigation?.distLast24h || "0") + " NM",
+                      "Engine Distance":
+                        (selectedReport.navigation?.engineDist || "0") + " NM",
+                      "Slip Percentage":
+                        (selectedReport.navigation?.slip || "0") + "%",
+                      "Distance To Go":
+                        (selectedReport.navigation?.distToGo || "0") + " NM",
+                      "VLSFO Consumption":
+                        (selectedReport.consumption?.vlsfo || "0") + " MT",
+                      "LSMGO Consumption":
+                        (selectedReport.consumption?.lsmgo || "0") + " MT",
                       "Wind Condition": selectedReport.weather?.wind || "-",
                       "Sea State": selectedReport.weather?.seaState || "-",
                       "Weather Remarks": selectedReport.weather?.remarks || "-",
-                      "General Remarks": selectedReport.remarks || "-"
+                      "General Remarks": selectedReport.remarks || "-",
                     }}
                   />
                   {/* 1. Share via WhatsApp */}
@@ -830,28 +898,32 @@ useEffect(() => {
                       "Vessel Name": getVesselName(selectedReport),
                       "Voyage Number": getVoyageNo(selectedReport),
                       "Report Date": formatDate(selectedReport.reportDate),
-                      "Latitude": selectedReport.position?.lat || "-",
-                      "Longitude": selectedReport.position?.long || "-",
+                      Latitude: selectedReport.position?.lat || "-",
+                      Longitude: selectedReport.position?.long || "-",
                       "Next Port": selectedReport.navigation?.nextPort || "-",
-                      "Observed Distance": (selectedReport.navigation?.distLast24h || "0") + " NM",
-                      "Engine Distance": (selectedReport.navigation?.engineDist || "0") + " NM",
-                      "Slip Percentage": (selectedReport.navigation?.slip || "0") + "%",
-                      "Distance To Go": (selectedReport.navigation?.distToGo || "0") + " NM",
-                      "VLSFO Consumption": (selectedReport.consumption?.vlsfo || "0") + " MT",
-                      "LSMGO Consumption": (selectedReport.consumption?.lsmgo || "0") + " MT",
+                      "Observed Distance":
+                        (selectedReport.navigation?.distLast24h || "0") + " NM",
+                      "Engine Distance":
+                        (selectedReport.navigation?.engineDist || "0") + " NM",
+                      "Slip Percentage":
+                        (selectedReport.navigation?.slip || "0") + "%",
+                      "Distance To Go":
+                        (selectedReport.navigation?.distToGo || "0") + " NM",
+                      "VLSFO Consumption":
+                        (selectedReport.consumption?.vlsfo || "0") + " MT",
+                      "LSMGO Consumption":
+                        (selectedReport.consumption?.lsmgo || "0") + " MT",
                       "Wind Condition": selectedReport.weather?.wind || "-",
                       "Sea State": selectedReport.weather?.seaState || "-",
                       "Weather Remarks": selectedReport.weather?.remarks || "-",
-                      "General Remarks": selectedReport.remarks || "-"
+                      "General Remarks": selectedReport.remarks || "-",
                     }}
                   />
 
                   {/* 2. Download as PDF */}
-
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </ViewModal>
@@ -881,24 +953,27 @@ useEffect(() => {
                 <div>
                   <Label>Vessel Name</Label>
                   <SearchableSelect
-                   options={vesselList.map((v: { name: string; _id: string }) => ({
-  value: v.name,
-  label: v.name,
-}))}
+                    options={vesselList.map(
+                      (v: { name: string; _id: string }) => ({
+                        value: v.name,
+                        label: v.name,
+                      })
+                    )}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vesselList.find((v: any) => v.name === val);
+                      const selected = vesselList.find(
+                        (v: any) => v.name === val
+                      );
                       setEditData({
                         ...editData,
                         vesselName: val,
                         vesselId: selected?._id || "",
-                        voyageNo: "",   // reset voyage
-                        voyageId: ""
+                        voyageNo: "", // reset voyage
+                        voyageId: "",
                       });
                     }}
                   />
-
                 </div>
 
                 <div className="relative">
@@ -909,8 +984,8 @@ useEffect(() => {
                       !editData.vesselId
                         ? "Select Vessel first"
                         : voyageList.length === 0
-                          ? "No active voyages found"
-                          : "Search Voyage"
+                        ? "No active voyages found"
+                        : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>
@@ -918,7 +993,6 @@ useEffect(() => {
                     }
                     disabled={!editData.vesselId}
                   />
-
                 </div>
 
                 <div>

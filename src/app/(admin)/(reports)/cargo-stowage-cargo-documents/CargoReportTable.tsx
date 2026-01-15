@@ -2,22 +2,35 @@
 
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import EditModal from "@/components/common/EditModal";
+import SharePdfButton from "@/components/common/SharePdfButton";
 import ViewModal from "@/components/common/ViewModal";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import { File, FileSpreadsheet, FileText, FileWarning, ImageIcon } from "lucide-react";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState,useRef } from "react";
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import SharePdfButton from "@/components/common/SharePdfButton";
-import DownloadPdfButton from "@/components/common/DownloadPdfButton";
+import {
+  File,
+  FileSpreadsheet,
+  FileText,
+  FileWarning,
+  ImageIcon,
+} from "lucide-react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "react-toastify";
 // 1. Define Interface to replace 'any'
 interface ICargoReportFile {
   url: string;
@@ -30,7 +43,13 @@ interface UserRef {
 interface ICargoReport {
   _id: string;
   vesselName: string;
-  vesselId: string | { _id: string; name: string }; // Allow populated
+  vesselId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        company?: { _id: string; name: string };
+      };
   portType: string;
   portName: string;
   documentDate: string;
@@ -41,7 +60,7 @@ interface ICargoReport {
   documentType: string;
   remarks: string;
   file?: ICargoReportFile;
-   createdBy?: UserRef;
+  createdBy?: UserRef;
   updatedBy?: UserRef;
   createdAt?: string;
   updatedAt?: string;
@@ -66,12 +85,16 @@ interface CargoReportTableProps {
   startDate: string;
   endDate: string;
   onDataLoad?: (data: ICargoReport[]) => void;
-  vesselId: string;  // Added this
-  voyageId: string;  // Added this
-  vesselList: any[];    // Added this
+  vesselId: string; // Added this
+  voyageId: string; // Added this
+  vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
-  onFilterDataLoad?: (data: { vessels: any[], companies: any[], voyages: any[] }) => void;
+  onFilterDataLoad?: (data: {
+    vessels: any[];
+    companies: any[];
+    voyages: any[];
+  }) => void;
 }
 
 export default function CargoReportTable({
@@ -85,7 +108,8 @@ export default function CargoReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,onFilterDataLoad
+  companyId,
+  onFilterDataLoad,
 }: CargoReportTableProps) {
   // 2. Apply Interface to State
   const [reports, setReports] = useState<ICargoReport[]>([]);
@@ -96,7 +120,9 @@ export default function CargoReportTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   // Selection States
   const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(
     null
@@ -120,7 +146,7 @@ export default function CargoReportTable({
   // New File State for Edit Mode
   const [newFile, setNewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-const hasLoadedFilters = useRef(false);
+  const hasLoadedFilters = useRef(false);
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -160,7 +186,6 @@ const hasLoadedFilters = useRef(false);
     });
   };
 
-
   const formatDateOnly = (date?: string) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("en-GB", {
@@ -178,17 +203,28 @@ const hasLoadedFilters = useRef(false);
       .replace(" ", "T")
       .slice(0, 16);
   };
- const { suggestedVoyageNo } = useVoyageLogic(
-  editData?.vesselId,
-  editData?.reportDate
-);
+  const { suggestedVoyageNo } = useVoyageLogic(
+    editData?.vesselId,
+    editData?.reportDate
+  );
+
+  const getCompanyName = (r: ICargoReport | null) => {
+    if (r && typeof r.vesselId === "object" && r.vesselId.company) {
+      return r.vesselId.company.name;
+    }
+    return "-";
+  };
 
   // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
   useEffect(() => {
-
-    if (editData && suggestedVoyageNo !== undefined && suggestedVoyageNo !== editData.voyageNo) {
-
-      setEditData(prev => prev ? { ...prev, voyageNo: suggestedVoyageNo } : null);
+    if (
+      editData &&
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== editData.voyageNo
+    ) {
+      setEditData((prev) =>
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+      );
     }
   }, [suggestedVoyageNo]);
   useEffect(() => {
@@ -238,7 +274,12 @@ const hasLoadedFilters = useRef(false);
     }
 
     fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.vesselName, suggestedVoyageNo, editData?.voyageNo]);
+  }, [
+    editData?.vesselId,
+    editData?.vesselName,
+    suggestedVoyageNo,
+    editData?.voyageNo,
+  ]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -258,6 +299,11 @@ const hasLoadedFilters = useRef(false);
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
             {/* Dynamic Voyage No */}
             ID: {getVoyageNo(r)}
+          </span>
+          <span className="text-xs text-gray-500" title={getCompanyName(r)}>
+            {getCompanyName(r).length > 20
+              ? `${getCompanyName(r).substring(0, 20)}...`
+              : getCompanyName(r)}
           </span>
         </div>
       ),
@@ -294,7 +340,9 @@ const hasLoadedFilters = useRef(false);
               {r?.documentType?.replace(/_/g, " ")}
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500">{formatDateOnly(r.documentDate)}</span>
+              <span className="text-gray-500">
+                {formatDateOnly(r.documentDate)}
+              </span>
 
               {r?.file?.url ? (
                 <div className="flex items-center gap-1" title={meta.name}>
@@ -313,11 +361,20 @@ const hasLoadedFilters = useRef(false);
                   )}
 
                   <span className="text-[10px] font-bold uppercase text-gray-400">
-                    {meta.isPdf ? "PDF" : meta.isExcel ? "XLS" : meta.isImage ? "IMG" : "DOC"}
+                    {meta.isPdf
+                      ? "PDF"
+                      : meta.isExcel
+                      ? "XLS"
+                      : meta.isImage
+                      ? "IMG"
+                      : "DOC"}
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 text-gray-300 italic" title="No file uploaded">
+                <div
+                  className="flex items-center gap-1 text-gray-300 italic"
+                  title="No file uploaded"
+                >
                   <FileWarning className="w-3 h-3 opacity-50" />
                   <span className="text-[10px]">Empty</span>
                 </div>
@@ -358,7 +415,7 @@ const hasLoadedFilters = useRef(false);
           vesselId, // Added to query
           voyageId, // Added to query
           companyId,
-         all: shouldFetchFilters ? "true" : "false",
+          all: shouldFetchFilters ? "true" : "false",
         });
 
         const res = await fetch(`/api/cargo?${query.toString()}`);
@@ -371,14 +428,14 @@ const hasLoadedFilters = useRef(false);
         if (onDataLoad) onDataLoad(fetchedData);
 
         setReports(result.data || []);
-      if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-        onFilterDataLoad({
-          vessels: result.vessels || [],
-          companies: result.companies || [],
-          voyages: result.voyages || [],
-        });
-        hasLoadedFilters.current = true; // Mark as loaded so next calls use all=false
-      }
+        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+          onFilterDataLoad({
+            vessels: result.vessels || [],
+            companies: result.companies || [],
+            voyages: result.voyages || [],
+          });
+          hasLoadedFilters.current = true; // Mark as loaded so next calls use all=false
+        }
 
         // Update Dynamic Count
         if (setTotalCount) {
@@ -394,7 +451,18 @@ const hasLoadedFilters = useRef(false);
         setLoading(false);
       }
     },
-    [LIMIT, search, status, startDate, endDate,isFirstLoad, onDataLoad, vesselId, voyageId, companyId]
+    [
+      LIMIT,
+      search,
+      status,
+      startDate,
+      endDate,
+      isFirstLoad,
+      onDataLoad,
+      vesselId,
+      voyageId,
+      companyId,
+    ]
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
@@ -409,7 +477,10 @@ const hasLoadedFilters = useRef(false);
 
       formData.append("voyageNo", editData.voyageNo);
 
-      formData.append("reportDate", editData.reportDate ? `${editData.reportDate}+05:30` : "");
+      formData.append(
+        "reportDate",
+        editData.reportDate ? `${editData.reportDate}+05:30` : ""
+      );
       formData.append("portName", editData.portName);
       formData.append("portType", editData.portType);
       formData.append("documentType", editData.documentType);
@@ -452,7 +523,7 @@ const hasLoadedFilters = useRef(false);
 
   async function handleDelete() {
     if (!selectedReport) return;
-     setIsDeleting(true);
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/cargo/${selectedReport._id}`, {
@@ -463,7 +534,7 @@ const hasLoadedFilters = useRef(false);
 
       // Update Local State
       setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
-      
+
       // Update Dynamic Count
       if (setTotalCount) {
         setTotalCount((prev) => Math.max(0, prev - 1));
@@ -482,19 +553,39 @@ const hasLoadedFilters = useRef(false);
     }
   }
 
- useEffect(() => {
-  if (!isReady) return;
+  useEffect(() => {
+    if (!isReady) return;
 
-  // Logic: Reset to page 1 if any filter changes
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || companyId !== "all" || startDate || endDate);
-  
-  if (currentPage !== 1 && filtersActive) {
-    setCurrentPage(1);
-    return; // Stop here: the currentPage change will re-trigger this effect
-  }
+    // Logic: Reset to page 1 if any filter changes
+    const filtersActive = !!(
+      search ||
+      status !== "all" ||
+      vesselId ||
+      voyageId ||
+      companyId !== "all" ||
+      startDate ||
+      endDate
+    );
 
-  fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+    if (currentPage !== 1 && filtersActive) {
+      setCurrentPage(1);
+      return; // Stop here: the currentPage change will re-trigger this effect
+    }
+
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };
@@ -515,9 +606,15 @@ const hasLoadedFilters = useRef(false);
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
-    const matchedVessel = vesselList.find((v: any) => v.name === report.vesselName);
-    const vesselIdStr = typeof report.vesselId === 'object' ? report.vesselId._id : report.vesselId;
-    const voyageIdStr = typeof report.voyageId === 'object' ? report.voyageId.voyageNo : ""; // Use Voyage No string for dropdown logic
+    const matchedVessel = vesselList.find(
+      (v: any) => v.name === report.vesselName
+    );
+    const vesselIdStr =
+      typeof report.vesselId === "object"
+        ? report.vesselId._id
+        : report.vesselId;
+    const voyageIdStr =
+      typeof report.voyageId === "object" ? report.voyageId.voyageNo : ""; // Use Voyage No string for dropdown logic
     setEditData({
       status: report.status ?? "active",
       vesselId: vesselIdStr || matchedVessel?._id || "",
@@ -557,11 +654,11 @@ const hasLoadedFilters = useRef(false);
 
   const isExcelPreview = newFile
     ? newFile.name.endsWith(".xls") ||
-    newFile.name.endsWith(".xlsx") ||
-    newFile.name.endsWith(".csv")
+      newFile.name.endsWith(".xlsx") ||
+      newFile.name.endsWith(".csv")
     : previewUrl?.toLowerCase().endsWith(".xls") ||
-    previewUrl?.toLowerCase().endsWith(".xlsx") ||
-    previewUrl?.toLowerCase().endsWith(".csv");
+      previewUrl?.toLowerCase().endsWith(".xlsx") ||
+      previewUrl?.toLowerCase().endsWith(".csv");
 
   /* ================= RENDER ================= */
   const fileMeta = selectedReport?.file?.url
@@ -589,14 +686,13 @@ const hasLoadedFilters = useRef(false);
               onDelete={
                 canDelete
                   ? (r: ICargoReport) => {
-                    setSelectedReport(r);
-                    setOpenDelete(true);
-                  }
+                      setSelectedReport(r);
+                      setOpenDelete(true);
+                    }
                   : undefined
               }
               onRowClick={handleView}
             />
-
           </div>
         </div>
       </div>
@@ -609,9 +705,7 @@ const hasLoadedFilters = useRef(false);
         headerRight={
           selectedReport && (
             <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
-              <span className="font-bold">
-                {getVesselName(selectedReport)}
-              </span>
+              <span className="font-bold">{getVesselName(selectedReport)}</span>
               <span>|</span>
               <span>{getVoyageNo(selectedReport)}</span>
             </div>
@@ -621,7 +715,6 @@ const hasLoadedFilters = useRef(false);
         <div className="text-[13px] py-1">
           {/* ================= MAIN CONTENT GRID ================= */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-
             {/* ================= GENERAL INFORMATION ================= */}
             <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
@@ -652,7 +745,9 @@ const hasLoadedFilters = useRef(false);
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-500 shrink-0">Report Date & Time</span>
+                <span className="text-gray-500 shrink-0">
+                  Report Date & Time
+                </span>
                 <span className="font-medium text-right">
                   {formatDate(selectedReport?.reportDate)}
                 </span>
@@ -689,7 +784,7 @@ const hasLoadedFilters = useRef(false);
                   No file attached
                 </span>
               ) : (
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 dark:bg-white/[0.02] p-3 rounded-lg border border-gray-100 dark:border-white/5">
                   {/* 🖼 THUMBNAIL (Reduced size for compact look) */}
                   <div className="w-20 h-20 flex-shrink-0 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
                     {fileMeta.isImage && (
@@ -703,13 +798,17 @@ const hasLoadedFilters = useRef(false);
 
                     {fileMeta.isPdf && (
                       <div className="w-8 h-10 bg-red-500 rounded flex items-center justify-center shadow-sm">
-                        <span className="text-white font-bold text-[8px]">PDF</span>
+                        <span className="text-white font-bold text-[8px]">
+                          PDF
+                        </span>
                       </div>
                     )}
 
                     {fileMeta.isExcel && (
                       <div className="w-8 h-10 bg-green-600 rounded flex items-center justify-center shadow-sm">
-                        <span className="text-white font-bold text-[8px]">XLS</span>
+                        <span className="text-white font-bold text-[8px]">
+                          XLS
+                        </span>
                       </div>
                     )}
                   </div>
@@ -720,7 +819,11 @@ const hasLoadedFilters = useRef(false);
                       {fileMeta.name}
                     </p>
                     <p className="text-xs text-gray-500 mb-2">
-                      {fileMeta.isPdf ? "PDF Document" : fileMeta.isExcel ? "Excel Spreadsheet" : "Image File"}
+                      {fileMeta.isPdf
+                        ? "PDF Document"
+                        : fileMeta.isExcel
+                        ? "Excel Spreadsheet"
+                        : "Image File"}
                     </p>
 
                     <div className="flex items-center gap-2">
@@ -754,7 +857,7 @@ const hasLoadedFilters = useRef(false);
                 {selectedReport?.remarks || "No Remarks."}
               </p>
             </section>
-             {/* ================= SYSTEM INFORMATION (Solid line style) ================= */}
+            {/* ================= SYSTEM INFORMATION (Solid line style) ================= */}
             <section className="md:col-span-2 space-y-1.5 pt-4 border-t border-gray-200 dark:border-white/10">
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                 System Information
@@ -795,52 +898,70 @@ const hasLoadedFilters = useRef(false);
                 Status
               </span>
               <Badge
-                color={selectedReport?.status === "active" ? "success" : "error"}
+                color={
+                  selectedReport?.status === "active" ? "success" : "error"
+                }
               >
                 {selectedReport?.status === "active" ? "Active" : "Inactive"}
               </Badge>
             </div>
-{/* ACTIONS (DOWNLOAD & SHARE) */}
-<div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
-  {selectedReport && (
-    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-      {/* 1. DOWNLOAD BUTTON */}
-      <DownloadPdfButton
-        title={`Cargo Document - ${getVesselName(selectedReport)}`}
-        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        buttonLabel="Download Report"
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
-          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
-          "Document Date": formatDateOnly(selectedReport.documentDate),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
+            {/* ACTIONS (DOWNLOAD & SHARE) */}
+            <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
+              {selectedReport && (
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  {/* 1. DOWNLOAD BUTTON */}
+                  <DownloadPdfButton
+                    title={`Cargo Document - ${getVesselName(selectedReport)}`}
+                    filename={`CargoDoc_${
+                      selectedReport.portName
+                    }_${getVoyageNo(selectedReport)}`}
+                    buttonLabel="Download Report"
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage No": getVoyageNo(selectedReport),
+                      "Port Name": selectedReport.portName,
+                      "Port Type":
+                        (selectedReport.portType?.replace("_", " ") || "-") +
+                        " Port",
+                      "Document Type":
+                        selectedReport.documentType?.replace(/_/g, " ") || "-",
+                      "Document Date": formatDateOnly(
+                        selectedReport.documentDate
+                      ),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      Remarks: selectedReport.remarks || "No Remarks",
+                    }}
+                  />
 
-      {/* 2. SHARE BUTTON */}
-      <SharePdfButton
-        title={`Cargo Document - ${getVesselName(selectedReport)}`}
-        filename={`CargoDoc_${selectedReport.portName}_${getVoyageNo(selectedReport)}`}
-        data={{
-          "Report Status": selectedReport.status?.toUpperCase() || "ACTIVE",
-          "Vessel Name": getVesselName(selectedReport),
-          "Voyage No": getVoyageNo(selectedReport),
-          "Port Name": selectedReport.portName,
-          "Port Type": (selectedReport.portType?.replace("_", " ") || "-") + " Port",
-          "Document Type": selectedReport.documentType?.replace(/_/g, " ") || "-",
-          "Document Date": formatDateOnly(selectedReport.documentDate),
-          "Report Date": formatDate(selectedReport.reportDate),
-          "Remarks": selectedReport.remarks || "No Remarks",
-        }}
-      />
-    </div>
-  )}
-</div>
+                  {/* 2. SHARE BUTTON */}
+                  <SharePdfButton
+                    title={`Cargo Document - ${getVesselName(selectedReport)}`}
+                    filename={`CargoDoc_${
+                      selectedReport.portName
+                    }_${getVoyageNo(selectedReport)}`}
+                    data={{
+                      "Report Status":
+                        selectedReport.status?.toUpperCase() || "ACTIVE",
+                      "Vessel Name": getVesselName(selectedReport),
+                      "Voyage No": getVoyageNo(selectedReport),
+                      "Port Name": selectedReport.portName,
+                      "Port Type":
+                        (selectedReport.portType?.replace("_", " ") || "-") +
+                        " Port",
+                      "Document Type":
+                        selectedReport.documentType?.replace(/_/g, " ") || "-",
+                      "Document Date": formatDateOnly(
+                        selectedReport.documentDate
+                      ),
+                      "Report Date": formatDate(selectedReport.reportDate),
+                      Remarks: selectedReport.remarks || "No Remarks",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </ViewModal>
@@ -871,18 +992,20 @@ const hasLoadedFilters = useRef(false);
                   <Label>Vessel Name</Label>
                   <SearchableSelect
                     options={vesselList.map((v: any) => ({
-    value: v.name,
-    label: v.name,
-  }))}
+                      value: v.name,
+                      label: v.name,
+                    }))}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
-                      const selected = vesselList.find((v: any) => v.name === val);
+                      const selected = vesselList.find(
+                        (v: any) => v.name === val
+                      );
                       setEditData({
                         ...editData,
                         vesselName: val,
                         vesselId: selected?._id || "",
-                        voyageNo: "" // 🔥 reset voyage when vessel changes
+                        voyageNo: "", // 🔥 reset voyage when vessel changes
                       });
                     }}
                   />
@@ -895,16 +1018,14 @@ const hasLoadedFilters = useRef(false);
                       !editData.vesselId
                         ? "Select Vessel first"
                         : voyageList.length === 0
-                          ? "No active voyages found"
-                          : "Search Voyage"
+                        ? "No active voyages found"
+                        : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>
                       setEditData({ ...editData, voyageNo: val })
                     }
-
                   />
-
                 </div>
                 <div>
                   <Label>Port Name</Label>
@@ -1015,7 +1136,7 @@ const hasLoadedFilters = useRef(false);
                     {newFile ? "New File Selected" : "Current File"}
                   </Label>
 
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
                     {/* 🖼 THUMBNAIL */}
                     <div className="w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
                       {isPdfPreview ? (
@@ -1062,8 +1183,8 @@ const hasLoadedFilters = useRef(false);
                           {isPdfPreview
                             ? "PDF Document"
                             : isExcelPreview
-                              ? "Excel File"
-                              : "Image File"}
+                            ? "Excel File"
+                            : "Image File"}
                         </p>
                       </div>
 

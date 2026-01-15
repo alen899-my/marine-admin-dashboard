@@ -1,17 +1,16 @@
-
-import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
-import Document from "@/models/Document"; 
+import Company from "@/models/Company";
+import Document from "@/models/Document";
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
-import { authorizeRequest } from "@/lib/authorizeRequest";
-import Voyage from "@/models/Voyage";
+import { mkdir, writeFile } from "fs/promises";
 import mongoose from "mongoose";
-import Vessel from "@/models/Vessel";
-import Company from "@/models/Company";
+import { NextResponse } from "next/server";
+import path from "path";
 const sendResponse = (
   status: number,
   message: string,
@@ -22,7 +21,7 @@ const sendResponse = (
     {
       success,
       message,
-      
+
       ...data, // Spreads pagination, data, companies, etc.
       metadata: {
         timestamp: new Date().toISOString(),
@@ -178,7 +177,12 @@ export async function GET(req: Request) {
   try {
     const authz = await authorizeRequest("cargo.view");
     if (!authz.ok) {
-        return sendResponse(403, "Forbidden: Insufficient permissions", null, false);
+      return sendResponse(
+        403,
+        "Forbidden: Insufficient permissions",
+        null,
+        false
+      );
     }
 
     await dbConnect();
@@ -215,9 +219,16 @@ export async function GET(req: Request) {
     // =========================================================
     if (!isSuperAdmin) {
       if (!userCompanyId) {
-        return sendResponse(403, "Access denied: No company assigned.", null, false);
+        return sendResponse(
+          403,
+          "Access denied: No company assigned.",
+          null,
+          false
+        );
       }
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+      }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
       query.vesselId = { $in: companyVesselIds };
 
@@ -227,13 +238,15 @@ export async function GET(req: Request) {
         } else {
           return sendResponse(200, "No records found for selected vessel", {
             data: [],
-            pagination: { total: 0, page, limit, totalPages: 0 }
+            pagination: { total: 0, page, limit, totalPages: 0 },
           });
         }
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVessels = await Vessel.find({ company: companyId }).select(
+          "_id"
+        );
         const targetVesselIds = targetVessels.map((v) => v._id);
         if (selectedVessel) {
           if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
@@ -241,7 +254,7 @@ export async function GET(req: Request) {
           } else {
             return sendResponse(200, "No records found for selected vessel", {
               data: [],
-              pagination: { total: 0, page, limit, totalPages: 0 }
+              pagination: { total: 0, page, limit, totalPages: 0 },
             });
           }
         } else {
@@ -262,15 +275,15 @@ export async function GET(req: Request) {
     if (selectedVoyage) query.voyageId = selectedVoyage;
 
     // Helper for date parsing (assuming defined in your scope)
-  if (startDate || endDate) {
+    if (startDate || endDate) {
       const dateQuery: any = {};
-      
+
       // Use your parseDateString helper instead of native new Date()
       if (startDate) {
         const start = parseDateString(startDate);
         if (start) dateQuery.$gte = start;
       }
-      
+
       if (endDate) {
         const end = parseDateString(endDate);
         if (end) {
@@ -279,17 +292,23 @@ export async function GET(req: Request) {
           dateQuery.$lte = end;
         }
       }
-      
+
       // Apply to the correct database field
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
     }
 
-   
     const promises: any[] = [
       Document.find(query)
-        .populate("vesselId", "name")
+        .populate({
+          path: "vesselId",
+          select: "name company",
+          populate: {
+            path: "company",
+            select: "name",
+          },
+        })
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
@@ -302,18 +321,29 @@ export async function GET(req: Request) {
 
     if (fetchAll) {
       const companyFilter: any = isSuperAdmin ? {} : { _id: userCompanyId };
-      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+      promises.push(
+        Company.find(companyFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean()
+      );
 
       const vesselFilter: any = { status: "active" };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
-      else if (companyId && companyId !== "all") vesselFilter.company = companyId;
-      promises.push(Vessel.find(vesselFilter).select("_id name company status").sort({ name: 1 }).lean());
+      else if (companyId && companyId !== "all")
+        vesselFilter.company = companyId;
+      promises.push(
+        Vessel.find(vesselFilter)
+          .select("_id name company status")
+          .sort({ name: 1 })
+          .lean()
+      );
     }
 
     const results = await Promise.all(promises);
     const data = results[0];
     const total = results[1];
-    
+
     let companies = [];
     let vessels = [];
     let voyages: any[] = [];
@@ -327,8 +357,8 @@ export async function GET(req: Request) {
         vesselId: { $in: vIds },
         status: "active",
       })
-      .select("vesselId voyageNo schedule.startDate")
-      .lean();
+        .select("vesselId voyageNo schedule.startDate")
+        .lean();
 
       const voyageMap = new Map();
       activeVoyages.forEach((voy: any) => {
@@ -337,13 +367,13 @@ export async function GET(req: Request) {
 
       vessels = rawVessels.map((v: any) => ({
         ...v,
-        activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+        activeVoyageNo: voyageMap.get(v._id.toString()) || "",
       }));
 
-      voyages = activeVoyages.map(voy => ({
+      voyages = activeVoyages.map((voy) => ({
         _id: voy._id,
         vesselId: voy.vesselId,
-        voyageNo: voy.voyageNo
+        voyageNo: voy.voyageNo,
       }));
     }
 
@@ -360,9 +390,13 @@ export async function GET(req: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-
   } catch (error: any) {
     console.error("GET CARGO ERROR →", error);
-    return sendResponse(500, error.message || "Internal Server Error", null, false);
+    return sendResponse(
+      500,
+      error.message || "Internal Server Error",
+      null,
+      false
+    );
   }
 }

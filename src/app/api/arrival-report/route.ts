@@ -1,17 +1,16 @@
 import { dbConnect } from "@/lib/db";
 
-import mongoose from "mongoose";
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import mongoose from "mongoose";
+import { NextRequest, NextResponse } from "next/server";
 
 import { arrivalReportSchema } from "@/lib/validations/arrivalReportSchema";
-import User from "@/models/User"; 
+import ReportDaily from "@/models/ReportDaily";
+import ReportOperational from "@/models/ReportOperational";
+import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
-import ReportOperational from "@/models/ReportOperational";
-import ReportDaily from "@/models/ReportDaily";
 /* ======================================================
    HELPER: Parse dd/mm/yyyy safely
 ====================================================== */
@@ -81,7 +80,9 @@ export async function GET(req: NextRequest) {
       }
 
       // Step A: Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+      }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
 
       // Step B: Restrict the query to only these vessels
@@ -104,7 +105,9 @@ export async function GET(req: NextRequest) {
       // 🟢 NEW: Logic for Super Admin with Company Filter
       if (companyId && companyId !== "all") {
         // Find all vessels belonging to the selected company
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVessels = await Vessel.find({ company: companyId }).select(
+          "_id"
+        );
         const targetVesselIds = targetVessels.map((v) => v._id);
 
         if (vesselIdParam) {
@@ -156,7 +159,14 @@ export async function GET(req: NextRequest) {
 
     const arrivals = await ReportOperational.find(query)
       .populate("voyageId", "voyageNo _id")
-      .populate("vesselId", "name")
+      .populate({
+        path: "vesselId",
+        select: "name company",
+        populate: {
+          path: "company",
+          select: "name",
+        },
+      })
       .populate("createdBy", "fullName")
       .populate("updatedBy", "fullName")
       .sort({ createdAt: -1 })
@@ -177,9 +187,9 @@ export async function GET(req: NextRequest) {
     ====================================================== */
 
     const voyageIds = arrivals
-      .map(r => r.voyageId?._id)
+      .map((r) => r.voyageId?._id)
       .filter(Boolean)
-      .map(id => id.toString());
+      .map((id) => id.toString());
 
     // Fetch ALL departures at once
     const departures = await ReportOperational.find({
@@ -189,7 +199,7 @@ export async function GET(req: NextRequest) {
     }).lean();
 
     const departureMap = new Map(
-      departures.map(d => [d.voyageId.toString(), d])
+      departures.map((d) => [d.voyageId.toString(), d])
     );
 
     // Fetch ALL noon reports at once
@@ -206,7 +216,7 @@ export async function GET(req: NextRequest) {
     }
 
     /* ------------------ MERGE METRICS ------------------ */
-    const reportsWithMetrics = arrivals.map(report => {
+    const reportsWithMetrics = arrivals.map((report) => {
       const vId = report.voyageId?._id?.toString();
       if (!vId) return { ...report, metrics: null };
 
@@ -215,14 +225,16 @@ export async function GET(req: NextRequest) {
 
       // 1. Define times FIRST
       const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-      const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+      const depTime = new Date(
+        departure.eventTime || departure.reportDate
+      ).getTime();
 
       // 2. Now you can use them in the filter
-      const noonList = (noonMap.get(vId) || []).filter(n => {
+      const noonList = (noonMap.get(vId) || []).filter((n) => {
         const noonTime = new Date(n.reportDate).getTime();
         // Buffer the start/end by 1 hour to catch reports exactly on the edge
-        const buffer = 3600000; 
-        return noonTime >= (depTime - buffer) && noonTime <= (arrTime + buffer);
+        const buffer = 3600000;
+        return noonTime >= depTime - buffer && noonTime <= arrTime + buffer;
       });
 
       const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
@@ -233,7 +245,8 @@ export async function GET(req: NextRequest) {
 
       const fuel = (t: "Vlsfo" | "Lsmgo") => {
         const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
-        const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
+        const bunk =
+          Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
         const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
         return dep + bunk - arr;
       };
