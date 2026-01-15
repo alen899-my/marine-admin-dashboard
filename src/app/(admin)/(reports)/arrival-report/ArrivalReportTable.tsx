@@ -18,7 +18,7 @@ import DownloadPdfButton from "@/components/common/DownloadPdfButton";
 import SharePdfButton from "@/components/common/SharePdfButton";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect,useRef, useState,useMemo } from "react";
 import { toast } from "react-toastify";
 // --- Types ---
 interface ArrivalStats {
@@ -81,6 +81,7 @@ interface ArrivalReportTableProps {
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
+  onFilterDataLoad?: (filterData: { vessels: any[]; companies: any[]; voyages: any[] }) => void;
 }
 
 interface VoyageMetrics {
@@ -102,11 +103,11 @@ export default function ArrivalReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,
+  companyId,onFilterDataLoad
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const hasLoadedFilters = useRef(false);
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -282,48 +283,56 @@ export default function ArrivalReportTable({
   // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
 
   // Replace your existing fetchReports with this clean version
-  const fetchReports = useCallback(
+const fetchReports = useCallback(
     async (page = 1) => {
       try {
         setLoading(true);
+        const shouldFetchFilters = !hasLoadedFilters.current;
+
         const query = new URLSearchParams({
           page: page.toString(),
           limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId,
-          voyageId,
-          companyId,
+          search: search || "",
+          status: status || "all",
+          startDate: startDate || "",
+          endDate: endDate || "",
+          vesselId: vesselId || "",
+          voyageId: voyageId || "",
+          companyId: companyId || "all",
+          all: shouldFetchFilters ? "true" : "false",
         });
 
         const res = await fetch(`/api/arrival-report?${query.toString()}`);
         if (!res.ok) throw new Error();
 
         const result = await res.json();
-
-        // We no longer need the .map(async ...) loop here!
-        // The backend now sends the 'metrics' object inside each report.
         const rawReports = result.data || [];
 
         setReports(rawReports);
         if (onDataLoad) onDataLoad(rawReports);
 
-        // Update Total Count
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || 0);
+        // 🟢 Callback to parent ONLY when data is returned
+        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
+          hasLoadedFilters.current = true;
+          onFilterDataLoad({
+            vessels: result.vessels || [],
+            companies: result.companies || [],
+            voyages: result.voyages || [],
+          });
         }
 
+        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
         setTotalPages(result.pagination?.totalPages || 1);
-      } catch {
+      } catch (err) {
+        console.error(err);
         setReports([]);
         toast.error("Failed to load arrival reports");
       } finally {
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, onDataLoad, vesselId, voyageId, companyId, setTotalCount]
+   
+    [search, status, startDate, endDate, vesselId, voyageId, companyId, setTotalCount]
   );
 
   const [isMobile, setIsMobile] = useState(false);
@@ -335,19 +344,18 @@ useEffect(() => {
   return () => window.removeEventListener('resize', checkMobile);
 }, []);
 
- useEffect(() => {
-  if (!isReady) return;
-
-  // Logic: If any filter changes and we aren't on page 1, reset page first
-  const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
-  
-  if (currentPage !== 1 && filtersActive) {
-    setCurrentPage(1);
-    return; // Exit: the currentPage change will re-trigger this effect
-  }
-
-  fetchReports(currentPage);
-}, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
+useEffect(() => {
+    if (!isReady) return;
+    
+    // Page reset logic
+    const filtersActive = !!(search || status !== "all" || vesselId || voyageId || (companyId && companyId !== "all") || startDate || endDate);
+    if (currentPage !== 1 && filtersActive) {
+      setCurrentPage(1);
+      return; 
+    }
+    fetchReports(currentPage);
+   
+  }, [currentPage, refresh, fetchReports, isReady, search, status, vesselId, voyageId, companyId, startDate, endDate]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -408,59 +416,19 @@ useEffect(() => {
       );
     }
   }, [suggestedVoyageNo]);
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      // Stop if no vessel selected or not in edit mode
-      if (!editData?.vesselId) {
-        setVoyageList([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
-
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === editData.vesselId) ||
-              (v.vesselName && v.vesselName === editData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === editData.voyageId;
-
-            return isRelevant;
-          });
-
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
-    }
-
-    fetchAndFilterVoyages();
-  }, [
-    editData?.vesselId,
-    editData?.vesselName,
-    suggestedVoyageNo,
-    editData?.voyageId,
-  ]);
+  const memoizedVoyageList = useMemo(() => {
+  if (!editData?.vesselId) return [];
+  
+  const activeVoyage = vesselList.find(v => v._id === editData.vesselId)?.activeVoyageNo;
+  const options = [];
+  
+  if (activeVoyage) options.push({ value: activeVoyage, label: activeVoyage });
+  if (editData.voyageId && editData.voyageId !== activeVoyage) {
+    options.push({ value: editData.voyageId, label: editData.voyageId });
+  }
+  
+  return options;
+}, [editData?.vesselId, editData?.voyageId, vesselList]);
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -1037,11 +1005,11 @@ useEffect(() => {
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
                   <SearchableSelect
-                    options={voyageList}
+                   options={memoizedVoyageList}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
-                        : voyageList.length === 0
+                        : memoizedVoyageList.length === 0
                         ? "No active voyages found"
                         : "Search Voyage"
                     }

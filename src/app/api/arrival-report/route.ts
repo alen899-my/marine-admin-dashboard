@@ -12,9 +12,30 @@ import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import ReportOperational from "@/models/ReportOperational";
 import ReportDaily from "@/models/ReportDaily";
-/* ======================================================
-   HELPER: Parse dd/mm/yyyy safely
-====================================================== */
+import Company from "@/models/Company";
+
+
+const sendResponse = (
+  status: number,
+  message: string,
+  data: any = null,
+  success: boolean = true
+) => {
+  return NextResponse.json(
+    {
+      success,
+      message,
+      ...data,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: "1.0.0",
+        path: "/api/reports/arrival",
+      },
+    },
+    { status }
+  );
+};
+
 function parseDateString(dateStr?: string | null): Date | undefined {
   if (!dateStr) return;
 
@@ -28,9 +49,6 @@ function parseDateString(dateStr?: string | null): Date | undefined {
   return isNaN(fallback.getTime()) ? undefined : fallback;
 }
 
-/* ======================================================
-   GET ALL ARRIVAL REPORTS (FAST, NO N+1)
-====================================================== */
 export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("arrival.view");
@@ -40,20 +58,20 @@ export async function GET(req: NextRequest) {
     // 🔒 1. Session & Multi-Tenancy Setup
     const session = await auth();
     if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return sendResponse(401, "Unauthorized", null, false);
     }
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
-    const _ensureModels = [Vessel, Voyage, User, ReportDaily];
-
-    // Force model registration (Next.js dev safety)
-    void Voyage;
-    void Vessel;
+    // Ensure models are registered for populate
+    const _ensureModels = [Vessel, Voyage, User, ReportDaily, Company, ReportOperational];
 
     const { searchParams } = new URL(req.url);
+    // 🟢 ROMAN I: Fetch Flag Addition
+    const fetchAll = searchParams.get("all") === "true"; 
+    
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const skip = (page - 1) * limit;
@@ -63,73 +81,43 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const vesselIdParam = searchParams.get("vesselId");
-    const voyageId = searchParams.get("voyageId");
-    const companyId = searchParams.get("companyId"); // ✅ Added to extract companyId
+    const voyageIdParam = searchParams.get("voyageId");
+    const companyIdParam = searchParams.get("companyId");
 
-    /* ------------------ BUILD QUERY ------------------ */
     const query: any = { eventType: "arrival" };
 
     // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
+    // 🔒 2. MULTI-TENANCY FILTERING LOGIC (Same as original)
     // =========================================================
     if (!isSuperAdmin) {
-      if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
-        );
-      }
-
-      // Step A: Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-
-      // Step B: Restrict the query to only these vessels
+      if (!userCompanyId) return sendResponse(403, "Access denied: No company assigned", null, false);
+      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
+      const companyVesselIds = companyVessels.map((v) => v._id.toString());
       query.vesselId = { $in: companyVesselIds };
 
-      // Step C: If a specific vesselId was requested, ensure it belongs to the user's company
       if (vesselIdParam) {
-        if (companyVesselIds.some((id) => id.toString() === vesselIdParam)) {
+        if (companyVesselIds.includes(vesselIdParam)) {
           query.vesselId = vesselIdParam;
         } else {
-          // Accessing unauthorized vessel
-          return NextResponse.json({
-            data: [],
-            pagination: { page, limit, total: 0, totalPages: 0 },
-          });
+          return sendResponse(200, "Success", { data: [], pagination: { total: 0, page, totalPages: 0 } });
         }
       }
     } else {
-      // Super Admin: Use the vesselId param directly if provided
-      // 🟢 NEW: Logic for Super Admin with Company Filter
-      if (companyId && companyId !== "all") {
-        // Find all vessels belonging to the selected company
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
-        const targetVesselIds = targetVessels.map((v) => v._id);
-
+      if (companyIdParam && companyIdParam !== "all") {
+        const targetVessels = await Vessel.find({ company: companyIdParam }).select("_id").lean();
+        const targetVesselIds = targetVessels.map((v) => v._id.toString());
         if (vesselIdParam) {
-          // If a specific vessel is also selected, ensure it belongs to that company
-          if (targetVesselIds.some((id) => id.toString() === vesselIdParam)) {
-            query.vesselId = vesselIdParam;
-          } else {
-            // Mismatch between selected company and selected vessel
-            return NextResponse.json({
-              data: [],
-              pagination: { page, limit, total: 0, totalPages: 0 },
-            });
-          }
+          query.vesselId = targetVesselIds.includes(vesselIdParam) ? vesselIdParam : { $in: [] };
         } else {
-          // Filter reports by all vessels in that company
           query.vesselId = { $in: targetVesselIds };
         }
       } else if (vesselIdParam) {
         query.vesselId = vesselIdParam;
       }
     }
-    // =========================================================
 
     if (status !== "all") query.status = status;
-    if (voyageId) query.voyageId = voyageId;
+    if (voyageIdParam) query.voyageId = voyageIdParam;
 
     if (search) {
       query.$or = [
@@ -144,133 +132,140 @@ export async function GET(req: NextRequest) {
       const s = parseDateString(startDate);
       const e = parseDateString(endDate);
       if (s) dateQuery.$gte = s;
-      if (e) {
-        e.setHours(23, 59, 59, 999);
-        dateQuery.$lte = e;
-      }
+      if (e) { e.setHours(23, 59, 59, 999); dateQuery.$lte = e; }
       if (Object.keys(dateQuery).length) query.reportDate = dateQuery;
     }
 
-    /* ------------------ MAIN ARRIVAL QUERY ------------------ */
-    const total = await ReportOperational.countDocuments(query);
+    // =========================================================
+    // 🚀 3. ROMAN II: PARALLEL EXECUTION (Main Data + Dropdowns)
+    // =========================================================
+    const promises: Promise<any>[] = [
+      ReportOperational.countDocuments(query),
+      ReportOperational.find(query)
+        .populate("voyageId", "voyageNo _id")
+        .populate("vesselId", "name")
+        .populate("createdBy", "fullName")
+        .populate("updatedBy", "fullName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+    ];
 
-    const arrivals = await ReportOperational.find(query)
-      .populate("voyageId", "voyageNo _id")
-      .populate("vesselId", "name")
-      .populate("createdBy", "fullName")
-      .populate("updatedBy", "fullName")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    if (fetchAll) {
+      // Fetch Companies
+      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
 
-    /* ------------------ NO DATA QUICK EXIT ------------------ */
-    if (!arrivals.length) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total, totalPages: 0 },
-      });
+      // Fetch Vessels
+      const vesselFilter: any = { status: "active" };
+      if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+      else if (companyIdParam && companyIdParam !== "all") vesselFilter.company = companyIdParam;
+      promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
     }
 
-    /* ======================================================
-        BULK METRICS CALCULATION (ONLY 2 EXTRA QUERIES)
-    ====================================================== */
+    // 🟢 ROMAN III: Strict Type Casting for results
+    const results = await Promise.all(promises) as [number, any[], any[]?, any[]?];
+    const total = results[0];
+    const arrivals = results[1];
+    
+    let companies: any[] = [];
+    let vessels: any[] = [];
+    let voyages: any[] = [];
+    let reportsWithMetrics: any[] = [];
 
-    const voyageIds = arrivals
-      .map(r => r.voyageId?._id)
-      .filter(Boolean)
-      .map(id => id.toString());
+    // =========================================================
+    // 📊 4. BULK METRICS CALCULATION (Your Original Logic)
+    // =========================================================
+    if (arrivals.length > 0) {
+        const voyageIds = arrivals.map((r: any) => r.voyageId?._id).filter(Boolean);
 
-    // Fetch ALL departures at once
-    const departures = await ReportOperational.find({
-      voyageId: { $in: voyageIds },
-      eventType: "departure",
-      status: "active",
-    }).lean();
+        const [departures, noonReports] = await Promise.all([
+            ReportOperational.find({ voyageId: { $in: voyageIds }, eventType: "departure", status: "active" }).lean(),
+            ReportDaily.find({ voyageId: { $in: voyageIds }, status: "active" }).lean()
+        ]);
 
-    const departureMap = new Map(
-      departures.map(d => [d.voyageId.toString(), d])
-    );
+        const departureMap = new Map(departures.map((d: any) => [d.voyageId.toString(), d]));
+        const noonMap = new Map<string, any[]>();
+        noonReports.forEach((n: any) => {
+            const id = n.voyageId.toString();
+            if (!noonMap.has(id)) noonMap.set(id, []);
+            noonMap.get(id)!.push(n);
+        });
 
-    // Fetch ALL noon reports at once
-    const noonReports = await ReportDaily.find({
-      voyageId: { $in: voyageIds },
-      status: "active",
-    }).lean();
+        reportsWithMetrics = arrivals.map((report: any) => {
+            const vId = report.voyageId?._id?.toString();
+            if (!vId) return { ...report, metrics: null };
 
-    const noonMap = new Map<string, any[]>();
-    for (const n of noonReports) {
-      const id = n.voyageId.toString();
-      if (!noonMap.has(id)) noonMap.set(id, []);
-      noonMap.get(id)!.push(n);
+            const departure = departureMap.get(vId);
+            if (!departure) return { ...report, metrics: null };
+
+            const arrTime = new Date(report.eventTime || report.reportDate).getTime();
+            const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+
+            const noonList = (noonMap.get(vId) || []).filter((n: any) => {
+                const noonTime = new Date(n.reportDate).getTime();
+                return noonTime >= (depTime - 3600000) && noonTime <= (arrTime + 3600000);
+            });
+
+            const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
+            // 🟢 Fix Reduce Types
+            const totalDistance = noonList.reduce((sum: number, n: any) => sum + (Number(n.navigation?.distLast24h) || 0), 0);
+
+            const fuel = (t: string) => {
+                const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
+                const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
+                const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
+                return dep + bunk - arr;
+            };
+
+            return {
+                ...report,
+                metrics: {
+                    totalTimeHours: +totalTimeHours.toFixed(2),
+                    totalDistance: +totalDistance.toFixed(2),
+                    avgSpeed: totalTimeHours > 0 ? +(totalDistance / totalTimeHours).toFixed(2) : 0,
+                    consumedVlsfo: +fuel("Vlsfo").toFixed(2),
+                    consumedLsmgo: +fuel("Lsmgo").toFixed(2),
+                },
+            };
+        });
     }
 
-    /* ------------------ MERGE METRICS ------------------ */
-    const reportsWithMetrics = arrivals.map(report => {
-      const vId = report.voyageId?._id?.toString();
-      if (!vId) return { ...report, metrics: null };
+    // =========================================================
+    // 🌟 5. ROMAN IV: Dropdown Data Processing (Vessel Join)
+    // =========================================================
+    if (fetchAll) {
+      companies = results[2] || [];
+      const rawVessels = results[3] || [];
+      const vIds = rawVessels.map((v: any) => v._id);
 
-      const departure = departureMap.get(vId);
-      if (!departure) return { ...report, metrics: null };
+      const activeVoyages = await Voyage.find({ vesselId: { $in: vIds }, status: "active" })
+        .select("vesselId voyageNo").lean();
 
-      // 1. Define times FIRST
-      const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-      const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+      const voyMap = new Map(activeVoyages.map((v: any) => [v.vesselId.toString(), v.voyageNo]));
+      
+      vessels = rawVessels.map((v: any) => ({
+        ...v,
+        activeVoyageNo: voyMap.get(v._id.toString()) || "", 
+      }));
 
-      // 2. Now you can use them in the filter
-      const noonList = (noonMap.get(vId) || []).filter(n => {
-        const noonTime = new Date(n.reportDate).getTime();
-        // Buffer the start/end by 1 hour to catch reports exactly on the edge
-        const buffer = 3600000; 
-        return noonTime >= (depTime - buffer) && noonTime <= (arrTime + buffer);
-      });
+      voyages = activeVoyages; 
+    }
 
-      const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
-      const totalDistance = noonList.reduce(
-        (sum, n) => sum + (Number(n.navigation?.distLast24h) || 0),
-        0
-      );
-
-      const fuel = (t: "Vlsfo" | "Lsmgo") => {
-        const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
-        const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
-        const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
-        return dep + bunk - arr;
-      };
-
-      return {
-        ...report,
-        metrics: {
-          totalTimeHours: +totalTimeHours.toFixed(2),
-          totalDistance: +totalDistance.toFixed(2),
-          avgSpeed:
-            totalTimeHours > 0
-              ? +(totalDistance / totalTimeHours).toFixed(2)
-              : 0,
-          consumedVlsfo: +fuel("Vlsfo").toFixed(2),
-          consumedLsmgo: +fuel("Lsmgo").toFixed(2),
-        },
-      };
+    return sendResponse(200, "Arrival reports retrieved successfully", {
+      data: reportsWithMetrics.length > 0 ? reportsWithMetrics : arrivals,
+      companies,
+      vessels,
+      voyages,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
 
-    return NextResponse.json({
-      data: reportsWithMetrics,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error("GET ARRIVAL REPORT ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch arrival reports" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error("GET ARRIVAL ERROR →", error);
+    return sendResponse(500, "Internal Server Error", { error: error.message }, false);
   }
 }
-
 /* ======================================
    CREATE ARRIVAL REPORT
 ====================================== */
