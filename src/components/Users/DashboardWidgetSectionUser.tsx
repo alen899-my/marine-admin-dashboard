@@ -24,6 +24,7 @@ interface DashboardWidgetSectionUserProps {
   excludedPermissions: string[];
   onToggle: (slug: string) => void;
   isReadOnly: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export default function DashboardWidgetSectionUser({ 
@@ -32,7 +33,7 @@ export default function DashboardWidgetSectionUser({
   additionalPermissions, 
   excludedPermissions, 
   onToggle,
-  isReadOnly
+  isReadOnly,isSuperAdmin = false
 }: DashboardWidgetSectionUserProps) {
 
   // 🟢 Filter Logic: Identify any permission that is NOT a CRUD operation
@@ -64,24 +65,29 @@ export default function DashboardWidgetSectionUser({
           const isExcluded = excludedPermissions.includes(perm.slug);
 
           let isChecked = false;
-          let variant: CheckboxVariant = "default";
-          let statusLabel = "Click to Add";
-          
-          if (isExcluded) {
-            isChecked = true;
-            variant = "danger"; 
-            statusLabel = "Manually Excluded";
-          } 
-          else if (isInherited) {
-            isChecked = true;
-            variant = "default"; 
-            statusLabel = "Inherited from Role";
-          } 
-          else if (isAdditional) {
-            isChecked = true;
-            variant = "success"; 
-            statusLabel = "Manually Added";
-          }
+let variant: CheckboxVariant = "default";
+let statusLabel = "";
+
+if (isSuperAdmin && !isExcluded) {
+  isChecked = true;
+  variant = "default";
+  statusLabel = "Super Admin (implicit)";
+}
+else if (isExcluded) {
+  isChecked = true;
+  variant = "danger";
+  statusLabel = "Manually Excluded";
+}
+else if (isInherited) {
+  isChecked = true;
+  variant = "default";
+  statusLabel = "Inherited from Role";
+}
+else if (isAdditional) {
+  isChecked = true;
+  variant = "success";
+  statusLabel = "Manually Added";
+}
 
           return (
             /* ✅ Wrapped with Tooltip - Children nested inside */

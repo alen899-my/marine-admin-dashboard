@@ -466,6 +466,7 @@ export default function UserTable({
                   excludedPermissions={selectedUser.excludedPermissions || []}
                   onToggle={() => {}} // Read-only
                   isReadOnly={true}
+                  isSuperAdmin={isSelectedUserSuperAdmin} 
                 />
               </div>
             </RoleComponentCard>

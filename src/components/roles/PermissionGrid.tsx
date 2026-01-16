@@ -124,7 +124,8 @@ const filteredPermissions = useMemo(() => {
                   );
                 }
 
-               const isAssigned = isReadOnly ? true : selectedPermissions.includes(perm.slug);
+              const isAssigned = selectedPermissions.includes(perm.slug);
+
 const variant: CheckboxVariant = "default";
 
  return (

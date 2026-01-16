@@ -306,6 +306,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
           {/* Dashboard Widgets */}
           <div className=" opacity-80  border-gray-200 dark:border-white/10 ">
             <DashboardWidgetSection 
+              isSuperAdmin={selectedRole.name.toLowerCase() === "super-admin"}
             allPermissions={allPermissions}
               selectedPermissions={selectedRole.permissions}
               onToggle={() => {}} 
@@ -379,6 +380,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
                 </div>
                  <DashboardWidgetSection 
                  isReadOnly={isEditingSuperAdmin}
+                  isSuperAdmin={isEditingSuperAdmin} 
                  allPermissions={allPermissions}
                   selectedPermissions={editData.permissions}
                   onToggle={(slug, checked) => {

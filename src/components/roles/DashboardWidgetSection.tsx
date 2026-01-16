@@ -20,12 +20,13 @@ interface GeneralPermissionsSectionProps {
   selectedPermissions: string[];
   onToggle: (slug: string, checked: boolean) => void;
   isReadOnly?: boolean;
+   isSuperAdmin?: boolean; // ✅ NEW
 }
 
 export default function GeneralPermissionsSection({ 
   allPermissions = [], 
   selectedPermissions, 
-  onToggle ,isReadOnly = false
+  onToggle ,isReadOnly = false,isSuperAdmin = false
 }: GeneralPermissionsSectionProps) {
 
   // 🟢 Change: Filter out CRUD slugs (.create, .view, .edit, .delete)
@@ -50,7 +51,8 @@ return (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {generalPermissions.map((perm) => {
-          const isChecked = isReadOnly ? true : selectedPermissions.includes(perm.slug);
+         const isChecked =
+  isSuperAdmin || selectedPermissions.includes(perm.slug);
           return (
             /* ✅ Wrapped with Tooltip */
             <Tooltip
