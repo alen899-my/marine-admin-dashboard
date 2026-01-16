@@ -94,19 +94,19 @@ export async function GET(req: Request) {
     const companyId = searchParams.get("companyId");
 
     const query: Record<string, any> = { eventType: "nor" };
-    //history repors logic
-     if (!canSeeHistory) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      //history reports logics 
+    if (!canSeeHistory) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
 
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+  const now = new Date();
 
-      query.createdAt = {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      };
-    }
+  
+  query.reportDate = {
+    $gte: startOfDay,
+    $lte: now, 
+  };
+}
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC

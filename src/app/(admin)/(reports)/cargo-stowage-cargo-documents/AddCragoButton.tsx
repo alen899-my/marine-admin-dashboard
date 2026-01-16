@@ -215,7 +215,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
     setErrors({});
     setIsSubmitting(false);
     setFormData({
-      vesselName: "AN16", // ✅ CHANGE: Reset to AN16
+      vesselName: "", 
       voyageNo: "",
       vesselId: "",
       portName: "",

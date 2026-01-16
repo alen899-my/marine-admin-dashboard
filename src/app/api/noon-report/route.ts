@@ -92,19 +92,19 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const query: Record<string, any> = {};
-     //history repors logic
-     if (!canSeeHistory) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      //history reports logics 
+    if (!canSeeHistory) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
 
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+  const now = new Date();
 
-      query.createdAt = {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      };
-    }
+  
+  query.reportDate = {
+    $gte: startOfDay,
+    $lte: now, 
+  };
+}
 
     // 1. Multi-Tenancy Logic
     const selectedVessel = searchParams.get("vesselId");
