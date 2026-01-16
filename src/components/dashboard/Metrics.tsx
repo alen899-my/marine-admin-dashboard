@@ -3,15 +3,9 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  CalendarCheck,
   Ship,
-  Anchor,
   FileText,
-  Package,
   FileStack,
-  ShipWheel,
-  Navigation,
-  Users,
   Building2,
   Boxes,
   Flag,
@@ -36,14 +30,13 @@ interface IMetrics {
   companyCount: number;
 }
 
-// ✅ Updated to accept selectedCompanyId prop
 export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) => {
   const [metrics, setMetrics] = useState<IMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { can, isReady } = useAuthorization();
 
-  // ✅ Helper logic to determine if the user can see ANY card in the sections
+  // ✅ Determines if the section header and grid container should be visible
   const hasFleetAccess = isReady && (
     can("stats.vessels") || 
     can("stats.voyages") || 
@@ -64,8 +57,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
     async function loadMetrics() {
       try {
         setLoading(true);
-        
-        // ✅ Construct URL with companyId if it exists
         const url = selectedCompanyId 
           ? `/api/dashboard/metrics?companyId=${selectedCompanyId}`
           : "/api/dashboard/metrics";
@@ -79,12 +70,9 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
         setLoading(false);
       }
     }
-    
-    // ✅ Re-fetch when selectedCompanyId changes
     loadMetrics();
   }, [selectedCompanyId]);
 
-  // ✅ Updated Skeleton Logic: Headers are now conditional based on access
   if (loading || !isReady) {
     return (
       <div className="space-y-8 w-full">
@@ -116,7 +104,7 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
   return (
     <div className="space-y-8 w-full max-w-full">
       
-      {/* --- Section 1: Fleet & Management (Conditional Header & Grid) --- */}
+      {/* --- Section 1: Fleet & Management --- */}
       {hasFleetAccess && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Fleet & Management</h3>
@@ -161,12 +149,11 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
         </div>
       )}
 
-      {/* --- Section 2: Operational Reports (Conditional Header & Grid) --- */}
+      {/* --- Section 2: Operational Reports --- */}
       {hasOpsAccess && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">Operational Reports</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-            {/* 1. Daily Noon Stat Check */}
             {can("stats.noon") && (
               <MetricCard
                 icon={<FileText size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -176,8 +163,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
                 path="/daily-noon-report"
               />
             )}
-
-            {/* 2. Departure Stat Check */}
             {can("stats.departure") && (
               <MetricCard
                 icon={<SquareArrowUpLeft size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -187,8 +172,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
                 path="/departure-report"
               />
             )}
-
-            {/* 3. Arrival Stat Check */}
             {can("stats.arrival") && (
               <MetricCard
                 icon={<SquareArrowDownRight size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -198,8 +181,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
                 path="/arrival-report"
               />
             )}
-
-            {/* 4. NOR Stat Check */}
             {can("stats.nor") && (
               <MetricCard
                 icon={<Flag size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -209,8 +190,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
                 path="/nor"
               />
             )}
-
-            {/* 5. Cargo Stowage Stat Check */}
             {can("stats.cargo_stowage") && (
               <MetricCard
                 icon={<Boxes size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -220,8 +199,6 @@ export const Metrics = ({ selectedCompanyId }: { selectedCompanyId?: string }) =
                 path="/cargo-stowage-cargo-documents"
               />
             )}
-
-            {/* 6. Cargo Documents Stat Check */}
             {can("stats.cargo_docs") && (
               <MetricCard
                 icon={<FileStack size={24} className="text-teal-600 dark:text-teal-400" />}
@@ -263,13 +240,9 @@ const MetricCard = ({ icon, iconBg, title, value, path }: any) => {
 
 const SkeletonCard = () => (
   <div className="min-w-0 w-full rounded-2xl border border-gray-200 p-5 dark:border-gray-800 animate-pulse bg-white dark:bg-white/[0.03]">
-    {/* Icon Placeholder */}
     <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-    
     <div className="mt-5 space-y-3">
-      {/* Title Placeholder */}
       <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
-      {/* Value Placeholder */}
       <div className="h-7 w-1/3 bg-gray-300 dark:bg-gray-600 rounded"></div>
     </div>
   </div>

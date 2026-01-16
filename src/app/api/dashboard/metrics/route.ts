@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    // ✅ Identify if the user is Op-Staff
+    const isOpStaff = user.role?.toLowerCase() === "op-staff";
     const userCompanyId = user.company?.id;
+    const userId = user.id;
 
     // ✅ Get companyId from URL for Super Admin filtering
     const { searchParams } = new URL(req.url);
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest) {
     // 🔒 MULTI-TENANCY & FILTERING LOGIC
     // =========================================================
     if (!isSuperAdmin) {
-      // 🔵 FOR COMPANY ADMINS: Strictly force their own company
+      // 🔵 FOR COMPANY ADMINS & STAFF: Strictly force their own company
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
@@ -47,10 +50,23 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const companyVessels = await Vessel.find({ company: userCompanyId, status: "active" }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-      filter.vesselId = { $in: companyVesselIds };
+      // ✅ NEW LOGIC: Separate Report Filter from Global Company Filter
+      // We use 'reportFilter' for the actual document counts (Noon, Arrival, etc.)
+      const reportFilter: any = { status: "active" };
+
+      if (isOpStaff) {
+        // 🟠 FOR OP-STAFF: Only show reports THEY created
+        reportFilter.createdBy = userId;
+      } else {
+        // 🔵 FOR COMPANY ADMINS: Show all company vessel reports
+        const companyVessels = await Vessel.find({ company: userCompanyId, status: "active" }).select("_id");
+        const companyVesselIds = companyVessels.map((v) => v._id);
+        reportFilter.vesselId = { $in: companyVesselIds };
+      }
+      
       companyFilter.company = userCompanyId;
+      // Update the main filter used in Promise.all for reports
+      Object.assign(filter, reportFilter);
 
     } else if (selectedCompanyId && selectedCompanyId !== "all") {
       // 🟢 FOR SUPER ADMINS: Only filter if a specific company is selected
@@ -59,8 +75,6 @@ export async function GET(req: NextRequest) {
       filter.vesselId = { $in: companyVesselIds };
       companyFilter.company = selectedCompanyId;
     }
-    // If Super Admin and no companyId is provided, 'filter' remains empty ({status: "active"}), 
-    // showing global stats for all companies.
     // =========================================================
 
     // 3. Fire all queries simultaneously using Promise.all with the filtered query
@@ -105,7 +119,8 @@ export async function GET(req: NextRequest) {
       // 8) Total Voyages (Filtered by status: active)
       Voyage.countDocuments({
         status: "active",
-        ...(filter.vesselId ? { vesselId: filter.vesselId } : {})
+        ...(filter.vesselId ? { vesselId: filter.vesselId } : {}),
+        ...(isOpStaff ? { createdBy: userId } : {}) // ✅ Staff only see their voyages
       }),
 
       // 9) Total Users (Filtered by status: active)
@@ -125,7 +140,7 @@ export async function GET(req: NextRequest) {
       })
     ]);
 
-    // ✅ FIXED: Mapping names to match the Frontend IMetrics interface
+    // ✅ Mapping names to match the Frontend IMetrics interface
     return NextResponse.json({
       dailyNoon,
       departure,
