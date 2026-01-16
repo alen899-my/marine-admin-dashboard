@@ -24,6 +24,7 @@ interface DashboardWidgetSectionUserProps {
   excludedPermissions: string[];
   onToggle: (slug: string) => void;
   isReadOnly: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export default function DashboardWidgetSectionUser({ 
@@ -32,7 +33,7 @@ export default function DashboardWidgetSectionUser({
   additionalPermissions, 
   excludedPermissions, 
   onToggle,
-  isReadOnly
+  isReadOnly,isSuperAdmin = false
 }: DashboardWidgetSectionUserProps) {
 
   // 🟢 Filter Logic: Identify any permission that is NOT a CRUD operation
@@ -57,31 +58,36 @@ export default function DashboardWidgetSectionUser({
         General Permissions
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {generalPermissions.map((perm) => {
           const isInherited = rolePermissions.includes(perm.slug);
           const isAdditional = additionalPermissions.includes(perm.slug);
           const isExcluded = excludedPermissions.includes(perm.slug);
 
           let isChecked = false;
-          let variant: CheckboxVariant = "default";
-          let statusLabel = "Click to Add";
-          
-          if (isExcluded) {
-            isChecked = true;
-            variant = "danger"; 
-            statusLabel = "Manually Excluded";
-          } 
-          else if (isInherited) {
-            isChecked = true;
-            variant = "default"; 
-            statusLabel = "Inherited from Role";
-          } 
-          else if (isAdditional) {
-            isChecked = true;
-            variant = "success"; 
-            statusLabel = "Manually Added";
-          }
+let variant: CheckboxVariant = "default";
+let statusLabel = "";
+
+if (isSuperAdmin && !isExcluded) {
+  isChecked = true;
+  variant = "default";
+  statusLabel = "Super Admin (implicit)";
+}
+else if (isExcluded) {
+  isChecked = true;
+  variant = "danger";
+  statusLabel = "Manually Excluded";
+}
+else if (isInherited) {
+  isChecked = true;
+  variant = "default";
+  statusLabel = "Inherited from Role";
+}
+else if (isAdditional) {
+  isChecked = true;
+  variant = "success";
+  statusLabel = "Manually Added";
+}
 
           return (
             /* ✅ Wrapped with Tooltip - Children nested inside */
@@ -100,8 +106,8 @@ export default function DashboardWidgetSectionUser({
               <div 
                 onClick={() => !isReadOnly && onToggle(perm.slug)}
                 className={`
-                  flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800
-                  hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none
+                  flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700
+                  hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none h-full w-full
                   ${isReadOnly ? 'opacity-80 cursor-default pointer-events-none' : ''}
                 `}
               >
@@ -113,7 +119,7 @@ export default function DashboardWidgetSectionUser({
                   />
                 </div>
 
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                     {perm.name}
                   </span>
