@@ -144,7 +144,7 @@ const selectOptions = useMemo(() =>
     {
       header: "Description",
       render: (p: Permission) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400  leading-relaxed max-w-[250px] inline-block">
+        <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed max-w-[250px] truncate block">
           {p.description}
         </span>
       ),
