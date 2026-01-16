@@ -88,7 +88,7 @@ const [voyages, setVoyages] = useState<any[]>([]);
             exportMap={excelMapping}
            />
           {/* ✅ Check permission for creating cargo documents */}
-          {canCreate && <AddCargoButton onSuccess={handleRefresh} vesselList={vessels}/>}
+          {canCreate && <AddCargoButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={voyages}/>}
         </div>
       </div>
       <ComponentCard

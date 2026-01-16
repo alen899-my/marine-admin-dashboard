@@ -12,7 +12,7 @@ import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { cargoSchema } from "@/lib/validations/cargoValidation";
-import { useEffect, useState } from "react"; // Added useEffect
+import { useEffect, useState,useMemo } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
@@ -20,11 +20,12 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+  allVoyages: any[];
   
 }
 
 export default function AddCargoButton({
-  onSuccess,vesselList
+  onSuccess,vesselList,allVoyages
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,59 +71,26 @@ const { suggestedVoyageNo } = useVoyageLogic(
       }
     }
   }, [suggestedVoyageNo]);
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      // Stop if no vessel selected
-      if (!formData.vesselId) {
-        setVoyageList([]);
-        return;
-      }
+ const filteredVoyageOptions = useMemo(() => {
+    if (!formData.vesselId) return [];
 
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${formData.vesselId}`);
+    const options = allVoyages
+      .filter((v: any) => v.vesselId?.toString() === formData.vesselId?.toString())
+      .map((v: any) => ({
+        value: v.voyageNo,
+        label: v.voyageNo,
+      }));
 
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === formData.vesselId) ||
-              (v.vesselName && v.vesselName === formData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === formData.voyageNo;
-
-            return isRelevant;
-          });
-
-          setVoyageList(
-            filtered.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
+    // Fallback for auto-suggestion
+    if (suggestedVoyageNo && !options.some(opt => opt.value === suggestedVoyageNo)) {
+      options.unshift({
+        value: suggestedVoyageNo,
+        label: suggestedVoyageNo,
+      });
     }
 
-    fetchAndFilterVoyages();
-  }, [
-    formData.vesselId,
-    formData.vesselName,
-    suggestedVoyageNo,
-    formData.voyageNo,
-  ]);
+    return options;
+  }, [formData.vesselId, allVoyages, suggestedVoyageNo]);
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -440,11 +408,11 @@ const { suggestedVoyageNo } = useVoyageLogic(
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-            options={voyageList}
+          options={filteredVoyageOptions}
             placeholder={
               !formData.vesselId
                 ? "Select Vessel first"
-                : voyageList.length === 0
+                : filteredVoyageOptions.length === 0
                 ? "No active voyages found"
                 : "Search Voyage"
             }

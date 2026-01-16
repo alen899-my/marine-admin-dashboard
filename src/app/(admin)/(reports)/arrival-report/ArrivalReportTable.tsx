@@ -141,6 +141,7 @@ export default function ArrivalReportTable({
   const { can, isReady } = useAuthorization();
   const canEdit = can("arrival.edit");
   const canDelete = can("arrival.delete");
+    const canSeeHistory = can("reports.history.view");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   const getVoyageDisplay = (r: ArrivalReport | null) => {

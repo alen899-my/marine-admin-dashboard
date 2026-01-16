@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const skip = (page - 1) * limit;
+    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
 
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
@@ -85,6 +86,18 @@ export async function GET(req: NextRequest) {
     const companyIdParam = searchParams.get("companyId");
 
     const query: any = { eventType: "arrival" };
+    if (!canSeeHistory) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.createdAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
 
     // =========================================================
     // 🔒 2. MULTI-TENANCY FILTERING LOGIC (Same as original)

@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
-
+    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     // ✅ Ensure all models are registered for population
     const _ensureModels = [Vessel, Voyage, User, Company, ReportOperational];
 
@@ -89,6 +89,20 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const query: Record<string, any> = { eventType: "departure" };
+
+     //history repors logic
+     if (!canSeeHistory) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.createdAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
 
     // =========================================================
     // 🔒 3. MULTI-TENANCY FILTERING LOGIC

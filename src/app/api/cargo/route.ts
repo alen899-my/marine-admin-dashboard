@@ -199,7 +199,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const fetchAll = searchParams.get("all") === "true";
-
+    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
@@ -213,6 +213,20 @@ export async function GET(req: Request) {
     const companyId = searchParams.get("companyId");
 
     const query: any = {};
+
+    //history reports logics 
+    if (!canSeeHistory) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.createdAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
