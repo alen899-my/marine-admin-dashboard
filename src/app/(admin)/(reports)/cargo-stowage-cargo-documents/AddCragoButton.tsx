@@ -20,12 +20,13 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+   className?: string;
   allVoyages: any[];
   
 }
 
 export default function AddCargoButton({
-  onSuccess,vesselList,allVoyages
+  onSuccess,vesselList,allVoyages,className
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -322,7 +323,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md"  className={className} variant="primary" onClick={openModal}>
         Add Cargo Doc
       </Button>
 

@@ -18,6 +18,7 @@ import { toast } from "react-toastify";
 interface AddPermissionButtonProps {
   onSuccess: () => void;
   resourceOptions: { id: string; name: string }[];
+   className?: string;
 }
 
 interface PermissionEntry {
@@ -27,7 +28,7 @@ interface PermissionEntry {
   status: string;
 }
 
-export default function AddPermissionButton({ onSuccess,resourceOptions }: AddPermissionButtonProps) {
+export default function AddPermissionButton({ onSuccess,resourceOptions ,className}: AddPermissionButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({}); // Error state
@@ -147,7 +148,11 @@ export default function AddPermissionButton({ onSuccess,resourceOptions }: AddPe
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal} className="flex gap-2">
+      <Button size="md" 
+  variant="primary" 
+  onClick={openModal} 
+  // Combine both class sets here
+  className={`flex gap-2 ${className || ""}`}>
         Create Permissions
       </Button>
 

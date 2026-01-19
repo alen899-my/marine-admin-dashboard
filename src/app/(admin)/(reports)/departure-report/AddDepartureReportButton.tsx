@@ -19,6 +19,7 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+    className?: string;
   allVoyages: any[];
 }
 
@@ -28,7 +29,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDepartureReportButton({
-  onSuccess,vesselList,allVoyages
+  onSuccess,vesselList,allVoyages,className
 }: AddDepartureReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -260,7 +261,7 @@ useEffect(() => {
   return (
     <>
       {/* OPEN MODAL BUTTON */}
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md" variant="primary"   className={className}  onClick={openModal}>
         Add Departure Report
       </Button>
 

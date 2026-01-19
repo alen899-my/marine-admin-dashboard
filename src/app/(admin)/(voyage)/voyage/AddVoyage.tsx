@@ -17,9 +17,10 @@ import SearchableSelect from "@/components/form/SearchableSelect";
 interface AddVoyageProps {
   onSuccess: () => void;
   vesselList: { _id: string; name: string }[];
+   className?: string;
 }
 
-export default function AddVoyage({ onSuccess ,vesselList}: AddVoyageProps) {
+export default function AddVoyage({ onSuccess ,vesselList,className}: AddVoyageProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -165,7 +166,7 @@ export default function AddVoyage({ onSuccess ,vesselList}: AddVoyageProps) {
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md" variant="primary"  className={className}  onClick={openModal}>
         Create Voyage
       </Button>
 

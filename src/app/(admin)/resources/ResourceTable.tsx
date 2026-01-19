@@ -64,7 +64,7 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
     {
       header: "Resource Name",
       render: (r: Resource) => (
-        <span className="text-sm font-medium text-gray-900 dark:text-white ">
+        <span className="text-sm font-medium capitalize text-gray-900 dark:text-white ">
           {r.name}
         </span>
       ),

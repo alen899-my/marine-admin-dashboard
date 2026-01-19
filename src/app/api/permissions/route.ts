@@ -9,20 +9,39 @@ export async function GET(req: NextRequest) {
     const authz = await authorizeRequest("permission.view");
     if (!authz.ok) return authz.response;
     await dbConnect();
-    const _ensureModels = [Resource];
+
+    // 🟢 1. Get IDs of resources that are both Active and NOT Deleted
+    const activeResources = await Resource.find({ 
+      isDeleted: { $ne: true }, 
+      status: "active" 
+    }).select("_id");
+    
+    const activeResourceIds = activeResources.map(r => r._id);
+
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode"); 
     const fetchAll = searchParams.get("all") === "true";
 
-    const query = fetchAll ? {} : { status: "active" };
+    // 🟢 2. Filter Permissions by these valid Resource IDs
+    const query: any = { 
+      resourceId: { $in: activeResourceIds } 
+    };
 
-    // 🟢 CHANGE: Added .populate() to get the Resource name
+    // If not fetching all, also respect the permission's own status
+    if (!fetchAll) {
+      query.status = "active";
+    }
+
     const permissions = await Permission.find(query)
-      .populate("resourceId", "name") // Fetch only 'name' from the Resource model
-      .sort({ slug: 1 }).lean();
+      .populate("resourceId", "name")
+      .sort({ slug: 1 })
+      .lean();
+
+    // 🟢 3. Double-check for null resourceId (Safety layer)
+    const validPermissions = permissions.filter(p => p.resourceId !== null);
 
     if (mode === "grouped") {
-      const grouped = permissions.reduce((acc: any, curr: any) => {
+      const grouped = validPermissions.reduce((acc: any, curr: any) => {
         // Use the populated name if available, else group name, else General
         const key = curr.resourceId?.name || curr.group || "General";
         if (!acc[key]) acc[key] = [];
@@ -32,7 +51,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(grouped);
     }
 
-    return NextResponse.json(permissions);
+    return NextResponse.json(validPermissions);
   } catch (error) {
     console.error("GET PERMISSIONS ERROR:", error);
     return NextResponse.json({ error: "Failed to fetch permissions" }, { status: 500 });

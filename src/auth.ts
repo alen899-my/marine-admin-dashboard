@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import Role from "@/models/Role";
 import User from "@/models/User";
-import Company from "@/models/Company"; // Ensure this matches your model path
+import Company from "@/models/Company"; 
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";

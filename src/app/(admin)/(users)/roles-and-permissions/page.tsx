@@ -47,18 +47,28 @@ export default function RoleManagement() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Roles & Permissions
+          Roles 
         </h2>
 
-        <div className="flex items-center gap-3">
-          {/* Shared Filter Toggle */}
-          <FilterToggleButton
-            isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible}
-          />
-          {/* ✅ Check permission for creating roles */}
-          {canCreate && <AddRoleButton onSuccess={handleRefresh} />}
-        </div>
+<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: First (Left) | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible}
+    />
+  </div>
+
+  {/* Desktop: Second (Right) | Mobile: Top */}
+  {canCreate && (
+    <div className="w-full sm:w-auto">
+      <AddRoleButton 
+        onSuccess={handleRefresh} 
+        className="w-full justify-center"
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard

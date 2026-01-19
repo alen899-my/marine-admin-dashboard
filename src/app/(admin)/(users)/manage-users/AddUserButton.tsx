@@ -7,8 +7,11 @@ import { useState } from "react";
 
 export default function AddUserButton({
   onSuccess,
+  className,
+  
 }: {
   onSuccess: () => void;
+  className?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { can, isReady } = useAuthorization();
@@ -20,7 +23,7 @@ export default function AddUserButton({
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={() => setIsOpen(true)}>
+      <Button size="md" className={className} variant="primary" onClick={() => setIsOpen(true)}>
         Add User
       </Button>
 

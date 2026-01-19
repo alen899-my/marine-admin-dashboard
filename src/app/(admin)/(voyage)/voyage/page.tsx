@@ -82,15 +82,26 @@ export default function VoyageManagement() {
           Voyage Management
         </h2>
 
-        <div className="flex items-center gap-3">
-          {/* Shared Filter Toggle */}
-          <FilterToggleButton
-            isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible} 
-          />
-          {/* ✅ Check permission for adding */}
-          {canAdd && <AddVoyage onSuccess={handleRefresh}  vesselList={vessels}/>}
-        </div>
+   <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: First (Left) | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible} 
+    />
+  </div>
+
+  {/* Desktop: Second (Right) | Mobile: Top */}
+  {canAdd && (
+    <div className="w-full sm:w-auto">
+      <AddVoyage 
+        onSuccess={handleRefresh} 
+        vesselList={vessels} 
+        className="w-full justify-center"
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard

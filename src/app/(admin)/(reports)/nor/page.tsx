@@ -81,22 +81,37 @@ const [vessels, setVessels] = useState<any[]>([]);
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           NOR (Notice of Readiness)
         </h2>
+<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: First (Left) | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible}
+    />
+  </div>
 
-        <div className="flex items-center gap-3">
-          {/* Shared Filter Toggle */}
-          <FilterToggleButton
-            isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible}
-          />
-          {/* Reusable Export Button */}
-          <ExportToExcel
-            data={reportsData}
-            fileName="NOR_Reports"
-            exportMap={excelMapping}
-          />
-          {/* ✅ Check permission for creating NOR */}
-         {canCreate && <AddNORButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={voyages} />}
-        </div>
+  {/* Desktop: Middle | Mobile: Middle */}
+  <div className="w-full sm:w-auto">
+    <ExportToExcel
+      data={reportsData}
+      fileName="NOR_Reports"
+      exportMap={excelMapping}
+      className="w-full justify-center"
+    />
+  </div>
+
+  {/* Desktop: Last (Right) | Mobile: Top */}
+  {canCreate && (
+    <div className="w-full sm:w-auto">
+      <AddNORButton 
+        onSuccess={handleRefresh} 
+        vesselList={vessels} 
+        allVoyages={voyages} 
+        className="w-full justify-center"
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard

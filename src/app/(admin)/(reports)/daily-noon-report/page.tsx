@@ -81,19 +81,37 @@ export default function DailyNoonReport() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Daily Noon Report
         </h2>
-        <div className="flex items-center gap-3">
-          <FilterToggleButton
-            isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible}
-          />
-          <ExportToExcel
-            data={reportsData}
-            fileName="Daily_Noon_Reports"
-            exportMap={excelMapping}
-          />
-          {/* ✅ Check permission for creating noon reports */}
-          {canCreate && <AddDailyNoonReportButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={allVoyages}/>}
-        </div>
+<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: Left | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible}
+    />
+  </div>
+
+  {/* Desktop: Middle | Mobile: Middle */}
+  <div className="w-full sm:w-auto">
+    <ExportToExcel
+      data={reportsData}
+      fileName="Daily_Noon_Reports"
+      exportMap={excelMapping}
+      className="w-full justify-center"
+    />
+  </div>
+
+  {/* Desktop: Right | Mobile: Top */}
+  {canCreate && (
+    <div className="w-full sm:w-auto">
+      <AddDailyNoonReportButton 
+        onSuccess={handleRefresh} 
+        vesselList={vessels} 
+        allVoyages={allVoyages}
+        className="w-full justify-center" 
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard

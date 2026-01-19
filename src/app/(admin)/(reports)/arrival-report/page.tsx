@@ -89,21 +89,38 @@ export default function ArrivalReport() {
           Arrival Report
         </h2>
 
-        <div className="flex items-center gap-3">
-          {/* Shared Filter Toggle */}
-          <FilterToggleButton
-            isVisible={isFilterVisible}
-            onToggle={setIsFilterVisible}
-          />
-          {/* Reusable Export Button */}
-          <ExportToExcel
-            data={reportsData}
-            fileName="Arrival_Reports"
-            exportMap={excelMapping}
-          />
-          {/* ✅ Check permission for creating arrival reports */}
-          {canCreate && <AddArrivalReportButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={allVoyages}/>}
-        </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+ 
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible}
+    
+    />
+  </div>
+
+ 
+  <div className="w-full sm:w-auto">
+    <ExportToExcel
+      data={reportsData}
+      fileName="Arrival_Reports"
+      exportMap={excelMapping}
+      className="w-full justify-center"
+    />
+  </div>
+
+ 
+  {canCreate && (
+    <div className="w-full sm:w-auto">
+      <AddArrivalReportButton 
+        onSuccess={handleRefresh} 
+        vesselList={vessels} 
+        allVoyages={allVoyages}
+        className="w-full justify-center" 
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard
