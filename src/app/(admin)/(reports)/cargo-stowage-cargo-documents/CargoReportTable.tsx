@@ -158,22 +158,23 @@ export default function CargoReportTable({
   const canEdit = can("cargo.edit");
   const canDelete = can("cargo.delete");
 
-  const getVesselName = (r: ICargoReport | null) => {
-    if (!r || !r.vesselId) return "-";
-    if (typeof r.vesselId === "object" && "name" in r.vesselId) {
-      return r.vesselId.name;
-    }
-    return "-";
-  };
+const getVesselName = (r: ICargoReport | null) => {
+  if (!r || !r.vesselId) return "-";
+  if (typeof r.vesselId === "object" && r.vesselId !== null && "name" in r.vesselId) {
+    return r.vesselId.name;
+  }
+  return "-";
+};
+
 
   // ✅ FIX: Handle null report and null voyageId safely
-  const getVoyageNo = (r: ICargoReport | null) => {
-    if (!r || !r.voyageId) return "-";
-    if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
-      return r.voyageId.voyageNo;
-    }
-    return "-";
-  };
+    const getVoyageNo = (r: ICargoReport | null) => {
+  if (!r || !r.voyageId) return "-";
+  if (typeof r.voyageId === "object" && r.voyageId !== null && "voyageNo" in r.voyageId) {
+    return r.voyageId.voyageNo;
+  }
+  return "-";
+};
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -211,11 +212,14 @@ export default function CargoReportTable({
   );
 
   const getCompanyName = (r: ICargoReport | null) => {
-    if (r && typeof r.vesselId === "object" && r.vesselId.company) {
-      return r.vesselId.company.name;
-    }
-    return "-";
-  };
+  // r.vesselId can be null if the record is orphaned or soft-deleted
+  if (r && r.vesselId && typeof r.vesselId === "object") {
+    // Using type assertion 'as any' or a specific interface check 
+    // to access nested populated fields safely
+    return (r.vesselId as any).company?.name || "-";
+  }
+  return "-";
+};
 
   // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
   useEffect(() => {

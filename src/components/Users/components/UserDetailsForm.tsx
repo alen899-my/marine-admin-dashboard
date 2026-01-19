@@ -142,6 +142,9 @@ export default function UserDetailsForm({
                 value={formData.phone}
                 onChange={onChange}
               />
+              {errors.phone && (
+          <span className="text-xs text-red-500 mt-1">{errors.phone}</span>
+        )}
             </div>
             <div>
               <Label>Company <span className="text-red-500">*</span></Label>
