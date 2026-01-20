@@ -10,7 +10,8 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-
+import Permission from "@/models/Permission"; 
+import Resource from "@/models/Resource";
 export async function POST(req: NextRequest) {
   try {
     // 1. Authorization
@@ -170,6 +171,8 @@ export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("users.view");
     if (!authz.ok) return authz.response;
+     const { searchParams } = new URL(req.url);
+    const fetchType = searchParams.get("type") || "users";
 
     await dbConnect();
 
@@ -180,11 +183,13 @@ export async function GET(req: NextRequest) {
     }
 
     const { user } = session;
+    const currentUserId = user.id;
     // Check if user is Super Admin (adjust string to match your DB exactly, e.g., 'super-admin')
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const isAdmin = user.role?.toLowerCase() === "admin";
     const userCompanyId = user.company?.id;
 
-    const { searchParams } = new URL(req.url);
+  
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
@@ -196,8 +201,80 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     const skip = (page - 1) * limit;
+    // 🔴 ---------------------------------------------------------
+    // 🔴 LOGIC FOR PERMISSIONS
+    // 🔴 ---------------------------------------------------------
+    if (fetchType === "permissions") {
+      const mode = searchParams.get("mode"); 
+      const fetchAll = searchParams.get("all") === "true";
+      const userPermissions = session.user.permissions || [];
+
+      // Get Active Resources
+      const activeResources = await Resource.find({ 
+        isDeleted: { $ne: true }, 
+        status: "active" 
+      }).select("_id");
+      const activeResourceIds = activeResources.map(r => r._id);
+
+      const permQuery: any = { resourceId: { $in: activeResourceIds } };
+      
+      if (!isSuperAdmin) {
+        permQuery.slug = { $in: userPermissions };
+      }
+      if (!fetchAll) {
+        permQuery.status = "active";
+      }
+
+      const permissions = await Permission.find(permQuery)
+        .populate("resourceId", "name")
+        .sort({ slug: 1 })
+        .lean();
+
+      const validPermissions = permissions.filter(p => p.resourceId !== null);
+
+      if (mode === "grouped") {
+        const grouped = validPermissions.reduce((acc: any, curr: any) => {
+          const key = curr.resourceId?.name || curr.group || "General";
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(curr);
+          return acc;
+        }, {});
+        return NextResponse.json(grouped);
+      }
+      return NextResponse.json(validPermissions);
+    }
+
+    // 🔴 ---------------------------------------------------------
+    // 🔴 LOGIC FOR ROLES (with filtration)
+    // 🔴 ---------------------------------------------------------
+    if (fetchType === "roles") {
+      const roleQuery: any = {};
+      
+      // Role Visibility Logic
+      if (isSuperAdmin) {
+        // No restrictions
+      } else if (isAdmin) {
+      roleQuery.name = { $ne: "super-admin" };
+      } else {
+        return NextResponse.json({ data: [], pagination: { total: 0, page, totalPages: 0, limit }});
+      }
+
+      if (search) roleQuery.name = { $regex: search, $options: "i" };
+      if (status !== "all") roleQuery.status = status;
+
+      const [roles, totalRoles] = await Promise.all([
+        Role.find(roleQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        Role.countDocuments(roleQuery),
+      ]);
+
+      return NextResponse.json({
+        data: roles,
+        pagination: { total: totalRoles, page, limit, totalPages: Math.ceil(totalRoles / limit) },
+      });
+    }
 
     const query: any = {};
+    query._id = { $ne: currentUserId };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -221,6 +298,14 @@ export async function GET(req: NextRequest) {
         );
       }
       query.company = userCompanyId;
+      if (isAdmin) {
+        // 1. Find the Super Admin Role object to get its ID
+        const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
+        if (superAdminRole) {
+          // 2. Filter users where role is NOT the Super Admin role ID
+          query.role = { $ne: superAdminRole._id };
+        }
+      }
     }
     // =========================================================
 

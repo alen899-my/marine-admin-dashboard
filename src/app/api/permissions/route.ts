@@ -8,6 +8,9 @@ export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("permission.view");
     if (!authz.ok) return authz.response;
+
+    const userRole = authz.session?.user?.role;
+    const userPermissions = authz.session?.user?.permissions || [];
     await dbConnect();
 
     // 🟢 1. Get IDs of resources that are both Active and NOT Deleted
@@ -27,7 +30,10 @@ export async function GET(req: NextRequest) {
       resourceId: { $in: activeResourceIds } 
     };
 
-    // If not fetching all, also respect the permission's own status
+if (userRole !== "super-admin") {
+      query.slug = { $in: userPermissions };
+    }
+
     if (!fetchAll) {
       query.status = "active";
     }
@@ -40,9 +46,9 @@ export async function GET(req: NextRequest) {
     // 🟢 3. Double-check for null resourceId (Safety layer)
     const validPermissions = permissions.filter(p => p.resourceId !== null);
 
+    // Grouping logic remains the same
     if (mode === "grouped") {
       const grouped = validPermissions.reduce((acc: any, curr: any) => {
-        // Use the populated name if available, else group name, else General
         const key = curr.resourceId?.name || curr.group || "General";
         if (!acc[key]) acc[key] = [];
         acc[key].push(curr);

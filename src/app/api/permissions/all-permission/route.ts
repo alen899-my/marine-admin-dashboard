@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
     // 1. Authorization Check
     const authz = await authorizeRequest("permission.view");
     if (!authz.ok) return authz.response;
+    const userRole = authz.session?.user?.role;
+    const userPermissions = authz.session?.user?.permissions || [];
 
     await dbConnect();
 
@@ -40,15 +42,15 @@ export async function GET(req: NextRequest) {
       resourceId: { $in: activeResourceIds }
     };
 
-    if (status && status !== "all") {
-      query.status = status.toLowerCase();
+   if (userRole !== "super-admin") {
+      query.slug = { $in: userPermissions };
     }
+
+    if (status && status !== "all") query.status = status.toLowerCase();
     
     if (resource && resource !== "all") {
       if (mongoose.Types.ObjectId.isValid(resource)) {
-        // Double-check requested resource is actually in our active list
-        const isValidRequested = activeResourceIds.some(id => id.toString() === resource);
-        query.resourceId = isValidRequested ? resource : { $in: [] }; 
+        query.resourceId = resource; 
       } else {
         query.group = resource;
       }
@@ -75,6 +77,13 @@ export async function GET(req: NextRequest) {
       // Accurate count based on the filtered query
       Permission.countDocuments(query)
     ]);
+    let finalResources = activeResources;
+    if (userRole !== "super-admin") {
+      const allowedResourceIds = permissions.map(p => p.resourceId?._id?.toString());
+      finalResources = activeResources.filter(r => 
+        allowedResourceIds.includes(r._id.toString())
+      );
+    }
 
     // 6. Construct response
     const response = NextResponse.json({

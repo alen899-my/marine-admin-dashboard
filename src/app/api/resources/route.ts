@@ -3,7 +3,7 @@ import { dbConnect } from "@/lib/db";
 import Resource from "@/models/Resource";
 import { resourceSchema } from "@/lib/validations/resourceSchema";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import Permission from "@/models/Permission";
 /* ======================================================
    GET: Fetch All Resources
 ====================================================== */
@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("resource.view");
     if (!authz.ok) return authz.response;
+    const userRole = authz.session?.user?.role;
+    const userPermissions = authz.session?.user?.permissions || [];
     
     await dbConnect();
 
@@ -23,13 +25,28 @@ export async function GET(req: NextRequest) {
 
  let query: any = { deletedAt: null };
 
-if (search.trim()) {
-  query.name = { $regex: search.trim(), $options: "i" };
-}
+if (userRole !== "super-admin") {
+      // Find all Permission documents that match the slugs in the user's session
+      const allowedPerms = await Permission.find({ 
+        slug: { $in: userPermissions } 
+      }).select("resourceId");
 
-if (status !== "all") {
-  query.status = status.toLowerCase();
-}
+      // Extract unique Resource IDs from those permissions
+      const allowedResourceIds = allowedPerms
+        .map(p => p.resourceId)
+        .filter(id => id != null);
+
+      // Add to query: Only show resources the user has permissions for
+      query._id = { $in: allowedResourceIds };
+    }
+
+    if (search.trim()) {
+      query.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    if (status !== "all") {
+      query.status = status.toLowerCase();
+    }
 
     // 💡 Logic for Dropdowns (No Pagination)
     if (isDropdown) {
