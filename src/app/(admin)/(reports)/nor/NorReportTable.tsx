@@ -23,6 +23,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
 } from "react";
 import { toast } from "react-toastify";
 // --- Interfaces ---
@@ -210,59 +211,32 @@ export default function NorReportTable({
     return "-";
   };
 
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      // Stop if no vessel selected
-      if (!editData?.vesselId) {
-        setVoyageList([]);
-        return;
-      }
+ const filteredVoyageOptionsForEdit = useMemo(() => {
+  if (!editData?.vesselId) return [];
 
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
+  // 1. Filter voyages from the master list provided via props (syncing with Cargo logic)
+  // We check both ID and Name to be safe, just like in your Cargo table
+  const vesselVoyages = voyageList.filter(
+    (v: any) => v.vesselId?.toString() === editData.vesselId?.toString() ||
+                v.vesselName === editData.vesselName
+  );
 
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-
-          // 🔒 STRICT FILTERING LOGIC
-          const filtered = allVoyages.filter((v: any) => {
-            // Rule 1: STRICTLY match the selected Vessel ID
-            const isCorrectVessel =
-              (v.vesselId && v.vesselId === editData.vesselId) ||
-              (v.vesselName && v.vesselName === editData.vesselName);
-
-            if (!isCorrectVessel) return false;
-
-            // Rule 2: Show if Active OR matches Auto-Suggestion OR matches Current Selection
-            const isRelevant =
-              v.status === "active" ||
-              v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === editData.voyageNo;
-
-            return isRelevant;
-          });
-
-          setVoyageList(
-            filtered.map((v: any) => ({
+  const options = vesselVoyages.map((v: any) => ({
               value: v.voyageNo,
               label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-        setVoyageList([]);
-      }
-    }
+  }));
 
-    fetchAndFilterVoyages();
-  }, [
-    editData?.vesselId,
-    editData?.vesselName,
-    suggestedVoyageNo,
-    editData?.voyageNo,
-  ]);
+  // 2. Add fallback for suggested or current voyage to prevent "undefined" display
+  const currentOrSuggested = suggestedVoyageNo || editData.voyageNo;
+  if (currentOrSuggested && !options.some(opt => opt.value === currentOrSuggested)) {
+    options.unshift({
+      value: currentOrSuggested,
+      label: currentOrSuggested,
+    });
+      }
+
+  return options;
+}, [editData?.vesselId, editData?.vesselName, editData?.voyageNo, voyageList, suggestedVoyageNo]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -965,11 +939,11 @@ export default function NorReportTable({
                 <div className="relative">
                   <Label>Voyage No</Label>
                   <SearchableSelect
-                    options={voyageList}
+               options={filteredVoyageOptionsForEdit}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
-                        : voyageList.length === 0
+                        : filteredVoyageOptionsForEdit.length === 0
                         ? "No active voyages found"
                         : "Search Voyage"
                     }

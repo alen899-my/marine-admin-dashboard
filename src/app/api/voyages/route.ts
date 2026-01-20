@@ -6,13 +6,10 @@ import { voyageSchema } from "@/lib/validations/voyageSchema";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 
-/* ======================================
-   GET: Fetch Voyages (for Table)
-====================================== */
+
 export async function GET(req: Request) {
   try {
-    const authz = await authorizeRequest("voyage.view");
-    if (!authz.ok) return authz.response;
+  
     await dbConnect();
 
     // 🔒 1. Session & Multi-Tenancy Setup
@@ -30,7 +27,7 @@ export async function GET(req: Request) {
     // 🟢 NEW: Check for vesselId (used by Dropdowns)
     const vesselId = searchParams.get("vesselId");
     const companyId = searchParams.get("companyId");
-
+    const isDropdownRequest = vesselId && !searchParams.get("page");
     // Existing params
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -40,6 +37,11 @@ export async function GET(req: Request) {
     const endDate = searchParams.get("endDate");
 
     const query: any = {};
+    if (!isDropdownRequest && !isSuperAdmin) {
+      if (!user.permissions?.includes("voyage.view")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC

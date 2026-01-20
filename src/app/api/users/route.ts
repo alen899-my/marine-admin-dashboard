@@ -172,6 +172,7 @@ export async function GET(req: NextRequest) {
     const authz = await authorizeRequest("users.view");
     if (!authz.ok) return authz.response;
      const { searchParams } = new URL(req.url);
+     
     const fetchType = searchParams.get("type") || "users";
 
     await dbConnect();
@@ -201,6 +202,30 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     const skip = (page - 1) * limit;
+    if (fetchType === "metadata") {
+      // Fetch Permissions
+      const activeResources = await Resource.find({ isDeleted: { $ne: true }, status: "active" }).select("_id");
+      const activeResourceIds = activeResources.map(r => r._id);
+      const permQuery: any = { resourceId: { $in: activeResourceIds }, status: "active" };
+      if (!isSuperAdmin) permQuery.slug = { $in: user.permissions || [] };
+
+      // Fetch Roles
+      const roleQuery: any = {};
+      if (!isSuperAdmin) {
+        if (isAdmin) roleQuery.name = { $ne: "super-admin" };
+        else return NextResponse.json({ roles: [], permissions: [] });
+      }
+
+      const [permissions, roles] = await Promise.all([
+        Permission.find(permQuery).populate("resourceId", "name").sort({ slug: 1 }).lean(),
+        Role.find(roleQuery).sort({ createdAt: -1 }).lean()
+      ]);
+
+      return NextResponse.json({
+        roles: roles,
+        permissions: permissions.filter(p => p.resourceId !== null)
+      });
+    }
     // 🔴 ---------------------------------------------------------
     // 🔴 LOGIC FOR PERMISSIONS
     // 🔴 ---------------------------------------------------------

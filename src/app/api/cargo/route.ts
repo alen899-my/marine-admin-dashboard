@@ -69,8 +69,8 @@ export async function POST(req: Request) {
     // Extract fields
     const vesselIdString = formData.get("vesselId") as string;
     const voyageNoString = formData.get("voyageNo") as string;
+    const vesselName = formData.get("vesselName") as string;
 
-    // We don't need vesselName string anymore
 
     const portName = formData.get("portName") as string;
     const portType = formData.get("portType") as string;
@@ -142,8 +142,10 @@ export async function POST(req: Request) {
     const newDoc = await Document.create({
       // ✅ Save Mapped IDs Only (No Strings)
       vesselId: new mongoose.Types.ObjectId(vesselIdString),
+      vesselName,
       voyageId: voyageObjectId,
       createdBy: currentUserId,
+      voyageNo: voyageNoString,
       updatedBy: currentUserId,
       portName,
       portType,
@@ -208,25 +210,14 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    let manualDateRange: any = null;
     const selectedVessel = searchParams.get("vesselId");
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
     const query: any = {};
 
-    //history reports logics 
-    if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
 
-  const now = new Date();
-
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
@@ -281,35 +272,37 @@ export async function GET(req: Request) {
     if (status !== "all") query.status = status;
     if (search) {
       query.$or = [
+    { vesselName: { $regex: search, $options: "i" } },
+    { voyageNo: { $regex: search, $options: "i" } },
         { portName: { $regex: search, $options: "i" } },
-        { "file.originalName": { $regex: search, $options: "i" } },
       ];
     }
     if (selectedVoyage) query.voyageId = selectedVoyage;
 
-    // Helper for date parsing (assuming defined in your scope)
     if (startDate || endDate) {
-      const dateQuery: any = {};
-
-      // Use your parseDateString helper instead of native new Date()
-      if (startDate) {
-        const start = parseDateString(startDate);
-        if (start) dateQuery.$gte = start;
+      manualDateRange = {};
+      const s = parseDateString(startDate);
+      const e = parseDateString(endDate);
+      if (s) manualDateRange.$gte = s;
+      if (e) {
+        e.setHours(23, 59, 59, 999);
+        manualDateRange.$lte = e;
       }
+    }
 
-      if (endDate) {
-        const end = parseDateString(endDate);
-        if (end) {
-          // Ensure the end of the day is included
-          end.setHours(23, 59, 59, 999);
-          dateQuery.$lte = end;
-        }
-      }
+    // 2. Security Check: Lock non-admin users to "Today"
+    if (!canSeeHistory) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
 
-      // Apply to the correct database field
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now, 
+      };
+    } else if (manualDateRange) {
+      // Allow the custom filter ONLY if they have history permissions
+      query.reportDate = manualDateRange;
     }
 
     const promises: any[] = [

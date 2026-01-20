@@ -89,24 +89,13 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    let manualDateRange: any = null;
     const selectedVessel = searchParams.get("vesselId");
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
     const query: Record<string, any> = { eventType: "nor" };
-      //history reports logics 
-    if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const now = new Date();
-
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
+ 
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -178,21 +167,30 @@ export async function GET(req: Request) {
     }
 
     if (startDate || endDate) {
-      const dateQuery: { $gte?: Date; $lte?: Date } = {};
-      if (startDate) {
-        const parsedStart = parseDateString(startDate);
-        if (parsedStart) dateQuery.$gte = parsedStart;
+      manualDateRange = {};
+      const s = parseDateString(startDate);
+      const e = parseDateString(endDate);
+      if (s) manualDateRange.$gte = s;
+      if (e) {
+        e.setHours(23, 59, 59, 999);
+        manualDateRange.$lte = e;
       }
-      if (endDate) {
-        const parsedEnd = parseDateString(endDate);
-        if (parsedEnd) {
-          parsedEnd.setHours(23, 59, 59, 999);
-          dateQuery.$lte = parsedEnd;
-        }
-      }
-      if (dateQuery.$gte || dateQuery.$lte) {
-        query.reportDate = dateQuery;
-      }
+    }
+
+    // 2. Apply History Restriction (Security) OR Manual Filters
+    if (!canSeeHistory) {
+      // Force "Today" for restricted users
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now,
+      };
+    } else if (manualDateRange) {
+      // Allow selected range for Admin/History users
+      query.reportDate = manualDateRange;
     }
 
     // =========================================================

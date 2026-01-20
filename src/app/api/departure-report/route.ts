@@ -91,18 +91,7 @@ export async function GET(req: NextRequest) {
     const query: Record<string, any> = { eventType: "departure" };
 
      //history reports logics 
-    if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const now = new Date();
-
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
+ 
 
     // =========================================================
     // 🔒 3. MULTI-TENANCY FILTERING LOGIC
@@ -175,16 +164,33 @@ export async function GET(req: NextRequest) {
 
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    let manualDateQuery: any = null;
+
     if (startDate || endDate) {
-      const dateQuery: any = {};
+      manualDateQuery = {};
       const startD = parseDateString(startDate);
       const endD = parseDateString(endDate);
-      if (startD) dateQuery.$gte = startD;
+      if (startD) manualDateQuery.$gte = startD;
       if (endD) {
         endD.setHours(23, 59, 59, 999);
-        dateQuery.$lte = endD;
+        manualDateQuery.$lte = endD;
       }
-      query.reportDate = dateQuery;
+    }
+
+    // 2. Apply History Restriction vs Manual Filters
+    if (!canSeeHistory) {
+      // User is RESTRICTED: Force them to only see today
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now,
+      };
+    } else if (manualDateQuery) {
+      // User is AUTHORIZED: Use the date range they picked in the UI
+      query.reportDate = manualDateQuery;
     }
 
     // =========================================================

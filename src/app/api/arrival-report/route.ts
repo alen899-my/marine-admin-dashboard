@@ -81,24 +81,13 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    let manualDateRange: any = null;
     const vesselIdParam = searchParams.get("vesselId");
     const voyageIdParam = searchParams.get("voyageId");
     const companyIdParam = searchParams.get("companyId");
 
     const query: any = { eventType: "arrival" };
-    //history reports logics 
-    if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const now = new Date();
-
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
+   
 
     // =========================================================
     // 🔒 2. MULTI-TENANCY FILTERING LOGIC (Same as original)
@@ -142,12 +131,30 @@ export async function GET(req: NextRequest) {
     }
 
     if (startDate || endDate) {
-      const dateQuery: any = {};
+      manualDateRange = {};
       const s = parseDateString(startDate);
       const e = parseDateString(endDate);
-      if (s) dateQuery.$gte = s;
-      if (e) { e.setHours(23, 59, 59, 999); dateQuery.$lte = e; }
-      if (Object.keys(dateQuery).length) query.reportDate = dateQuery;
+      if (s) manualDateRange.$gte = s;
+      if (e) { 
+        e.setHours(23, 59, 59, 999); 
+        manualDateRange.$lte = e; 
+      }
+    }
+
+    // 2. Apply History Restriction (Security) OR Manual Filters (Admin/History Viewers)
+    if (!canSeeHistory) {
+      // FORCED: Restricted users only see today
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now, 
+      };
+    } else if (manualDateRange) {
+      // ALLOWED: History-enabled users see their selected range
+      query.reportDate = manualDateRange;
     }
 
     // =========================================================

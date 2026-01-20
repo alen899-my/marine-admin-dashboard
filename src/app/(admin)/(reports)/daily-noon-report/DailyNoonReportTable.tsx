@@ -227,31 +227,34 @@ export default function DailyNoonReportTable({
       );
     }
   }, [suggestedVoyageNo]);
-  useEffect(() => {
-    async function fetchAndFilterVoyages() {
-      if (!editData?.vesselId) {
-        setVoyageList([]);
-        return;
+ // 1. First, define the memoized options (Add this before the return statement)
+const filteredVoyageOptionsForEdit = useMemo(() => {
+  // Use the ID from editData.vesselId (handling both object and string)
+  const vId = typeof editData?.vesselId === "object" ? editData?.vesselId._id : editData?.vesselId;
+  
+  if (!vId) return [];
+
+  // Filter voyages from the voyageList (which should be passed as a prop or state)
+  const vesselVoyages = voyageList.filter(
+    (v: any) => v.vesselId?.toString() === vId.toString()
+  );
+
+  const options = vesselVoyages.map((v: any) => ({
+    value: v.voyageNo,
+    label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
+  }));
+
+  // Add fallback for suggested or current voyage to prevent blank selections
+  const currentOrSuggested = suggestedVoyageNo || editData?.voyageNo;
+  if (currentOrSuggested && !options.some(opt => opt.value === currentOrSuggested)) {
+    options.unshift({
+      value: currentOrSuggested,
+      label: currentOrSuggested,
+    });
       }
-      try {
-        const res = await fetch(`/api/voyages?vesselId=${editData.vesselId}`);
-        if (res.ok) {
-          const result = await res.json();
-          const allVoyages = Array.isArray(result) ? result : result.data || [];
-          const filtered = allVoyages.filter(
-            (v: any) =>
-              v.status === "active" || v.voyageNo === editData.voyageNo
-          );
-          setVoyageList(
-            filtered.map((v: any) => ({ value: v.voyageNo, label: v.voyageNo }))
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load voyages", error);
-      }
-    }
-    fetchAndFilterVoyages();
-  }, [editData?.vesselId, editData?.voyageId]);
+
+  return options;
+}, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
   // Helper functions moved up to be available for render
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -1002,11 +1005,11 @@ export default function DailyNoonReportTable({
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
                   <SearchableSelect
-                    options={voyageList}
+                    options={filteredVoyageOptionsForEdit}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
-                        : voyageList.length === 0
+                        : filteredVoyageOptionsForEdit.length === 0
                         ? "No active voyages found"
                         : "Search Voyage"
                     }

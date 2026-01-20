@@ -3,8 +3,9 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IDocument extends Document {
   vesselId?: mongoose.Types.ObjectId;
   voyageId?: mongoose.Types.ObjectId;
-  
+  vesselName?: string;
   createdBy?: mongoose.Types.ObjectId;
+  voyageNo?: string;
   updatedBy?: mongoose.Types.ObjectId;
 
 
@@ -43,8 +44,8 @@ const DocumentSchema = new Schema<IDocument>(
           ref: "User",
         },
 
-    
-
+    vesselName: { type: String, index: true },
+    voyageNo: { type: String, index: true },    
     portName: { type: String, required: true },
 
     portType: {
