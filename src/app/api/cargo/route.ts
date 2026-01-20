@@ -215,8 +215,8 @@ export async function GET(req: Request) {
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
-    const query: any = {};
-
+    // ✅ Initialize query to only show non-deleted documents
+    const query: any = { deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -232,6 +232,7 @@ export async function GET(req: Request) {
       }
       const companyVessels = await Vessel.find({
         company: userCompanyId,
+        deletedAt: null, // ✅ Only look through active vessels
       }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
       query.vesselId = { $in: companyVesselIds };
@@ -248,9 +249,10 @@ export async function GET(req: Request) {
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select(
-          "_id"
-        );
+        const targetVessels = await Vessel.find({ 
+          company: companyId,
+          deletedAt: null // ✅ Filter soft-deleted vessels
+        }).select("_id");
         const targetVesselIds = targetVessels.map((v) => v._id);
         if (selectedVessel) {
           if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
@@ -270,41 +272,53 @@ export async function GET(req: Request) {
     }
 
     if (status !== "all") query.status = status;
-   if (search) {
+// 1. Basic Filters
+if (status !== "all") query.status = status;
+if (selectedVoyage) query.voyageId = selectedVoyage;
+
+// 2. Soft Delete Filter (Always applied)
+query.deletedAt = null;
+
+// 3. Merged Search Logic
+if (search) {
+  // We use $and to make sure the search is combined correctly with other filters
   query.$or = [
     { vesselName: { $regex: search, $options: "i" } },
     { voyageNo: { $regex: search, $options: "i" } },
     { portName: { $regex: search, $options: "i" } },
+    { "file.originalName": { $regex: search, $options: "i" } }
   ];
 }
-    if (selectedVoyage) query.voyageId = selectedVoyage;
 
-  if (startDate || endDate) {
-      manualDateRange = {};
-      const s = parseDateString(startDate);
-      const e = parseDateString(endDate);
-      if (s) manualDateRange.$gte = s;
-      if (e) {
-        e.setHours(23, 59, 59, 999);
-        manualDateRange.$lte = e;
-      }
-    }
+// 4. Merged Date & Security Logic
 
-    // 2. Security Check: Lock non-admin users to "Today"
-    if (!canSeeHistory) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const now = new Date();
 
-      query.reportDate = {
-        $gte: startOfDay,
-        $lte: now, 
-      };
-    } else if (manualDateRange) {
-      // Allow the custom filter ONLY if they have history permissions
-      query.reportDate = manualDateRange;
-    }
+if (startDate || endDate) {
+  manualDateRange = {};
+  const s = parseDateString(startDate);
+  const e = parseDateString(endDate);
+  
+  if (s) manualDateRange.$gte = s;
+  if (e) {
+    const end = new Date(e);
+    end.setHours(23, 59, 59, 999);
+    manualDateRange.$lte = end;
+  }
+}
 
+// Security Check: Restricted users only see today, Admins see manual range
+if (!canSeeHistory) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const now = new Date();
+
+  query.reportDate = {
+    $gte: startOfDay,
+    $lte: now, 
+  };
+} else if (manualDateRange) {
+  query.reportDate = manualDateRange;
+}
     const promises: any[] = [
       Document.find(query)
         .populate({
@@ -326,7 +340,7 @@ export async function GET(req: Request) {
     ];
 
     if (fetchAll) {
-      const companyFilter: any = isSuperAdmin ? {} : { _id: userCompanyId };
+      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
@@ -334,7 +348,7 @@ export async function GET(req: Request) {
           .lean()
       );
 
-      const vesselFilter: any = { status: "active" };
+      const vesselFilter: any = { status: "active", deletedAt: null }; // ✅ Exclude deleted vessels
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (companyId && companyId !== "all")
         vesselFilter.company = companyId;
@@ -362,6 +376,7 @@ export async function GET(req: Request) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vIds },
         status: "active",
+        deletedAt: null // ✅ Exclude soft-deleted voyages
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();

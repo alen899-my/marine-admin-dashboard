@@ -163,8 +163,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid voyage ID" }, { status: 400 });
     }
 
-    // 2. Perform Delete
-    const deletedVoyage = await Voyage.findByIdAndDelete(id);
+    // 2. Perform Soft Delete
+    // Instead of removing the document, we set the deletedAt timestamp 
+    // and change the status to "deleted" (ensure your Enum supports this if used).
+    const deletedVoyage = await Voyage.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deletedAt: new Date(),
+        }
+      },
+      { new: true }
+    );
 
     if (!deletedVoyage) {
       return NextResponse.json({ error: "Voyage not found" }, { status: 404 });

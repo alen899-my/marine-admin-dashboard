@@ -104,7 +104,7 @@ export default function UserTable({
       try {
         const [rolesRes, permsRes] = await Promise.all([
          fetch("/api/users?type=roles"),    
-  fetch("/api/users?type=permissions"), 
+         fetch("/api/users?type=permissions"), 
         ]);
 
         if (rolesRes.ok) {

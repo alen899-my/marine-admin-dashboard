@@ -35,13 +35,17 @@ interface VesselRef {
   _id: string;
   name: string;
   imo: string;
+  company?: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface Voyage {
   _id: string;
   vesselId: VesselRef; // Populated
   voyageNo: string;
-  status: "scheduled" | "active" | "completed";
+  status: "scheduled" | "active" | "completed" | "deleted";
 
   route: {
     loadPort: string;
@@ -208,6 +212,16 @@ export default function VoyageTable({
       ),
     },
     {
+    header: "Company",
+    render: (v: Voyage) => (
+      <div className="flex flex-col gap-1 min-w-[120px]">
+        <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px] text-sm">
+          {v.vesselId?.company?.name || "N/A"}
+        </span>
+      </div>
+    ),
+  },
+    {
       header: "Route",
       render: (v: Voyage) => (
         <div className="flex flex-col gap-0.5 text-xs min-w-[150px]">
@@ -277,29 +291,34 @@ export default function VoyageTable({
       ),
     },
     {
-      header: "Status",
-      render: (v: Voyage) => {
-        let color: "success" | "warning" | "default" | "light" = "default";
-        let label: string = v.status;
+  header: "Status",
+  render: (v: Voyage) => {
+    let color: "success" | "warning" | "default" | "error" | "light" = "default";
+    let label: string = v.status;
 
-        switch (v.status) {
-          case "active":
-            color = "success";
-            label = "Active";
-            break;
-          case "scheduled":
-            color = "warning";
-            label = "Scheduled";
-            break;
-          case "completed":
-            color = "default";
-            label = "Completed";
-            break;
-        }
+    switch (v.status) {
+      case "active":
+        color = "success";
+        label = "Active";
+        break;
+      case "scheduled":
+        color = "warning";
+        label = "Scheduled";
+        break;
+      case "completed":
+        color = "default";
+        label = "Completed";
+        break;
+      case "deleted":
+        // Logic for soft-deleted voyages
+        color = "error"; // Usually red/danger
+        label = "Deleted";
+        break;
+    }
 
-        return <Badge color={color}>{label}</Badge>;
-      },
-    },
+    return <Badge color={color}>{label}</Badge>;
+  },
+},
   ];
 
   /* ================= FETCH ================= */

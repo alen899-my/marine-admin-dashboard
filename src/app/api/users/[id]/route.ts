@@ -146,32 +146,48 @@ export async function PATCH(
     );
   }
 }
+
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 1. Authorization check
     const authz = await authorizeRequest("users.delete");
     if (!authz.ok) return authz.response;
 
     await dbConnect();
     const { id } = await context.params;
+    const now = new Date();
 
-    const deleted = await User.findByIdAndDelete(id);
+    // 2. Perform Soft Delete
+    // We update status to 'deleted' and record the timestamp
+    const deletedUser = await User.findByIdAndUpdate(
+      id,
+      { 
+        $set: { 
+          status: "inactive", 
+          deletedAt: now 
+        } 
+      },
+      { new: true }
+    );
 
-    if (deleted && deleted.company) {
-      await Company.findByIdAndUpdate(deleted.company, {
+    if (!deletedUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // 3. Remove User from Company's active user list
+    // Even though the user record still exists, we pull them from the 
+    // Company array so they don't block company deletion logic.
+    if (deletedUser.company) {
+      await Company.findByIdAndUpdate(deletedUser.company, {
         $pull: { users: id },
       });
     }
 
-    if (!deleted) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     return NextResponse.json({
       success: true,
-      message: "User deleted successfully",
     });
   } catch (error) {
     console.error("DELETE USER ERROR →", error);

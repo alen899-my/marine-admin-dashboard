@@ -51,7 +51,7 @@ interface Vessel {
   imo: string;
   company?: { _id: string; name: string } | any;
   fleet?: string;
-  status: "active" | "laid_up" | "sold" | "dry_dock";
+  status: "active" | "inactive" | "laid_up" | "sold" | "dry_dock";
   callSign?: string;
   mmsi?: string;
   flag?: string;
@@ -300,7 +300,7 @@ export default function VesselTable({
     {
       header: "Status",
       render: (v: Vessel) => {
-        let color: "success" | "warning" | "error" | "default" | "light" =
+        let color: "success" | "warning" | "error" | "default" | "info" | "purple" =
           "default";
         let label: string = v.status;
 
@@ -309,16 +309,20 @@ export default function VesselTable({
             color = "success";
             label = "Active";
             break;
+          case "inactive":
+            color = "error";
+            label = "Inactive";
+            break;
           case "laid_up":
             color = "warning";
             label = "Laid Up";
             break;
           case "sold":
-            color = "error";
+            color = "info";
             label = "Sold";
             break;
           case "dry_dock":
-            color = "light";
+            color = "purple";
             label = "Dry Dock";
             break;
           default:

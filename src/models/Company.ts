@@ -21,6 +21,7 @@ const CompanySchema = new Schema(
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     vessels: [{ type: Schema.Types.ObjectId, ref: "Vessel" }],
     users: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    deletedAt: { type: Date, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },

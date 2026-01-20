@@ -16,6 +16,8 @@ import {
   IdCard,Fingerprint,
   Component,
   Building2,
+  GaugeCircle,
+  Gauge,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -76,6 +78,12 @@ const navItems: NavItem[] = [
     path: "/cargo-stowage-cargo-documents",
     requiredPermission: "cargo.view",
   },
+  // {
+  //   icon: <Gauge size={25} />, // Or any icon like BarChart3 from lucide-react
+  //   name: "Voyage Analysis / Performance",
+  //   path: "/voyage-analysis-performance",
+  //   // requiredPermission: "voyage_analysis.view",
+  // },
    {
     icon: <Ship size={25} />,
     name: "Vessels",

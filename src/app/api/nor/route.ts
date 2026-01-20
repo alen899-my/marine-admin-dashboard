@@ -94,8 +94,8 @@ export async function GET(req: Request) {
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
-    const query: Record<string, any> = { eventType: "nor" };
- 
+    // ✅ Initialize query with soft-delete filter
+    const query: Record<string, any> = { eventType: "nor", deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -110,6 +110,7 @@ export async function GET(req: Request) {
 
       const companyVessels = await Vessel.find({
         company: userCompanyId,
+        deletedAt: null, // ✅ Filter out soft-deleted vessels
       }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
 
@@ -127,9 +128,10 @@ export async function GET(req: Request) {
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select(
-          "_id"
-        );
+        const targetVessels = await Vessel.find({ 
+          company: companyId,
+          deletedAt: null // ✅ Filter out soft-deleted vessels
+        }).select("_id");
         const targetVesselIds = targetVessels.map((v) => v._id);
 
         if (selectedVessel) {
@@ -159,10 +161,16 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      query.$or = [
-        { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } },
-        { portName: { $regex: search, $options: "i" } },
+      // ✅ Use $and to combine soft-delete filter with keyword search
+      query.$and = [
+        { deletedAt: null },
+        {
+          $or: [
+            { vesselName: { $regex: search, $options: "i" } },
+            { voyageNo: { $regex: search, $options: "i" } },
+            { portName: { $regex: search, $options: "i" } },
+          ],
+        }
       ];
     }
 
@@ -202,10 +210,10 @@ export async function GET(req: Request) {
         .populate("voyageId", "voyageNo")
         .populate({
           path: "vesselId",
-          select: "name company", // Get name and company ID from Vessel
+          select: "name company", 
           populate: {
-            path: "company", // Nested populate Company
-            select: "name", // Only get the company name
+            path: "company", 
+            select: "name", 
           },
         })
         .populate("createdBy", "fullName")
@@ -218,7 +226,7 @@ export async function GET(req: Request) {
 
     // 🟢 Step: Add Filter lists if fetchAll is true
     if (fetchAll) {
-      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
@@ -226,7 +234,7 @@ export async function GET(req: Request) {
           .lean()
       );
 
-      const vesselFilter: any = { status: "active" };
+      const vesselFilter: any = { status: "active", deletedAt: null };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (companyId && companyId !== "all")
         vesselFilter.company = companyId;
@@ -255,6 +263,7 @@ export async function GET(req: Request) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vesselIds },
         status: "active",
+        deletedAt: null // ✅ Ensure only active, non-deleted voyages are used
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();
@@ -293,6 +302,7 @@ export async function GET(req: Request) {
     return sendResponse(500, "Failed to fetch data", null, false);
   }
 }
+
 export async function POST(req: Request) {
   try {
     const session = await auth(); // ✅ Get session

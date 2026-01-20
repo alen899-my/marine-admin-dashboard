@@ -12,6 +12,7 @@ export interface IVessel extends Document {
   company: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
   dimensions: {
     loa: number;
     beam: number;
@@ -61,7 +62,7 @@ const VesselSchema = new Schema<IVessel>(
       enum: ["active", "laid_up", "sold", "dry_dock"],
       default: "active",
     },
-
+    deletedAt: { type: Date, default: null },
     callSign: String,
     mmsi: String,
     flag: String,

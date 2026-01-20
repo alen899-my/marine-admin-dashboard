@@ -36,6 +36,7 @@ export interface IVoyage extends Document {
   updatedBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
 }
 
 const VoyageSchema = new Schema<IVoyage>(
@@ -49,7 +50,7 @@ const VoyageSchema = new Schema<IVoyage>(
       enum: ["active", "completed", "scheduled"],
       default: "scheduled",
     },
-
+    deletedAt: { type: Date, default: null },
     route: {
       loadPort: String,
       dischargePort: String,

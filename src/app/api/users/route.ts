@@ -177,7 +177,6 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    // 2. Get current session to identify the user and their role
     const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -195,7 +194,7 @@ export async function GET(req: NextRequest) {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
     const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all";
+    const status = searchParams.get("status") || "all"; // renamed to avoid conflict
     const companyIdParam = searchParams.get("companyId");
 
     const startDate = searchParams.get("startDate");
@@ -298,14 +297,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const query: any = {};
+    // 1. Initialize query with Soft Delete Filter
+    // This ensures we only see users who are NOT deleted and don't have a deleted timestamp
+    const query: any = {
+      status: { $ne: "deleted" },
+      deletedAt: null 
+    };
     query._id = { $ne: currentUserId };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
     if (isSuperAdmin) {
-      // Super Admin: Can see all or filter by a specific company if provided
       if (
         companyIdParam &&
         companyIdParam !== "undefined" &&
@@ -315,7 +318,6 @@ export async function GET(req: NextRequest) {
         query.company = companyIdParam;
       }
     } else {
-      // Regular User: FORCED to their own company
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
@@ -332,18 +334,28 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-    // =========================================================
 
-    if (status !== "all") query.status = status;
+    // 2. Handle Status filter from Params
+    // If the user selects a specific status, it overrides the default "not deleted"
+    // but we still want to ensure they don't see soft-deleted records.
+    if (status !== "all") {
+      query.status = status;
+    }
 
+    // 3. Search Logic
     if (search) {
-      query.$or = [
-        { fullName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
+      query.$and = [
+        {
+          $or: [
+            { fullName: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+            { phone: { $regex: search, $options: "i" } },
+          ],
+        },
       ];
     }
 
+    // 4. Date range logic
     if (startDate || endDate) {
       const dateQuery: any = {};
       if (startDate) dateQuery.$gte = new Date(startDate);
@@ -355,16 +367,14 @@ export async function GET(req: NextRequest) {
       if (Object.keys(dateQuery).length > 0) query.createdAt = dateQuery;
     }
 
-    // 3. Run count and find using the filtered query
+    // 5. Fetch Data
     const total = await User.countDocuments(query);
-
     const users = await User.find(query)
       .select("-password")
       .populate("role", "name")
       .populate({
         path: "company",
         select: "name",
-        // This prevents the whole query from failing if one company is missing
         strictPopulate: false,
       })
       .sort({ createdAt: -1 })
@@ -382,7 +392,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    // Look at your terminal console to see the specific error message here
     console.error("GET USERS ERROR →", error);
     return NextResponse.json(
       { error: error.message || "Failed to fetch users" },

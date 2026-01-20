@@ -1,23 +1,23 @@
+import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
-import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/authorizeRequest";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
-import { auth } from "@/auth";
+import { NextRequest, NextResponse } from "next/server";
 /* ======================================
    UPDATE DEPARTURE REPORT (EDIT)
 ====================================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth(); // ✅ Get session
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("departure.edit");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const { id } = await context.params;
     const body = await req.json();
@@ -32,19 +32,19 @@ export async function PATCH(
     }
 
     // ✅ VOYAGE LOOKUP LOGIC FOR EDIT
-    const newVoyageNoString = body.voyageNo || body.voyageId; 
-    const vesselId = body.vesselId || report.vesselId; 
+    const newVoyageNoString = body.voyageNo || body.voyageId;
+    const vesselId = body.vesselId || report.vesselId;
 
     if (newVoyageNoString) {
-       const foundVoyage = await Voyage.findOne({
-          vesselId: vesselId,
-          voyageNo: { $regex: new RegExp(`^${newVoyageNoString}$`, "i") }
-       }).select("_id");
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vesselId,
+        voyageNo: { $regex: new RegExp(`^${newVoyageNoString}$`, "i") },
+      }).select("_id");
 
-       if (foundVoyage) {
-          report.voyageId = foundVoyage._id; 
-          report.voyageNo = newVoyageNoString; 
-       }
+      if (foundVoyage) {
+        report.voyageId = foundVoyage._id;
+        report.voyageNo = newVoyageNoString;
+      }
     }
 
     // ✅ FIX: Cast to ObjectId so Mongoose registers the update
@@ -54,8 +54,8 @@ export async function PATCH(
 
     // Update other fields
     report.vesselName = body.vesselName;
-    if(body.vesselId) report.vesselId = body.vesselId;
-    
+    if (body.vesselId) report.vesselId = body.vesselId;
+
     report.portName = body.portName;
     report.lastPort = body.lastPort;
     report.eventTime = new Date(body.eventTime);
@@ -63,7 +63,9 @@ export async function PATCH(
 
     report.navigation = {
       distanceToNextPortNm: body.navigation?.distance_to_next_port_nm,
-      etaNextPort: body.navigation?.etaNextPort ? new Date(body.navigation.etaNextPort) : null,
+      etaNextPort: body.navigation?.etaNextPort
+        ? new Date(body.navigation.etaNextPort)
+        : null,
     };
 
     report.departureStats = {
@@ -84,7 +86,14 @@ export async function PATCH(
     // ✅ FIX: Re-populate to ensure the frontend receives the 'fullName' of the updater
     const updatedReport = await ReportOperational.findById(report._id)
       .populate("voyageId", "voyageNo")
-      .populate("vesselId", "name")
+      .populate({
+        path: "vesselId",
+        select: "name company",
+        populate: {
+          path: "company",
+          select: "name",
+        },
+      })
       .populate("createdBy", "fullName")
       .populate("updatedBy", "fullName")
       .lean();
@@ -104,22 +113,38 @@ export async function PATCH(
 ====================================== */
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
-        const authz = await authorizeRequest("departure.delete");
+    const authz = await authorizeRequest("departure.delete");
     if (!authz.ok) return authz.response;
     await dbConnect();
+
+    // ✅ IMPORTANT: await params
     const { id } = await context.params;
-    const deleted = await ReportOperational.findOneAndDelete({
-      _id: id,
-      eventType: "departure",
-    });
+
+    // ✅ Perform Soft Delete
+    // Instead of findOneAndDelete, we use findOneAndUpdate to set the deletedAt timestamp.
+    // We also include eventType: "departure" to ensure the correct record type is targeted.
+    const deleted = await ReportOperational.findOneAndUpdate(
+      {
+        _id: id,
+        eventType: "departure",
+        deletedAt: null, // Ensure we are not updating an already deleted report
+      },
+      {
+        $set: {
+          deletedAt: new Date(),
+          status: "inactive",
+        },
+      },
+      { new: true },
+    );
 
     if (!deleted) {
       return NextResponse.json(
         { error: "Departure report not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -131,7 +156,7 @@ export async function DELETE(
     console.error("DELETE DEPARTURE REPORT ERROR →", error);
     return NextResponse.json(
       { error: "Failed to delete departure report" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

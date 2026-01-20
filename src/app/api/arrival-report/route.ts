@@ -86,15 +86,18 @@ const startDate = searchParams.get("startDate");
     const voyageIdParam = searchParams.get("voyageId");
     const companyIdParam = searchParams.get("companyId");
 
-    const query: any = { eventType: "arrival" };
-   
+    // ✅ Initialize query with soft-delete filter
+    const query: any = { eventType: "arrival", deletedAt: null };
+
+  
 
     // =========================================================
-    // 🔒 2. MULTI-TENANCY FILTERING LOGIC (Same as original)
+    // 🔒 2. MULTI-TENANCY FILTERING LOGIC
     // =========================================================
     if (!isSuperAdmin) {
       if (!userCompanyId) return sendResponse(403, "Access denied: No company assigned", null, false);
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id").lean();
+      // ✅ Filter out soft-deleted vessels
+      const companyVessels = await Vessel.find({ company: userCompanyId, deletedAt: null }).select("_id").lean();
       const companyVesselIds = companyVessels.map((v) => v._id.toString());
       query.vesselId = { $in: companyVesselIds };
 
@@ -107,7 +110,8 @@ const startDate = searchParams.get("startDate");
       }
     } else {
       if (companyIdParam && companyIdParam !== "all") {
-        const targetVessels = await Vessel.find({ company: companyIdParam }).select("_id").lean();
+        // ✅ Filter out soft-deleted vessels
+        const targetVessels = await Vessel.find({ company: companyIdParam, deletedAt: null }).select("_id").lean();
         const targetVesselIds = targetVessels.map((v) => v._id.toString());
         if (vesselIdParam) {
           query.vesselId = targetVesselIds.includes(vesselIdParam) ? vesselIdParam : { $in: [] };
@@ -123,10 +127,16 @@ const startDate = searchParams.get("startDate");
     if (voyageIdParam) query.voyageId = voyageIdParam;
 
     if (search) {
-      query.$or = [
-        { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } },
-        { portName: { $regex: search, $options: "i" } },
+      // ✅ Use $and to combine soft-delete filter with keyword search
+      query.$and = [
+        { deletedAt: null },
+        {
+          $or: [
+            { vesselName: { $regex: search, $options: "i" } },
+            { voyageNo: { $regex: search, $options: "i" } },
+            { portName: { $regex: search, $options: "i" } },
+          ],
+        }
       ];
     }
 
@@ -182,12 +192,12 @@ const startDate = searchParams.get("startDate");
     ];
 
     if (fetchAll) {
-      // Fetch Companies
-      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      // Fetch Companies (✅ Added deletedAt: null)
+      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
       promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
 
-      // Fetch Vessels
-      const vesselFilter: any = { status: "active" };
+      // Fetch Vessels (✅ Added deletedAt: null)
+      const vesselFilter: any = { status: "active", deletedAt: null };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (companyIdParam && companyIdParam !== "all") vesselFilter.company = companyIdParam;
       promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
@@ -210,8 +220,9 @@ const startDate = searchParams.get("startDate");
         const voyageIds = arrivals.map((r: any) => r.voyageId?._id).filter(Boolean);
 
         const [departures, noonReports] = await Promise.all([
-            ReportOperational.find({ voyageId: { $in: voyageIds }, eventType: "departure", status: "active" }).lean(),
-            ReportDaily.find({ voyageId: { $in: voyageIds }, status: "active" }).lean()
+            // ✅ Only calculate metrics from non-deleted reports
+            ReportOperational.find({ voyageId: { $in: voyageIds }, eventType: "departure", status: "active", deletedAt: null }).lean(),
+            ReportDaily.find({ voyageId: { $in: voyageIds }, status: "active", deletedAt: null }).lean()
         ]);
 
         const departureMap = new Map(departures.map((d: any) => [d.voyageId.toString(), d]));
@@ -269,7 +280,8 @@ const startDate = searchParams.get("startDate");
       const rawVessels = results[3] || [];
       const vIds = rawVessels.map((v: any) => v._id);
 
-      const activeVoyages = await Voyage.find({ vesselId: { $in: vIds }, status: "active" })
+      // ✅ Ensure only active, non-deleted voyages are used for the mapping
+      const activeVoyages = await Voyage.find({ vesselId: { $in: vIds }, status: "active", deletedAt: null })
         .select("vesselId voyageNo").lean();
 
       const voyMap = new Map(activeVoyages.map((v: any) => [v.vesselId.toString(), v.voyageNo]));

@@ -8,7 +8,7 @@ export interface IReportDaily extends Document {
   voyageNo: string;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
- 
+  
   type: "noon";
   reportDate: Date;
 
@@ -38,7 +38,8 @@ export interface IReportDaily extends Document {
 
   remarks: string;
 
-  status: "active" | "inactive";
+  status: "active" | "inactive"; // Updated to include "deleted"
+  deletedAt: Date | null; // Added for Soft Delete
 }
 
 const ReportDailySchema = new Schema<IReportDaily>(
@@ -115,6 +116,11 @@ const ReportDailySchema = new Schema<IReportDaily>(
       enum: ["active", "inactive"],
       default: "active",
       index: true, // ✅ Index for Status filtering
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null, // Added for Soft Delete
     },
   },
   { timestamps: true }
