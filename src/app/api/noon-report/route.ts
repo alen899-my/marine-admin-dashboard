@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
 
     const query: Record<string, any> = {};
       //history reports logics 
-
+ 
     // 1. Multi-Tenancy Logic
     const selectedVessel = searchParams.get("vesselId");
     const selectedCompany = searchParams.get("companyId");
@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
     const selectedVoyage = searchParams.get("voyageId");
     if (selectedVoyage) query.voyageId = selectedVoyage;
 
-    const startDate = searchParams.get("startDate");
+   const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     let manualDateQuery: any = null;
 

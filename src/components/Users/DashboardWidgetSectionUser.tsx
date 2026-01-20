@@ -6,6 +6,7 @@ import Tooltip from "@/components/ui/tooltip/Tooltip"; // ✅ Tooltip imported
 
 // Match the permission interface used across your application
 interface IPermission {
+
   _id: string;
   slug: string;
   name: string;
@@ -39,6 +40,7 @@ export default function DashboardWidgetSectionUser({
   // 🟢 Filter Logic: Identify any permission that is NOT a CRUD operation
   const generalPermissions = useMemo(() => {
     const crudEndings = [".create", ".view", ".edit", ".delete"];
+    if (!allPermissions || allPermissions.length === 0) return [];
     
     return allPermissions.filter(p => {
       // Check if it ends with standard CRUD actions

@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     const vesselIdString = formData.get("vesselId") as string;
     const voyageNoString = formData.get("voyageNo") as string;
     const vesselName = formData.get("vesselName") as string;
-
+ 
 
     const portName = formData.get("portName") as string;
     const portType = formData.get("portType") as string;
@@ -270,16 +270,16 @@ export async function GET(req: Request) {
     }
 
     if (status !== "all") query.status = status;
-    if (search) {
-      query.$or = [
+   if (search) {
+  query.$or = [
     { vesselName: { $regex: search, $options: "i" } },
     { voyageNo: { $regex: search, $options: "i" } },
-        { portName: { $regex: search, $options: "i" } },
-      ];
-    }
+    { portName: { $regex: search, $options: "i" } },
+  ];
+}
     if (selectedVoyage) query.voyageId = selectedVoyage;
 
-    if (startDate || endDate) {
+  if (startDate || endDate) {
       manualDateRange = {};
       const s = parseDateString(startDate);
       const e = parseDateString(endDate);

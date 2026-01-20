@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
+  const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     let manualDateRange: any = null;
     const selectedVessel = searchParams.get("vesselId");

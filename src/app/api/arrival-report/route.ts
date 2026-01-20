@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
 
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
+const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     let manualDateRange: any = null;
     const vesselIdParam = searchParams.get("vesselId");
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    if (startDate || endDate) {
+   if (startDate || endDate) {
       manualDateRange = {};
       const s = parseDateString(startDate);
       const e = parseDateString(endDate);

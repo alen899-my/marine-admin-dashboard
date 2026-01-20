@@ -222,8 +222,8 @@ export default function NorReportTable({
   );
 
   const options = vesselVoyages.map((v: any) => ({
-              value: v.voyageNo,
-              label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
+    value: v.voyageNo,
+    label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
   }));
 
   // 2. Add fallback for suggested or current voyage to prevent "undefined" display
@@ -233,7 +233,7 @@ export default function NorReportTable({
       value: currentOrSuggested,
       label: currentOrSuggested,
     });
-      }
+  }
 
   return options;
 }, [editData?.vesselId, editData?.vesselName, editData?.voyageNo, voyageList, suggestedVoyageNo]);

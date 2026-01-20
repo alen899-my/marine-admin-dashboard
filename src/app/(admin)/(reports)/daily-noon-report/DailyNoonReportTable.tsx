@@ -251,7 +251,7 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
       value: currentOrSuggested,
       label: currentOrSuggested,
     });
-      }
+  }
 
   return options;
 }, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
