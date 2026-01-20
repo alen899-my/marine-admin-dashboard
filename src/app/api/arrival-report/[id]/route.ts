@@ -147,32 +147,24 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
     }
 
-    // ✅ Perform Soft Delete
-    // We update the deletedAt timestamp and set status to inactive
-    const deletedReport = await ReportOperational.findOneAndUpdate(
-      {
-        _id: id,
-        eventType: "arrival",
-        deletedAt: null, // Ensure we are not trying to delete an already deleted report
-      },
-      {
-        $set: {
-          deletedAt: new Date(),
-          status: "inactive",
-        },
-      },
-      { new: true },
-    );
+    // ✅ Perform Hard Delete
+    // Swapped findOneAndUpdate for findOneAndDelete to remove the record permanently.
+    // We maintain the eventType: "arrival" filter to ensure only the correct type is deleted.
+    const deletedReport = await ReportOperational.findOneAndDelete({
+      _id: id,
+      eventType: "arrival",
+    });
 
     if (!deletedReport) {
       return NextResponse.json(
-        { error: "Arrival report not found or already deleted" },
+        { error: "Arrival report not found" },
         { status: 404 },
       );
     }
 
     return NextResponse.json({
       success: true,
+      message: "Arrival report permanently deleted",
     });
   } catch (error) {
     console.error("DELETE ARRIVAL REPORT ERROR →", error);

@@ -192,8 +192,9 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    // 1. Find document first
-    const docToDelete = await Document.findById(id);
+    // 1. Find and Delete the document from the database
+    // We use findByIdAndDelete to remove the record permanently.
+    const docToDelete = await Document.findByIdAndDelete(id);
 
     if (!docToDelete) {
       return NextResponse.json(
@@ -202,24 +203,16 @@ export async function DELETE(
       );
     }
 
-    // 2. Perform Soft Delete
-    // We update the deletedAt timestamp and set status to inactive.
-    // NOTE: We skip calling deleteFile(docToDelete.file.url) to preserve 
-    // the file for historical audit purposes in line with soft-delete logic.
-    await Document.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          deletedAt: new Date(),
-          status: "inactive",
-        },
-      },
-      { new: true }
-    );
+    // 2. Perform Physical File Cleanup
+    // Since this is a hard delete, we now call the deletion logic for the actual file
+    // to prevent storage clutter, as the record no longer exists in the DB.
+    if (docToDelete.file?.url) {
+      await deleteFile(docToDelete.file.url);
+    }
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
+    // Narrow safely
     const errorMessage =
       error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });

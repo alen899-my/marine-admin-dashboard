@@ -184,25 +184,17 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
     
-    const record = await ReportOperational.findById(id);
-    if (!record) {
+    // ✅ Perform Hard Delete
+    // We use findByIdAndDelete to permanently remove the record from the collection.
+    const deletedRecord = await ReportOperational.findByIdAndDelete(id);
+
+    if (!deletedRecord) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // SOFT DELETE LOGIC
-    // We update the record instead of deleting it.
-    // NOTE: We do NOT delete the file (fileUrl) so that the soft-deleted
-    // record remains complete for historical/audit purposes.
-    await ReportOperational.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          deletedAt: new Date(),
-          status: "inactive",
-        },
-      },
-      { new: true }
-    );
+    // ✅ Optional: Physical File Cleanup
+    // Since this is a hard delete, you might want to delete the associated file 
+    // from your storage (S3/Cloudinary/etc) here if record.fileUrl exists.
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error) {
