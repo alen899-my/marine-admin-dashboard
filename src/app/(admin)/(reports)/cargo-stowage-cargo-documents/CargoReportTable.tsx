@@ -159,21 +159,21 @@ export default function CargoReportTable({
   const canDelete = can("cargo.delete");
 
   const getVesselName = (r: ICargoReport | null) => {
-    if (!r || !r.vesselId) return "-";
-    if (typeof r.vesselId === "object" && "name" in r.vesselId) {
-      return r.vesselId.name;
-    }
-    return "-";
-  };
+  if (!r || !r.vesselId) return "-";
+  if (typeof r.vesselId === "object" && r.vesselId !== null && "name" in r.vesselId) {
+    return r.vesselId.name;
+  }
+  return "-";
+};
 
   // ✅ FIX: Handle null report and null voyageId safely
   const getVoyageNo = (r: ICargoReport | null) => {
-    if (!r || !r.voyageId) return "-";
-    if (typeof r.voyageId === "object" && "voyageNo" in r.voyageId) {
-      return r.voyageId.voyageNo;
-    }
-    return "-";
-  };
+  if (!r || !r.voyageId) return "-";
+  if (typeof r.voyageId === "object" && r.voyageId !== null && "voyageNo" in r.voyageId) {
+    return r.voyageId.voyageNo;
+  }
+  return "-";
+};
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -211,10 +211,34 @@ export default function CargoReportTable({
   );
 
   const getCompanyName = (r: ICargoReport | null) => {
-    if (r && typeof r.vesselId === "object" && r.vesselId.company) {
-      return r.vesselId.company.name;
+  // r.vesselId can be null if the record is orphaned or soft-deleted
+  if (r && r.vesselId && typeof r.vesselId === "object") {
+    // Using type assertion 'as any' or a specific interface check 
+    // to access nested populated fields safely
+    return (r.vesselId as any).company?.name || "-";
+  }
+  return "-";
+};
+
+  // Helper for Soft Delete Status Badges
+  const renderStatusBadge = (reportStatus: string) => {
+    let color: "success" | "warning" | "error" | "default" = "default";
+    let label = reportStatus;
+
+    switch (reportStatus?.toLowerCase()) {
+      case "active":
+        color = "success";
+        label = "Active";
+        break;
+      case "inactive":
+        color = "error";
+        label = "Inactive";
+        break;
+      default:
+        color = "default";
+        label = reportStatus || "N/A";
     }
-    return "-";
+    return <Badge color={color}>{label}</Badge>;
   };
 
   // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
@@ -359,14 +383,7 @@ export default function CargoReportTable({
     },
     {
       header: "Status",
-      render: (r: ICargoReport) => {
-        const isActive = r.status === "active";
-        return (
-          <Badge color={isActive ? "success" : "error"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        );
-      },
+      render: (r: ICargoReport) => renderStatusBadge(r.status),
     },
   ];
 
@@ -876,13 +893,7 @@ export default function CargoReportTable({
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
+              {renderStatusBadge(selectedReport?.status || "")}
             </div>
             {/* ACTIONS (DOWNLOAD & SHARE) */}
             <div className="pt-4 md:pt-0 flex flex-col md:items-end gap-3">
