@@ -12,10 +12,12 @@ const resourceSchema = new Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
-    isDeleted: { type: Boolean, default: false }, // New Field
+    
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
+
+resourceSchema.index({ deletedAt: 1 });
 
 export default models.Resource || mongoose.model("Resource", resourceSchema);

@@ -7,6 +7,7 @@ interface ExportToExcelProps {
   data: any[];
   fileName: string;
   sheetName?: string;
+  className?: string;
   exportMap?: (item: any) => Record<string, any>;
 }
 
@@ -15,6 +16,7 @@ export default function ExportToExcel({
   fileName,
   sheetName = "Report",
   exportMap,
+  className
 }: ExportToExcelProps) {
   const handleExport = () => {
     if (!data || data.length === 0) return;
@@ -94,6 +96,7 @@ export default function ExportToExcel({
       variant="outline"
       size="md"
       type="button"
+      className={className}
       onClick={handleExport}
       disabled={!data || data.length === 0}
       startIcon={

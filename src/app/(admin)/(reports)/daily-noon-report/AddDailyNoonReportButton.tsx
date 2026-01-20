@@ -21,6 +21,7 @@ interface AddDailyNoonReportButtonProps {
   onSuccess: () => void;
  vesselList: any[];
   allVoyages: any[]; 
+   className?: string;
 }
 
 interface APIErrorDetail {
@@ -29,7 +30,7 @@ interface APIErrorDetail {
 }
 
 export default function AddDailyNoonReportButton({
-  onSuccess,vesselList,allVoyages
+  onSuccess,vesselList,allVoyages,className
 }: AddDailyNoonReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
@@ -225,7 +226,7 @@ export default function AddDailyNoonReportButton({
 
   return (
    <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md" className={className} variant="primary" onClick={openModal}>
         Add Daily Noon Report
       </Button>
 

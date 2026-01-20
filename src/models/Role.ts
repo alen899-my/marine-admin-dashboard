@@ -2,7 +2,7 @@ import mongoose, { Schema, models } from "mongoose";
 
 const roleSchema = new Schema(
   {
-    name: { type: String, required: true, unique: true }, // e.g., "Superintendent"
+    name: { type: String, required: true, unique: true },
     
     // We store slugs (strings) here for faster checking
     // e.g., ["users.view", "reports.create", "vessels.edit"]

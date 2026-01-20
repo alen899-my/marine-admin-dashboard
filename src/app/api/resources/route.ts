@@ -3,7 +3,7 @@ import { dbConnect } from "@/lib/db";
 import Resource from "@/models/Resource";
 import { resourceSchema } from "@/lib/validations/resourceSchema";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import Permission from "@/models/Permission";
 /* ======================================================
    GET: Fetch All Resources
 ====================================================== */
@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
   try {
     const authz = await authorizeRequest("resource.view");
     if (!authz.ok) return authz.response;
+    const userRole = authz.session?.user?.role;
+    const userPermissions = authz.session?.user?.permissions || [];
     
     await dbConnect();
 
@@ -21,15 +23,30 @@ export async function GET(req: NextRequest) {
     // Check if we want a full list for a dropdown
     const isDropdown = searchParams.get("limit") === "none";
 
-  let query: any = { isDeleted: { $ne: true } };
+ let query: any = { deletedAt: null };
 
-if (search.trim()) {
-  query.name = { $regex: search.trim(), $options: "i" };
-}
+if (userRole !== "super-admin") {
+      // Find all Permission documents that match the slugs in the user's session
+      const allowedPerms = await Permission.find({ 
+        slug: { $in: userPermissions } 
+      }).select("resourceId");
 
-if (status !== "all") {
-  query.status = status.toLowerCase();
-}
+      // Extract unique Resource IDs from those permissions
+      const allowedResourceIds = allowedPerms
+        .map(p => p.resourceId)
+        .filter(id => id != null);
+
+      // Add to query: Only show resources the user has permissions for
+      query._id = { $in: allowedResourceIds };
+    }
+
+    if (search.trim()) {
+      query.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    if (status !== "all") {
+      query.status = status.toLowerCase();
+    }
 
     // 💡 Logic for Dropdowns (No Pagination)
     if (isDropdown) {
@@ -74,36 +91,57 @@ const totalPages = Math.max(1, Math.ceil(total / limit));
 ====================================================== */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Check Authorization
     const authz = await authorizeRequest("resource.create");
     if (!authz.ok) return authz.response;
 
     await dbConnect();
     const body = await req.json();
 
-    // 2. Joi Validation
     const { error, value } = resourceSchema.validate(body);
-    if (error) {
-      return NextResponse.json(
-        { error: error.details[0].message }, 
-        { status: 400 }
-      );
+    if (error) return NextResponse.json({ error: error.details[0].message }, { status: 400 });
+
+    const nameRegex = new RegExp(`^${value.name}$`, "i");
+
+    // 🟢 1. Check for an ACTIVE resource
+    const activeResource = await Resource.findOne({ 
+      name: nameRegex, 
+      deletedAt: null 
+    });
+    if (activeResource) {
+      return NextResponse.json({ error: "A resource with this name already exists" }, { status: 409 });
     }
 
-    // 3. Strict Duplicate Check (Case-Insensitive)
-    const existingResource = await Resource.findOne({ 
-      name: { $regex: new RegExp(`^${value.name}$`, "i") } ,isDeleted: { $ne: true }
+    // 🟢 2. Check for a DELETED resource with this name to RESTORE
+    const deletedResource = await Resource.findOne({ 
+      name: nameRegex, 
+      deletedAt: { $ne: null } 
     });
 
-    if (existingResource) {
-      return NextResponse.json(
-        { error: "A resource with this name already exists" },
-        { status: 409 } 
+    if (deletedResource) {
+      // Restore the existing record instead of creating a new one
+      const restoredResource = await Resource.findByIdAndUpdate(
+        deletedResource._id,
+        { 
+          ...value, 
+        
+          deletedAt: null, 
+          status: "active" 
+        },
+        { new: true }
       );
+
+      return NextResponse.json({
+        success: true,
+        message: "Existing resource restored from trash",
+        data: restoredResource
+      }, { status: 200 }); // 200 OK since it's an update of a deleted item
     }
 
-    // 4. Save to Database
-    const newResource = await Resource.create(value);
+    // 🟢 3. No match found at all? Create fresh.
+   const newResource = await Resource.create({ 
+      ...value, 
+      deletedAt: null 
+    });
     
     return NextResponse.json({
       success: true,
@@ -112,9 +150,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("POST RESOURCE ERROR:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal Server Error" }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

@@ -18,9 +18,10 @@ import { companySchema } from "@/lib/validations/companySchema";
 
 interface AddCompanyButtonProps {
   onSuccess: () => void;
+   className?: string;
 }
 
-export default function AddCompanyButton({ onSuccess }: AddCompanyButtonProps) {
+export default function AddCompanyButton({ onSuccess,className }: AddCompanyButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
 
@@ -152,7 +153,7 @@ export default function AddCompanyButton({ onSuccess }: AddCompanyButtonProps) {
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md" variant="primary" className={className} onClick={openModal}>
         Add Company
       </Button>
 

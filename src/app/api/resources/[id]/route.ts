@@ -55,14 +55,12 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    // Change findByIdAndDelete to findByIdAndUpdate
     const softDeleted = await Resource.findByIdAndUpdate(
       id,
       { 
         $set: { 
-          isDeleted: true, 
-          deletedAt: new Date(),
-          status: "inactive" // Optional: force inactive on delete
+          deletedAt: new Date(), 
+          status: "inactive" 
         } 
       },
       { new: true }

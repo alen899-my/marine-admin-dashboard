@@ -154,7 +154,7 @@ export default function UserFormModal({
   useEffect(() => {
     async function fetchRoles() {
       try {
-        const res = await fetch("/api/roles");
+      const res = await fetch("/api/users?type=roles");
         if (res.ok) {
           const json = await res.json();
           const roles = json.data || [];
@@ -185,7 +185,7 @@ export default function UserFormModal({
   useEffect(() => {
     async function fetchPermissions() {
       try {
-        const res = await fetch("/api/permissions");
+      const res = await fetch("/api/users?type=permissions");
         if (res.ok) {
           const data = await res.json();
           setAllPermissions(data);

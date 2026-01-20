@@ -19,9 +19,10 @@ import DashboardWidgetSection from "@/components/roles/DashboardWidgetSection";
 
 interface AddRoleButtonProps {
   onSuccess: () => void;
+   className?: string;
 }
 
-export default function AddRoleButton({ onSuccess }: AddRoleButtonProps) {
+export default function AddRoleButton({ onSuccess,className }: AddRoleButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -116,7 +117,7 @@ export default function AddRoleButton({ onSuccess }: AddRoleButtonProps) {
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>Add Role</Button>
+      <Button size="md" variant="primary" className={className} onClick={openModal}>Add Role</Button>
 
       <Modal isOpen={isOpen} onClose={handleClose} className="w-full max-w-[95vw] md:max-w-[850px] p-6">
         <AddForm

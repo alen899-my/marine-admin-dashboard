@@ -74,22 +74,37 @@ const [voyages, setVoyages] = useState<any[]>([]);
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Cargo Stowage & Cargo Documents
         </h2>
-  
-        <div className="flex items-center gap-3">
-          {/* Shared Filter Toggle */}
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
-          />
-          {/* New Export Button */}
-          <ExportToExcel 
-            data={reportsData} 
-            fileName="Cargo_Documents_Report" 
-            exportMap={excelMapping}
-           />
-          {/* ✅ Check permission for creating cargo documents */}
-          {canCreate && <AddCargoButton onSuccess={handleRefresh} vesselList={vessels} allVoyages={voyages}/>}
-        </div>
+<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: First (Left) | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton 
+      isVisible={isFilterVisible} 
+      onToggle={setIsFilterVisible} 
+    />
+  </div>
+
+  {/* Desktop: Middle | Mobile: Middle */}
+  <div className="w-full sm:w-auto">
+    <ExportToExcel 
+      data={reportsData} 
+      fileName="Cargo_Documents_Report" 
+      exportMap={excelMapping}
+      className="w-full justify-center"
+    />
+  </div>
+
+  {/* Desktop: Last (Right) | Mobile: Top */}
+  {canCreate && (
+    <div className="w-full sm:w-auto">
+      <AddCargoButton 
+        onSuccess={handleRefresh} 
+        vesselList={vessels} 
+        allVoyages={voyages}
+        className="w-full justify-center"
+      />
+    </div>
+  )}
+</div>
       </div>
       <ComponentCard
         headerClassName="p-0 px-1"

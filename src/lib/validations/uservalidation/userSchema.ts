@@ -19,10 +19,13 @@ export const userSchema = Joi.object({
     "any.required": "Company is required",
   }),
 
-  phone: Joi.string().allow("").optional().messages({
-    "string.base": "Phone must be text",
-  }),
-
+phone: Joi.string()
+    .pattern(/^[0-9]{8,15}$/)
+    .required()
+    .messages({
+      "string.empty": "Phone number is required",
+      "string.pattern.base": "Phone number must be between 8 and 15 digits",
+    }),
   password: Joi.string().min(6).required().messages({
     "string.empty": "Password is required",
     "string.min": "Password must be at least 6 characters",

@@ -18,12 +18,14 @@ import { toast } from "react-toastify";
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
+    className?: string;
   allVoyages: any[]; // ✅ Added from parent
 }
 
 export default function AddArrivalReportButton({
   onSuccess,
   vesselList,
+  className,
   allVoyages, // ✅ Destructured
 }: AddArrivalReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
@@ -193,7 +195,7 @@ const filteredVoyageOptions = useMemo(() => {
   }
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md"   className={className} variant="primary" onClick={openModal}>
         Add Arrival Report
       </Button>
 

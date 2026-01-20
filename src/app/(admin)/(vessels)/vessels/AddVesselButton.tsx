@@ -18,9 +18,10 @@ import { toast } from "react-toastify";
 
 interface AddVesselButtonProps {
   onSuccess: () => void;
+  className?: string;
 }
 
-export default function AddVesselButton({ onSuccess }: AddVesselButtonProps) {
+export default function AddVesselButton({ onSuccess,className }: AddVesselButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -232,7 +233,7 @@ useEffect(() => {
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md"    className={className}  variant="primary" onClick={openModal}>
         Add Vessel
       </Button>
 

@@ -15,9 +15,10 @@ import { toast } from "react-toastify";
 
 interface AddResourceButtonProps {
   onSuccess: () => void;
+   className?: string;
 }
 
-export default function AddResourceButton({ onSuccess }: AddResourceButtonProps) {
+export default function AddResourceButton({ onSuccess ,className}: AddResourceButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,7 +94,7 @@ export default function AddResourceButton({ onSuccess }: AddResourceButtonProps)
 
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>Add Resource</Button>
+      <Button size="md" variant="primary"  className={className} onClick={openModal}>Add Resource</Button>
 
       <Modal isOpen={isOpen} onClose={handleClose} className="w-full max-w-[500px] p-6">
         <AddForm

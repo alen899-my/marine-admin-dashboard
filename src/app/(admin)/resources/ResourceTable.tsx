@@ -64,7 +64,7 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
     {
       header: "Resource Name",
       render: (r: Resource) => (
-        <span className="text-sm font-medium text-gray-900 dark:text-white ">
+        <span className="text-sm font-medium capitalize text-gray-900 dark:text-white ">
           {r.name}
         </span>
       ),
@@ -165,6 +165,8 @@ useEffect(() => {
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden">
+         <div className="max-w-full overflow-x-auto">
+          <div className="min-w-[1200px]"> 
         <CommonReportTable
           data={resources}
           columns={columns}
@@ -180,6 +182,8 @@ useEffect(() => {
             setOpenDelete(true);
           } : undefined}
         />
+        </div>
+        </div>
       </div>
 
       <ViewModal isOpen={openView} onClose={() => setOpenView(false)} title="Resource Details" size="sm">

@@ -9,6 +9,8 @@ export async function GET(req: NextRequest) {
   try {
      const authz = await authorizeRequest("roles.view");
         if (!authz.ok) return authz.response;
+
+    const currentUserRoleName = authz.session?.user?.role;
     await dbConnect();
     const { searchParams } = new URL(req.url);
 
@@ -19,6 +21,19 @@ export async function GET(req: NextRequest) {
 
     // Build Query
     const query: any = {};
+    if (currentUserRoleName === "super-admin") {
+     
+    } else if (currentUserRoleName === "admin") {
+     
+     
+      query.name = { $nin: ["super-admin", "admin"] };
+    } else {
+      
+      return NextResponse.json({
+        data: [],
+        pagination: { total: 0, page, totalPages: 0, limit },
+      });
+    }
 
     if (search) {
       query.name = { $regex: search, $options: "i" }; // Case-insensitive search

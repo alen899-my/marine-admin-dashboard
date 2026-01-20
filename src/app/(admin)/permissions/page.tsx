@@ -54,19 +54,29 @@ export default function PermissionManagement() {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
             Permission Management
           </h2>
-          <p className="text-sm text-gray-500">
-            Manage system-wide permissions and access resources.
-          </p>
+         
         </div>
         
-        <div className="flex items-center gap-3">
-          <FilterToggleButton 
-            isVisible={isFilterVisible} 
-            onToggle={setIsFilterVisible} 
-          />
-          {/* ✅ Check permission for adding */}
-          {canAdd && <AddPermissionButton onSuccess={handleRefresh} resourceOptions={modules} />}
-        </div>
+ <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+  {/* Desktop: First (Left) | Mobile: Bottom */}
+  <div className="w-full flex justify-end sm:w-auto">
+    <FilterToggleButton
+      isVisible={isFilterVisible}
+      onToggle={setIsFilterVisible}
+    />
+  </div>
+
+  {/* Desktop: Second (Right) | Mobile: Top */}
+  {canAdd && (
+    <div className="w-full sm:w-auto">
+      <AddPermissionButton 
+        onSuccess={handleRefresh} 
+        resourceOptions={modules} 
+        className="w-full justify-center"
+      />
+    </div>
+  )}
+</div>
       </div>
 
       <ComponentCard 

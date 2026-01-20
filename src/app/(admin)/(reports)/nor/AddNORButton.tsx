@@ -25,9 +25,10 @@ interface AddNORReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
   allVoyages: any[]; 
+   className?: string;
 }
 
-export default function AddNORButton({ onSuccess,vesselList,allVoyages }: AddNORReportButtonProps) {
+export default function AddNORButton({ onSuccess,vesselList,allVoyages ,className}: AddNORReportButtonProps) {
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -275,7 +276,7 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages }: AddNOR
   }
   return (
     <>
-      <Button size="md" variant="primary" onClick={openModal}>
+      <Button size="md" variant="primary"  className={className} onClick={openModal}>
         Add NOR
       </Button>
 

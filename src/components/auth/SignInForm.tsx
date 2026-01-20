@@ -41,67 +41,54 @@ export default function SignInForm() {
 const handleSubmit = async (e: FormEvent) => {
   e.preventDefault();
   setFieldErrors({});
-  setSuccessMessage("");
-
-  // ✅ RUN JOI VALIDATION
-  const { error } = signinValidation.validate(
-    {
-      email: form.email,
-      password: form.password,
-      remember: isChecked,
-    },
-    { abortEarly: false } // 🔥 collect all errors
-  );
-
-  if (error) {
-    const errors: FieldErrors = {};
-
-    error.details.forEach((detail) => {
-      const key = detail.path[0] as string;
-      errors[key] = detail.message;
-    });
-
-    setFieldErrors(errors);
-    return; // ⛔ STOP HERE (do not call signIn)
-  }
-
   setLoading(true);
 
-  try {
-    const result = await signIn("credentials", {
-      redirect: false,
+  // 🔹 1. PRE-AUTH CHECK
+  const res = await fetch("/api/pre-auth-check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       email: form.email,
       password: form.password,
-    });
+    }),
+  });
 
-   if (result?.error) {
-  if (result.error === "USER_INACTIVE") {
-    setFieldErrors({
-      general: "Your account is inactive. Please contact the administrator.",
-    });
-  } else {
-    setFieldErrors({
-      general: "Invalid email or password",
-    });
-  }
+  const data = await res.json();
 
-  setLoading(false);
-  return;
-}
+ if (!res.ok) {
+      if (data.error === "USER_INACTIVE") {
+        setFieldErrors({
+          general:
+            "Your account is inactive. Please contact the administrator.",
+        });
+      } else if (data.error === "COMPANY_REQUIRED") {
+        setFieldErrors({
+          general:
+            "Your account is not associated with a company. Please contact the administrator.",
+        });
+      } else if (data.error === "COMPANY_INACTIVE") {
+        setFieldErrors({
+          general:
+            "Your company account is inactive or unavailable. Please contact your administrator or support.",
+        });
+      } else {
+        setFieldErrors({
+          general: "Invalid email or password.",
+        });
+      }
 
+      setLoading(false);
+      return;
+    }
 
-    
-
-    setTimeout(() => {
-      router.push("/");
-      router.refresh();
-    }, 1000);
-
-  } catch (err) {
-    setFieldErrors({ general: "Something went wrong" });
-    setLoading(false);
-  }
+  // 🔹 2. REAL SIGN-IN (NextAuth)
+  await signIn("credentials", {
+    email: form.email,
+    password: form.password,
+    callbackUrl: "/",
+  });
 };
+
 
 
   return (
@@ -201,7 +188,7 @@ const handleSubmit = async (e: FormEvent) => {
                 )}
               </div>
 
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Checkbox checked={isChecked} onChange={setIsChecked} />
                   <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
@@ -214,8 +201,8 @@ const handleSubmit = async (e: FormEvent) => {
                   className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                 >
                   Forgot password?
-                </Link> */}
-              </div>
+                </Link> 
+              </div> */}
 
               <div>
                 <Button type="submit" className="w-full" size="sm" disabled={loading}>

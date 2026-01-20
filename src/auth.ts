@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import Role from "@/models/Role";
 import User from "@/models/User";
-import Company from "@/models/Company"; // Ensure this matches your model path
+import Company from "@/models/Company"; 
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -20,17 +20,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .populate({ path: "company", model: Company })
           .lean();
 
-        if (!user || !user.password) return null;
-        
+          if (!user || !user.password) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-        if (!isValid) return null;
-        if (user.status !== "active") {
-  throw new Error("USER_INACTIVE");
-}
+  const isValid = await bcrypt.compare(
+    credentials!.password as string,
+    user.password as string
+  );
+
+  if (!isValid) return null;
 
         // Calculate Permissions
         const basePerms = user.role?.permissions || [];
