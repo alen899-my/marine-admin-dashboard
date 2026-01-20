@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
     const search = searchParams.get("search")?.trim() || "";
-    const statusParam = searchParams.get("status") || "all"; // renamed to avoid conflict
+    const status = searchParams.get("status") || "all"; // renamed to avoid conflict
     const companyIdParam = searchParams.get("companyId");
 
     const startDate = searchParams.get("startDate");
@@ -313,8 +313,8 @@ export async function GET(req: NextRequest) {
     // 2. Handle Status filter from Params
     // If the user selects a specific status, it overrides the default "not deleted"
     // but we still want to ensure they don't see soft-deleted records.
-    if (statusParam !== "all") {
-      query.status = statusParam;
+    if (status !== "all") {
+      query.status = status;
     }
 
     // 3. Search Logic
