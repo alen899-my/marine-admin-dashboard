@@ -33,10 +33,11 @@ export async function GET(req: NextRequest) {
     const selectedCompanyId = searchParams.get("companyId");
 
     // 2. Build Base Query Filter
-    const filter: any = { status: "active" };
+    // ✅ SUPER ADMIN: Only requires deletedAt: null (global view)
+    const filter: any = { status: "active", deletedAt: null };
     
     // Additional filters for global entities (Users/Vessels) that don't use 'vesselId'
-    const companyFilter: any = {}; 
+    const companyFilter: any = { status: "active", deletedAt: null }; 
 
     // =========================================================
     // 🔒 MULTI-TENANCY & FILTERING LOGIC
@@ -52,14 +53,19 @@ export async function GET(req: NextRequest) {
 
       // ✅ NEW LOGIC: Separate Report Filter from Global Company Filter
       // We use 'reportFilter' for the actual document counts (Noon, Arrival, etc.)
-      const reportFilter: any = { status: "active" };
+      const reportFilter: any = { status: "active", deletedAt: null };
 
       if (isOpStaff) {
-        // 🟠 FOR OP-STAFF: Only show reports THEY created
+        // 🟠 FOR OP-STAFF: Only show records that are NOT deleted AND created by him
         reportFilter.createdBy = userId;
       } else {
-        // 🔵 FOR COMPANY ADMINS: Show all company vessel reports
-        const companyVessels = await Vessel.find({ company: userCompanyId, status: "active" }).select("_id");
+        // 🔵 FOR COMPANY ADMINS: Show records that are NOT deleted AND belong to his company vessels
+        const companyVessels = await Vessel.find({ 
+          company: userCompanyId, 
+          status: "active", 
+          deletedAt: null 
+        }).select("_id");
+        
         const companyVesselIds = companyVessels.map((v) => v._id);
         reportFilter.vesselId = { $in: companyVesselIds };
       }
@@ -69,8 +75,13 @@ export async function GET(req: NextRequest) {
       Object.assign(filter, reportFilter);
 
     } else if (selectedCompanyId && selectedCompanyId !== "all") {
-      // 🟢 FOR SUPER ADMINS: Only filter if a specific company is selected
-      const companyVessels = await Vessel.find({ company: selectedCompanyId, status: "active" }).select("_id");
+      // 🟢 FOR SUPER ADMINS (with selection): Show records NOT deleted AND in specific company
+      const companyVessels = await Vessel.find({ 
+        company: selectedCompanyId, 
+        status: "active", 
+        deletedAt: null 
+      }).select("_id");
+      
       const companyVesselIds = companyVessels.map((v) => v._id);
       filter.vesselId = { $in: companyVesselIds };
       companyFilter.company = selectedCompanyId;
@@ -90,50 +101,54 @@ export async function GET(req: NextRequest) {
       totalUsers,
       totalCompanies
     ] = await Promise.all([
-      // 1) Daily Noon
+      // 1) Daily Noon (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportDaily.countDocuments({ ...filter, type: "noon" }),
       
-      // 2) Departure
+      // 2) Departure (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "departure" }),
       
-      // 3) Arrival
+      // 3) Arrival (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "arrival" }),
       
-      // 4) NOR 
+      // 4) NOR (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "nor" }),
       
-      // 5) Cargo Stowage
+      // 5) Cargo Stowage (Enforces deletedAt: null + ownership/tenancy via filter)
       Document.countDocuments({ ...filter, documentType: "stowage_plan" }),
       
-      // 6) Cargo Documents
+      // 6) Cargo Documents (Enforces deletedAt: null + ownership/tenancy via filter)
       Document.countDocuments({ ...filter, documentType: "cargo_documents" }),
 
-      // 7) Total Vessels (Filtered by status: active)
+      // 7) Total Vessels (Filtered by status: active AND deletedAt: null)
       Vessel.countDocuments({
         status: "active",
+        deletedAt: null,
         ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
           ? {} 
           : { company: companyFilter.company })
       }),
 
-      // 8) Total Voyages (Filtered by status: active)
+      // 8) Total Voyages (Filtered by status: active AND deletedAt: null)
       Voyage.countDocuments({
         status: "active",
+        deletedAt: null,
         ...(filter.vesselId ? { vesselId: filter.vesselId } : {}),
-        ...(isOpStaff ? { createdBy: userId } : {}) // ✅ Staff only see their voyages
+        ...(isOpStaff ? { createdBy: userId } : {}) // ✅ Staff only see their own active voyages
       }),
 
-      // 9) Total Users (Filtered by status: active)
+      // 9) Total Users (Filtered by status: active AND deletedAt: null)
       User.countDocuments({
         status: "active",
+        deletedAt: null,
         ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
           ? {} 
           : { company: companyFilter.company })
       }),
 
-      // 10) Total Companies (Filtered by status: active)
+      // 10) Total Companies (Filtered by status: active AND deletedAt: null)
       Company.countDocuments({
         status: "active",
+        deletedAt: null,
         ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
           ? {} 
           : { _id: companyFilter.company })
