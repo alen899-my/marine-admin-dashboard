@@ -3,7 +3,8 @@ import ReportDaily from "@/models/ReportDaily";
 import Voyage from "@/models/Voyage"; // ✅ Import Voyage for ID lookup
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import { auth } from "@/auth"; 
+import { auth } from "@/auth";
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -108,9 +109,22 @@ export async function DELETE(
     
     await dbConnect();
 
+    // ✅ IMPORTANT: await params
     const { id } = await params;
 
-    const report = await ReportDaily.findByIdAndDelete(id);
+    // ✅ Perform Soft Delete
+    // Instead of findByIdAndDelete, we update the record to mark it as deleted.
+    // We update the status to "deleted" and set the deletedAt timestamp.
+    const report = await ReportDaily.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          status: "inactive",
+          deletedAt: new Date(),
+        },
+      },
+      { new: true } // Returns the updated document
+    );
 
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });

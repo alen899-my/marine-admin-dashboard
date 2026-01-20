@@ -202,13 +202,20 @@ export async function DELETE(
       );
     }
 
-    // 2. Delete file (Local or Blob)
-    if (docToDelete.file?.url) {
-      await deleteFile(docToDelete.file.url);
-    }
-
-    // 3. Delete DB Record
-    await Document.findByIdAndDelete(id);
+    // 2. Perform Soft Delete
+    // We update the deletedAt timestamp and set status to inactive.
+    // NOTE: We skip calling deleteFile(docToDelete.file.url) to preserve 
+    // the file for historical audit purposes in line with soft-delete logic.
+    await Document.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deletedAt: new Date(),
+          status: "inactive",
+        },
+      },
+      { new: true }
+    );
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error: unknown) {

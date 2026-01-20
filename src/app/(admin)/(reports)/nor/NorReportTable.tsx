@@ -264,6 +264,27 @@ export default function NorReportTable({
     editData?.voyageNo,
   ]);
 
+  // Status Badge Helper for Soft Delete
+  const renderStatusBadge = (statusStr: string) => {
+    let color: "success" | "warning" | "error" | "default" = "default";
+    let label = statusStr;
+
+    switch (statusStr?.toLowerCase()) {
+      case "active":
+        color = "success";
+        label = "Active";
+        break;
+      case "inactive":
+        color = "error";
+        label = "Inactive";
+        break;
+      default:
+        color = "default";
+        label = statusStr || "N/A";
+    }
+    return <Badge color={color}>{label}</Badge>;
+  };
+
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
     {
@@ -377,14 +398,7 @@ export default function NorReportTable({
     },
     {
       header: "Status",
-      render: (r: INorReport) => {
-        const isActive = r.status === "active";
-        return (
-          <Badge color={isActive ? "success" : "error"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        );
-      },
+      render: (r: INorReport) => renderStatusBadge(r.status),
     },
   ];
 
@@ -844,13 +858,7 @@ export default function NorReportTable({
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
+              {renderStatusBadge(selectedReport?.status || "")}
             </div>
 
             {/* ACTIONS (DOWNLOAD & SHARE) */}

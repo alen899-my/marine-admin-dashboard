@@ -107,14 +107,30 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-        const authz = await authorizeRequest("departure.delete");
+    const authz = await authorizeRequest("departure.delete");
     if (!authz.ok) return authz.response;
     await dbConnect();
+
+    // ✅ IMPORTANT: await params
     const { id } = await context.params;
-    const deleted = await ReportOperational.findOneAndDelete({
-      _id: id,
-      eventType: "departure",
-    });
+
+    // ✅ Perform Soft Delete
+    // Instead of findOneAndDelete, we use findOneAndUpdate to set the deletedAt timestamp.
+    // We also include eventType: "departure" to ensure the correct record type is targeted.
+    const deleted = await ReportOperational.findOneAndUpdate(
+      {
+        _id: id,
+        eventType: "departure",
+        deletedAt: null, // Ensure we are not updating an already deleted report
+      },
+      {
+        $set: {
+          deletedAt: new Date(),
+          status: "inactive",
+        },
+      },
+      { new: true }
+    );
 
     if (!deleted) {
       return NextResponse.json(

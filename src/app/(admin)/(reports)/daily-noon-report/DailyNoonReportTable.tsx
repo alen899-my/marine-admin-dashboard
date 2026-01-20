@@ -376,11 +376,26 @@ export default function DailyNoonReportTable({
       },
       {
         header: "Status",
-        render: (r: IDailyNoonReport) => (
-          <Badge color={r.status === "active" ? "success" : "error"}>
-            {r.status === "active" ? "Active" : "Inactive"}
-          </Badge>
-        ),
+        render: (r: IDailyNoonReport) => {
+          let color: "success" | "warning" | "error" | "light" = "light";
+          let label = r.status;
+
+          switch (r.status?.toLowerCase()) {
+            case "active":
+              color = "success";
+              label = "Active";
+              break;
+            case "inactive":
+              color = "error";
+              label = "Inactive";
+              break;
+            default:
+              color = "light";
+              label = r.status || "Unknown";
+          }
+
+          return <Badge color={color}>{label}</Badge>;
+        },
       },
     ],
     [currentPage]
@@ -867,7 +882,7 @@ export default function DailyNoonReportTable({
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-12">
             {/* STATUS */}
-            <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="pt-4 border-t border-gray-200 flex items-center justify-between dark:border-white/10">
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
@@ -1007,8 +1022,8 @@ export default function DailyNoonReportTable({
                       !editData.vesselId
                         ? "Select Vessel first"
                         : voyageList.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>

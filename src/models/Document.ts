@@ -7,8 +7,6 @@ export interface IDocument extends Document {
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
 
-
-  
   portName: string;
 
   portType: "load" | "discharge" | "departure";
@@ -27,6 +25,7 @@ export interface IDocument extends Document {
   };
 
   status: "active" | "inactive";
+  deletedAt: Date | null;
   remarks?: string;
 }
 
@@ -34,16 +33,14 @@ const DocumentSchema = new Schema<IDocument>(
   {
     vesselId: { type: Schema.Types.ObjectId, ref: "Vessel", required: true, index: true },
     voyageId: { type: Schema.Types.ObjectId, ref: "Voyage", required: true, index: true },
-      createdBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        updatedBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-
-    
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
 
     portName: { type: String, required: true },
 
@@ -74,6 +71,11 @@ const DocumentSchema = new Schema<IDocument>(
       type: String,
       enum: ["active", "inactive"],
       default: "active",
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
     },
 
     remarks: String,

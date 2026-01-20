@@ -1,11 +1,17 @@
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
+import User from "@/models/User";
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import ReportDaily from "@/models/ReportDaily";
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
+import ReportOperational from "@/models/ReportOperational";
+import Document from "@/models/Document";
 
 // --- UPDATE COMPANY (PATCH) ---
 export async function PATCH(
@@ -100,7 +106,7 @@ export async function PATCH(
   }
 }
 
-// --- DELETE COMPANY (DELETE) ---
+// --- DELETE COMPANY (SOFT DELETE) ---
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -112,17 +118,70 @@ export async function DELETE(
 
     await dbConnect();
     const { id } = await context.params;
+    const now = new Date();
 
-    // 2. Perform Delete
-    const deleted = await Company.findByIdAndDelete(id);
+    // 2. CHECK FOR EXISTING USERS
+    // We check if any user is linked to this company who is NOT already marked as 'deleted'
+    const userCount = await User.countDocuments({ 
+      company: id, 
+      status: { $ne: "deleted" } 
+    });
+
+    if (userCount > 0) {
+      return NextResponse.json(
+        { 
+          error: `Cannot delete company. There are still ${userCount} active user(s) associated with this company.` 
+        }, 
+        { status: 400 } // Bad Request / Conflict
+      );
+    }
+
+    // 3. Perform Soft Delete on Company
+    const deleted = await Company.findByIdAndUpdate(
+      id,
+      { 
+        status: "inactive", 
+        deletedAt: now 
+      },
+      { new: true }
+    );
 
     if (!deleted) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
+    // 4. RELATIONSHIP CASCADING (Vessels, Voyages, Reports)
+    // Since we know userCount is 0, we don't need to update Users, 
+    // but we still deactivate vessels and their related data.
+    const vessels = await Vessel.find({ company: id }).select("_id");
+    const vesselIds = vessels.map((v) => v._id);
+
+    await Promise.all([
+      Vessel.updateMany(
+        { company: id }, 
+        { $set: { status: "inactive", deletedAt: now } }
+      ),
+      Voyage.updateMany(
+        { vesselId: { $in: vesselIds } }, 
+        { $set: { deletedAt: now } }
+      ),
+      ReportDaily.updateMany(
+        { vesselId: { $in: vesselIds } },
+        { $set: { deletedAt: now } }
+      ),
+      ReportOperational.updateMany(
+        { vesselId: { $in: vesselIds } },
+        { $set: { deletedAt: now } }
+      ),
+      Document.updateMany(
+        { vesselId: { $in: vesselIds } },
+        { $set: { deletedAt: now } }
+      )
+    ]);
+
     return NextResponse.json({
       success: true,
-      message: "Company deleted successfully",
+      message: "Company and associated maritime data deactivated successfully",
     });
   } catch (error) {
     console.error("DELETE COMPANY ERROR →", error);

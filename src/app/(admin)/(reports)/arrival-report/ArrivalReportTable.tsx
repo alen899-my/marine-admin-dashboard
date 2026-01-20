@@ -196,6 +196,27 @@ export default function ArrivalReportTable({
     return "-";
   };
 
+  // Status Badge Helper
+  const getStatusBadge = (statusStr: string) => {
+    let color: "success" | "warning" | "error" | "default" = "default";
+    let label = statusStr;
+
+    switch (statusStr?.toLowerCase()) {
+      case "active":
+        color = "success";
+        label = "Active";
+        break;
+      case "inactive":
+        color = "error";
+        label = "Inactive";
+        break;
+      default:
+        color = "default";
+        label = statusStr || "N/A";
+    }
+    return <Badge color={color}>{label}</Badge>;
+  };
+
   /* ================= COLUMNS ================= */
   const columns = [
     {
@@ -298,11 +319,7 @@ export default function ArrivalReportTable({
     },
     {
       header: "Status",
-      render: (r: ArrivalReport) => (
-        <Badge color={r.status === "active" ? "success" : "error"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
+      render: (r: ArrivalReport) => getStatusBadge(r.status), // ✅ Updated Status Badge
     },
   ];
 
@@ -933,13 +950,7 @@ const fetchReports = useCallback(
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
+              {getStatusBadge(selectedReport?.status || "")}
             </div>
 
             {/* ACTIONS (DOWNLOAD & SHARE) */}

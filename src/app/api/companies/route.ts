@@ -151,7 +151,8 @@ export async function GET(req: NextRequest) {
     // =========================================================
     // 🔒 MULTI-TENANCY & AUTHORIZATION LOGIC
     // =========================================================
-    const query: any = {};
+    // Initializing query with soft-delete filter
+    const query: any = { deletedAt: null };
 
     if (!isSuperAdmin) {
       // Regular users don't need 'company.view' permission to see their OWN company

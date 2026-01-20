@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
-     const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
+    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     // Ensure models are registered for population
     const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
 
@@ -91,20 +91,21 @@ export async function GET(req: NextRequest) {
     const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
     const skip = (page - 1) * limit;
 
-    const query: Record<string, any> = {};
-      //history reports logics 
+    // ✅ Initialize query with soft-delete filter
+    const query: Record<string, any> = { deletedAt: null };
+
+    //history reports logics 
     if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
 
-  const now = new Date();
+      const now = new Date();
 
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now, 
+      };
+    }
 
     // 1. Multi-Tenancy Logic
     const selectedVessel = searchParams.get("vesselId");
@@ -114,7 +115,8 @@ export async function GET(req: NextRequest) {
       if (!userCompanyId)
         return sendResponse(403, "No company assigned to profile", null, false);
 
-      const companyVessels = await Vessel.find({ company: userCompanyId })
+      // ✅ Filter Vessels by soft-delete status
+      const companyVessels = await Vessel.find({ company: userCompanyId, deletedAt: null })
         .select("_id")
         .lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
@@ -134,7 +136,8 @@ export async function GET(req: NextRequest) {
     } else {
       // Super Admin Logic
       if (selectedCompany && selectedCompany !== "all") {
-        const companyVessels = await Vessel.find({ company: selectedCompany })
+        // ✅ Filter Vessels by soft-delete status
+        const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null })
           .select("_id")
           .lean();
         const companyVesselIds = companyVessels.map((v) => v._id);
@@ -179,10 +182,16 @@ export async function GET(req: NextRequest) {
 
     const search = searchParams.get("search")?.trim();
     if (search) {
-      query.$or = [
-        { vesselName: { $regex: search, $options: "i" } },
-        { voyageNo: { $regex: search, $options: "i" } },
-        { "navigation.nextPort": { $regex: search, $options: "i" } },
+      // ✅ Wrap search in $and to ensure deletedAt filter is not bypassed
+      query.$and = [
+        { deletedAt: null },
+        {
+          $or: [
+            { vesselName: { $regex: search, $options: "i" } },
+            { voyageNo: { $regex: search, $options: "i" } },
+            { "navigation.nextPort": { $regex: search, $options: "i" } },
+          ],
+        }
       ];
     }
 
@@ -208,8 +217,8 @@ export async function GET(req: NextRequest) {
     ];
 
     if (fetchAll) {
-      // Add Company lookup to parallel queue
-      const companyFilter = isSuperAdmin ? {} : { _id: userCompanyId };
+      // Add Company lookup (✅ Include soft-delete check)
+      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
@@ -217,8 +226,8 @@ export async function GET(req: NextRequest) {
           .lean()
       );
 
-      // Add Vessel lookup to parallel queue
-      const vesselFilter: any = { status: "active" };
+      // Add Vessel lookup (✅ Include soft-delete check)
+      const vesselFilter: any = { status: "active", deletedAt: null };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (selectedCompany && selectedCompany !== "all")
         vesselFilter.company = selectedCompany;
@@ -244,9 +253,11 @@ export async function GET(req: NextRequest) {
       const rawVessels = (results[3] || []) as any[];
       const vesselIds = rawVessels.map((v) => v._id);
 
+      // ✅ Fetch only non-deleted voyages
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vesselIds },
         status: "active",
+        deletedAt: null
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();

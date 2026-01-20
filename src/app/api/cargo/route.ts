@@ -212,21 +212,21 @@ export async function GET(req: Request) {
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
-    const query: any = {};
+    // ✅ Initialize query to only show non-deleted documents
+    const query: any = { deletedAt: null };
 
     //history reports logics 
     if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
 
-  const now = new Date();
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now, 
+      };
+    }
 
-  
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-}
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
@@ -241,6 +241,7 @@ export async function GET(req: Request) {
       }
       const companyVessels = await Vessel.find({
         company: userCompanyId,
+        deletedAt: null, // ✅ Only look through active vessels
       }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
       query.vesselId = { $in: companyVesselIds };
@@ -257,9 +258,10 @@ export async function GET(req: Request) {
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select(
-          "_id"
-        );
+        const targetVessels = await Vessel.find({ 
+          company: companyId,
+          deletedAt: null // ✅ Filter soft-deleted vessels
+        }).select("_id");
         const targetVesselIds = targetVessels.map((v) => v._id);
         if (selectedVessel) {
           if (targetVesselIds.some((id) => id.toString() === selectedVessel)) {
@@ -279,19 +281,26 @@ export async function GET(req: Request) {
     }
 
     if (status !== "all") query.status = status;
+
     if (search) {
-      query.$or = [
-        { portName: { $regex: search, $options: "i" } },
-        { "file.originalName": { $regex: search, $options: "i" } },
+      // ✅ Use $and to ensure the search OR conditions do not bypass the deletedAt filter
+      query.$and = [
+        { deletedAt: null },
+        {
+          $or: [
+            { portName: { $regex: search, $options: "i" } },
+            { "file.originalName": { $regex: search, $options: "i" } },
+          ],
+        }
       ];
     }
+
     if (selectedVoyage) query.voyageId = selectedVoyage;
 
-    // Helper for date parsing (assuming defined in your scope)
+    // Helper for date parsing
     if (startDate || endDate) {
       const dateQuery: any = {};
 
-      // Use your parseDateString helper instead of native new Date()
       if (startDate) {
         const start = parseDateString(startDate);
         if (start) dateQuery.$gte = start;
@@ -300,13 +309,11 @@ export async function GET(req: Request) {
       if (endDate) {
         const end = parseDateString(endDate);
         if (end) {
-          // Ensure the end of the day is included
           end.setHours(23, 59, 59, 999);
           dateQuery.$lte = end;
         }
       }
 
-      // Apply to the correct database field
       if (dateQuery.$gte || dateQuery.$lte) {
         query.reportDate = dateQuery;
       }
@@ -333,7 +340,7 @@ export async function GET(req: Request) {
     ];
 
     if (fetchAll) {
-      const companyFilter: any = isSuperAdmin ? {} : { _id: userCompanyId };
+      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
@@ -341,7 +348,7 @@ export async function GET(req: Request) {
           .lean()
       );
 
-      const vesselFilter: any = { status: "active" };
+      const vesselFilter: any = { status: "active", deletedAt: null }; // ✅ Exclude deleted vessels
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (companyId && companyId !== "all")
         vesselFilter.company = companyId;
@@ -369,6 +376,7 @@ export async function GET(req: Request) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vIds },
         status: "active",
+        deletedAt: null // ✅ Exclude soft-deleted voyages
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();

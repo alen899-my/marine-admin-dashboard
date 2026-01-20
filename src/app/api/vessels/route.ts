@@ -38,7 +38,8 @@ export async function GET(req: Request) {
 
     // 3. Build Filter Object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: any = {};
+    // ✅ Initialize query to exclude soft-deleted records
+    const query: any = { deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -77,9 +78,15 @@ export async function GET(req: Request) {
       // Note: query.company is already handled by multi-tenancy block above
       
       if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: "i" } },
-          { imo: { $regex: search, $options: "i" } },
+        // ✅ Wrap search in $and to ensure deletedAt: null is always enforced
+        query.$and = [
+          { deletedAt: null },
+          {
+            $or: [
+              { name: { $regex: search, $options: "i" } },
+              { imo: { $regex: search, $options: "i" } },
+            ],
+          }
         ];
       }
       
@@ -115,6 +122,7 @@ export async function GET(req: Request) {
     const activeVoyages = await Voyage.find({
       vesselId: { $in: vesselIds },
       status: "active",
+      deletedAt: null // ✅ Also ensure we only map non-deleted active voyages
     })
     .select("vesselId voyageNo schedule.startDate")
     .lean();

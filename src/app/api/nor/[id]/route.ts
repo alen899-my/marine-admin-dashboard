@@ -181,12 +181,20 @@ export async function DELETE(
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    const fileUrl = record.norDetails?.documentUrl;
-    if (fileUrl) {
-      await deleteFile(fileUrl);
-    }
-
-    await ReportOperational.findByIdAndDelete(id);
+    // SOFT DELETE LOGIC
+    // We update the record instead of deleting it.
+    // NOTE: We do NOT delete the file (fileUrl) so that the soft-deleted
+    // record remains complete for historical/audit purposes.
+    await ReportOperational.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deletedAt: new Date(),
+          status: "inactive",
+        },
+      },
+      { new: true }
+    );
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error) {

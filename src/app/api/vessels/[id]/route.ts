@@ -137,8 +137,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid vessel ID" }, { status: 400 });
     }
 
-    // 2. Perform Delete
-    const deletedVessel = await Vessel.findByIdAndDelete(id);
+    // 2. Perform Soft Delete
+    // We update the deletedAt timestamp and set status to inactive or sold 
+    // depending on your preference. Here we keep your existing enum logic.
+    const deletedVessel = await Vessel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deletedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
 
     if (!deletedVessel) {
       return NextResponse.json(
@@ -147,6 +157,9 @@ export async function DELETE(
       );
     }
 
+    // 3. Remove Vessel from Company's active vessels list
+    // We still pull the ID from the Company array so that the "delete company" 
+    // validation logic works correctly.
     if (deletedVessel.company) {
       await Company.findByIdAndUpdate(deletedVessel.company, {
         $pull: { vessels: id }

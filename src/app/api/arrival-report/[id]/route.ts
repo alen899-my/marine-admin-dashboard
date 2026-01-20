@@ -129,21 +129,32 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
     }
 
-    const deletedReport = await ReportOperational.findOneAndDelete({
-      _id: id,
-      eventType: "arrival",
-    });
+    // ✅ Perform Soft Delete
+    // We update the deletedAt timestamp and set status to inactive
+    const deletedReport = await ReportOperational.findOneAndUpdate(
+      {
+        _id: id,
+        eventType: "arrival",
+        deletedAt: null, // Ensure we are not trying to delete an already deleted report
+      },
+      {
+        $set: {
+          deletedAt: new Date(),
+          status: "inactive",
+        },
+      },
+      { new: true }
+    );
 
     if (!deletedReport) {
       return NextResponse.json(
-        { error: "Arrival report not found" },
+        { error: "Arrival report not found or already deleted" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Arrival report deleted successfully",
     });
   } catch (error) {
     console.error("DELETE ARRIVAL REPORT ERROR →", error);

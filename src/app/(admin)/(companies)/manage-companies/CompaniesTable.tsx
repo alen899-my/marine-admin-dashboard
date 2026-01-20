@@ -156,7 +156,11 @@ export default function CompaniesTable({
       const res = await fetch(`/api/companies/${selectedCompany._id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (!res.ok) {
+      // Show the specific error from the server (e.g., "There are still users...")
+      throw new Error(data.error || "Failed to delete");
+    }
 
       setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
 
@@ -164,9 +168,9 @@ export default function CompaniesTable({
         setTotalCount((prev) => Math.max(0, prev - 1));
       }
       toast.success("Company deleted successfully");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to delete company");
+      toast.error(error.message);
     } finally {
       setOpenDelete(false);
       setSelectedCompany(null);

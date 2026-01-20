@@ -49,6 +49,7 @@ export interface IReportOperational extends Document {
 
   remarks?: string;
   status: "active" | "inactive";
+  deletedAt: Date | null;
 }
 
 const ReportOperationalSchema = new Schema<IReportOperational>(
@@ -130,6 +131,10 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
       enum: ["active", "inactive"],
       default: "active",
       index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

@@ -45,8 +45,13 @@ const userSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["inactive", "active", "banned"], // Updated to match your requirements
+      enum: ["inactive", "active", "banned", "deleted"], // Added "deleted"
       default: "active",
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null, // Added for Soft Delete tracking
     },
 
     lastLoginAt: { type: Date, default: null }, // Renamed to match your requested 'last_login_at'

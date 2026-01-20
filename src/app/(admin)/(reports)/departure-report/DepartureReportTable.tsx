@@ -183,6 +183,27 @@ export default function DepartureReportTable({
     return "-";
   };
 
+  // Helper for Soft Delete Status Badges
+  const renderStatusBadge = (reportStatus: string) => {
+    let color: "success" | "warning" | "error" | "default" = "default";
+    let label = reportStatus;
+
+    switch (reportStatus?.toLowerCase()) {
+      case "active":
+        color = "success";
+        label = "Active";
+        break;
+      case "inactive":
+        color = "error";
+        label = "Inactive";
+        break;
+      default:
+        color = "default";
+        label = reportStatus || "N/A";
+    }
+    return <Badge color={color}>{label}</Badge>;
+  };
+
   /* ================= TABLE COLUMNS ================= */
   const columns = [
     {
@@ -297,11 +318,7 @@ export default function DepartureReportTable({
     },
     {
       header: "Status",
-      render: (r: IDepartureReport) => (
-        <Badge color={r.status === "active" ? "success" : "error"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
+      render: (r: IDepartureReport) => renderStatusBadge(r.status),
     },
   ];
 
@@ -851,13 +868,7 @@ export default function DepartureReportTable({
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 Status
               </span>
-              <Badge
-                color={
-                  selectedReport?.status === "active" ? "success" : "error"
-                }
-              >
-                {selectedReport?.status === "active" ? "Active" : "Inactive"}
-              </Badge>
+              {renderStatusBadge(selectedReport?.status || "")}
             </div>
 
             {/* ACTIONS (DOWNLOAD & SHARE) */}

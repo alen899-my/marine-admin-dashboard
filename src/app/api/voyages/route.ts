@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import Voyage from "@/models/Voyage";
-import Vessel from "@/models/Vessel"; // Needed for search filtering if searching by Vessel Name
+import Vessel from "@/models/Vessel";
+import Company from "@/models/Company";
 import { voyageSchema } from "@/lib/validations/voyageSchema";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
@@ -39,7 +40,8 @@ export async function GET(req: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const query: any = {};
+    // ✅ Initialize query to only show non-deleted voyages (deletedAt must be null)
+    const query: any = { deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -133,10 +135,16 @@ export async function GET(req: Request) {
       const matchingVessels = await Vessel.find(vesselSearchQuery).select("_id");
       const vesselIds = matchingVessels.map((v) => v._id);
 
-      query.$or = [
-        { voyageNo: { $regex: search, $options: "i" } },
-        { "route.loadPort": { $regex: search, $options: "i" } },
-        { vesselId: { $in: vesselIds } },
+      // ✅ Use $and to combine the search OR logic with the existing deletedAt: null filter
+      query.$and = [
+        { deletedAt: null }, 
+        {
+          $or: [
+            { voyageNo: { $regex: search, $options: "i" } },
+            { "route.loadPort": { $regex: search, $options: "i" } },
+            { vesselId: { $in: vesselIds } },
+          ],
+        }
       ];
     }
 
@@ -144,10 +152,18 @@ export async function GET(req: Request) {
 
     const [data, total] = await Promise.all([
       Voyage.find(query)
-        .populate("vesselId", "name imo")
+        // ✅ Updated to deep populate Company through VesselId
+        .populate({
+          path: "vesselId",
+          select: "name imo company",
+          populate: {
+            path: "company",
+            select: "name",
+          },
+        })
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
-       .sort({ createdAt: -1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
