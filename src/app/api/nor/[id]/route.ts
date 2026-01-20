@@ -153,6 +153,14 @@ export async function PATCH(
     )
     // ✅ POPULATE VOYAGE ID (Crucial for frontend display)
     .populate("voyageId", "voyageNo")
+    .populate({
+  path: "vesselId",
+  select: "name company", // Include name and company reference
+  populate: {
+    path: "company",      // Populate the company document
+    select: "name",       // Only fetch the company name
+  },
+})
     .populate("createdBy", "fullName") 
 .populate("updatedBy", "fullName"); // 
 

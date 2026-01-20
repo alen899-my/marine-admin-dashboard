@@ -1,24 +1,24 @@
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/authorizeRequest";
 // MODEL
+import { auth } from "@/auth";
 import ReportOperational from "@/models/ReportOperational";
 import Voyage from "@/models/Voyage";
-import { auth } from "@/auth";
 /* ======================================
    UPDATE ARRIVAL REPORT (PATCH)
 ====================================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-  const currentUserId = session?.user?.id;
+    const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("arrival.edit");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const { id } = await context.params;
 
@@ -29,23 +29,23 @@ export async function PATCH(
     const body = await req.json();
 
     // 1. ✅ VOYAGE LOOKUP LOGIC
-    // Frontend sends 'voyageId' as a string (e.g. "OP-1225"). 
+    // Frontend sends 'voyageId' as a string (e.g. "OP-1225").
     // We need to find the real ObjectId from the Voyage collection.
-    const voyageNoString = body.voyageId || body.voyageNo; 
+    const voyageNoString = body.voyageId || body.voyageNo;
     const vesselId = body.vesselId;
-    
+
     let voyageObjectId = null;
 
     // Check if we have enough info to look up the new voyage ID
     if (vesselId && voyageNoString) {
-       const foundVoyage = await Voyage.findOne({
-          vesselId: vesselId,
-          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") } 
-       }).select("_id");
+      const foundVoyage = await Voyage.findOne({
+        vesselId: vesselId,
+        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+      }).select("_id");
 
-       if (foundVoyage) {
-          voyageObjectId = foundVoyage._id;
-       }
+      if (foundVoyage) {
+        voyageObjectId = foundVoyage._id;
+      }
     }
 
     // 2. Prepare the base update object
@@ -54,11 +54,11 @@ export async function PATCH(
       updatedBy: currentUserId,
       // ✅ Update Linked IDs
       // Only update if we found a valid ID, otherwise keep existing (or let it fail validation if critical)
-      ...(voyageObjectId && { voyageId: voyageObjectId }), 
+      ...(voyageObjectId && { voyageId: voyageObjectId }),
       ...(vesselId && { vesselId: vesselId }),
 
       // ✅ Update Snapshot Strings
-      ...(voyageNoString && { voyageNo: voyageNoString }), 
+      ...(voyageNoString && { voyageNo: voyageNoString }),
 
       portName: body.portName,
       remarks: body.remarks,
@@ -72,7 +72,8 @@ export async function PATCH(
     // 4. Extract ROB and Cargo safely
     const robVlsfo = body.robVlsfo ?? body.arrivalStats?.robVlsfo;
     const robLsmgo = body.robLsmgo ?? body.arrivalStats?.robLsmgo;
-    const cargoQty = body.arrivalCargoQty ?? body.arrivalStats?.arrivalCargoQtyMt;
+    const cargoQty =
+      body.arrivalCargoQty ?? body.arrivalStats?.arrivalCargoQtyMt;
 
     // 5. Update Nested arrivalStats
     updateData.arrivalStats = {
@@ -93,13 +94,27 @@ export async function PATCH(
     const updatedReport = await ReportOperational.findOneAndUpdate(
       { _id: id, eventType: "arrival" },
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
-    // ✅ POPULATE Response so Frontend sees readable name immediately
-    .populate("voyageId", "voyageNo"); 
+      // ✅ POPULATE Response so Frontend sees readable name immediately
+      .populate("voyageId", "voyageNo")
+      .populate({
+        path: "vesselId",
+        select: "name company", // Include the company reference
+        populate: {
+          path: "company", // Populate the company document
+          select: "name", // Only fetch the company name
+        },
+      })
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
+      .lean();
 
     if (!updatedReport) {
-      return NextResponse.json({ error: "Arrival report not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Arrival report not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
@@ -109,7 +124,10 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("UPDATE ARRIVAL REPORT ERROR →", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 /* ======================================
@@ -117,7 +135,7 @@ export async function PATCH(
 ====================================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     await dbConnect();
@@ -143,13 +161,13 @@ export async function DELETE(
           status: "inactive",
         },
       },
-      { new: true }
+      { new: true },
     );
 
     if (!deletedReport) {
       return NextResponse.json(
         { error: "Arrival report not found or already deleted" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -160,7 +178,7 @@ export async function DELETE(
     console.error("DELETE ARRIVAL REPORT ERROR →", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
