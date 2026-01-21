@@ -10,6 +10,7 @@ import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import User from "@/models/User";
 import Company from "@/models/Company";
+import Role from "@/models/Role"; // ✅ Imported Role to find the Super Admin ID
 
 export async function GET(req: NextRequest) {
   try {
@@ -86,6 +87,13 @@ export async function GET(req: NextRequest) {
       filter.vesselId = { $in: companyVesselIds };
       companyFilter.company = selectedCompanyId;
     }
+
+    // ✅ Find Super Admin Role ID to exclude from count if requester is not Super Admin
+    let superAdminRoleId = null;
+    if (!isSuperAdmin) {
+      const saRole = await Role.findOne({ name: { $regex: /^super-admin$/i } }).select("_id");
+      superAdminRoleId = saRole?._id;
+    }
     // =========================================================
 
     // 3. Fire all queries simultaneously using Promise.all with the filtered query
@@ -142,7 +150,9 @@ export async function GET(req: NextRequest) {
         deletedAt: null,
         ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
           ? {} 
-          : { company: companyFilter.company })
+          : { company: companyFilter.company }),
+        // ✅ Hide Super Admins from the count for non-Super Admin users
+        ...(!isSuperAdmin && superAdminRoleId ? { role: { $ne: superAdminRoleId } } : {})
       }),
 
       // 10) Total Companies (Filtered by status: active AND deletedAt: null)

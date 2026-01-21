@@ -237,13 +237,13 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Access denied: No company assigned." }, { status: 403 });
       }
       userQuery.company = userCompanyId;
-     // This now runs for EVERYONE who is not a Super Admin
-if (!isSuperAdmin) { 
-  const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
-  if (superAdminRole) {
-    userQuery.role = { $ne: superAdminRole._id }; // Now restricted for all other roles
-  }
-}
+      // This now runs for EVERYONE who is not a Super Admin
+      if (!isSuperAdmin) { 
+        const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
+        if (superAdminRole) {
+          userQuery.role = { $ne: superAdminRole._id }; // Now restricted for all other roles
+        }
+      }
     }
 
     if (status !== "all") userQuery.status = status;
@@ -270,7 +270,15 @@ if (!isSuperAdmin) {
     }
 
     // --- Companies Query (For Super Admin dropdowns) ---
-    const companiesQuery = isSuperAdmin ? {} : { _id: userCompanyId };
+    // Updated to filter: active status and not soft-deleted
+    const companiesQuery: any = {
+      status: "active",
+      deletedAt: null
+    };
+    
+    if (!isSuperAdmin) {
+      companiesQuery._id = userCompanyId;
+    }
 
     // ---------------------------------------------------------
     // 4. EXECUTE ALL IN PARALLEL
