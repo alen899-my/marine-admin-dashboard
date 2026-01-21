@@ -124,96 +124,79 @@ export default function UserFormModal({
     onClose?.(); // close only when user clicks close
   };
 
-  // Fetch and Filter Companies
-  useEffect(() => {
-    async function fetchCompanies() {
+useEffect(() => {
+    async function fetchMetadata() {
       try {
-        const res = await fetch("/api/companies");
-        if (res.ok) {
-          const json = await res.json();
-          let formatted = (json.data || []).map((c: any) => ({
-            value: c._id,
-            label: c.name,
-          }));
+        // We use the combined endpoint. 
+        // We can pass current user list params or just get metadata.
+        const res = await fetch("/api/users?limit=1"); 
+        if (!res.ok) throw new Error("Failed to load metadata");
+        
+        const json = await res.json();
 
-          // 🔒 MULTI-TENANCY FILTER
-          if (!isActorSuperAdmin && loggedInUserCompanyId) {
-            formatted = formatted.filter((c: any) => c.value === loggedInUserCompanyId);
-          }
+        // A. Set Roles
+        const roles = json.roles || [];
+        setRolesList(roles);
 
-          setCompaniesList(formatted);
+        // B. Set Permissions
+        setAllPermissions(json.permissions || []);
+
+        // C. Set Companies & Multi-tenancy Filter
+        let companies = json.companies || [];
+        let formattedCompanies = companies.map((c: any) => ({
+          value: c._id,
+          label: c.name,
+        }));
+
+        if (!isActorSuperAdmin && loggedInUserCompanyId) {
+          formattedCompanies = formattedCompanies.filter(
+            (c: any) => c.value === loggedInUserCompanyId
+          );
         }
-      } catch (error) {
-        console.error("Failed to load companies", error);
-      }
-    }
-    if (isOpen) fetchCompanies();
-  }, [isOpen, isActorSuperAdmin, loggedInUserCompanyId]);
+        setCompaniesList(formattedCompanies);
 
-  // --- 1. Fetch Roles ---
-  useEffect(() => {
-    async function fetchRoles() {
-      try {
-      const res = await fetch("/api/users?type=roles");
-        if (res.ok) {
-          const json = await res.json();
-          const roles = json.data || [];
-          setRolesList(roles);
+        // D. Handle Default Role for New Users (Original Logic)
+        if (!initialData && !createdUserId) {
+          const defaultRole = roles.find(
+            (r: RoleData) =>
+              r.name.toLowerCase() === "op-staff" ||
+              r.name.toLowerCase() === "op staff"
+          );
 
-          if (!initialData && isOpen && !createdUserId) {
-            const defaultRole = roles.find(
-              (r: RoleData) =>
-                r.name.toLowerCase() === "op-staff" ||
-                r.name.toLowerCase() === "op staff"
-            );
-
-            if (defaultRole) {
-              setFormData((prev) => ({ ...prev, role: defaultRole._id }));
-              setSelectedRolePermissions(defaultRole.permissions || []);
-            }
+          if (defaultRole) {
+            setFormData((prev) => ({ ...prev, role: defaultRole._id }));
+            setSelectedRolePermissions(defaultRole.permissions || []);
           }
         }
       } catch (error) {
-        console.error("Failed to load roles", error);
+        console.error("Metadata Load Error:", error);
+        toast.error("Failed to load form data");
       }
     }
-    if (isOpen) fetchRoles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
 
-  // --- 2. Fetch Permissions ---
-  useEffect(() => {
-    async function fetchPermissions() {
-      try {
-      const res = await fetch("/api/users?type=permissions");
-        if (res.ok) {
-          const data = await res.json();
-          setAllPermissions(data);
-        }
-      } catch (err) {
-        console.error("Failed to load permissions", err);
-      }
+    if (isOpen) {
+      fetchMetadata();
     }
-    if (isOpen) fetchPermissions();
-  }, [isOpen]);
+  }, [isOpen, isActorSuperAdmin, loggedInUserCompanyId, initialData, createdUserId]);
 
-  // --- 3. Initialize Data ---
-  useEffect(() => {
-    if (isOpen && initialData) {
+ useEffect(() => {
+    if (isOpen && initialData && rolesList.length > 0) { // added rolesList check
       const roleId =
         typeof initialData.role === "object" && initialData.role
           ? initialData.role._id
           : initialData.role;
+      
       const companyId =
         typeof initialData.company === "object"
           ? initialData.company?._id
           : initialData.company;
+
       if (initialData.profilePicture) {
         setImagePreview(initialData.profilePicture);
       } else {
         setImagePreview(null);
       }
-      setProfileImage(null); // Reset file input
+
       setFormData({
         name: initialData.fullName,
         email: initialData.email,
@@ -228,29 +211,17 @@ export default function UserFormModal({
       setAdditionalPerms(initialData.additionalPermissions || []);
       setExcludedPerms(initialData.excludedPermissions || []);
 
-      if (
-        typeof initialData.role === "object" &&
-        initialData.role.permissions
-      ) {
-        setSelectedRolePermissions(initialData.role.permissions);
-      } else if (roleId) {
-        const roleObj = rolesList.find((r) => r._id === roleId);
-        if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
-      }
+      // Update role-specific permissions based on the loaded rolesList
+      const roleObj = rolesList.find((r) => r._id === roleId);
+      if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
+      
     } else if (isOpen && !initialData && !createdUserId) {
-      // ✅ MODIFIED: Check if actor is Super Admin, otherwise pre-fill company
-      setFormData({
-        ...defaultState,
+      setFormData((prev) => ({
+        ...prev,
         company: !isActorSuperAdmin && loggedInUserCompanyId ? loggedInUserCompanyId : "",
-      });
-      setImagePreview(null);
-      setProfileImage(null);
-      setAdditionalPerms([]);
-      setExcludedPerms([]);
+      }));
     }
-    setErrors({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialData, rolesList, isActorSuperAdmin, loggedInUserCompanyId]);
+  }, [isOpen, initialData, rolesList, isActorSuperAdmin, loggedInUserCompanyId, createdUserId]);
 
   const selectedRoleObj = rolesList.find((r) => r._id === formData.role);
   const isSuperAdmin = selectedRoleObj?.name?.toLowerCase() === "super-admin";

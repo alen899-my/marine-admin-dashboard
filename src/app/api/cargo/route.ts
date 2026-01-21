@@ -196,6 +196,7 @@ export async function GET(req: Request) {
     }
 
     const { user } = session;
+    const isAdmin = user.role?.toLowerCase() === "admin";
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
 
@@ -234,17 +235,32 @@ export async function GET(req: Request) {
         company: userCompanyId,
         deletedAt: null, // ✅ Only look through active vessels
       }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-      query.vesselId = { $in: companyVesselIds };
+    const companyVesselIds = companyVessels.map((v) => v._id.toString());
+    
 
-      if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
-          query.vesselId = selectedVessel;
+     if (isAdmin) {
+        // ADMIN LOGIC: Can see all documents for company vessels
+        if (selectedVessel) {
+          if (companyVesselIds.includes(selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            return sendResponse(200, "No records found for selected vessel", {
+              data: [],
+              pagination: { total: 0, page, limit, totalPages: 0 },
+            });
+          }
         } else {
-          return sendResponse(200, "No records found for selected vessel", {
-            data: [],
-            pagination: { total: 0, page, limit, totalPages: 0 },
-          });
+          query.vesselId = { $in: companyVesselIds };
+        }
+      } else {
+        // REGULAR USER LOGIC: Only show documents they uploaded/created
+        query.createdBy = user.id; 
+        
+        // Still restrict within company vessels for safety
+        if (selectedVessel) {
+           query.vesselId = selectedVessel;
+        } else {
+           query.vesselId = { $in: companyVesselIds }; 
         }
       }
     } else {

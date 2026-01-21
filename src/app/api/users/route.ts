@@ -166,14 +166,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ... GET function (Keep your existing GET function here)
 export async function GET(req: NextRequest) {
   try {
+    // 1. Authorization & Session Check
     const authz = await authorizeRequest("users.view");
     if (!authz.ok) return authz.response;
-     const { searchParams } = new URL(req.url);
-     
-    const fetchType = searchParams.get("type") || "users";
 
     await dbConnect();
 
@@ -184,217 +181,141 @@ export async function GET(req: NextRequest) {
 
     const { user } = session;
     const currentUserId = user.id;
-    // Check if user is Super Admin (adjust string to match your DB exactly, e.g., 'super-admin')
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const isAdmin = user.role?.toLowerCase() === "admin";
     const userCompanyId = user.company?.id;
 
-  
-
+    // 2. Parse All Query Params
+    const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
+    const skip = (page - 1) * limit;
+    
     const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all"; // renamed to avoid conflict
+    const status = searchParams.get("status") || "all";
     const companyIdParam = searchParams.get("companyId");
-
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const skip = (page - 1) * limit;
-    if (fetchType === "metadata") {
-      // Fetch Permissions
-      const activeResources = await Resource.find({ isDeleted: { $ne: true }, status: "active" }).select("_id");
-      const activeResourceIds = activeResources.map(r => r._id);
-      const permQuery: any = { resourceId: { $in: activeResourceIds }, status: "active" };
-      if (!isSuperAdmin) permQuery.slug = { $in: user.permissions || [] };
+    // ---------------------------------------------------------
+    // 3. BUILD QUERIES (Preserving all original logic)
+    // ---------------------------------------------------------
 
-      // Fetch Roles
-      const roleQuery: any = {};
-      if (!isSuperAdmin) {
-        if (isAdmin) roleQuery.name = { $ne: "super-admin" };
-        else return NextResponse.json({ roles: [], permissions: [] });
-      }
-
-      const [permissions, roles] = await Promise.all([
-        Permission.find(permQuery).populate("resourceId", "name").sort({ slug: 1 }).lean(),
-        Role.find(roleQuery).sort({ createdAt: -1 }).lean()
-      ]);
-
-      return NextResponse.json({
-        roles: roles,
-        permissions: permissions.filter(p => p.resourceId !== null)
-      });
-    }
-    // 🔴 ---------------------------------------------------------
-    // 🔴 LOGIC FOR PERMISSIONS
-    // 🔴 ---------------------------------------------------------
-    if (fetchType === "permissions") {
-      const mode = searchParams.get("mode"); 
-      const fetchAll = searchParams.get("all") === "true";
-      const userPermissions = session.user.permissions || [];
-
-      // Get Active Resources
-      const activeResources = await Resource.find({ 
-        isDeleted: { $ne: true }, 
-        status: "active" 
-      }).select("_id");
-      const activeResourceIds = activeResources.map(r => r._id);
-
-      const permQuery: any = { resourceId: { $in: activeResourceIds } };
-      
-      if (!isSuperAdmin) {
-        permQuery.slug = { $in: userPermissions };
-      }
-      if (!fetchAll) {
-        permQuery.status = "active";
-      }
-
-      const permissions = await Permission.find(permQuery)
-        .populate("resourceId", "name")
-        .sort({ slug: 1 })
-        .lean();
-
-      const validPermissions = permissions.filter(p => p.resourceId !== null);
-
-      if (mode === "grouped") {
-        const grouped = validPermissions.reduce((acc: any, curr: any) => {
-          const key = curr.resourceId?.name || curr.group || "General";
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(curr);
-          return acc;
-        }, {});
-        return NextResponse.json(grouped);
-      }
-      return NextResponse.json(validPermissions);
+    // --- Permissions Query Logic ---
+    const activeResources = await Resource.find({ isDeleted: { $ne: true }, status: "active" }).select("_id");
+    const activeResourceIds = activeResources.map(r => r._id);
+    const permQuery: any = { resourceId: { $in: activeResourceIds }, status: "active" };
+    if (!isSuperAdmin) {
+      permQuery.slug = { $in: user.permissions || [] };
     }
 
-    // 🔴 ---------------------------------------------------------
-    // 🔴 LOGIC FOR ROLES (with filtration)
-    // 🔴 ---------------------------------------------------------
-    if (fetchType === "roles") {
-      const roleQuery: any = {};
-      
-      // Role Visibility Logic
-      if (isSuperAdmin) {
-        // No restrictions
-      } else if (isAdmin) {
-      roleQuery.name = { $ne: "super-admin" };
+    // --- Roles Query Logic ---
+    const roleQuery: any = {};
+    if (!isSuperAdmin) {
+      if (isAdmin) {
+        roleQuery.name = { $ne: "super-admin" };
       } else {
-        return NextResponse.json({ data: [], pagination: { total: 0, page, totalPages: 0, limit }});
+        // Non-admins shouldn't see roles list usually, or only their own
+        roleQuery._id = null; 
       }
-
-      if (search) roleQuery.name = { $regex: search, $options: "i" };
-      if (status !== "all") roleQuery.status = status;
-
-      const [roles, totalRoles] = await Promise.all([
-        Role.find(roleQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-        Role.countDocuments(roleQuery),
-      ]);
-
-      return NextResponse.json({
-        data: roles,
-        pagination: { total: totalRoles, page, limit, totalPages: Math.ceil(totalRoles / limit) },
-      });
     }
 
-    // 1. Initialize query with Soft Delete Filter
-    // This ensures we only see users who are NOT deleted and don't have a deleted timestamp
-    const query: any = {
+    // --- Users Query Logic (The complex one) ---
+    const userQuery: any = {
       status: { $ne: "deleted" },
-      deletedAt: null 
+      deletedAt: null,
+      _id: { $ne: currentUserId }
     };
-    query._id = { $ne: currentUserId };
 
-    // =========================================================
-    // 🔒 MULTI-TENANCY FILTERING LOGIC
-    // =========================================================
+    // Multi-tenancy & Admin restrictions
     if (isSuperAdmin) {
-      if (
-        companyIdParam &&
-        companyIdParam !== "undefined" &&
-        companyIdParam !== "null" &&
-        companyIdParam !== "all"
-      ) {
-        query.company = companyIdParam;
+      if (companyIdParam && !["undefined", "null", "all"].includes(companyIdParam)) {
+        userQuery.company = companyIdParam;
       }
     } else {
       if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: "Access denied: No company assigned." }, { status: 403 });
       }
-      query.company = userCompanyId;
-      if (isAdmin) {
-        // 1. Find the Super Admin Role object to get its ID
-        const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
-        if (superAdminRole) {
-          // 2. Filter users where role is NOT the Super Admin role ID
-          query.role = { $ne: superAdminRole._id };
-        }
-      }
+      userQuery.company = userCompanyId;
+     // This now runs for EVERYONE who is not a Super Admin
+if (!isSuperAdmin) { 
+  const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
+  if (superAdminRole) {
+    userQuery.role = { $ne: superAdminRole._id }; // Now restricted for all other roles
+  }
+}
     }
 
-    // 2. Handle Status filter from Params
-    // If the user selects a specific status, it overrides the default "not deleted"
-    // but we still want to ensure they don't see soft-deleted records.
-    if (status !== "all") {
-      query.status = status;
-    }
+    if (status !== "all") userQuery.status = status;
 
-    // 3. Search Logic
+    // Search (Name, Email, Phone)
     if (search) {
-      query.$and = [
-        {
-          $or: [
-            { fullName: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
-            { phone: { $regex: search, $options: "i" } },
-          ],
-        },
+      userQuery.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
       ];
     }
 
-    // 4. Date range logic
+    // Date Range
     if (startDate || endDate) {
-      const dateQuery: any = {};
-      if (startDate) dateQuery.$gte = new Date(startDate);
+      const dateRange: any = {};
+      if (startDate) dateRange.$gte = new Date(startDate);
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        dateQuery.$lte = end;
+        dateRange.$lte = end;
       }
-      if (Object.keys(dateQuery).length > 0) query.createdAt = dateQuery;
+      userQuery.createdAt = dateRange;
     }
 
-    // 5. Fetch Data
-    const total = await User.countDocuments(query);
-    const users = await User.find(query)
-      .select("-password")
-      .populate("role", "name")
-      .populate({
-        path: "company",
-        select: "name",
-        strictPopulate: false,
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // --- Companies Query (For Super Admin dropdowns) ---
+    const companiesQuery = isSuperAdmin ? {} : { _id: userCompanyId };
 
+    // ---------------------------------------------------------
+    // 4. EXECUTE ALL IN PARALLEL
+    // ---------------------------------------------------------
+    const [permissions, roles, users, totalUsers, companies] = await Promise.all([
+      Permission.find(permQuery).populate("resourceId", "name").sort({ slug: 1 }).lean(),
+      Role.find(roleQuery).sort({ createdAt: -1 }).lean(),
+      User.find(userQuery)
+        .select("-password")
+        .populate("role", "name")
+        .populate({ path: "company", select: "name", strictPopulate: false })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(userQuery),
+      Company.find(companiesQuery).select("name").lean()
+    ]);
+
+    // ---------------------------------------------------------
+    // 5. RETURN COMBINED RESPONSE
+    // ---------------------------------------------------------
     return NextResponse.json({
-      data: users,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+      users: {
+        data: users,
+        pagination: {
+          total: totalUsers,
+          page,
+          limit,
+          totalPages: Math.ceil(totalUsers / limit),
+        },
       },
+      roles,
+      permissions: permissions.filter(p => p.resourceId !== null),
+      companies, // Added so Super Admins can populate company filter dropdowns
+      meta: {
+        isSuperAdmin,
+        isAdmin
+      }
     });
+
   } catch (error: any) {
-    console.error("GET USERS ERROR →", error);
+    console.error("COMBINED GET ERROR →", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch users" },
+      { error: error.message || "Failed to fetch data" },
       { status: 500 }
     );
   }

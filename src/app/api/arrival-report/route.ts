@@ -85,7 +85,7 @@ const startDate = searchParams.get("startDate");
     const vesselIdParam = searchParams.get("vesselId");
     const voyageIdParam = searchParams.get("voyageId");
     const companyIdParam = searchParams.get("companyId");
-
+    const isAdmin = user.role?.toLowerCase() === "admin";
     // ✅ Initialize query with soft-delete filter
     const query: any = { eventType: "arrival", deletedAt: null };
 
@@ -101,11 +101,26 @@ const startDate = searchParams.get("startDate");
       const companyVesselIds = companyVessels.map((v) => v._id.toString());
       query.vesselId = { $in: companyVesselIds };
 
-      if (vesselIdParam) {
-        if (companyVesselIds.includes(vesselIdParam)) {
+      if (isAdmin) {
+        // ADMIN: Sees all reports for the company vessels
+        if (vesselIdParam) {
+          if (companyVesselIds.includes(vesselIdParam)) {
+            query.vesselId = vesselIdParam;
+          } else {
+            return sendResponse(200, "Success", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+          }
+        } else {
+          query.vesselId = { $in: companyVesselIds };
+        }
+      } else {
+        // REGULAR USER: Only show their own reports (createdBy)
+        query.createdBy = user.id; 
+        
+        // Still apply vessel context for security
+        if (vesselIdParam) {
           query.vesselId = vesselIdParam;
         } else {
-          return sendResponse(200, "Success", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+          query.vesselId = { $in: companyVesselIds };
         }
       }
     } else {

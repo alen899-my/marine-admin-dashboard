@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
+    const isAdmin = user.role?.toLowerCase() === "admin";
     const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     // Ensure models are registered for population
     const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
@@ -108,6 +109,28 @@ export async function GET(req: NextRequest) {
         .select("_id")
         .lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
+      if (isAdmin) {
+        // ADMIN LOGIC: Can see all company vessels
+        if (selectedVessel) {
+          if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+          }
+        } else {
+          query.vesselId = { $in: companyVesselIds };
+        }
+      } else {
+        // NON-ADMIN LOGIC: Show ONLY their own reports
+        query.createdBy = user.id; 
+        
+        // Still apply vessel filter to ensure they don't see their reports from unauthorized vessels
+        if (selectedVessel) {
+           query.vesselId = selectedVessel;
+        } else {
+           query.vesselId = { $in: companyVesselIds };
+        }
+      }
 
       if (selectedVessel) {
         if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {

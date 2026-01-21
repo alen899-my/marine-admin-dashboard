@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
     // ✅ Ensure all models are registered for population
     const _ensureModels = [Vessel, Voyage, User, Company, ReportOperational];
-
+    const isAdmin = user.role?.toLowerCase() === "admin";
     const { searchParams } = new URL(req.url);
     const fetchAll = searchParams.get("all") === "true"; // Flag for Dropdowns
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -111,6 +111,29 @@ export async function GET(req: NextRequest) {
         .select("_id")
         .lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
+
+      if (isAdmin) {
+        // ADMIN LOGIC: Can see all company vessels
+        if (selectedVessel) {
+          if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+            query.vesselId = selectedVessel;
+          } else {
+            return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+          }
+        } else {
+          query.vesselId = { $in: companyVesselIds };
+        }
+      } else {
+        // NON-ADMIN LOGIC: Show ONLY their own reports
+        query.createdBy = user.id; 
+        
+        // Still apply vessel filter to ensure they don't see their reports from unauthorized vessels
+        if (selectedVessel) {
+           query.vesselId = selectedVessel;
+        } else {
+           query.vesselId = { $in: companyVesselIds };
+        }
+      }
 
       if (selectedVessel) {
         if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {

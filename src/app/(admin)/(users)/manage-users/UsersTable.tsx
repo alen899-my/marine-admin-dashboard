@@ -98,30 +98,6 @@ export default function UserTable({
   const canEditUser = can("users.edit");
   const canDeleteUser = can("users.delete");
 
-  // --- 1. Fetch Metadata ---
-  useEffect(() => {
-    async function fetchMetadata() {
-      try {
-        const [rolesRes, permsRes] = await Promise.all([
-         fetch("/api/users?type=roles"),    
-         fetch("/api/users?type=permissions"), 
-        ]);
-
-        if (rolesRes.ok) {
-          const json = await rolesRes.json();
-          setRolesList(json.data || []);
-        }
-        if (permsRes.ok) {
-          const json = await permsRes.json();
-          setAllPermissions(json);
-        }
-      } catch (error) {
-        console.error("Failed to load metadata for view", error);
-      }
-    }
-    fetchMetadata();
-  }, []);
-
   // --- Helper: Format Role ---
   const formatRole = (role: any) => {
     if (!role) return "N/A";
@@ -223,40 +199,47 @@ export default function UserTable({
     },
   ];
 
-  // --- Fetch Users ---
-  const fetchUsers = useCallback(
-  async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        companyId,
-        startDate,
-        endDate,
-      });
+ const fetchUsers = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          companyId,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/users?${query.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch");
-      const result = await res.json();
+        // This single call now gets EVERYTHING
+        const res = await fetch(`/api/users?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch");
+        
+        const result = await res.json();
 
-      setUsers(result.data || []);
-      if (setTotalCount) {
-        setTotalCount(result.pagination?.total || result.length || 0);
+        // 1. Set Users and Pagination
+        setUsers(result.users?.data || []);
+        if (setTotalCount) {
+          setTotalCount(result.users?.pagination?.total || 0);
+        }
+        setTotalPages(result.users?.pagination?.totalPages || 1);
+
+        // 2. Set Metadata (This replaces the old useEffect)
+        if (result.roles) setRolesList(result.roles);
+        if (result.permissions) setAllPermissions(result.permissions);
+        
+
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        setUsers([]);
+      } finally {
+        setLoading(false);
       }
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error(err);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  },
-  [LIMIT, search, status, companyId, startDate, endDate, setTotalCount] // fetchUsers changes if these change
-);
-
+    },
+    [LIMIT, search, status, companyId, startDate, endDate, setTotalCount]
+  );
   const selectedUserRoleName =
     typeof selectedUser?.role === "object"
       ? selectedUser.role.name

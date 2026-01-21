@@ -89,6 +89,7 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "all";
   const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const isAdmin = user.role?.toLowerCase() === "admin";
     let manualDateRange: any = null;
     const selectedVessel = searchParams.get("vesselId");
     const selectedVoyage = searchParams.get("voyageId");

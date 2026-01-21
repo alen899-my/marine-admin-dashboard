@@ -105,8 +105,8 @@ export async function PATCH(
       id,
       { $set: updateData }, // Using $set for safety
       {
-      new: true,
-      runValidators: true,
+        new: true,
+        runValidators: true,
       }
     )
     .populate("createdBy", "fullName")
