@@ -46,7 +46,7 @@ export default function CompanyFormModal({
   const [form, setForm] = useState(defaultState);
 
   useEffect(() => {
-    if (initialData) {
+    if (initialData && isOpen) {
       setForm({
         name: initialData.name || "",
         email: initialData.email || "",
@@ -60,6 +60,7 @@ export default function CompanyFormModal({
     } else {
       setForm(defaultState);
       setLogoPreview(null);
+      setLogoFile(null);
     }
   }, [initialData, isOpen]);
 
@@ -80,6 +81,10 @@ export default function CompanyFormModal({
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (logoPreview && logoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(logoPreview);
+    }
 
     const objectUrl = URL.createObjectURL(file);
     const img = new window.Image();
@@ -108,6 +113,7 @@ export default function CompanyFormModal({
   const handleClose = () => {
     setErrors({});
     setLogoFile(null);
+    setLogoPreview(null);
     onClose();
   };
 
@@ -300,10 +306,7 @@ export default function CompanyFormModal({
                   alt="Logo Preview"
                   fill
                   className="object-contain" // Contain ensures wide logos aren't clipped
-                  unoptimized={
-                    typeof logoPreview === "string" &&
-                    logoPreview.startsWith("http")
-                  }
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center">
