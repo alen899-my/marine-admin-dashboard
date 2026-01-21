@@ -101,7 +101,7 @@ export async function GET(req: Request) {
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
-    if (!isSuperAdmin) {
+  if (!isSuperAdmin) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
@@ -109,23 +109,33 @@ export async function GET(req: Request) {
         );
       }
 
+      // 1. Get all vessels for the user's company
       const companyVessels = await Vessel.find({
         company: userCompanyId,
-        deletedAt: null, // ✅ Filter out soft-deleted vessels
+        deletedAt: null,
       }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
+      const companyVesselIds = companyVessels.map((v) => v._id.toString());
 
-      query.vesselId = { $in: companyVesselIds };
+      // 2. Ownership: If NOT Admin, restrict to user's own records
+      if (!isAdmin) {
+        query.createdBy = user.id;
+      }
 
+      // 3. Vessel Filtering:
       if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+        // Check if selected vessel belongs to user's company
+        if (companyVesselIds.includes(selectedVessel)) {
           query.vesselId = selectedVessel;
         } else {
+          // Security: selected vessel is NOT in their company
           return NextResponse.json({
             data: [],
             pagination: { total: 0, page, totalPages: 0 },
           });
         }
+      } else {
+        // No specific vessel selected, show all company vessels
+        query.vesselId = { $in: companyVesselIds };
       }
     } else {
       if (companyId && companyId !== "all") {
