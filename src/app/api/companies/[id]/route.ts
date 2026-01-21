@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import ReportOperational from "@/models/ReportOperational";
 import Document from "@/models/Document";
+import { auth } from "@/auth";
+import mongoose from "mongoose";
 
 // --- UPDATE COMPANY (PATCH) ---
 export async function PATCH(
@@ -23,20 +25,35 @@ export async function PATCH(
     const authz = await authorizeRequest("company.edit");
     if (!authz.ok) return authz.response;
 
+    // 2. Authentication (To get the current user ID for updatedBy)
+    const session = await auth();
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const currentUserId = session.user.id;
+
     await dbConnect();
     const { id } = await context.params;
 
-    // 2. Parse FormData
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid Company ID" }, { status: 400 });
+    }
+
+    // 3. Parse FormData
     const formData = await req.formData();
 
-    // 3. Find Company
+    // 4. Find Company
     const company = await Company.findById(id);
     if (!company) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    // 4. Build Update Object
-    const updateData: any = {};
+    // 5. Build Update Object
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = {
+      updatedBy: currentUserId, // Ensure updatedBy is always updated
+    };
+
     if (formData.has("name")) updateData.name = formData.get("name") as string;
     if (formData.has("email"))
       updateData.email = formData.get("email") as string;
@@ -54,7 +71,7 @@ export async function PATCH(
       updateData.contactEmail = formData.get("contactEmail") as string;
     }
 
-    // 5. Handle Logo Update (If a new file is provided)
+    // 6. Handle Logo Update (If a new file is provided)
     const file = formData.get("logo") as File | null;
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
@@ -83,13 +100,23 @@ export async function PATCH(
       }
     }
 
-    // 6. Update Database
-    const updatedCompany = await Company.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    // 7. Update Database
+    const updatedCompany = await Company.findByIdAndUpdate(
+      id,
+      { $set: updateData }, // Using $set for safety
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+    .populate("createdBy", "fullName")
+    .populate("updatedBy", "fullName");
 
-    return NextResponse.json({ success: true, company: updatedCompany });
+    return NextResponse.json({
+      success: true,
+      message: "Company updated successfully",
+      company: updatedCompany,
+    });
   } catch (error: any) {
     console.error("UPDATE COMPANY ERROR →", error);
     // Handle Duplicate Email Error
