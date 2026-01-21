@@ -123,23 +123,13 @@ export async function DELETE(
     // ✅ IMPORTANT: await params
     const { id } = await context.params;
 
-    // ✅ Perform Soft Delete
-    // Instead of findOneAndDelete, we use findOneAndUpdate to set the deletedAt timestamp.
-    // We also include eventType: "departure" to ensure the correct record type is targeted.
-    const deleted = await ReportOperational.findOneAndUpdate(
-      {
-        _id: id,
-        eventType: "departure",
-        deletedAt: null, // Ensure we are not updating an already deleted report
-      },
-      {
-        $set: {
-          deletedAt: new Date(),
-          status: "inactive",
-        },
-      },
-      { new: true },
-    );
+    // ✅ Perform Hard Delete
+    // Changed from findOneAndUpdate to findOneAndDelete to permanently remove the record.
+    // We still include eventType: "departure" to ensure the correct record type is targeted.
+    const deleted = await ReportOperational.findOneAndDelete({
+      _id: id,
+      eventType: "departure",
+    });
 
     if (!deleted) {
       return NextResponse.json(

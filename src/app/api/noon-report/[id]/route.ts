@@ -118,19 +118,9 @@ export async function DELETE(
     // ✅ IMPORTANT: await params
     const { id } = await params;
 
-    // ✅ Perform Soft Delete
-    // Instead of findByIdAndDelete, we update the record to mark it as deleted.
-    // We update the status to "deleted" and set the deletedAt timestamp.
-    const report = await ReportDaily.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          status: "inactive",
-          deletedAt: new Date(),
-        },
-      },
-      { new: true }, // Returns the updated document
-    );
+    // ✅ Perform Hard Delete
+    // Changed from findByIdAndUpdate to findByIdAndDelete to permanently remove the document
+    const report = await ReportDaily.findByIdAndDelete(id);
 
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
