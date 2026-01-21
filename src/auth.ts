@@ -81,6 +81,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .populate({ path: "role", model: Role })
             .populate({ path: "company", model: Company })
             .lean();
+          if (!dbUser || dbUser.status !== "active") {
+        return null; // This effectively logs the user out
+      }
 
           // Only sync if user exists and is active
           if (dbUser && dbUser.status === "active") {
@@ -113,16 +116,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     // Ensure session callback passes token data to the client
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id;
-        session.user.fullName = token.fullName;
-        session.user.role = token.role;
-        session.user.permissions = token.permissions;
-        session.user.profilePicture = token.profilePicture;
-        session.user.company = token.company;
-      }
-      return session;
-    },
+  async session({ session, token }) {
+
+  if (!token || !token.id) {
+    return session; 
+  }
+
+  if (session.user) {
+    session.user.id = token.id as string;
+    session.user.fullName = token.fullName as string;
+    session.user.role = token.role as string;
+    session.user.permissions = token.permissions as string[];
+    session.user.profilePicture = token.profilePicture as string;
+    session.user.company = token.company as any;
+  }
+
+  return session;
+},
   },
 });

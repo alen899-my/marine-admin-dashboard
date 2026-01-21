@@ -116,6 +116,12 @@ export default function UserFormModal({
       setActiveTab("details");
       setErrors({});
       setHasChanges(false);
+      setFormData(defaultState);
+    setImagePreview(null);
+    setProfileImage(null);
+    setAdditionalPerms([]);
+    setExcludedPerms([]);
+    setSelectedRolePermissions([]);
     }
   }, [isOpen]);
 
