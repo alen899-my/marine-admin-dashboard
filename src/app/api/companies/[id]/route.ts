@@ -124,7 +124,8 @@ export async function DELETE(
     // We check if any user is linked to this company who is NOT already marked as 'deleted'
     const userCount = await User.countDocuments({ 
       company: id, 
-      status: { $ne: "deleted" } 
+      status: "active",           // Only block if there are truly "active" users
+      deletedAt: null             // Ensure we ignore anyone already soft-deleted
     });
 
     if (userCount > 0) {
