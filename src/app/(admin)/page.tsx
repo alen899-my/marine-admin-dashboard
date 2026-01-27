@@ -1,60 +1,55 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { auth } from "@/auth"; // Your NextAuth configuration
+import CompanyFilter from "@/components/dashboard/CompanyFilter";
 import { Metrics } from "@/components/dashboard/Metrics";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import { useSession } from "next-auth/react";
+import { dbConnect } from "@/lib/db";
+import { getDashboardMetrics } from "@/lib/services/dashboard";
+import Company from "@/models/Company";
 
-// ✅ ADDED: Type definition for company options
-interface CompanyOption {
-  value: string;
-  label: string;
+// 1. Helper to fetch company list for dropdown (Server Side)
+async function getCompanyOptions() {
+  await dbConnect();
+  // Fetch only necessary fields
+  const companies = await Company.find({ status: "active", deletedAt: null })
+    .select("_id name")
+    .lean();
+
+  const formatted = companies.map((c: any) => ({
+    value: c._id.toString(),
+    label: c.name,
+  }));
+
+  return [{ value: "", label: "All Companies" }, ...formatted];
 }
 
-export default function DashboardPage() {
-  const { data: session } = useSession();
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
-  
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
-  const [companies, setCompanies] = useState<CompanyOption[]>([]);
-  
-  const isSuperAdmin = session?.user?.role?.toLowerCase() === "super-admin";
+export default async function DashboardPage({ searchParams }: PageProps) {
+  // 2. Get Session
+  const session = await auth();
+  if (!session?.user) return <div>Unauthorized</div>;
 
-  // Fetch companies list for the Super Admin dropdown
-  useEffect(() => {
-    if (isSuperAdmin) {
-      fetch("/api/companies")
-        .then((res) => res.json())
-        .then((json) => {
-          const formatted = (json.data || []).map((c: any) => ({
-            value: c._id,
-            label: c.name,
-          }));
-          // Add an "All Companies" option
-          setCompanies([{ value: "", label: "All Companies" }, ...formatted]);
-        });
-    }
-  }, [isSuperAdmin]);
+  const isSuperAdmin = session.user.role?.toLowerCase() === "super-admin";
+
+  const resolvedSearchParams = await searchParams;
+  const selectedCompanyId = (resolvedSearchParams?.companyId as string) || "";
+
+  // 4. Parallel Data Fetching
+  // We fetch metrics AND company list (if admin) at the same time
+  const [metricsData, companyOptions] = await Promise.all([
+    getDashboardMetrics(session.user, selectedCompanyId),
+    isSuperAdmin ? getCompanyOptions() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
-
-        {/* ✅ Searchable Select - Only visible for Super Admin */}
-        {isSuperAdmin && (
-          <div className="w-full md:w-64">
-            <SearchableSelect
-              options={companies}
-              value={selectedCompanyId}
-              onChange={(val) => setSelectedCompanyId(val)}
-              placeholder="Filter by Company"
-            />
-          </div>
-        )}
+        {isSuperAdmin && <CompanyFilter options={companyOptions} />}
       </div>
 
-      {/* ✅ Pass the selectedCompanyId to the Metrics component */}
-      <Metrics selectedCompanyId={selectedCompanyId} />
+      {/* 5. Pass pre-fetched data to the client component */}
+      <Metrics data={metricsData} />
     </div>
   );
 }

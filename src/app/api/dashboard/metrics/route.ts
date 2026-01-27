@@ -1,16 +1,16 @@
-import { NextResponse, NextRequest } from "next/server"; // ✅ Added NextRequest
-import { dbConnect } from "@/lib/db";
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server"; // ✅ Added NextRequest
 
 // MODELS
+import Company from "@/models/Company";
+import Document from "@/models/Document";
 import ReportDaily from "@/models/ReportDaily";
 import ReportOperational from "@/models/ReportOperational";
-import Document from "@/models/Document";
+import Role from "@/models/Role"; // ✅ Imported Role to find the Super Admin ID
+import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
-import User from "@/models/User";
-import Company from "@/models/Company";
-import Role from "@/models/Role"; // ✅ Imported Role to find the Super Admin ID
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
     // 2. Build Base Query Filter
     // ✅ SUPER ADMIN: Only requires deletedAt: null (global view)
     const filter: any = { status: "active", deletedAt: null };
-    
+
     // Additional filters for global entities (Users/Vessels) that don't use 'vesselId'
-    const companyFilter: any = { status: "active", deletedAt: null }; 
+    const companyFilter: any = { status: "active", deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY & FILTERING LOGIC
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
@@ -61,28 +61,27 @@ export async function GET(req: NextRequest) {
         reportFilter.createdBy = userId;
       } else {
         // 🔵 FOR COMPANY ADMINS: Show records that are NOT deleted AND belong to his company vessels
-        const companyVessels = await Vessel.find({ 
-          company: userCompanyId, 
-          status: "active", 
-          deletedAt: null 
+        const companyVessels = await Vessel.find({
+          company: userCompanyId,
+          status: "active",
+          deletedAt: null,
         }).select("_id");
-        
+
         const companyVesselIds = companyVessels.map((v) => v._id);
         reportFilter.vesselId = { $in: companyVesselIds };
       }
-      
+
       companyFilter.company = userCompanyId;
       // Update the main filter used in Promise.all for reports
       Object.assign(filter, reportFilter);
-
     } else if (selectedCompanyId && selectedCompanyId !== "all") {
       // 🟢 FOR SUPER ADMINS (with selection): Show records NOT deleted AND in specific company
-      const companyVessels = await Vessel.find({ 
-        company: selectedCompanyId, 
-        status: "active", 
-        deletedAt: null 
+      const companyVessels = await Vessel.find({
+        company: selectedCompanyId,
+        status: "active",
+        deletedAt: null,
       }).select("_id");
-      
+
       const companyVesselIds = companyVessels.map((v) => v._id);
       filter.vesselId = { $in: companyVesselIds };
       companyFilter.company = selectedCompanyId;
@@ -91,7 +90,9 @@ export async function GET(req: NextRequest) {
     // ✅ Find Super Admin Role ID to exclude from count if requester is not Super Admin
     let superAdminRoleId = null;
     if (!isSuperAdmin) {
-      const saRole = await Role.findOne({ name: { $regex: /^super-admin$/i } }).select("_id");
+      const saRole = await Role.findOne({
+        name: { $regex: /^super-admin$/i },
+      }).select("_id");
       superAdminRoleId = saRole?._id;
     }
     // =========================================================
@@ -107,23 +108,23 @@ export async function GET(req: NextRequest) {
       totalVessels,
       totalVoyages,
       totalUsers,
-      totalCompanies
+      totalCompanies,
     ] = await Promise.all([
       // 1) Daily Noon (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportDaily.countDocuments({ ...filter, type: "noon" }),
-      
+
       // 2) Departure (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "departure" }),
-      
+
       // 3) Arrival (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "arrival" }),
-      
+
       // 4) NOR (Enforces deletedAt: null + ownership/tenancy via filter)
       ReportOperational.countDocuments({ ...filter, eventType: "nor" }),
-      
+
       // 5) Cargo Stowage (Enforces deletedAt: null + ownership/tenancy via filter)
       Document.countDocuments({ ...filter, documentType: "stowage_plan" }),
-      
+
       // 6) Cargo Documents (Enforces deletedAt: null + ownership/tenancy via filter)
       Document.countDocuments({ ...filter, documentType: "cargo_documents" }),
 
@@ -131,9 +132,9 @@ export async function GET(req: NextRequest) {
       Vessel.countDocuments({
         status: "active",
         deletedAt: null,
-        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
-          ? {} 
-          : { company: companyFilter.company })
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all")
+          ? {}
+          : { company: companyFilter.company }),
       }),
 
       // 8) Total Voyages (Filtered by status: active AND deletedAt: null)
@@ -141,28 +142,30 @@ export async function GET(req: NextRequest) {
         status: "active",
         deletedAt: null,
         ...(filter.vesselId ? { vesselId: filter.vesselId } : {}),
-        ...(isOpStaff ? { createdBy: userId } : {}) // ✅ Staff only see their own active voyages
+        ...(isOpStaff ? { createdBy: userId } : {}), // ✅ Staff only see their own active voyages
       }),
 
       // 9) Total Users (Filtered by status: active AND deletedAt: null)
       User.countDocuments({
         status: "active",
         deletedAt: null,
-        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
-          ? {} 
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all")
+          ? {}
           : { company: companyFilter.company }),
         // ✅ Hide Super Admins from the count for non-Super Admin users
-        ...(!isSuperAdmin && superAdminRoleId ? { role: { $ne: superAdminRoleId } } : {})
+        ...(!isSuperAdmin && superAdminRoleId
+          ? { role: { $ne: superAdminRoleId } }
+          : {}),
       }),
 
       // 10) Total Companies (Filtered by status: active AND deletedAt: null)
       Company.countDocuments({
         status: "active",
         deletedAt: null,
-        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all") 
-          ? {} 
-          : { _id: companyFilter.company })
-      })
+        ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all")
+          ? {}
+          : { _id: companyFilter.company }),
+      }),
     ]);
 
     // ✅ Mapping names to match the Frontend IMetrics interface
@@ -173,16 +176,16 @@ export async function GET(req: NextRequest) {
       nor,
       cargoStowage,
       cargoDocuments,
-      vesselCount: totalVessels,   
-      voyageCount: totalVoyages,   
-      userCount: totalUsers,     
-      companyCount: totalCompanies, 
+      vesselCount: totalVessels,
+      voyageCount: totalVoyages,
+      userCount: totalUsers,
+      companyCount: totalCompanies,
     });
   } catch (error) {
     console.error("METRICS API ERROR:", error);
     return NextResponse.json(
       { error: "Failed to load metrics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
