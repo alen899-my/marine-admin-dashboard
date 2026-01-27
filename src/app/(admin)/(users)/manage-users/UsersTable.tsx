@@ -1,7 +1,7 @@
 "use client";
 
-import { User as UserIcon } from "lucide-react"; // ✅ Import Icon for fallback
-import Image from "next/image"; // ✅ Import Image
+import { User as UserIcon } from "lucide-react"; //  Import Icon for fallback
+import Image from "next/image"; //  Import Image
 import {
   Dispatch,
   SetStateAction,
@@ -48,7 +48,7 @@ interface IUser {
   role: any;
   company?: { _id: string; name: string } | any;
   status: string;
-  profilePicture?: string; // ✅ Added this
+  profilePicture?: string; //  Added this
   lastLogin?: string;
   createdAt: string;
   additionalPermissions?: string[];
@@ -139,7 +139,7 @@ export default function UserTable({
       header: "Full Name",
       render: (u: IUser) => (
         <div className="flex items-center gap-3">
-          {/* ✅ Avatar Display in Table */}
+          {/*  Avatar Display in Table */}
           <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
             {u.profilePicture ? (
               <Image
@@ -199,7 +199,7 @@ export default function UserTable({
     },
   ];
 
- const fetchUsers = useCallback(
+  const fetchUsers = useCallback(
     async (page = 1) => {
       try {
         setLoading(true);
@@ -216,7 +216,7 @@ export default function UserTable({
         // This single call now gets EVERYTHING
         const res = await fetch(`/api/users?${query.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch");
-        
+
         const result = await res.json();
 
         // 1. Set Users and Pagination
@@ -229,8 +229,6 @@ export default function UserTable({
         // 2. Set Metadata (This replaces the old useEffect)
         if (result.roles) setRolesList(result.roles);
         if (result.permissions) setAllPermissions(result.permissions);
-        
-
       } catch (err) {
         console.error("Fetch Error:", err);
         setUsers([]);
@@ -238,7 +236,7 @@ export default function UserTable({
         setLoading(false);
       }
     },
-    [LIMIT, search, status, companyId, startDate, endDate, setTotalCount]
+    [LIMIT, search, status, companyId, startDate, endDate, setTotalCount],
   );
   const selectedUserRoleName =
     typeof selectedUser?.role === "object"
@@ -249,12 +247,12 @@ export default function UserTable({
     selectedUserRoleName?.toLowerCase() === "super-admin";
 
   useEffect(() => {
-  setCurrentPage(1);
-}, [search, status, companyId, startDate, endDate, refresh]);
+    setCurrentPage(1);
+  }, [search, status, companyId, startDate, endDate, refresh]);
 
   useEffect(() => {
-  fetchUsers(currentPage);
-}, [currentPage, fetchUsers,refresh]);
+    fetchUsers(currentPage);
+  }, [currentPage, fetchUsers, refresh]);
 
   // --- HANDLERS ---
   const handleView = (user: IUser) => {
@@ -449,7 +447,7 @@ export default function UserTable({
                   excludedPermissions={selectedUser.excludedPermissions || []}
                   onToggle={() => {}} // Read-only
                   isReadOnly={true}
-                  isSuperAdmin={isSelectedUserSuperAdmin} 
+                  isSuperAdmin={isSelectedUserSuperAdmin}
                 />
               </div>
             </RoleComponentCard>

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { useMemo } from "react";
 // --- Types ---
 export interface IPermission {
   _id: string;
@@ -10,7 +10,7 @@ export interface IPermission {
   name: string;
   description?: string;
   group: string;
-   resourceId?: {
+  resourceId?: {
     _id: string;
     name: string;
   };
@@ -25,14 +25,17 @@ interface PermissionGridProps {
 
 // --- Helper: Group permissions ---
 const groupPermissions = (perms: IPermission[]) => {
-  return perms.reduce((groups, perm) => {
-  
-    const groupName = (perm.resourceId as any)?.name || perm.group || "General";
-    
-    if (!groups[groupName]) groups[groupName] = [];
-    groups[groupName].push(perm);
-    return groups;
-  }, {} as Record<string, IPermission[]>);
+  return perms.reduce(
+    (groups, perm) => {
+      const groupName =
+        (perm.resourceId as any)?.name || perm.group || "General";
+
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(perm);
+      return groups;
+    },
+    {} as Record<string, IPermission[]>,
+  );
 };
 
 export default function PermissionGrid({
@@ -41,30 +44,31 @@ export default function PermissionGrid({
   isReadOnly = false,
   onToggle,
 }: PermissionGridProps) {
-  
-const filteredPermissions = useMemo(() => {
-  if (!allPermissions) return [];
-  
-  
-  const gridActions = [".create", ".view", ".edit", ".delete"];
+  const filteredPermissions = useMemo(() => {
+    if (!allPermissions) return [];
 
-  return allPermissions.filter((p) => {
-    // 1. Check if the permission belongs to the Grid (ends with CRUD action)
-    const isGridAction = gridActions.some(action => 
-      p.slug.toLowerCase().endsWith(action) || 
-      p.slug.toLowerCase() === action.replace('.', '')
-    );
+    const gridActions = [".create", ".view", ".edit", ".delete"];
 
-    const groupName = (p.resourceId as any)?.name || p.group;
-    const isDashboard = groupName === "Dashboard Statistics";
+    return allPermissions.filter((p) => {
+      // 1. Check if the permission belongs to the Grid (ends with CRUD action)
+      const isGridAction = gridActions.some(
+        (action) =>
+          p.slug.toLowerCase().endsWith(action) ||
+          p.slug.toLowerCase() === action.replace(".", ""),
+      );
 
-  
-    return isGridAction && !isDashboard;
-  });
-}, [allPermissions]);
+      const groupName = (p.resourceId as any)?.name || p.group;
+      const isDashboard = groupName === "Dashboard Statistics";
+
+      return isGridAction && !isDashboard;
+    });
+  }, [allPermissions]);
   // 2. Group the filtered permissions
-  const grouped = useMemo(() => groupPermissions(filteredPermissions), [filteredPermissions]);
-  
+  const grouped = useMemo(
+    () => groupPermissions(filteredPermissions),
+    [filteredPermissions],
+  );
+
   const actionColumns = ["create", "view", "edit", "delete"];
   const headerLabels: Record<string, string> = {
     create: "Create",
@@ -74,7 +78,11 @@ const filteredPermissions = useMemo(() => {
   };
 
   if (!allPermissions || allPermissions.length === 0) {
-    return <div className="text-sm text-gray-400 italic p-4">Loading permissions...</div>;
+    return (
+      <div className="text-sm text-gray-400 italic p-4">
+        Loading permissions...
+      </div>
+    );
   }
 
   return (
@@ -111,7 +119,7 @@ const filteredPermissions = useMemo(() => {
                 const perm = groupPerms.find(
                   (p) =>
                     p.slug.toLowerCase().endsWith(`.${action}`) ||
-                    p.slug.toLowerCase() === action
+                    p.slug.toLowerCase() === action,
                 );
 
                 if (!perm) {
@@ -124,18 +132,17 @@ const filteredPermissions = useMemo(() => {
                   );
                 }
 
-              const isAssigned = selectedPermissions.includes(perm.slug);
+                const isAssigned = selectedPermissions.includes(perm.slug);
 
-const variant: CheckboxVariant = "default";
+                const variant: CheckboxVariant = "default";
 
- return (
+                return (
                   <div key={action} className="flex justify-center">
-                    {/* ✅ Corrected Tooltip Nesting */}
+                    {/*  Corrected Tooltip Nesting */}
                     <Tooltip
                       position="top"
                       content={
                         <div className="space-y-1">
-                          
                           <p>
                             {perm.description ||
                               `Allows the user to ${action} ${groupName}.`}
@@ -158,7 +165,7 @@ const variant: CheckboxVariant = "default";
                           checked={isAssigned}
                           onChange={() => {}} // Controlled by div click for better UX
                           variant={variant}
-                         className={isReadOnly ? "pointer-events-none" : ""}
+                          className={isReadOnly ? "pointer-events-none" : ""}
                         />
                       </div>
                     </Tooltip>

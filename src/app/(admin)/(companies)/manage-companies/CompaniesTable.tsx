@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageOff } from "lucide-react"; // ✅ Icon for fallback
+import { ImageOff } from "lucide-react"; //  Icon for fallback
 import Image from "next/image";
 import {
   Dispatch,
@@ -93,49 +93,49 @@ export default function CompaniesTable({
 
   // --- 1. Fetch Companies ---
   const fetchCompanies = useCallback(
-  async (page = 1) => {
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: page.toString(),
-        limit: LIMIT.toString(),
-        search,
-        status,
-        startDate,
-        endDate,
-      });
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const query = new URLSearchParams({
+          page: page.toString(),
+          limit: LIMIT.toString(),
+          search,
+          status,
+          startDate,
+          endDate,
+        });
 
-      const res = await fetch(`/api/companies?${query.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch companies");
-      const result = await res.json();
+        const res = await fetch(`/api/companies?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch companies");
+        const result = await res.json();
 
-      setCompanies(result.data || []);
+        setCompanies(result.data || []);
 
-      if (setTotalCount) {
-        setTotalCount(result.pagination?.total || result.data?.length || 0);
+        if (setTotalCount) {
+          setTotalCount(result.pagination?.total || result.data?.length || 0);
+        }
+
+        setTotalPages(result.pagination?.totalPages || 1);
+      } catch (err) {
+        console.error(err);
+        setCompanies([]);
+      } finally {
+        setLoading(false);
       }
+    },
+    [search, status, startDate, endDate, setTotalCount, LIMIT],
+  );
 
-      setTotalPages(result.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error(err);
-      setCompanies([]);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    setCurrentPage(1);
+    if (currentPage === 1) {
+      fetchCompanies(1);
     }
-  },
-  [search, status, startDate, endDate, setTotalCount, LIMIT] 
-);
+  }, [search, status, startDate, endDate, refresh]);
 
   useEffect(() => {
-  setCurrentPage(1);
-  if (currentPage === 1) {
-    fetchCompanies(1);
-  }
-}, [search, status, startDate, endDate, refresh]);
-
-  useEffect(() => {
-  fetchCompanies(currentPage);
-}, [currentPage, fetchCompanies]);
+    fetchCompanies(currentPage);
+  }, [currentPage, fetchCompanies]);
 
   // --- HANDLERS ---
   const handleView = (company: ICompany) => {
@@ -158,9 +158,9 @@ export default function CompaniesTable({
       });
       const data = await res.json();
       if (!res.ok) {
-      // Show the specific error from the server (e.g., "There are still users...")
-      throw new Error(data.error || "Failed to delete");
-    }
+        // Show the specific error from the server (e.g., "There are still users...")
+        throw new Error(data.error || "Failed to delete");
+      }
 
       setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
 

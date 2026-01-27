@@ -1,9 +1,9 @@
-import { dbConnect } from "@/lib/db";
+import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import { dbConnect } from "@/lib/db";
 import Voyage from "@/models/Voyage";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 
 /* ======================================
    UPDATE VOYAGE (PATCH)
@@ -13,7 +13,7 @@ import { auth } from "@/auth";
 ====================================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     // 1. Authorization
@@ -45,14 +45,16 @@ export async function PATCH(
     // ---------------------------------------------------------
     // 4. SMART DUPLICATE CHECK (Handles Vessel Change OR Number Change)
     // ---------------------------------------------------------
-    
+
     // Determine what the "New" state will look like
     const targetVesselId = body.vesselId || currentVoyage.vesselId.toString();
     const targetVoyageNo = body.voyageNo || currentVoyage.voyageNo;
 
     // Check if anything significant changed
-    const isVesselChanged = body.vesselId && body.vesselId !== currentVoyage.vesselId.toString();
-    const isNoChanged = body.voyageNo && body.voyageNo !== currentVoyage.voyageNo;
+    const isVesselChanged =
+      body.vesselId && body.vesselId !== currentVoyage.vesselId.toString();
+    const isNoChanged =
+      body.voyageNo && body.voyageNo !== currentVoyage.voyageNo;
 
     if (isVesselChanged || isNoChanged) {
       const duplicate = await Voyage.findOne({
@@ -63,8 +65,10 @@ export async function PATCH(
 
       if (duplicate) {
         return NextResponse.json(
-          { error: `Voyage ${targetVoyageNo} already exists for the selected vessel.` },
-          { status: 409 }
+          {
+            error: `Voyage ${targetVoyageNo} already exists for the selected vessel.`,
+          },
+          { status: 409 },
         );
       }
     }
@@ -79,7 +83,7 @@ export async function PATCH(
       updatedBy: currentUserId,
     };
 
-    // ✅ FIX: Add vesselId if it exists in body
+    //  FIX: Add vesselId if it exists in body
     if (body.vesselId) {
       updateData.vesselId = body.vesselId;
     }
@@ -123,7 +127,7 @@ export async function PATCH(
     const updatedVoyage = await Voyage.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
       .populate("vesselId", "name imo")
       .populate("createdBy", "fullName")
@@ -135,12 +139,12 @@ export async function PATCH(
       report: updatedVoyage,
       data: updatedVoyage,
     });
-
-  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     console.error("UPDATE VOYAGE ERROR →", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -149,7 +153,7 @@ export async function PATCH(
 ====================================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     // 1. Authorization
@@ -164,16 +168,16 @@ export async function DELETE(
     }
 
     // 2. Perform Soft Delete
-    // Instead of removing the document, we set the deletedAt timestamp 
+    // Instead of removing the document, we set the deletedAt timestamp
     // and change the status to "deleted" (ensure your Enum supports this if used).
     const deletedVoyage = await Voyage.findByIdAndUpdate(
       id,
       {
         $set: {
           deletedAt: new Date(),
-        }
+        },
       },
-      { new: true }
+      { new: true },
     );
 
     if (!deletedVoyage) {
@@ -184,12 +188,11 @@ export async function DELETE(
       success: true,
       message: "Voyage deleted successfully",
     });
-
   } catch (error) {
     console.error("DELETE VOYAGE ERROR →", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

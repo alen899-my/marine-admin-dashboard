@@ -13,7 +13,7 @@ export async function authorizeRequest(permission: string) {
 
   const role = session.user.role;
 
-  // ✅ SUPER ADMIN BYPASS — ABSOLUTE
+  //  SUPER ADMIN BYPASS — ABSOLUTE
   if (role === "super-admin") {
     return { ok: true, session };
   }

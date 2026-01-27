@@ -15,16 +15,10 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useRouter, useSearchParams } from "next/navigation"; //  Added for Server Action Refresh
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+
 // --- Types ---
 interface IPosition {
   lat: string;
@@ -54,7 +48,7 @@ interface IWeather {
   remarks: string;
 }
 
-interface IDailyNoonReport {
+export interface IDailyNoonReport {
   _id: string;
   vesselName: string;
   vesselId:
@@ -62,7 +56,7 @@ interface IDailyNoonReport {
     | {
         _id: string;
         name: string;
-        company?: { name: string }; // Added this
+        company?: { name: string };
       };
   type: string;
   status: string;
@@ -80,70 +74,53 @@ interface IDailyNoonReport {
   updatedAt?: string;
 }
 
-// Updated Props Interface
+//  Updated Props to receive Data from Server
 interface DailyNoonReportTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  onDataLoad?: (data: IDailyNoonReport[]) => void;
-  vesselId: string; // Added this
-  voyageId: string; // Added this
-  vesselList: any[]; // Added this
-  companyId?: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
-  onFilterDataLoad?: (data: {
-    vessels: any[];
-    companies: any[];
-    voyages: any[];
-  }) => void;
+  data: IDailyNoonReport[]; // Data passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  vesselList: any[];
+  allVoyages: any[]; // Passed from server for Edit Modal
 }
 
 export default function DailyNoonReportTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  onDataLoad,
-  setTotalCount,
-  endDate,
-  vesselId,
-  voyageId,
+  data,
+  pagination,
   vesselList,
-  companyId,
-  onFilterDataLoad,
+  allVoyages,
 }: DailyNoonReportTableProps) {
-  const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    vesselId,
-    voyageId,
-    companyId,
-  });
+  const router = useRouter(); //  Init Router
+  const searchParams = useSearchParams();
+
   // Apply interfaces to state
-  const [reports, setReports] = useState<IDailyNoonReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [reports, setReports] = useState<IDailyNoonReport[]>([]); // ❌ Removed local state
+  const reports = data; //  Use prop data directly
+
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
+
+  //  Use prop 'allVoyages' directly instead of local state
+  const voyageList = allVoyages.map((v: any) => ({
+    value: v.voyageNo,
+    label: v.voyageNo,
+    vesselId: v.vesselId,
+    status: "active", // Assuming active if passed from server filter
+  }));
+
   const [selectedReport, setSelectedReport] = useState<IDailyNoonReport | null>(
-    null
+    null,
   );
 
   // Edit data requires a structure similar to the report but mutable for form inputs
   const [editData, setEditData] = useState<IDailyNoonReport | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const LIMIT = 20;
+
   const { can, isReady } = useAuthorization();
 
   // 1. Extract the string ID safely
@@ -153,11 +130,12 @@ export default function DailyNoonReportTable({
       : editData?.vesselId;
   const { suggestedVoyageNo } = useVoyageLogic(
     currentVesselId,
-    editData?.reportDate
+    editData?.reportDate,
   );
 
   const canEdit = can("noon.edit");
   const canDelete = can("noon.delete");
+
   const getVesselName = (r: IDailyNoonReport | null) => {
     if (!r || !r.vesselId) return "-";
     if (typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -199,7 +177,7 @@ export default function DailyNoonReportTable({
                 ...prev,
                 navigation: { ...prev.navigation!, slip: slipVal },
               }
-            : null
+            : null,
         );
       }
     } else if (engineDist === 0 || isNaN(engineDist)) {
@@ -210,7 +188,7 @@ export default function DailyNoonReportTable({
                 ...prev,
                 navigation: { ...prev.navigation!, slip: "" },
               }
-            : null
+            : null,
         );
       }
     }
@@ -223,38 +201,47 @@ export default function DailyNoonReportTable({
       suggestedVoyageNo
     ) {
       setEditData((prev) =>
-        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null,
       );
     }
   }, [suggestedVoyageNo]);
- // 1. First, define the memoized options (Add this before the return statement)
-const filteredVoyageOptionsForEdit = useMemo(() => {
-  // Use the ID from editData.vesselId (handling both object and string)
-  const vId = typeof editData?.vesselId === "object" ? editData?.vesselId._id : editData?.vesselId;
-  
-  if (!vId) return [];
 
-  // Filter voyages from the voyageList (which should be passed as a prop or state)
-  const vesselVoyages = voyageList.filter(
-    (v: any) => v.vesselId?.toString() === vId.toString()
-  );
+  // 1. First, define the memoized options (Add this before the return statement)
+  const filteredVoyageOptionsForEdit = useMemo(() => {
+    // Use the ID from editData.vesselId (handling both object and string)
+    const vId =
+      typeof editData?.vesselId === "object"
+        ? editData?.vesselId._id
+        : editData?.vesselId;
 
-  const options = vesselVoyages.map((v: any) => ({
-    value: v.voyageNo,
-    label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
-  }));
+    if (!vId) return [];
 
-  // Add fallback for suggested or current voyage to prevent blank selections
-  const currentOrSuggested = suggestedVoyageNo || editData?.voyageNo;
-  if (currentOrSuggested && !options.some(opt => opt.value === currentOrSuggested)) {
-    options.unshift({
-      value: currentOrSuggested,
-      label: currentOrSuggested,
-    });
-  }
+    // Filter voyages from the voyageList (which should be passed as a prop or state)
+    //  Using the 'allVoyages' prop (mapped to voyageList above)
+    const vesselVoyages = voyageList.filter(
+      (v: any) => v.vesselId?.toString() === vId.toString(),
+    );
 
-  return options;
-}, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
+    const options = vesselVoyages.map((v: any) => ({
+      value: v.value, // mapped above
+      label: v.label,
+    }));
+
+    // Add fallback for suggested or current voyage to prevent blank selections
+    const currentOrSuggested = suggestedVoyageNo || editData?.voyageNo;
+    if (
+      currentOrSuggested &&
+      !options.some((opt) => opt.value === currentOrSuggested)
+    ) {
+      options.unshift({
+        value: currentOrSuggested,
+        label: currentOrSuggested,
+      });
+    }
+
+    return options;
+  }, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
+
   // Helper functions moved up to be available for render
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -279,12 +266,19 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
     return "-";
   };
 
+  //  Handle Page Change via URL
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   const columns = useMemo(
     () => [
       {
         header: "S.No",
         render: (_: IDailyNoonReport, index: number) =>
-          (currentPage - 1) * LIMIT + index + 1,
+          (pagination.page - 1) * pagination.limit + index + 1,
       },
       {
         header: "Vessel & Voyage ID",
@@ -386,7 +380,7 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
         ),
       },
     ],
-    [currentPage]
+    [pagination.page], //  Dependent on pagination prop
   );
 
   // ***** CHANGE: Force IST for input fields *****
@@ -397,111 +391,6 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
       .replace(" ", "T")
       .slice(0, 16);
   };
-
-  // Wrap fetchReports in useCallback to fix dependency warnings
-  const [totalItems, setTotalItems] = useState(0); // Add this state
-
-  // Inside DailyNoonReportTableProps interface, add:
-  interface DailyNoonReportTableProps {
-    // ... existing props
-    setTotalCount?: (count: number) => void;
-  }
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        // 🟢 Step 1: Check the ref to see if we already got the dropdown data
-        const shouldFetchFilters = !hasLoadedFilters.current;
-
-        const queryParams: Record<string, string> = {
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search: search || "",
-          status: status || "all",
-          startDate: startDate || "",
-          endDate: endDate || "",
-          vesselId: vesselId || "",
-          voyageId: voyageId || "",
-          companyId: companyId || "all",
-          all: shouldFetchFilters ? "true" : "false",
-        };
-
-        const query = new URLSearchParams(queryParams);
-        const res = await fetch(`/api/noon-report?${query.toString()}`);
-        const result = await res.json();
-
-        setReports(result.data || []);
-        if (onDataLoad) onDataLoad(result.data || []);
-
-        // 🟢 Step 2: Set the ref to true FIRST to break the loop
-        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-          hasLoadedFilters.current = true;
-          onFilterDataLoad({
-            vessels: result.vessels || [],
-            companies: result.companies || [],
-            voyages: result.voyages || [],
-          });
-        }
-
-        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-      // 🟢 Step 3: Remove onFilterDataLoad from deps if it changes every render
-    },
-    [search, status, startDate, endDate, vesselId, voyageId, companyId]
-  );
-
-  useEffect(() => {
-    if (!isReady) return;
-
-    // Check if any actual filter value changed
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.vesselId !== vesselId ||
-      prevFiltersRef.current.voyageId !== voyageId ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    if (filtersChanged) {
-      // Save the new filter values to the ref
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-        companyId,
-      };
-
-      // Reset to page 1 only if we aren't already there
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // Exit and let the next effect cycle (triggered by currentPage change) handle the fetch
-      }
-    }
-
-    // Fetch the data for the current page
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
 
   // ACTIONS
   function handleView(report: IDailyNoonReport) {
@@ -514,7 +403,7 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
 
     // Find the vessel object so we can get its ID for the edit state
     const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName
+      (v: any) => v.name === report.vesselName,
     );
     const vesselIdStr =
       typeof report.vesselId === "object"
@@ -529,7 +418,7 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
       vesselId: vesselIdStr,
       voyageNo: voyageNoStr,
 
-      // ✅ FIX 2: Map the voyageId (the reference field) to the string for the dropdown
+      //  FIX 2: Map the voyageId (the reference field) to the string for the dropdown
       voyageId: voyageNoStr,
 
       type: report.type,
@@ -586,11 +475,10 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
 
       if (!res.ok) throw new Error();
 
-      const { report } = await res.json();
+      // const { report } = await res.json(); // ❌ Don't need response to set local state
 
-      setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r))
-      );
+      //  Refresh Server Data
+      router.refresh();
 
       toast.success("Noon report updated");
       setOpenEdit(false);
@@ -612,13 +500,8 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
 
       if (!res.ok) throw new Error();
 
-      // 1. Update local table data
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
-
-      // 2. DYNAMICALLY UPDATE THE TOTAL COUNT IN THE HEADER
-      if (setTotalCount) {
-        setTotalCount((prev: number) => Math.max(0, prev - 1));
-      }
+      //  Refresh Server Data (Don't set local state manually)
+      router.refresh();
 
       toast.success("Noon report deleted successfully");
     } catch {
@@ -627,16 +510,15 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
       setOpenDelete(false);
       setSelectedReport(null);
       setIsDeleting(false);
-
-      // Optional: Re-fetch the current page to fill the gap left by the deleted row
-      // fetchReports(currentPage);
     }
   }
 
   if (!isReady) return null;
+
+  //
+
   return (
     <>
-      {/* Filters Removed from here */}
       <div
         className="border border-gray-200 bg-white text-gray-800
                   dark:border-white/10 dark:bg-slate-900 dark:text-gray-100 rounded-xl"
@@ -644,12 +526,12 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
         <div className=" max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={reports}
+              data={reports} //  Prop Data
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false} //  No longer locally loading
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} //  URL based pagination
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -983,13 +865,13 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
                       (v: { name: string; _id: string }) => ({
                         value: v.name,
                         label: v.name,
-                      })
+                      }),
                     )}
                     placeholder="Search Vessel"
                     value={editData.vesselName}
                     onChange={(val) => {
                       const selected = vesselList.find(
-                        (v: any) => v.name === val
+                        (v: any) => v.name === val,
                       );
                       setEditData({
                         ...editData,
@@ -1010,8 +892,8 @@ const filteredVoyageOptionsForEdit = useMemo(() => {
                       !editData.vesselId
                         ? "Select Vessel first"
                         : filteredVoyageOptionsForEdit.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>

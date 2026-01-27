@@ -40,21 +40,21 @@ const VesselSchema = new Schema<IVessel>(
   {
     name: {
       type: String,
-      required: true, // ✅ Required
+      required: true, //  Required
       unique: true, // 🔒 Unique Name
       trim: true,
     },
 
     imo: {
       type: String,
-      required: true, // ✅ Required
+      required: true, //  Required
       unique: true, // 🔒 Unique IMO Number
       trim: true,
     },
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
-      required: true, // ✅ Added to Schema
+      required: true, //  Added to Schema
     },
     fleet: String,
     status: {
@@ -96,7 +96,7 @@ const VesselSchema = new Schema<IVessel>(
     },
   },
 
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.Vessel ||

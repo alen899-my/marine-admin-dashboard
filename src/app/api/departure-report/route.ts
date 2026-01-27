@@ -9,8 +9,8 @@ import ReportOperational from "@/models/ReportOperational";
 import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
-import mongoose from "mongoose"; // ✅ Import Mongoose
-// ✅ HELPER: Parse "dd/mm/yyyy" string to Date object
+import mongoose from "mongoose"; //  Import Mongoose
+//  HELPER: Parse "dd/mm/yyyy" string to Date object
 function parseDateString(dateStr: string | null | undefined): Date | undefined {
   if (!dateStr) return undefined;
 
@@ -37,7 +37,7 @@ const sendResponse = (
   status: number,
   message: string,
   data: any = null,
-  success: boolean = true
+  success: boolean = true,
 ) => {
   return NextResponse.json(
     {
@@ -50,7 +50,7 @@ const sendResponse = (
         path: "/api/reports/departure",
       },
     },
-    { status }
+    { status },
   );
 };
 
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         403,
         "Forbidden: Insufficient permissions",
         null,
-        false
+        false,
       );
     }
 
@@ -78,8 +78,9 @@ export async function GET(req: NextRequest) {
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
     const userCompanyId = user.company?.id;
-    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
-    // ✅ Ensure all models are registered for population
+    const canSeeHistory =
+      user.permissions?.includes("reports.history.views") || isSuperAdmin;
+    //  Ensure all models are registered for population
     const _ensureModels = [Vessel, Voyage, User, Company, ReportOperational];
     const isAdmin = user.role?.toLowerCase() === "admin";
     const { searchParams } = new URL(req.url);
@@ -88,11 +89,13 @@ export async function GET(req: NextRequest) {
     const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
     const skip = (page - 1) * limit;
 
-    // ✅ Initialize query with soft-delete filter
-    const query: Record<string, any> = { eventType: "departure", deletedAt: null };
+    //  Initialize query with soft-delete filter
+    const query: Record<string, any> = {
+      eventType: "departure",
+      deletedAt: null,
+    };
 
-     //history reports logics 
- 
+    //history reports logics
 
     // =========================================================
     // 🔒 3. MULTI-TENANCY FILTERING LOGIC
@@ -104,10 +107,10 @@ export async function GET(req: NextRequest) {
       if (!userCompanyId)
         return sendResponse(403, "No company assigned", null, false);
 
-      const companyVessels = await Vessel.find({ 
-          company: userCompanyId, 
-          deletedAt: null // ✅ Filter out soft-deleted vessels
-        })
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+        deletedAt: null, //  Filter out soft-deleted vessels
+      })
         .select("_id")
         .lean();
       const companyVesselIds = companyVessels.map((v) => v._id);
@@ -118,20 +121,23 @@ export async function GET(req: NextRequest) {
           if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
             query.vesselId = selectedVessel;
           } else {
-            return sendResponse(200, "Unauthorized vessel access", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+            return sendResponse(200, "Unauthorized vessel access", {
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
           }
         } else {
           query.vesselId = { $in: companyVesselIds };
         }
       } else {
         // NON-ADMIN LOGIC: Show ONLY their own reports
-        query.createdBy = user.id; 
-        
+        query.createdBy = user.id;
+
         // Still apply vessel filter to ensure they don't see their reports from unauthorized vessels
         if (selectedVessel) {
-           query.vesselId = selectedVessel;
+          query.vesselId = selectedVessel;
         } else {
-           query.vesselId = { $in: companyVesselIds };
+          query.vesselId = { $in: companyVesselIds };
         }
       }
 
@@ -149,10 +155,10 @@ export async function GET(req: NextRequest) {
       }
     } else {
       if (selectedCompany && selectedCompany !== "all") {
-        const targetVessels = await Vessel.find({ 
-            company: selectedCompany, 
-            deletedAt: null // ✅ Filter out soft-deleted vessels
-          })
+        const targetVessels = await Vessel.find({
+          company: selectedCompany,
+          deletedAt: null, //  Filter out soft-deleted vessels
+        })
           .select("_id")
           .lean();
         const targetVesselIds = targetVessels.map((v) => v._id);
@@ -185,7 +191,7 @@ export async function GET(req: NextRequest) {
 
     const search = searchParams.get("search")?.trim();
     if (search) {
-      // ✅ Use $and to combine soft-delete filter with keyword search
+      //  Use $and to combine soft-delete filter with keyword search
       query.$and = [
         { deletedAt: null },
         {
@@ -194,7 +200,7 @@ export async function GET(req: NextRequest) {
             { voyageNo: { $regex: search, $options: "i" } },
             { portName: { $regex: search, $options: "i" } },
           ],
-        }
+        },
       ];
     }
 
@@ -253,12 +259,14 @@ export async function GET(req: NextRequest) {
     ];
 
     if (fetchAll) {
-      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+      const companyFilter: any = isSuperAdmin
+        ? { deletedAt: null }
+        : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
 
       const vesselFilter: any = { status: "active", deletedAt: null };
@@ -269,7 +277,7 @@ export async function GET(req: NextRequest) {
         Vessel.find(vesselFilter)
           .select("_id name status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
     }
 
@@ -292,7 +300,7 @@ export async function GET(req: NextRequest) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vIds },
         status: "active",
-        deletedAt: null // ✅ Ensure only non-deleted voyages are mapped
+        deletedAt: null, //  Ensure only non-deleted voyages are mapped
       })
         .select("vesselId voyageNo")
         .lean();
@@ -332,7 +340,7 @@ export async function GET(req: NextRequest) {
       500,
       error.message || "Internal Server Error",
       null,
-      false
+      false,
     );
   }
 }
@@ -342,7 +350,7 @@ export async function GET(req: NextRequest) {
 ====================================== */
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth(); // ✅ Get session
+    const session = await auth(); //  Get session
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("departure.create");
     if (!authz.ok) return authz.response;
@@ -371,7 +379,7 @@ export async function POST(req: NextRequest) {
             message: d.message,
           })),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -379,12 +387,12 @@ export async function POST(req: NextRequest) {
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ==========================================
-    // ✅ VOYAGE ID LOOKUP LOGIC
+    //  VOYAGE ID LOOKUP LOGIC
     // ==========================================
     const voyageNoString = value.voyageId; // Frontend sends string "OP-1225-IN" here
     const vesselIdString = value.vesselId;
@@ -404,13 +412,13 @@ export async function POST(req: NextRequest) {
       } else {
         return NextResponse.json(
           { error: `Voyage ${voyageNoString} not found for this vessel.` },
-          { status: 404 }
+          { status: 404 },
         );
       }
     } else {
       return NextResponse.json(
         { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -420,14 +428,14 @@ export async function POST(req: NextRequest) {
     const report = await ReportOperational.create({
       eventType: "departure",
       status: "active",
-      createdBy: currentUserId, // ✅ Store creator
-      updatedBy: currentUserId, // ✅ Store initial updater
+      createdBy: currentUserId, //  Store creator
+      updatedBy: currentUserId, //  Store initial updater
 
-      // ✅ IDS (Linked)
+      //  IDS (Linked)
       vesselId: vesselIdString,
       voyageId: voyageObjectId, // Saved as ObjectId (e.g. 65a...)
 
-      // ✅ SNAPSHOTS (Readable)
+      //  SNAPSHOTS (Readable)
       vesselName: value.vesselName,
       voyageNo: voyageNoString, // Saved as String (e.g. "OP-1225-IN")
 
@@ -460,13 +468,13 @@ export async function POST(req: NextRequest) {
         message: "Departure report created successfully",
         report,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
     console.error("CREATE DEPARTURE REPORT ERROR →", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

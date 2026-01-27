@@ -16,9 +16,9 @@ import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-import SearchableSelect from "@/components/form/SearchableSelect";
 // Form Components
 import DatePicker from "@/components/form/date-picker";
 import Input from "@/components/form/input/InputField";
@@ -126,7 +126,8 @@ export default function VoyageTable({
   startDate,
   endDate,
   companyId,
-  setTotalCount,vesselList
+  setTotalCount,
+  vesselList,
 }: VoyageTableProps) {
   const [voyages, setVoyages] = useState<Voyage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +143,13 @@ export default function VoyageTable({
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // Pagination
-  const prevFiltersRef = useRef({ search, status, startDate, endDate, companyId });
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    companyId,
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
@@ -212,15 +219,15 @@ export default function VoyageTable({
       ),
     },
     {
-    header: "Company",
-    render: (v: Voyage) => (
-      <div className="flex flex-col gap-1 min-w-[120px]">
-        <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px] text-sm">
-          {v.vesselId?.company?.name || "N/A"}
-        </span>
-      </div>
-    ),
-  },
+      header: "Company",
+      render: (v: Voyage) => (
+        <div className="flex flex-col gap-1 min-w-[120px]">
+          <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px] text-sm">
+            {v.vesselId?.company?.name || "N/A"}
+          </span>
+        </div>
+      ),
+    },
     {
       header: "Route",
       render: (v: Voyage) => (
@@ -291,34 +298,35 @@ export default function VoyageTable({
       ),
     },
     {
-  header: "Status",
-  render: (v: Voyage) => {
-    let color: "success" | "warning" | "default" | "error" | "light" = "default";
-    let label: string = v.status;
+      header: "Status",
+      render: (v: Voyage) => {
+        let color: "success" | "warning" | "default" | "error" | "light" =
+          "default";
+        let label: string = v.status;
 
-    switch (v.status) {
-      case "active":
-        color = "success";
-        label = "Active";
-        break;
-      case "scheduled":
-        color = "warning";
-        label = "Scheduled";
-        break;
-      case "completed":
-        color = "default";
-        label = "Completed";
-        break;
-      case "deleted":
-        // Logic for soft-deleted voyages
-        color = "error"; // Usually red/danger
-        label = "Deleted";
-        break;
-    }
+        switch (v.status) {
+          case "active":
+            color = "success";
+            label = "Active";
+            break;
+          case "scheduled":
+            color = "warning";
+            label = "Scheduled";
+            break;
+          case "completed":
+            color = "default";
+            label = "Completed";
+            break;
+          case "deleted":
+            // Logic for soft-deleted voyages
+            color = "error"; // Usually red/danger
+            label = "Deleted";
+            break;
+        }
 
-    return <Badge color={color}>{label}</Badge>;
-  },
-},
+        return <Badge color={color}>{label}</Badge>;
+      },
+    },
   ];
 
   /* ================= FETCH ================= */
@@ -362,52 +370,55 @@ export default function VoyageTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, companyId]
+    [search, status, startDate, endDate, companyId],
   );
-
-
 
   /* ================= ACTIONS ================= */
   function handleView(voyage: Voyage) {
     setSelectedVoyage(voyage);
     setOpenView(true);
   }
-useEffect(() => {
-  if (!isReady) return;
+  useEffect(() => {
+    if (!isReady) return;
 
-  // 1. Detect if the filters actually changed since the last render
-  const filtersChanged =
-    prevFiltersRef.current.search !== search ||
-    prevFiltersRef.current.status !== status ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate ||
-    prevFiltersRef.current.companyId !== companyId;
+    // 1. Detect if the filters actually changed since the last render
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.companyId !== companyId;
 
-  // 2. If filters changed, reset to page 1
-  if (filtersChanged) {
-    // Update the ref with the new values
-    prevFiltersRef.current = { search, status, startDate, endDate, companyId };
-    
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // The change in currentPage will re-trigger this effect
+    // 2. If filters changed, reset to page 1
+    if (filtersChanged) {
+      // Update the ref with the new values
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        companyId,
+      };
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // The change in currentPage will re-trigger this effect
+      }
     }
-  }
 
-  // 3. Fetch the data for the current page
-  fetchVoyages(currentPage);
-
-}, [
-  currentPage,
-  refresh,
-  fetchVoyages,
-  isReady,
-  search,
-  status,
-  companyId,
-  startDate,
-  endDate,
-]);
+    // 3. Fetch the data for the current page
+    fetchVoyages(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchVoyages,
+    isReady,
+    search,
+    status,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   function handleEdit(voyage: Voyage) {
     setSelectedVoyage(voyage);
@@ -468,7 +479,7 @@ useEffect(() => {
       const updatedVoyage = responseData.report || responseData.data;
 
       setVoyages((prev) =>
-        prev.map((v) => (v._id === updatedVoyage._id ? updatedVoyage : v))
+        prev.map((v) => (v._id === updatedVoyage._id ? updatedVoyage : v)),
       );
       toast.success("Voyage updated successfully");
       setOpenEdit(false);
@@ -502,7 +513,7 @@ useEffect(() => {
     } finally {
       setOpenDelete(false);
       setSelectedVoyage(null);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   }
 
@@ -515,7 +526,7 @@ useEffect(() => {
   const handleNestedEditChange = (
     parent: "route" | "schedule" | "cargo" | "charter",
     key: string,
-    value: any
+    value: any,
   ) => {
     if (!editData) return;
     setEditData({
@@ -730,8 +741,8 @@ useEffect(() => {
                 selectedVoyage?.status === "active"
                   ? "success"
                   : selectedVoyage?.status === "scheduled"
-                  ? "warning"
-                  : "default"
+                    ? "warning"
+                    : "default"
               }
             >
               <span className="capitalize">{selectedVoyage?.status}</span>
@@ -755,16 +766,17 @@ useEffect(() => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Vessel</Label>
-                 <SearchableSelect
-   options={vesselList?.map((v: any) => ({
-      value: v._id?.toString(), 
-      label: v.name,
-    })) || []}
-   
-    value={editData.vesselId?.toString()}
-    onChange={(val) => handleEditChange("vesselId", val)}
-    placeholder="Search Vessel"
-  />
+                  <SearchableSelect
+                    options={
+                      vesselList?.map((v: any) => ({
+                        value: v._id?.toString(),
+                        label: v.name,
+                      })) || []
+                    }
+                    value={editData.vesselId?.toString()}
+                    onChange={(val) => handleEditChange("vesselId", val)}
+                    placeholder="Search Vessel"
+                  />
                 </div>
                 <InputField
                   label="Voyage No"
@@ -803,7 +815,7 @@ useEffect(() => {
                     handleNestedEditChange(
                       "route",
                       "dischargePort",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -822,7 +834,7 @@ useEffect(() => {
                     handleNestedEditChange(
                       "route",
                       "totalDistance",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -841,7 +853,7 @@ useEffect(() => {
                       handleNestedEditChange(
                         "schedule",
                         "startDate",
-                        e.target.value
+                        e.target.value,
                       )
                     }
                   />
@@ -865,7 +877,7 @@ useEffect(() => {
                       handleNestedEditChange(
                         "schedule",
                         "endDate",
-                        e.target.value
+                        e.target.value,
                       )
                     }
                   />
@@ -883,7 +895,7 @@ useEffect(() => {
                     handleNestedEditChange(
                       "charter",
                       "chartererName",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -907,7 +919,7 @@ useEffect(() => {
                 <div>
                   <Label>Laycan Start</Label>
                   <DatePicker
-                    id="edit-laycan-start" // ✅ ADDED ID
+                    id="edit-laycan-start" //  ADDED ID
                     defaultDate={editData.charter.laycanStart}
                     onChange={(_, date) =>
                       handleNestedEditChange("charter", "laycanStart", date)
@@ -917,7 +929,7 @@ useEffect(() => {
                 <div>
                   <Label>Laycan End</Label>
                   <DatePicker
-                    id="edit-laycan-end" // ✅ ADDED ID
+                    id="edit-laycan-end" //  ADDED ID
                     defaultDate={editData.charter.laycanEnd}
                     onChange={(_, date) =>
                       handleNestedEditChange("charter", "laycanEnd", date)

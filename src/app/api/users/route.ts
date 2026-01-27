@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
+import Permission from "@/models/Permission";
+import Resource from "@/models/Resource";
 import Role from "@/models/Role";
 import User from "@/models/User";
 import { put } from "@vercel/blob";
@@ -10,8 +12,6 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import Permission from "@/models/Permission"; 
-import Resource from "@/models/Resource";
 export async function POST(req: NextRequest) {
   try {
     // 1. Authorization
@@ -33,10 +33,10 @@ export async function POST(req: NextRequest) {
 
     // Handle Permissions (expecting JSON strings for arrays)
     const additionalPermissionsRaw = formData.get(
-      "additionalPermissions"
+      "additionalPermissions",
     ) as string;
     const excludedPermissionsRaw = formData.get(
-      "excludedPermissions"
+      "excludedPermissions",
     ) as string;
 
     let additionalPermissions: string[] = [];
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       if (file.size > 2 * 1024 * 1024) {
         return NextResponse.json(
           { error: "Profile picture exceeds the 2MB limit." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       } else {
         return NextResponse.json(
           { error: "Default 'op-staff' role not found. Please select a role." },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     if (!name || !email || !password || !company) {
       return NextResponse.json(
         { error: "Missing required fields: name, email, or password" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     if (existingUser) {
       return NextResponse.json(
         { error: "User with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     if (!validCompany) {
       return NextResponse.json(
         { error: "Invalid Company ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     if (!validRole) {
       return NextResponse.json(
         { error: "Invalid Role ID provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       role: role,
       additionalPermissions: additionalPermissions,
       excludedPermissions: excludedPermissions,
-      profilePicture: profilePictureUrl || null, // ✅ Save the URL
+      profilePicture: profilePictureUrl || null, //  Save the URL
       status: "active",
     });
 
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { success: true, userId: newUser._id, roleId: newUser.role },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("CREATE USER ERROR →", error);
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
     const skip = (page - 1) * limit;
-    
+
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
     const companyIdParam = searchParams.get("companyId");
@@ -202,9 +202,15 @@ export async function GET(req: NextRequest) {
     // ---------------------------------------------------------
 
     // --- Permissions Query Logic ---
-    const activeResources = await Resource.find({ isDeleted: { $ne: true }, status: "active" }).select("_id");
-    const activeResourceIds = activeResources.map(r => r._id);
-    const permQuery: any = { resourceId: { $in: activeResourceIds }, status: "active" };
+    const activeResources = await Resource.find({
+      isDeleted: { $ne: true },
+      status: "active",
+    }).select("_id");
+    const activeResourceIds = activeResources.map((r) => r._id);
+    const permQuery: any = {
+      resourceId: { $in: activeResourceIds },
+      status: "active",
+    };
     if (!isSuperAdmin) {
       permQuery.slug = { $in: user.permissions || [] };
     }
@@ -216,7 +222,7 @@ export async function GET(req: NextRequest) {
         roleQuery.name = { $ne: "super-admin" };
       } else {
         // Non-admins shouldn't see roles list usually, or only their own
-        roleQuery._id = null; 
+        roleQuery._id = null;
       }
     }
 
@@ -224,22 +230,30 @@ export async function GET(req: NextRequest) {
     const userQuery: any = {
       status: { $ne: "deleted" },
       deletedAt: null,
-      _id: { $ne: currentUserId }
+      _id: { $ne: currentUserId },
     };
 
     // Multi-tenancy & Admin restrictions
     if (isSuperAdmin) {
-      if (companyIdParam && !["undefined", "null", "all"].includes(companyIdParam)) {
+      if (
+        companyIdParam &&
+        !["undefined", "null", "all"].includes(companyIdParam)
+      ) {
         userQuery.company = companyIdParam;
       }
     } else {
       if (!userCompanyId) {
-        return NextResponse.json({ error: "Access denied: No company assigned." }, { status: 403 });
+        return NextResponse.json(
+          { error: "Access denied: No company assigned." },
+          { status: 403 },
+        );
       }
       userQuery.company = userCompanyId;
       // This now runs for EVERYONE who is not a Super Admin
-      if (!isSuperAdmin) { 
-        const superAdminRole = await Role.findOne({ name: /super-admin/i }).select("_id");
+      if (!isSuperAdmin) {
+        const superAdminRole = await Role.findOne({
+          name: /super-admin/i,
+        }).select("_id");
         if (superAdminRole) {
           userQuery.role = { $ne: superAdminRole._id }; // Now restricted for all other roles
         }
@@ -273,9 +287,9 @@ export async function GET(req: NextRequest) {
     // Updated to filter: active status and not soft-deleted
     const companiesQuery: any = {
       status: "active",
-      deletedAt: null
+      deletedAt: null,
     };
-    
+
     if (!isSuperAdmin) {
       companiesQuery._id = userCompanyId;
     }
@@ -283,20 +297,24 @@ export async function GET(req: NextRequest) {
     // ---------------------------------------------------------
     // 4. EXECUTE ALL IN PARALLEL
     // ---------------------------------------------------------
-    const [permissions, roles, users, totalUsers, companies] = await Promise.all([
-      Permission.find(permQuery).populate("resourceId", "name").sort({ slug: 1 }).lean(),
-      Role.find(roleQuery).sort({ createdAt: -1 }).lean(),
-      User.find(userQuery)
-        .select("-password")
-        .populate("role", "name")
-        .populate({ path: "company", select: "name", strictPopulate: false })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      User.countDocuments(userQuery),
-      Company.find(companiesQuery).select("name").lean()
-    ]);
+    const [permissions, roles, users, totalUsers, companies] =
+      await Promise.all([
+        Permission.find(permQuery)
+          .populate("resourceId", "name")
+          .sort({ slug: 1 })
+          .lean(),
+        Role.find(roleQuery).sort({ createdAt: -1 }).lean(),
+        User.find(userQuery)
+          .select("-password")
+          .populate("role", "name")
+          .populate({ path: "company", select: "name", strictPopulate: false })
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        User.countDocuments(userQuery),
+        Company.find(companiesQuery).select("name").lean(),
+      ]);
 
     // ---------------------------------------------------------
     // 5. RETURN COMBINED RESPONSE
@@ -312,19 +330,18 @@ export async function GET(req: NextRequest) {
         },
       },
       roles,
-      permissions: permissions.filter(p => p.resourceId !== null),
+      permissions: permissions.filter((p) => p.resourceId !== null),
       companies, // Added so Super Admins can populate company filter dropdowns
       meta: {
         isSuperAdmin,
-        isAdmin
-      }
+        isAdmin,
+      },
     });
-
   } catch (error: any) {
     console.error("COMBINED GET ERROR →", error);
     return NextResponse.json(
       { error: error.message || "Failed to fetch data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

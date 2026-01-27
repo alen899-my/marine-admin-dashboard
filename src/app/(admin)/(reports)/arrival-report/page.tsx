@@ -5,18 +5,18 @@ import ExportToExcel from "@/components/common/ExportToExcel";
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
 import ArrivalReportTable from "./ArrivalReportTable";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function ArrivalReport() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for Excel data
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady, user } = useAuthorization();
   const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   const canView = can("arrival.view");
@@ -34,11 +34,9 @@ export default function ArrivalReport() {
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
   const [companyId, setCompanyId] = useState("all");
- const [companies, setCompanies] = useState<any[]>([]); 
+  const [companies, setCompanies] = useState<any[]>([]);
   const [vessels, setVessels] = useState<any[]>([]);
   const [allVoyages, setAllVoyages] = useState<any[]>([]);
-
-  
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -77,7 +75,9 @@ export default function ArrivalReport() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">You do not have permission to access Arrival Reports.</p>
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Arrival Reports.
+        </p>
       </div>
     );
   }
@@ -90,37 +90,33 @@ export default function ArrivalReport() {
         </h2>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
- 
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    
-    />
-  </div>
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
- 
-  <div className="w-full sm:w-auto">
-    <ExportToExcel
-      data={reportsData}
-      fileName="Arrival_Reports"
-      exportMap={excelMapping}
-      className="w-full justify-center"
-    />
-  </div>
+          <div className="w-full sm:w-auto">
+            <ExportToExcel
+              data={reportsData}
+              fileName="Arrival_Reports"
+              exportMap={excelMapping}
+              className="w-full justify-center"
+            />
+          </div>
 
- 
-  {canCreate && (
-    <div className="w-full sm:w-auto">
-      <AddArrivalReportButton 
-        onSuccess={handleRefresh} 
-        vesselList={vessels} 
-        allVoyages={allVoyages}
-        className="w-full justify-center" 
-      />
-    </div>
-  )}
-</div>
+          {canCreate && (
+            <div className="w-full sm:w-auto">
+              <AddArrivalReportButton
+                onSuccess={handleRefresh}
+                vesselList={vessels}
+                allVoyages={allVoyages}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard
@@ -165,10 +161,10 @@ export default function ArrivalReport() {
           companyId={companyId}
           vesselList={vessels}
           onFilterDataLoad={(filterData: any) => {
-    setVessels(filterData.vessels);
-    setCompanies(filterData.companies);
-    setAllVoyages(filterData.voyages);
-  }}
+            setVessels(filterData.vessels);
+            setCompanies(filterData.companies);
+            setAllVoyages(filterData.voyages);
+          }}
         />
       </ComponentCard>
     </div>

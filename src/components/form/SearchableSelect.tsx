@@ -100,7 +100,7 @@ export default function SearchableSelect({
   
   ${
     error
-      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" // ✅ Red in light, gray in dark
+      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" //  Red in light, gray in dark
       : isOpen
         ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
         : "border-gray-300 dark:border-gray-700 hover:border-gray-400"

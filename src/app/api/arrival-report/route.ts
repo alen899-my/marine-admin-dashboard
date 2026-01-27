@@ -14,12 +14,11 @@ import Voyage from "@/models/Voyage";
 
 import Company from "@/models/Company";
 
-
 const sendResponse = (
   status: number,
   message: string,
   data: any = null,
-  success: boolean = true
+  success: boolean = true,
 ) => {
   return NextResponse.json(
     {
@@ -32,7 +31,7 @@ const sendResponse = (
         path: "/api/reports/arrival",
       },
     },
-    { status }
+    { status },
   );
 };
 
@@ -66,38 +65,55 @@ export async function GET(req: NextRequest) {
     const userCompanyId = user.company?.id;
 
     // Ensure models are registered for populate
-    const _ensureModels = [Vessel, Voyage, User, ReportDaily, Company, ReportOperational];
+    const _ensureModels = [
+      Vessel,
+      Voyage,
+      User,
+      ReportDaily,
+      Company,
+      ReportOperational,
+    ];
 
     const { searchParams } = new URL(req.url);
     // 🟢 ROMAN I: Fetch Flag Addition
-    const fetchAll = searchParams.get("all") === "true"; 
-    
+    const fetchAll = searchParams.get("all") === "true";
+
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const skip = (page - 1) * limit;
-    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
+    const canSeeHistory =
+      user.permissions?.includes("reports.history.views") || isSuperAdmin;
 
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-const startDate = searchParams.get("startDate");
+    const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     let manualDateRange: any = null;
     const vesselIdParam = searchParams.get("vesselId");
     const voyageIdParam = searchParams.get("voyageId");
     const companyIdParam = searchParams.get("companyId");
     const isAdmin = user.role?.toLowerCase() === "admin";
-    // ✅ Initialize query with soft-delete filter
+    //  Initialize query with soft-delete filter
     const query: any = { eventType: "arrival", deletedAt: null };
-
-  
 
     // =========================================================
     // 🔒 2. MULTI-TENANCY FILTERING LOGIC
     // =========================================================
     if (!isSuperAdmin) {
-      if (!userCompanyId) return sendResponse(403, "Access denied: No company assigned", null, false);
-      // ✅ Filter out soft-deleted vessels
-      const companyVessels = await Vessel.find({ company: userCompanyId, deletedAt: null }).select("_id").lean();
+      if (!userCompanyId)
+        return sendResponse(
+          403,
+          "Access denied: No company assigned",
+          null,
+          false,
+        );
+      //  Filter out soft-deleted vessels
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+        deletedAt: null,
+      })
+        .select("_id")
+        .lean();
       const companyVesselIds = companyVessels.map((v) => v._id.toString());
       query.vesselId = { $in: companyVesselIds };
 
@@ -107,15 +123,18 @@ const startDate = searchParams.get("startDate");
           if (companyVesselIds.includes(vesselIdParam)) {
             query.vesselId = vesselIdParam;
           } else {
-            return sendResponse(200, "Success", { data: [], pagination: { total: 0, page, totalPages: 0 } });
+            return sendResponse(200, "Success", {
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
           }
         } else {
           query.vesselId = { $in: companyVesselIds };
         }
       } else {
         // REGULAR USER: Only show their own reports (createdBy)
-        query.createdBy = user.id; 
-        
+        query.createdBy = user.id;
+
         // Still apply vessel context for security
         if (vesselIdParam) {
           query.vesselId = vesselIdParam;
@@ -125,11 +144,18 @@ const startDate = searchParams.get("startDate");
       }
     } else {
       if (companyIdParam && companyIdParam !== "all") {
-        // ✅ Filter out soft-deleted vessels
-        const targetVessels = await Vessel.find({ company: companyIdParam, deletedAt: null }).select("_id").lean();
+        //  Filter out soft-deleted vessels
+        const targetVessels = await Vessel.find({
+          company: companyIdParam,
+          deletedAt: null,
+        })
+          .select("_id")
+          .lean();
         const targetVesselIds = targetVessels.map((v) => v._id.toString());
         if (vesselIdParam) {
-          query.vesselId = targetVesselIds.includes(vesselIdParam) ? vesselIdParam : { $in: [] };
+          query.vesselId = targetVesselIds.includes(vesselIdParam)
+            ? vesselIdParam
+            : { $in: [] };
         } else {
           query.vesselId = { $in: targetVesselIds };
         }
@@ -142,7 +168,7 @@ const startDate = searchParams.get("startDate");
     if (voyageIdParam) query.voyageId = voyageIdParam;
 
     if (search) {
-      // ✅ Use $and to combine soft-delete filter with keyword search
+      //  Use $and to combine soft-delete filter with keyword search
       query.$and = [
         { deletedAt: null },
         {
@@ -151,18 +177,18 @@ const startDate = searchParams.get("startDate");
             { voyageNo: { $regex: search, $options: "i" } },
             { portName: { $regex: search, $options: "i" } },
           ],
-        }
+        },
       ];
     }
 
-   if (startDate || endDate) {
+    if (startDate || endDate) {
       manualDateRange = {};
       const s = parseDateString(startDate);
       const e = parseDateString(endDate);
       if (s) manualDateRange.$gte = s;
-      if (e) { 
-        e.setHours(23, 59, 59, 999); 
-        manualDateRange.$lte = e; 
+      if (e) {
+        e.setHours(23, 59, 59, 999);
+        manualDateRange.$lte = e;
       }
     }
 
@@ -175,7 +201,7 @@ const startDate = searchParams.get("startDate");
 
       query.reportDate = {
         $gte: startOfDay,
-        $lte: now, 
+        $lte: now,
       };
     } else if (manualDateRange) {
       // ALLOWED: History-enabled users see their selected range
@@ -193,36 +219,54 @@ const startDate = searchParams.get("startDate");
         .populate("createdBy", "fullName")
         .populate("updatedBy", "fullName")
         .populate({
-        path: "vesselId",
-        select: "name company",
-        populate: {
-          path: "company",
-          select: "name",
-        },
-      })
+          path: "vesselId",
+          select: "name company",
+          populate: {
+            path: "company",
+            select: "name",
+          },
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean()
+        .lean(),
     ];
 
     if (fetchAll) {
-      // Fetch Companies (✅ Added deletedAt: null)
-      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
-      promises.push(Company.find(companyFilter).select("_id name status").sort({ name: 1 }).lean());
+      // Fetch Companies ( Added deletedAt: null)
+      const companyFilter: any = isSuperAdmin
+        ? { deletedAt: null }
+        : { _id: userCompanyId, deletedAt: null };
+      promises.push(
+        Company.find(companyFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean(),
+      );
 
-      // Fetch Vessels (✅ Added deletedAt: null)
+      // Fetch Vessels ( Added deletedAt: null)
       const vesselFilter: any = { status: "active", deletedAt: null };
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
-      else if (companyIdParam && companyIdParam !== "all") vesselFilter.company = companyIdParam;
-      promises.push(Vessel.find(vesselFilter).select("_id name status").sort({ name: 1 }).lean());
+      else if (companyIdParam && companyIdParam !== "all")
+        vesselFilter.company = companyIdParam;
+      promises.push(
+        Vessel.find(vesselFilter)
+          .select("_id name status")
+          .sort({ name: 1 })
+          .lean(),
+      );
     }
 
     // 🟢 ROMAN III: Strict Type Casting for results
-    const results = await Promise.all(promises) as [number, any[], any[]?, any[]?];
+    const results = (await Promise.all(promises)) as [
+      number,
+      any[],
+      any[]?,
+      any[]?,
+    ];
     const total = results[0];
     const arrivals = results[1];
-    
+
     let companies: any[] = [];
     let vessels: any[] = [];
     let voyages: any[] = [];
@@ -232,59 +276,84 @@ const startDate = searchParams.get("startDate");
     // 📊 4. BULK METRICS CALCULATION (Your Original Logic)
     // =========================================================
     if (arrivals.length > 0) {
-        const voyageIds = arrivals.map((r: any) => r.voyageId?._id).filter(Boolean);
+      const voyageIds = arrivals
+        .map((r: any) => r.voyageId?._id)
+        .filter(Boolean);
 
-        const [departures, noonReports] = await Promise.all([
-            // ✅ Only calculate metrics from non-deleted reports
-            ReportOperational.find({ voyageId: { $in: voyageIds }, eventType: "departure", status: "active", deletedAt: null }).lean(),
-            ReportDaily.find({ voyageId: { $in: voyageIds }, status: "active", deletedAt: null }).lean()
-        ]);
+      const [departures, noonReports] = await Promise.all([
+        //  Only calculate metrics from non-deleted reports
+        ReportOperational.find({
+          voyageId: { $in: voyageIds },
+          eventType: "departure",
+          status: "active",
+          deletedAt: null,
+        }).lean(),
+        ReportDaily.find({
+          voyageId: { $in: voyageIds },
+          status: "active",
+          deletedAt: null,
+        }).lean(),
+      ]);
 
-        const departureMap = new Map(departures.map((d: any) => [d.voyageId.toString(), d]));
-        const noonMap = new Map<string, any[]>();
-        noonReports.forEach((n: any) => {
-            const id = n.voyageId.toString();
-            if (!noonMap.has(id)) noonMap.set(id, []);
-            noonMap.get(id)!.push(n);
+      const departureMap = new Map(
+        departures.map((d: any) => [d.voyageId.toString(), d]),
+      );
+      const noonMap = new Map<string, any[]>();
+      noonReports.forEach((n: any) => {
+        const id = n.voyageId.toString();
+        if (!noonMap.has(id)) noonMap.set(id, []);
+        noonMap.get(id)!.push(n);
+      });
+
+      reportsWithMetrics = arrivals.map((report: any) => {
+        const vId = report.voyageId?._id?.toString();
+        if (!vId) return { ...report, metrics: null };
+
+        const departure = departureMap.get(vId);
+        if (!departure) return { ...report, metrics: null };
+
+        const arrTime = new Date(
+          report.eventTime || report.reportDate,
+        ).getTime();
+        const depTime = new Date(
+          departure.eventTime || departure.reportDate,
+        ).getTime();
+
+        const noonList = (noonMap.get(vId) || []).filter((n: any) => {
+          const noonTime = new Date(n.reportDate).getTime();
+          return noonTime >= depTime - 3600000 && noonTime <= arrTime + 3600000;
         });
 
-        reportsWithMetrics = arrivals.map((report: any) => {
-            const vId = report.voyageId?._id?.toString();
-            if (!vId) return { ...report, metrics: null };
+        const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
+        // 🟢 Fix Reduce Types
+        const totalDistance = noonList.reduce(
+          (sum: number, n: any) =>
+            sum + (Number(n.navigation?.distLast24h) || 0),
+          0,
+        );
 
-            const departure = departureMap.get(vId);
-            if (!departure) return { ...report, metrics: null };
+        const fuel = (t: string) => {
+          const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
+          const bunk =
+            Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
+          const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
+          return dep + bunk - arr;
+        };
 
-            const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-            const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
-
-            const noonList = (noonMap.get(vId) || []).filter((n: any) => {
-                const noonTime = new Date(n.reportDate).getTime();
-                return noonTime >= (depTime - 3600000) && noonTime <= (arrTime + 3600000);
-            });
-
-            const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
-            // 🟢 Fix Reduce Types
-            const totalDistance = noonList.reduce((sum: number, n: any) => sum + (Number(n.navigation?.distLast24h) || 0), 0);
-
-            const fuel = (t: string) => {
-                const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
-                const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
-                const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
-                return dep + bunk - arr;
-            };
-
-            return {
-                ...report,
-                metrics: {
-                    totalTimeHours: +totalTimeHours.toFixed(2),
-                    totalDistance: +totalDistance.toFixed(2),
-                    avgSpeed: totalTimeHours > 0 ? +(totalDistance / totalTimeHours).toFixed(2) : 0,
-                    consumedVlsfo: +fuel("Vlsfo").toFixed(2),
-                    consumedLsmgo: +fuel("Lsmgo").toFixed(2),
-                },
-            };
-        });
+        return {
+          ...report,
+          metrics: {
+            totalTimeHours: +totalTimeHours.toFixed(2),
+            totalDistance: +totalDistance.toFixed(2),
+            avgSpeed:
+              totalTimeHours > 0
+                ? +(totalDistance / totalTimeHours).toFixed(2)
+                : 0,
+            consumedVlsfo: +fuel("Vlsfo").toFixed(2),
+            consumedLsmgo: +fuel("Lsmgo").toFixed(2),
+          },
+        };
+      });
     }
 
     // =========================================================
@@ -295,18 +364,25 @@ const startDate = searchParams.get("startDate");
       const rawVessels = results[3] || [];
       const vIds = rawVessels.map((v: any) => v._id);
 
-      // ✅ Ensure only active, non-deleted voyages are used for the mapping
-      const activeVoyages = await Voyage.find({ vesselId: { $in: vIds }, status: "active", deletedAt: null })
-        .select("vesselId voyageNo").lean();
+      //  Ensure only active, non-deleted voyages are used for the mapping
+      const activeVoyages = await Voyage.find({
+        vesselId: { $in: vIds },
+        status: "active",
+        deletedAt: null,
+      })
+        .select("vesselId voyageNo")
+        .lean();
 
-      const voyMap = new Map(activeVoyages.map((v: any) => [v.vesselId.toString(), v.voyageNo]));
-      
+      const voyMap = new Map(
+        activeVoyages.map((v: any) => [v.vesselId.toString(), v.voyageNo]),
+      );
+
       vessels = rawVessels.map((v: any) => ({
         ...v,
-        activeVoyageNo: voyMap.get(v._id.toString()) || "", 
+        activeVoyageNo: voyMap.get(v._id.toString()) || "",
       }));
 
-      voyages = activeVoyages; 
+      voyages = activeVoyages;
     }
 
     return sendResponse(200, "Arrival reports retrieved successfully", {
@@ -316,10 +392,14 @@ const startDate = searchParams.get("startDate");
       voyages,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
-
   } catch (error: any) {
     console.error("GET ARRIVAL ERROR →", error);
-    return sendResponse(500, "Internal Server Error", { error: error.message }, false);
+    return sendResponse(
+      500,
+      "Internal Server Error",
+      { error: error.message },
+      false,
+    );
   }
 }
 /* ======================================
@@ -347,22 +427,22 @@ export async function POST(req: NextRequest) {
             message: d.message,
           })),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // ✅ PARSE DATE safely here
+    //  PARSE DATE safely here
     const parsedReportDate = parseDateString(value.reportDate);
 
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format. Please use dd/mm/yyyy" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ==========================================
-    // ✅ 1. ADDED VOYAGE ID LOOKUP LOGIC
+    //  1. ADDED VOYAGE ID LOOKUP LOGIC
     // ==========================================
     const voyageNoString = value.voyageId; // Frontend sends string "OP-1225"
     const vesselIdString = value.vesselId;
@@ -383,18 +463,18 @@ export async function POST(req: NextRequest) {
       } else {
         return NextResponse.json(
           { error: `Voyage ${voyageNoString} not found for this vessel.` },
-          { status: 404 }
+          { status: 404 },
         );
       }
     } else {
       return NextResponse.json(
         { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ==========================================
-    // ✅ 2. CREATE REPORT WITH MAPPED IDS
+    //  2. CREATE REPORT WITH MAPPED IDS
     // ==========================================
     const report = await ReportOperational.create({
       eventType: "arrival",
@@ -434,13 +514,13 @@ export async function POST(req: NextRequest) {
         message: "Arrival report created successfully",
         report,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("CREATE ARRIVAL REPORT ERROR →", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

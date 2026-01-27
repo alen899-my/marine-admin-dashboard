@@ -1,28 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import FilterToggleButton from "@/components/common/FilterToggleButton"; 
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
+import { useFilterPersistence } from "@/hooks/useFilterPersistence";
+import { useState } from "react";
 
 // Permission Components
-import PermissionTable from "./PermissionTable";
-import AddPermissionButton from "./AddPermissionButton";
 import PermissionFilter from "@/components/permissions/permissionFilter";
+import AddPermissionButton from "./AddPermissionButton";
+import PermissionTable from "./PermissionTable";
 
 export default function PermissionManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  
-  // ✅ Authorization logic
+
+  //  Authorization logic
   const { can, isReady } = useAuthorization();
   const canView = can("permission.view");
   const canAdd = can("permission.create");
 
   // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("permission");
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("permission");
   const [hasFetchedModules, setHasFetchedModules] = useState(false);
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -32,8 +33,6 @@ export default function PermissionManagement() {
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
-
-
   // 1. Wait for Auth to load
   if (!isReady) return null;
 
@@ -41,7 +40,9 @@ export default function PermissionManagement() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">You do not have permission to access Permission Management.</p>
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Permission Management.
+        </p>
       </div>
     );
   }
@@ -54,32 +55,31 @@ export default function PermissionManagement() {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
             Permission Management
           </h2>
-         
         </div>
-        
- <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddPermissionButton 
-        onSuccess={handleRefresh} 
-        resourceOptions={modules} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
+
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddPermissionButton
+                onSuccess={handleRefresh}
+                resourceOptions={modules}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      <ComponentCard 
+      <ComponentCard
         headerClassName="p-0 px-1"
         title={
           isFilterVisible ? (
@@ -91,7 +91,6 @@ export default function PermissionManagement() {
               module={module}
               setModule={setModule}
               modules={modules}
-              
             />
           ) : null
         }

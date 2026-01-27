@@ -1,26 +1,27 @@
 "use client";
 
-import { useState,useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import ResourceFilters from "@/components/resources/ResourceFilters";
-import AddResource from "./AddResource";
+import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
-import ResourceTable from "./ResourceTable"; 
-import FilterToggleButton from "@/components/common/FilterToggleButton"; 
+import ResourceFilters from "@/components/resources/ResourceFilters";
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
+import { useState } from "react";
+import AddResource from "./AddResource";
+import ResourceTable from "./ResourceTable";
 
 export default function ResourceManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // Authorization hooks
   const { can, isReady } = useAuthorization();
   const canView = can("resource.view");
   const canAdd = can("resource.create");
 
   // Persistence hook for "resources" module
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources");
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("resources");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -36,7 +37,9 @@ export default function ResourceManagement() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500">You do not have permission to access Resource Management.</p>
+        <p className="text-gray-500">
+          You do not have permission to access Resource Management.
+        </p>
       </div>
     );
   }
@@ -49,27 +52,26 @@ export default function ResourceManagement() {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
             Resource Management
           </h2>
-          
         </div>
-     <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton 
-      isVisible={isFilterVisible} 
-      onToggle={setIsFilterVisible} 
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddResource 
-        onSuccess={handleRefresh} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddResource
+                onSuccess={handleRefresh}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard
@@ -88,13 +90,13 @@ export default function ResourceManagement() {
         <div className="flex justify-end me-2 mb-2">
           <TableCount count={totalCount} label="resources" />
         </div>
-        
-       <ResourceTable
-  refresh={refresh}
-  search={search}
-  status={status}
-  setTotalCount={setTotalCount}
-/>
+
+        <ResourceTable
+          refresh={refresh}
+          search={search}
+          status={status}
+          setTotalCount={setTotalCount}
+        />
       </ComponentCard>
     </div>
   );

@@ -70,7 +70,7 @@ export default function UserFormModal({
   const isEditMode = !!initialData || !!createdUserId;
   const currentUserId = initialData?._id || createdUserId;
   const canEdit = can("users.edit");
-  // ✅ CHANGED: Use an object to control Title/Message dynamically
+  //  CHANGED: Use an object to control Title/Message dynamically
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
     message: string;
@@ -112,16 +112,16 @@ export default function UserFormModal({
   useEffect(() => {
     if (!isOpen) {
       setCreatedUserId(null);
-      setAlertConfig(null); // ✅ Reset alert
+      setAlertConfig(null); //  Reset alert
       setActiveTab("details");
       setErrors({});
       setHasChanges(false);
       setFormData(defaultState);
-    setImagePreview(null);
-    setProfileImage(null);
-    setAdditionalPerms([]);
-    setExcludedPerms([]);
-    setSelectedRolePermissions([]);
+      setImagePreview(null);
+      setProfileImage(null);
+      setAdditionalPerms([]);
+      setExcludedPerms([]);
+      setSelectedRolePermissions([]);
     }
   }, [isOpen]);
 
@@ -130,14 +130,14 @@ export default function UserFormModal({
     onClose?.(); // close only when user clicks close
   };
 
-useEffect(() => {
+  useEffect(() => {
     async function fetchMetadata() {
       try {
-        // We use the combined endpoint. 
+        // We use the combined endpoint.
         // We can pass current user list params or just get metadata.
-        const res = await fetch("/api/users?limit=1"); 
+        const res = await fetch("/api/users?limit=1");
         if (!res.ok) throw new Error("Failed to load metadata");
-        
+
         const json = await res.json();
 
         // A. Set Roles
@@ -156,7 +156,7 @@ useEffect(() => {
 
         if (!isActorSuperAdmin && loggedInUserCompanyId) {
           formattedCompanies = formattedCompanies.filter(
-            (c: any) => c.value === loggedInUserCompanyId
+            (c: any) => c.value === loggedInUserCompanyId,
           );
         }
         setCompaniesList(formattedCompanies);
@@ -166,7 +166,7 @@ useEffect(() => {
           const defaultRole = roles.find(
             (r: RoleData) =>
               r.name.toLowerCase() === "op-staff" ||
-              r.name.toLowerCase() === "op staff"
+              r.name.toLowerCase() === "op staff",
           );
 
           if (defaultRole) {
@@ -183,15 +183,22 @@ useEffect(() => {
     if (isOpen) {
       fetchMetadata();
     }
-  }, [isOpen, isActorSuperAdmin, loggedInUserCompanyId, initialData, createdUserId]);
+  }, [
+    isOpen,
+    isActorSuperAdmin,
+    loggedInUserCompanyId,
+    initialData,
+    createdUserId,
+  ]);
 
- useEffect(() => {
-    if (isOpen && initialData && rolesList.length > 0) { // added rolesList check
+  useEffect(() => {
+    if (isOpen && initialData && rolesList.length > 0) {
+      // added rolesList check
       const roleId =
         typeof initialData.role === "object" && initialData.role
           ? initialData.role._id
           : initialData.role;
-      
+
       const companyId =
         typeof initialData.company === "object"
           ? initialData.company?._id
@@ -220,14 +227,23 @@ useEffect(() => {
       // Update role-specific permissions based on the loaded rolesList
       const roleObj = rolesList.find((r) => r._id === roleId);
       if (roleObj) setSelectedRolePermissions(roleObj.permissions || []);
-      
     } else if (isOpen && !initialData && !createdUserId) {
       setFormData((prev) => ({
         ...prev,
-        company: !isActorSuperAdmin && loggedInUserCompanyId ? loggedInUserCompanyId : "",
+        company:
+          !isActorSuperAdmin && loggedInUserCompanyId
+            ? loggedInUserCompanyId
+            : "",
       }));
     }
-  }, [isOpen, initialData, rolesList, isActorSuperAdmin, loggedInUserCompanyId, createdUserId]);
+  }, [
+    isOpen,
+    initialData,
+    rolesList,
+    isActorSuperAdmin,
+    loggedInUserCompanyId,
+    createdUserId,
+  ]);
 
   const selectedRoleObj = rolesList.find((r) => r._id === formData.role);
   const isSuperAdmin = selectedRoleObj?.name?.toLowerCase() === "super-admin";
@@ -280,11 +296,11 @@ useEffect(() => {
         const formDataPayload = new FormData();
         formDataPayload.append(
           "additionalPermissions",
-          JSON.stringify(newAdditional)
+          JSON.stringify(newAdditional),
         );
         formDataPayload.append(
           "excludedPermissions",
-          JSON.stringify(newExcluded)
+          JSON.stringify(newExcluded),
         );
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
@@ -300,7 +316,7 @@ useEffect(() => {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -332,12 +348,12 @@ useEffect(() => {
 
     // A. Clean Additional: If the new role ALREADY has this permission, remove it from 'additional'
     const cleanedAdditional = additionalPerms.filter(
-      (slug) => !newRolePerms.includes(slug)
+      (slug) => !newRolePerms.includes(slug),
     );
 
     // B. Clean Excluded: If the new role DOES NOT have this permission, we can't exclude it, so remove it.
     const cleanedExcluded = excludedPerms.filter((slug) =>
-      newRolePerms.includes(slug)
+      newRolePerms.includes(slug),
     );
 
     // --- CLEANUP LOGIC END ---
@@ -359,11 +375,11 @@ useEffect(() => {
         formDataPayload.append("role", newRoleId);
         formDataPayload.append(
           "additionalPermissions",
-          JSON.stringify(cleanedAdditional)
+          JSON.stringify(cleanedAdditional),
         );
         formDataPayload.append(
           "excludedPermissions",
-          JSON.stringify(cleanedExcluded)
+          JSON.stringify(cleanedExcluded),
         );
         await fetch(`/api/users/${currentUserId}`, {
           method: "PATCH",
@@ -425,7 +441,7 @@ useEffect(() => {
     }
 
     try {
-      // ✅ 2. Construct FormData for File Upload
+      //  2. Construct FormData for File Upload
       const formDataPayload = new FormData();
 
       // Append standard text fields
@@ -444,14 +460,14 @@ useEffect(() => {
       // Append Arrays (FormData requires strings, so we JSON.stringify arrays)
       formDataPayload.append(
         "additionalPermissions",
-        JSON.stringify(additionalPerms)
+        JSON.stringify(additionalPerms),
       );
       formDataPayload.append(
         "excludedPermissions",
-        JSON.stringify(excludedPerms)
+        JSON.stringify(excludedPerms),
       );
 
-      // ✅ 3. Append the File (if one was selected)
+      //  3. Append the File (if one was selected)
       if (profileImage) {
         formDataPayload.append("profilePicture", profileImage);
       }
@@ -541,8 +557,8 @@ useEffect(() => {
             isSuperAdmin
               ? "All permissions are automatically granted for Super Admin."
               : isEditMode
-              ? "Click icons to modify permissions."
-              : "View permissions for this role."
+                ? "Click icons to modify permissions."
+                : "View permissions for this role."
           }
           legend={
             !isSuperAdmin ? <PermissionLegend showAll={isEditMode} /> : null
@@ -582,8 +598,8 @@ useEffect(() => {
           initialData
             ? "Edit User"
             : createdUserId
-            ? "Edit Permissions"
-            : "Add New User"
+              ? "Edit Permissions"
+              : "Add New User"
         }
         description={
           isEditMode
@@ -594,16 +610,16 @@ useEffect(() => {
           isSubmitting
             ? "Saving..."
             : activeTab === "roles"
-            ? "Save Role" // or "Add Role"
-            : initialData || createdUserId
-            ? "Update User"
-            : "Create User"
+              ? "Save Role" // or "Add Role"
+              : initialData || createdUserId
+                ? "Update User"
+                : "Create User"
         }
         onCancel={handleClose}
         onSubmit={handleSubmit}
       >
         <div className="max-h-[75vh] overflow-y-auto p-1 space-y-4">
-          {/* ✅ DYNAMIC SUCCESS ALERT */}
+          {/*  DYNAMIC SUCCESS ALERT */}
           {alertConfig && (
             <Alert
               variant="success"

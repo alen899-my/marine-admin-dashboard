@@ -12,21 +12,21 @@ import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 interface AddArrivalReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
-    className?: string;
-  allVoyages: any[]; // ✅ Added from parent
+  className?: string;
+  allVoyages: any[]; //  Added from parent
 }
 
 export default function AddArrivalReportButton({
   onSuccess,
   vesselList,
   className,
-  allVoyages, // ✅ Destructured
+  allVoyages, //  Destructured
 }: AddArrivalReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +43,7 @@ export default function AddArrivalReportButton({
 
   const [formData, setFormData] = useState({
     vesselName: "",
-    vesselId: "", 
+    vesselId: "",
     voyageId: "",
     portName: "",
     reportDate: getCurrentDateTime(),
@@ -55,25 +55,30 @@ export default function AddArrivalReportButton({
     remarks: "",
   });
 
-  // ✅ 1. SUGGESTION HOOK
+  //  1. SUGGESTION HOOK
   const { suggestedVoyageNo } = useVoyageLogic(
     formData.vesselId || undefined,
-    formData.reportDate
+    formData.reportDate,
   );
 
-  // ✅ 2. NEW: Local Filter Logic (Replaces the manual fetch useEffect)
-const filteredVoyageOptions = useMemo(() => {
+  //  2. NEW: Local Filter Logic (Replaces the manual fetch useEffect)
+  const filteredVoyageOptions = useMemo(() => {
     if (!formData.vesselId) return [];
 
     const options = allVoyages
-      .filter((v: any) => v.vesselId?.toString() === formData.vesselId?.toString())
+      .filter(
+        (v: any) => v.vesselId?.toString() === formData.vesselId?.toString(),
+      )
       .map((v: any) => ({
         value: v.voyageNo,
         label: v.voyageNo,
       }));
 
     // Fallback to ensure suggested voyage is always selectable/visible
-    if (suggestedVoyageNo && !options.some(opt => opt.value === suggestedVoyageNo)) {
+    if (
+      suggestedVoyageNo &&
+      !options.some((opt) => opt.value === suggestedVoyageNo)
+    ) {
       options.unshift({
         value: suggestedVoyageNo,
         label: suggestedVoyageNo,
@@ -83,14 +88,14 @@ const filteredVoyageOptions = useMemo(() => {
     return options;
   }, [formData.vesselId, allVoyages, suggestedVoyageNo]);
 
-  // ✅ 3. SYNC Suggested Voyage
+  //  3. SYNC Suggested Voyage
   useEffect(() => {
     if (suggestedVoyageNo && suggestedVoyageNo !== formData.voyageId) {
       setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
 
-  // ✅ 4. SYNC NOR Time with Arrival Time
+  //  4. SYNC NOR Time with Arrival Time
   useEffect(() => {
     if (norSameAsArrival && formData.arrivalTime) {
       setFormData((prev) => ({ ...prev, norTime: formData.arrivalTime }));
@@ -98,7 +103,7 @@ const filteredVoyageOptions = useMemo(() => {
   }, [norSameAsArrival, formData.arrivalTime]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -152,11 +157,18 @@ const filteredVoyageOptions = useMemo(() => {
           voyageId: formData.voyageId,
           portName: formData.portName,
           reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : "",
-          arrivalTime: formData.arrivalTime ? `${formData.arrivalTime}+05:30` : "",
+          arrivalTime: formData.arrivalTime
+            ? `${formData.arrivalTime}+05:30`
+            : "",
           norTime: formData.norTime ? `${formData.norTime}+05:30` : "",
-          arrivalCargoQty: formData.arrivalCargoQty === "" ? undefined : Number(formData.arrivalCargoQty),
-          robVlsfo: formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
-          robLsmgo: formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
+          arrivalCargoQty:
+            formData.arrivalCargoQty === ""
+              ? undefined
+              : Number(formData.arrivalCargoQty),
+          robVlsfo:
+            formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
+          robLsmgo:
+            formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
           remarks: formData.remarks,
         }),
       });
@@ -195,7 +207,12 @@ const filteredVoyageOptions = useMemo(() => {
   }
   return (
     <>
-      <Button size="md"   className={className} variant="primary" onClick={openModal}>
+      <Button
+        size="md"
+        className={className}
+        variant="primary"
+        onClick={openModal}
+      >
         Add Arrival Report
       </Button>
 
@@ -248,15 +265,16 @@ const filteredVoyageOptions = useMemo(() => {
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                   options={vesselList.map((v: any) => ({ // ⚡ Use 'vesselList' prop
-    value: v.name,
-    label: v.name,
-  }))}
+                    options={vesselList.map((v: any) => ({
+                      // ⚡ Use 'vesselList' prop
+                      value: v.name,
+                      label: v.name,
+                    }))}
                     placeholder="Select or search Vessel"
                     value={formData.vesselName}
                     onChange={handleVesselChange}
                     className={errors.vesselName ? "border-red-500" : ""}
-                 error={!!errors.vesselName}
+                    error={!!errors.vesselName}
                   />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
@@ -270,13 +288,13 @@ const filteredVoyageOptions = useMemo(() => {
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-                   options={filteredVoyageOptions}
+                    options={filteredVoyageOptions}
                     placeholder={
                       !formData.vesselId
                         ? "Select Vessel first"
                         : filteredVoyageOptions.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={formData.voyageId}
                     onChange={(val) => {
@@ -286,7 +304,7 @@ const filteredVoyageOptions = useMemo(() => {
                       }
                     }}
                     className={errors.voyageId ? "border-red-500" : ""}
-                     error={!!errors.voyageId}
+                    error={!!errors.voyageId}
                   />
 
                   {errors.voyageId && (

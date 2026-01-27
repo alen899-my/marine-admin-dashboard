@@ -5,7 +5,7 @@ import ExportToExcel from "@/components/common/ExportToExcel"; // Import common 
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useState } from "react";
 import AddNORButton from "./AddNORButton";
@@ -16,7 +16,7 @@ export default function NoticeOfReadiness() {
   const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady, user } = useAuthorization();
   const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   const canView = can("nor.view");

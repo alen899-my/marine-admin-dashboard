@@ -3,6 +3,7 @@
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import DatePicker from "@/components/form/date-picker";
 import FileInput from "@/components/form/input/FileInput";
@@ -10,23 +11,24 @@ import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
-import { useModal } from "@/hooks/useModal";
-import { cargoSchema } from "@/lib/validations/cargoValidation";
-import { useEffect, useState,useMemo } from "react"; // Added useEffect
-import { toast } from "react-toastify";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
-import SearchableSelect from "@/components/form/SearchableSelect";
+import { cargoSchema } from "@/lib/validations/cargoValidation";
+import { useEffect, useMemo, useState } from "react"; // Added useEffect
+import { toast } from "react-toastify";
 interface AddCargoReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
-   className?: string;
+  className?: string;
   allVoyages: any[];
-  
 }
 
 export default function AddCargoButton({
-  onSuccess,vesselList,allVoyages,className
+  onSuccess,
+  vesselList,
+  allVoyages,
+  className,
 }: AddCargoReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +47,7 @@ export default function AddCargoButton({
   };
 
   const [formData, setFormData] = useState({
-    vesselName: "", // ✅ CHANGE: Default to AN16
+    vesselName: "", //  CHANGE: Default to AN16
     voyageNo: "",
     vesselId: "",
     portName: "",
@@ -55,12 +57,12 @@ export default function AddCargoButton({
     documentDate: "",
     remarks: "",
   });
-const { suggestedVoyageNo } = useVoyageLogic(
-  formData.vesselId,
-  formData.reportDate
-);
+  const { suggestedVoyageNo } = useVoyageLogic(
+    formData.vesselId,
+    formData.reportDate,
+  );
 
-  // ✅ 4. SYNC LOGIC (Auto-fill Voyage)
+  //  4. SYNC LOGIC (Auto-fill Voyage)
   useEffect(() => {
     // Check if suggestion exists (even empty string) and is different
     if (
@@ -72,18 +74,23 @@ const { suggestedVoyageNo } = useVoyageLogic(
       }
     }
   }, [suggestedVoyageNo]);
- const filteredVoyageOptions = useMemo(() => {
+  const filteredVoyageOptions = useMemo(() => {
     if (!formData.vesselId) return [];
 
     const options = allVoyages
-      .filter((v: any) => v.vesselId?.toString() === formData.vesselId?.toString())
+      .filter(
+        (v: any) => v.vesselId?.toString() === formData.vesselId?.toString(),
+      )
       .map((v: any) => ({
         value: v.voyageNo,
         label: v.voyageNo,
       }));
 
     // Fallback for auto-suggestion
-    if (suggestedVoyageNo && !options.some(opt => opt.value === suggestedVoyageNo)) {
+    if (
+      suggestedVoyageNo &&
+      !options.some((opt) => opt.value === suggestedVoyageNo)
+    ) {
       options.unshift({
         value: suggestedVoyageNo,
         label: suggestedVoyageNo,
@@ -111,7 +118,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
   // --- Handlers ---
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -216,11 +223,11 @@ const { suggestedVoyageNo } = useVoyageLogic(
     setErrors({});
     setIsSubmitting(false);
     setFormData({
-      vesselName: "", 
+      vesselName: "",
       voyageNo: "",
       vesselId: "",
       portName: "",
-      reportDate: getCurrentDateTime(), // ✅ NEW: Reset to current time
+      reportDate: getCurrentDateTime(), //  NEW: Reset to current time
       portType: "",
       documentType: "",
       documentDate: "",
@@ -275,7 +282,7 @@ const { suggestedVoyageNo } = useVoyageLogic(
       payload.append("voyageNo", formData.voyageNo);
       payload.append(
         "reportDate",
-        formData.reportDate ? `${formData.reportDate}+05:30` : ""
+        formData.reportDate ? `${formData.reportDate}+05:30` : "",
       );
       payload.append("portName", formData.portName);
       payload.append("portType", formData.portType);
@@ -323,7 +330,12 @@ const { suggestedVoyageNo } = useVoyageLogic(
 
   return (
     <>
-      <Button size="md"  className={className} variant="primary" onClick={openModal}>
+      <Button
+        size="md"
+        className={className}
+        variant="primary"
+        onClick={openModal}
+      >
         Add Cargo Doc
       </Button>
 
@@ -377,26 +389,30 @@ const { suggestedVoyageNo } = useVoyageLogic(
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-           options={vesselList.map((v: any) => ({ // ⚡ Use vesselList prop
-    value: v.name,
-    label: v.name,
-  }))}
-            placeholder="Search Vessel"
-            value={formData.vesselName}
-            onChange={(val) => {
-             const selectedVessel = vesselList.find((v: any) => v.name === val);
-              setFormData((prev) => ({
-                ...prev,
-                vesselName: val,
-                vesselId: selectedVessel?._id || "",
-                voyageNo: "",
-              }));
-              // ✅ Clear error immediately on change
-              if (errors.vesselName) setErrors(prev => ({ ...prev, vesselName: "" }));
-            }}
-            // ✅ Trigger the custom red border logic
-            error={!!errors.vesselName}
-          />
+                    options={vesselList.map((v: any) => ({
+                      // ⚡ Use vesselList prop
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={formData.vesselName}
+                    onChange={(val) => {
+                      const selectedVessel = vesselList.find(
+                        (v: any) => v.name === val,
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        vesselName: val,
+                        vesselId: selectedVessel?._id || "",
+                        voyageNo: "",
+                      }));
+                      //  Clear error immediately on change
+                      if (errors.vesselName)
+                        setErrors((prev) => ({ ...prev, vesselName: "" }));
+                    }}
+                    //  Trigger the custom red border logic
+                    error={!!errors.vesselName}
+                  />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.vesselName}
@@ -409,22 +425,23 @@ const { suggestedVoyageNo } = useVoyageLogic(
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-          options={filteredVoyageOptions}
-            placeholder={
-              !formData.vesselId
-                ? "Select Vessel first"
-                : filteredVoyageOptions.length === 0
-                ? "No active voyages found"
-                : "Search Voyage"
-            }
-            value={formData.voyageNo}
-            onChange={(val) => {
-              handleVoyageChange(val);
-              if (errors.voyageNo) setErrors(prev => ({ ...prev, voyageNo: "" }));
-            }}
-            // ✅ Trigger the custom red border logic
-            error={!!errors.voyageNo}
-          />
+                    options={filteredVoyageOptions}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select Vessel first"
+                        : filteredVoyageOptions.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={formData.voyageNo}
+                    onChange={(val) => {
+                      handleVoyageChange(val);
+                      if (errors.voyageNo)
+                        setErrors((prev) => ({ ...prev, voyageNo: "" }));
+                    }}
+                    //  Trigger the custom red border logic
+                    error={!!errors.voyageNo}
+                  />
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.voyageNo}

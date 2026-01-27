@@ -4,7 +4,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useEffect, useState } from "react";
 import AddVesselButton from "./AddVesselButton";
@@ -15,7 +15,7 @@ export default function VesselManagement() {
   const [totalCount, setTotalCount] = useState(0);
   const [companies, setCompanies] = useState([]);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady, user } = useAuthorization();
   const canView = can("vessels.view");
   const canAdd = can("vessels.create");
@@ -75,25 +75,25 @@ export default function VesselManagement() {
           Vessel Management
         </h2>
 
-<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddVesselButton 
-        onSuccess={handleRefresh} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddVesselButton
+                onSuccess={handleRefresh}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard
@@ -105,8 +105,8 @@ export default function VesselManagement() {
               setSearch={setSearch}
               status={status}
               setStatus={setStatus}
-              companyId={companyId} // ✅ Pass Company ID
-              setCompanyId={setCompanyId} // ✅ Pass Setter
+              companyId={companyId} //  Pass Company ID
+              setCompanyId={setCompanyId} //  Pass Setter
               isSuperAdmin={isSuperAdmin}
               companies={companies}
               startDate={startDate}

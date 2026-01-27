@@ -174,7 +174,7 @@ export default function VesselTable({
         </div>
       ),
     },
-    // ✅ IMPROVED: Grid layout for perfect alignment & better spacing
+    //  IMPROVED: Grid layout for perfect alignment & better spacing
     {
       header: "Identification",
       render: (v: Vessel) => (
@@ -206,7 +206,7 @@ export default function VesselTable({
       ),
     },
     {
-      header: "Company", // ✅ New Column
+      header: "Company", //  New Column
       render: (v: Vessel) => {
         const companyName =
           typeof v.company === "object" ? v.company?.name : "N/A";
@@ -300,8 +300,13 @@ export default function VesselTable({
     {
       header: "Status",
       render: (v: Vessel) => {
-        let color: "success" | "warning" | "error" | "default" | "info" | "purple" =
-          "default";
+        let color:
+          | "success"
+          | "warning"
+          | "error"
+          | "default"
+          | "info"
+          | "purple" = "default";
         let label: string = v.status;
 
         switch (v.status) {
@@ -343,9 +348,9 @@ export default function VesselTable({
           limit: LIMIT.toString(),
           search,
           status: status === "all" ? "" : status,
-          
+
           companyId: companyId === "all" ? "" : companyId,
-         
+
           startDate,
           endDate,
         });
@@ -379,7 +384,7 @@ export default function VesselTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, companyId]
+    [search, status, startDate, endDate, companyId],
   );
 
   useEffect(() => {
@@ -466,8 +471,8 @@ export default function VesselTable({
 
       setVessels((prev) =>
         prev.map((v) =>
-          v._id === updatedVesselData._id ? updatedVesselData : v
-        )
+          v._id === updatedVesselData._id ? updatedVesselData : v,
+        ),
       );
       toast.success("Vessel updated successfully");
       setOpenEdit(false);
@@ -502,7 +507,7 @@ export default function VesselTable({
     } finally {
       setOpenDelete(false);
       setSelectedVessel(null);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   }
 
@@ -515,7 +520,7 @@ export default function VesselTable({
   const handleNestedEditChange = (
     parent: "dimensions" | "performance" | "machinery",
     key: string,
-    value: any
+    value: any,
   ) => {
     if (!editData) return;
     setEditData({
@@ -911,7 +916,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "dimensions",
                       "maxDraft",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -931,7 +936,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "dimensions",
                       "grossTonnage",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -949,7 +954,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "performance",
                       "designSpeed",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -961,7 +966,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "performance",
                       "ballastConsumption",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -973,7 +978,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "performance",
                       "ladenConsumption",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -990,7 +995,7 @@ export default function VesselTable({
                     handleNestedEditChange(
                       "machinery",
                       "mainEngine",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />

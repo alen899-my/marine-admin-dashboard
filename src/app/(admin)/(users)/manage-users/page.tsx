@@ -4,17 +4,17 @@ import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
 import UserFilters from "@/components/Users/UserFilters";
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useState } from "react";
 import AddUserButton from "./AddUserButton";
 import UsersTable from "./UsersTable";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function UserManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady, user } = useAuthorization();
   const canView = can("users.view");
   const canAdd = can("users.create");
@@ -39,7 +39,9 @@ export default function UserManagement() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500">You do not have permission to access User Management.</p>
+        <p className="text-gray-500">
+          You do not have permission to access User Management.
+        </p>
       </div>
     );
   }
@@ -51,25 +53,25 @@ export default function UserManagement() {
           User Management
         </h2>
 
- <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddUserButton 
-        onSuccess={handleRefresh} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddUserButton
+                onSuccess={handleRefresh}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard

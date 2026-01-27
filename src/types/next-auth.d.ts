@@ -8,7 +8,7 @@ declare module "next-auth" {
     fullName: string;
     role: string;
     permissions: string[];
-    profilePicture?: string | null; // ✅ Add this
+    profilePicture?: string | null; //  Add this
     company?: {
       id: string;
       name: string;

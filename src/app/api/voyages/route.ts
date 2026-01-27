@@ -1,16 +1,13 @@
-import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/db";
-import Voyage from "@/models/Voyage";
-import Vessel from "@/models/Vessel";
-import Company from "@/models/Company";
-import { voyageSchema } from "@/lib/validations/voyageSchema";
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-
+import { dbConnect } from "@/lib/db";
+import { voyageSchema } from "@/lib/validations/voyageSchema";
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
-  
     await dbConnect();
 
     // 🔒 1. Session & Multi-Tenancy Setup
@@ -24,7 +21,7 @@ export async function GET(req: Request) {
     const userCompanyId = user.company?.id;
 
     const { searchParams } = new URL(req.url);
-    
+
     // 🟢 NEW: Check for vesselId (used by Dropdowns)
     const vesselId = searchParams.get("vesselId");
     const companyId = searchParams.get("companyId");
@@ -37,14 +34,13 @@ export async function GET(req: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-   const query: any = { deletedAt: null };
+    const query: any = { deletedAt: null };
     if (!isDropdownRequest && !isSuperAdmin) {
       if (!user.permissions?.includes("voyage.view")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
-    // ✅ Initialize query to only show non-deleted voyages (deletedAt must be null)
-   
+    //  Initialize query to only show non-deleted voyages (deletedAt must be null)
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
@@ -53,12 +49,14 @@ export async function GET(req: Request) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
       // Step A: Find all vessels belonging to the user's company
-      const companyVessels = await Vessel.find({ company: userCompanyId }).select("_id");
+      const companyVessels = await Vessel.find({
+        company: userCompanyId,
+      }).select("_id");
       const companyVesselIds = companyVessels.map((v) => v._id);
 
       // Step B: Restrict the query to only these vessels
@@ -70,23 +68,28 @@ export async function GET(req: Request) {
           query.vesselId = vesselId;
         } else {
           // If trying to access a vessel outside their company, return empty or error
-          return NextResponse.json([], { status: 200 }); 
+          return NextResponse.json([], { status: 200 });
         }
       }
     } else {
       // Super Admin Logic
       // 🟢 NEW: Filter by Company if companyId is provided
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ company: companyId }).select("_id");
+        const targetVessels = await Vessel.find({ company: companyId }).select(
+          "_id",
+        );
         const targetVesselIds = targetVessels.map((v) => v._id);
-        
+
         // If a specific vesselId is also provided, ensure it belongs to that company
         if (vesselId) {
           if (targetVesselIds.some((id) => id.toString() === vesselId)) {
             query.vesselId = vesselId;
           } else {
             // Company and Vessel ID mismatch
-            return NextResponse.json({ data: [], pagination: { total: 0, page, totalPages: 0 } });
+            return NextResponse.json({
+              data: [],
+              pagination: { total: 0, page, totalPages: 0 },
+            });
           }
         } else {
           query.vesselId = { $in: targetVesselIds };
@@ -101,7 +104,8 @@ export async function GET(req: Request) {
     // =========================================================
     // 🟢 MODE A: DROPDOWN FILTERING (Specific Vessel)
     // =========================================================
-    if (vesselId && !searchParams.get("page")) { // Added check to ensure it doesn't trigger on table load
+    if (vesselId && !searchParams.get("page")) {
+      // Added check to ensure it doesn't trigger on table load
       const voyages = await Voyage.find(query)
         .select("voyageNo status vesselId schedule.startDate") // Select minimal fields
         .sort({ "schedule.startDate": -1 }) // Newest first
@@ -110,7 +114,6 @@ export async function GET(req: Request) {
       return NextResponse.json(voyages);
     }
 
-    
     // --- Filter by Status ---
     if (status && status !== "all") {
       query.status = status;
@@ -135,19 +138,20 @@ export async function GET(req: Request) {
         vesselSearchQuery.company = userCompanyId;
       }
 
-      const matchingVessels = await Vessel.find(vesselSearchQuery).select("_id");
+      const matchingVessels =
+        await Vessel.find(vesselSearchQuery).select("_id");
       const vesselIds = matchingVessels.map((v) => v._id);
 
-      // ✅ Use $and to combine the search OR logic with the existing deletedAt: null filter
+      //  Use $and to combine the search OR logic with the existing deletedAt: null filter
       query.$and = [
-        { deletedAt: null }, 
+        { deletedAt: null },
         {
           $or: [
             { voyageNo: { $regex: search, $options: "i" } },
             { "route.loadPort": { $regex: search, $options: "i" } },
             { vesselId: { $in: vesselIds } },
           ],
-        }
+        },
       ];
     }
 
@@ -155,7 +159,7 @@ export async function GET(req: Request) {
 
     const [data, total] = await Promise.all([
       Voyage.find(query)
-        // ✅ Updated to deep populate Company through VesselId
+        //  Updated to deep populate Company through VesselId
         .populate({
           path: "vesselId",
           select: "name imo company",
@@ -185,7 +189,7 @@ export async function GET(req: Request) {
     console.error("Error fetching voyages:", error);
     return NextResponse.json(
       { error: "Failed to fetch voyages" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -222,7 +226,7 @@ export async function POST(request: Request) {
       }));
       return NextResponse.json(
         { error: "Validation failed", details },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -238,10 +242,13 @@ export async function POST(request: Request) {
         {
           error: `Voyage ${value.voyageNo} already exists for this vessel.`,
           details: [
-            { field: "voyageNo", message: "Voyage number must be unique for this vessel" },
+            {
+              field: "voyageNo",
+              message: "Voyage number must be unique for this vessel",
+            },
           ],
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -254,29 +261,28 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(newVoyage, { status: 201 });
-  }  catch (error: any) {
-  console.error("Error creating voyage:", error);
+  } catch (error: any) {
+    console.error("Error creating voyage:", error);
 
-  // ✅ Handle MongoDB duplicate key error
-  if (error?.code === 11000) {
+    //  Handle MongoDB duplicate key error
+    if (error?.code === 11000) {
+      return NextResponse.json(
+        {
+          error: "Duplicate voyage",
+          details: [
+            {
+              field: "voyageNo",
+              message: "Voyage number already exists for this vessel",
+            },
+          ],
+        },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
-      {
-        error: "Duplicate voyage",
-        details: [
-          {
-            field: "voyageNo",
-            message: "Voyage number already exists for this vessel",
-          },
-        ],
-      },
-      { status: 409 }
+      { error: error.message || "Failed to create voyage" },
+      { status: 500 },
     );
   }
-
-  return NextResponse.json(
-    { error: error.message || "Failed to create voyage" },
-    { status: 500 }
-  );
-}
-
 }

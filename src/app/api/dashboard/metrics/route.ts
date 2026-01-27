@@ -1,13 +1,13 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server"; // ✅ Added NextRequest
+import { NextRequest, NextResponse } from "next/server"; //  Added NextRequest
 
 // MODELS
 import Company from "@/models/Company";
 import Document from "@/models/Document";
 import ReportDaily from "@/models/ReportDaily";
 import ReportOperational from "@/models/ReportOperational";
-import Role from "@/models/Role"; // ✅ Imported Role to find the Super Admin ID
+import Role from "@/models/Role"; //  Imported Role to find the Super Admin ID
 import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
@@ -24,17 +24,17 @@ export async function GET(req: NextRequest) {
 
     const { user } = session;
     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    // ✅ Identify if the user is Op-Staff
+    //  Identify if the user is Op-Staff
     const isOpStaff = user.role?.toLowerCase() === "op-staff";
     const userCompanyId = user.company?.id;
     const userId = user.id;
 
-    // ✅ Get companyId from URL for Super Admin filtering
+    //  Get companyId from URL for Super Admin filtering
     const { searchParams } = new URL(req.url);
     const selectedCompanyId = searchParams.get("companyId");
 
     // 2. Build Base Query Filter
-    // ✅ SUPER ADMIN: Only requires deletedAt: null (global view)
+    //  SUPER ADMIN: Only requires deletedAt: null (global view)
     const filter: any = { status: "active", deletedAt: null };
 
     // Additional filters for global entities (Users/Vessels) that don't use 'vesselId'
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      // ✅ NEW LOGIC: Separate Report Filter from Global Company Filter
+      //  NEW LOGIC: Separate Report Filter from Global Company Filter
       // We use 'reportFilter' for the actual document counts (Noon, Arrival, etc.)
       const reportFilter: any = { status: "active", deletedAt: null };
 
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       companyFilter.company = selectedCompanyId;
     }
 
-    // ✅ Find Super Admin Role ID to exclude from count if requester is not Super Admin
+    //  Find Super Admin Role ID to exclude from count if requester is not Super Admin
     let superAdminRoleId = null;
     if (!isSuperAdmin) {
       const saRole = await Role.findOne({
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
         status: "active",
         deletedAt: null,
         ...(filter.vesselId ? { vesselId: filter.vesselId } : {}),
-        ...(isOpStaff ? { createdBy: userId } : {}), // ✅ Staff only see their own active voyages
+        ...(isOpStaff ? { createdBy: userId } : {}), //  Staff only see their own active voyages
       }),
 
       // 9) Total Users (Filtered by status: active AND deletedAt: null)
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
         ...(isSuperAdmin && (!selectedCompanyId || selectedCompanyId === "all")
           ? {}
           : { company: companyFilter.company }),
-        // ✅ Hide Super Admins from the count for non-Super Admin users
+        //  Hide Super Admins from the count for non-Super Admin users
         ...(!isSuperAdmin && superAdminRoleId
           ? { role: { $ne: superAdminRoleId } }
           : {}),
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // ✅ Mapping names to match the Frontend IMetrics interface
+    //  Mapping names to match the Frontend IMetrics interface
     return NextResponse.json({
       dailyNoon,
       departure,

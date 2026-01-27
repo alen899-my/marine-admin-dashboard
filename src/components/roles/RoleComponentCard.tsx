@@ -6,7 +6,7 @@ interface RoleComponentCardProps {
   className?: string;
   desc?: string;
   action?: React.ReactNode;
-  legend?: React.ReactNode; 
+  legend?: React.ReactNode;
 }
 
 const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
@@ -15,18 +15,15 @@ const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
   className = "",
   desc = "",
   action,
-  legend, 
+  legend,
 }) => {
   return (
-    <div
-      className={`rounded-xl  ${className}`}
-    >
+    <div className={`rounded-xl  ${className}`}>
       {/* Card Header */}
       {(title || action || legend) && (
         <div className="px-3 py-3  dark:">
-          {/* ✅ RESPONSIVE FIX: flex-col on mobile, flex-row on small screens and up */}
+          {/*  RESPONSIVE FIX: flex-col on mobile, flex-row on small screens and up */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            
             {/* Title & Description */}
             <div className="flex-1">
               {typeof title === "string" ? (
@@ -36,7 +33,7 @@ const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
               ) : (
                 <div className="w-full">{title}</div>
               )}
-              
+
               {desc && (
                 <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 leading-tight">
                   {desc}
@@ -44,12 +41,11 @@ const RoleComponentCard: React.FC<RoleComponentCardProps> = ({
               )}
             </div>
 
-            {/* ✅ Wrapper for Legend & Action (Aligned Right on Desktop, Left on Mobile) */}
+            {/*  Wrapper for Legend & Action (Aligned Right on Desktop, Left on Mobile) */}
             <div className="flex flex-wrap items-center gap-3 sm:justify-end">
               {legend && <div>{legend}</div>}
               {action && <div>{action}</div>}
             </div>
-            
           </div>
         </div>
       )}

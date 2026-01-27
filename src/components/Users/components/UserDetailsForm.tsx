@@ -3,8 +3,8 @@ import Label from "@/components/form/Label";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
-import { Camera, User as UserIcon } from "lucide-react"; // ✅ Import Icons
-import Image from "next/image"; // ✅ Import Next.js Image
+import { Camera, User as UserIcon } from "lucide-react"; //  Import Icons
+import Image from "next/image"; //  Import Next.js Image
 import React, { useRef } from "react";
 
 interface UserDetailsFormProps {
@@ -12,10 +12,10 @@ interface UserDetailsFormProps {
   errors: any;
   isEditMode: boolean;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
   onStatusChange: (val: string) => void;
-  // ✅ Props for Image Handling
+  //  Props for Image Handling
   imagePreview: string | null;
   onImageChange: (file: File) => void;
   companies: { value: string; label: string }[];
@@ -29,13 +29,13 @@ export default function UserDetailsForm({
   isEditMode,
   onChange,
   onStatusChange,
-  imagePreview, // ✅ Destructured
-  onImageChange, // ✅ Destructured
+  imagePreview, //  Destructured
+  onImageChange, //  Destructured
   companies,
   onCompanyChange,
   isSuperAdminActor,
 }: UserDetailsFormProps) {
-  // ✅ Ref for hidden file input
+  //  Ref for hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +48,7 @@ export default function UserDetailsForm({
     <div className="space-y-4">
       <RoleComponentCard title="">
         <div className="space-y-6">
-          {/* ✅ PROFILE PICTURE SECTION */}
+          {/*  PROFILE PICTURE SECTION */}
           <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
             <div
               className="relative group cursor-pointer"
@@ -103,7 +103,7 @@ export default function UserDetailsForm({
             </div>
           </div>
 
-          {/* ✅ EXISTING FORM GRID */}
+          {/*  EXISTING FORM GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <Label>
@@ -143,11 +143,15 @@ export default function UserDetailsForm({
                 onChange={onChange}
               />
               {errors.phone && (
-          <span className="text-xs text-red-500 mt-1">{errors.phone}</span>
-        )}
+                <span className="text-xs text-red-500 mt-1">
+                  {errors.phone}
+                </span>
+              )}
             </div>
             <div>
-              <Label>Company <span className="text-red-500">*</span></Label>
+              <Label>
+                Company <span className="text-red-500">*</span>
+              </Label>
               <SearchableSelect
                 options={companies}
                 value={formData.company}

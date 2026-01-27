@@ -23,7 +23,6 @@ export async function getDashboardMetrics(
   const filter: any = { status: "active", deletedAt: null };
   const companyFilter: any = { status: "active", deletedAt: null };
 
-  // --- LOGIC COPIED FROM YOUR API ROUTE ---
   if (!isSuperAdmin) {
     if (!userCompanyId) throw new Error("No company assigned");
 

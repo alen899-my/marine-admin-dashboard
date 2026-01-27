@@ -21,9 +21,9 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
-  useMemo,
 } from "react";
 import { toast } from "react-toastify";
 // --- Interfaces ---
@@ -67,8 +67,8 @@ interface INorReport {
 interface IEditNorData {
   status: string;
   vesselName: string;
-  voyageNo: string; // ✅ String for Dropdown
-  vesselId: string; // ✅ ID for Logic
+  voyageNo: string; //  String for Dropdown
+  vesselId: string; //  ID for Logic
   portName: string;
   remarks: string;
   reportDate: string;
@@ -111,7 +111,15 @@ export default function NorReportTable({
   onFilterDataLoad,
 }: NORReportTableProps) {
   const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    vesselId,
+    voyageId,
+    companyId,
+  });
   // Apply interfaces
   const [reports, setReports] = useState<INorReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,18 +152,18 @@ export default function NorReportTable({
   const canDelete = can("nor.delete");
   const { suggestedVoyageNo } = useVoyageLogic(
     editData?.vesselId,
-    editData?.reportDate
+    editData?.reportDate,
   );
 
   useEffect(() => {
-    // ✅ FIX 2: Update 'voyageNo' in state
+    //  FIX 2: Update 'voyageNo' in state
     if (
       editData &&
       suggestedVoyageNo !== undefined &&
       suggestedVoyageNo !== editData.voyageNo
     ) {
       setEditData((prev) =>
-        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null,
       );
     }
   }, [suggestedVoyageNo]);
@@ -167,7 +175,7 @@ export default function NorReportTable({
     return r.vesselName || "-";
   };
 
-  // ✅ HELPER: Get Voyage Number (Handles Object or String)
+  //  HELPER: Get Voyage Number (Handles Object or String)
   const getVoyageNo = (r: INorReport | null) => {
     if (!r) return "-";
     if (
@@ -211,32 +219,42 @@ export default function NorReportTable({
     return "-";
   };
 
- const filteredVoyageOptionsForEdit = useMemo(() => {
-  if (!editData?.vesselId) return [];
+  const filteredVoyageOptionsForEdit = useMemo(() => {
+    if (!editData?.vesselId) return [];
 
-  // 1. Filter voyages from the master list provided via props (syncing with Cargo logic)
-  // We check both ID and Name to be safe, just like in your Cargo table
-  const vesselVoyages = voyageList.filter(
-    (v: any) => v.vesselId?.toString() === editData.vesselId?.toString() ||
-                v.vesselName === editData.vesselName
-  );
+    // 1. Filter voyages from the master list provided via props (syncing with Cargo logic)
+    // We check both ID and Name to be safe, just like in your Cargo table
+    const vesselVoyages = voyageList.filter(
+      (v: any) =>
+        v.vesselId?.toString() === editData.vesselId?.toString() ||
+        v.vesselName === editData.vesselName,
+    );
 
-  const options = vesselVoyages.map((v: any) => ({
-    value: v.voyageNo,
-    label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
-  }));
+    const options = vesselVoyages.map((v: any) => ({
+      value: v.voyageNo,
+      label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
+    }));
 
-  // 2. Add fallback for suggested or current voyage to prevent "undefined" display
-  const currentOrSuggested = suggestedVoyageNo || editData.voyageNo;
-  if (currentOrSuggested && !options.some(opt => opt.value === currentOrSuggested)) {
-    options.unshift({
-      value: currentOrSuggested,
-      label: currentOrSuggested,
-    });
-  }
+    // 2. Add fallback for suggested or current voyage to prevent "undefined" display
+    const currentOrSuggested = suggestedVoyageNo || editData.voyageNo;
+    if (
+      currentOrSuggested &&
+      !options.some((opt) => opt.value === currentOrSuggested)
+    ) {
+      options.unshift({
+        value: currentOrSuggested,
+        label: currentOrSuggested,
+      });
+    }
 
-  return options;
-}, [editData?.vesselId, editData?.vesselName, editData?.voyageNo, voyageList, suggestedVoyageNo]);
+    return options;
+  }, [
+    editData?.vesselId,
+    editData?.vesselName,
+    editData?.voyageNo,
+    voyageList,
+    suggestedVoyageNo,
+  ]);
 
   // Status Badge Helper for Soft Delete
   const renderStatusBadge = (statusStr: string) => {
@@ -356,8 +374,8 @@ export default function NorReportTable({
                   {meta.isPdf
                     ? "PDF Attached"
                     : meta.isImage
-                    ? "Image Attached"
-                    : "Doc Attached"}
+                      ? "Image Attached"
+                      : "Doc Attached"}
                 </span>
               </div>
             ) : (
@@ -434,14 +452,14 @@ export default function NorReportTable({
       voyageId,
       companyId,
       setTotalCount,
-    ]
+    ],
   );
 
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
     setNewFile(null);
     const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName
+      (v: any) => v.name === report.vesselName,
     );
     // Set initial preview to existing document URL
     setPreviewUrl(report.norDetails?.documentUrl || null);
@@ -475,22 +493,22 @@ export default function NorReportTable({
       formData.append("status", editData.status);
       formData.append("vesselName", editData.vesselName);
       formData.append("vesselId", editData.vesselId || "");
-      formData.append("voyageNo", editData.voyageNo || ""); // ✅ Send String
+      formData.append("voyageNo", editData.voyageNo || ""); //  Send String
 
       formData.append(
         "reportDate",
-        editData.reportDate ? `${editData.reportDate}+05:30` : ""
+        editData.reportDate ? `${editData.reportDate}+05:30` : "",
       );
       formData.append("portName", editData.portName);
       formData.append("remarks", editData.remarks);
       formData.append("pilotStation", editData.pilotStation);
       formData.append(
         "norTenderTime",
-        editData.norTenderTime ? `${editData.norTenderTime}+05:30` : ""
+        editData.norTenderTime ? `${editData.norTenderTime}+05:30` : "",
       );
       formData.append(
         "etaPort",
-        editData.etaPort ? `${editData.etaPort}+05:30` : ""
+        editData.etaPort ? `${editData.etaPort}+05:30` : "",
       );
       if (newFile) formData.append("norDocument", newFile);
 
@@ -501,7 +519,7 @@ export default function NorReportTable({
       if (!res.ok) throw new Error("Update failed");
       const { report } = await res.json();
       setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r))
+        prev.map((r) => (r._id === report._id ? report : r)),
       );
       toast.success("Updated");
       setOpenEdit(false);
@@ -540,45 +558,52 @@ export default function NorReportTable({
   }
 
   useEffect(() => {
-  if (!isReady) return;
+    if (!isReady) return;
 
-  // 1. Detect if the filters actually changed compared to the last render
-  const filtersChanged =
-    prevFiltersRef.current.search !== search ||
-    prevFiltersRef.current.status !== status ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate ||
-    prevFiltersRef.current.vesselId !== vesselId ||
-    prevFiltersRef.current.voyageId !== voyageId ||
-    prevFiltersRef.current.companyId !== companyId;
+    // 1. Detect if the filters actually changed compared to the last render
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.vesselId !== vesselId ||
+      prevFiltersRef.current.voyageId !== voyageId ||
+      prevFiltersRef.current.companyId !== companyId;
 
-  // 2. If filters changed, reset to page 1
-  if (filtersChanged) {
-    // Update ref with new filter values immediately
-    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
-    
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Stop here; the currentPage change will re-trigger this effect
+    // 2. If filters changed, reset to page 1
+    if (filtersChanged) {
+      // Update ref with new filter values immediately
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+        companyId,
+      };
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // Stop here; the currentPage change will re-trigger this effect
+      }
     }
-  }
 
-  // 3. Fetch the data for the current page
-  fetchReports(currentPage);
-
-}, [
-  currentPage,
-  refresh,
-  fetchReports,
-  isReady,
-  search,
-  status,
-  vesselId,
-  voyageId,
-  companyId,
-  startDate,
-  endDate,
-]);
+    // 3. Fetch the data for the current page
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
   const getFileMeta = (url?: string) => {
@@ -842,10 +867,10 @@ export default function NorReportTable({
                   {/* 1. DOWNLOAD BUTTON */}
                   <DownloadPdfButton
                     title={`Notice of Readiness - ${getVesselName(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     filename={`NOR_${selectedReport.portName}_${getVoyageNo(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     buttonLabel="Download Report"
                     data={{
@@ -855,12 +880,12 @@ export default function NorReportTable({
                       "Voyage No": getVoyageNo(selectedReport),
                       "Port Name": selectedReport.portName,
                       "NOR Tender Time": formatDate(
-                        selectedReport?.norDetails?.tenderTime
+                        selectedReport?.norDetails?.tenderTime,
                       ),
                       "Pilot Station":
                         selectedReport?.norDetails?.pilotStation || "-",
                       "ETA Port": formatDate(
-                        selectedReport?.norDetails?.etaPort
+                        selectedReport?.norDetails?.etaPort,
                       ),
                       "Report Date": formatDate(selectedReport.reportDate),
                       Remarks: selectedReport.remarks || "No Remarks",
@@ -870,10 +895,10 @@ export default function NorReportTable({
                   {/* 2. SHARE BUTTON */}
                   <SharePdfButton
                     title={`Notice of Readiness - ${getVesselName(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     filename={`NOR_${selectedReport.portName}_${getVoyageNo(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     data={{
                       "Report Status":
@@ -882,12 +907,12 @@ export default function NorReportTable({
                       "Voyage No": getVoyageNo(selectedReport),
                       "Port Name": selectedReport.portName,
                       "NOR Tender Time": formatDate(
-                        selectedReport?.norDetails?.tenderTime
+                        selectedReport?.norDetails?.tenderTime,
                       ),
                       "Pilot Station":
                         selectedReport?.norDetails?.pilotStation || "-",
                       "ETA Port": formatDate(
-                        selectedReport?.norDetails?.etaPort
+                        selectedReport?.norDetails?.etaPort,
                       ),
                       "Report Date": formatDate(selectedReport.reportDate),
                       Remarks: selectedReport.remarks || "No Remarks",
@@ -933,7 +958,7 @@ export default function NorReportTable({
                     value={editData.vesselName}
                     onChange={(val) => {
                       const selected = vesselList.find(
-                        (v: any) => v.name === val
+                        (v: any) => v.name === val,
                       );
                       setEditData({
                         ...editData,
@@ -947,13 +972,13 @@ export default function NorReportTable({
                 <div className="relative">
                   <Label>Voyage No</Label>
                   <SearchableSelect
-               options={filteredVoyageOptionsForEdit}
+                    options={filteredVoyageOptionsForEdit}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
                         : filteredVoyageOptionsForEdit.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>

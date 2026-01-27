@@ -1,14 +1,13 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IReportDaily extends Document {
-  
-  vesselId: mongoose.Types.ObjectId; 
+  vesselId: mongoose.Types.ObjectId;
   voyageId: mongoose.Types.ObjectId;
   vesselName: string;
   voyageNo: string;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
-  
+
   type: "noon";
   reportDate: Date;
 
@@ -18,9 +17,9 @@ export interface IReportDaily extends Document {
   };
 
   navigation: {
-    distLast24h: number;     // Observed Distance
-    engineDist: number;      // ***** NEW FIELD *****
-    slip: number;            // ***** NEW FIELD *****
+    distLast24h: number; // Observed Distance
+    engineDist: number; // ***** NEW FIELD *****
+    slip: number; // ***** NEW FIELD *****
     distToGo: number;
     nextPort: string;
   };
@@ -44,14 +43,14 @@ export interface IReportDaily extends Document {
 
 const ReportDailySchema = new Schema<IReportDaily>(
   {
-   vesselId: {
+    vesselId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vessel",
       required: true,
       index: true,
     },
 
-    // ✅ 2. LINK TO VOYAGE COLLECTION
+    //  2. LINK TO VOYAGE COLLECTION
     voyageId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Voyage",
@@ -61,8 +60,8 @@ const ReportDailySchema = new Schema<IReportDaily>(
 
     // Snapshot Strings (Read-only copies)
     vesselName: { type: String, required: true },
-    voyageNo: { type: String, required: true }, 
-    
+    voyageNo: { type: String, required: true },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -91,7 +90,7 @@ const ReportDailySchema = new Schema<IReportDaily>(
     navigation: {
       distLast24h: { type: Number, required: true },
       engineDist: { type: Number, required: true }, // ***** NEW FIELD *****
-      slip: { type: Number },                        // ***** NEW FIELD *****
+      slip: { type: Number }, // ***** NEW FIELD *****
       distToGo: { type: Number, required: true },
       nextPort: { type: String, required: true },
     },
@@ -115,7 +114,7 @@ const ReportDailySchema = new Schema<IReportDaily>(
       type: String,
       enum: ["active", "inactive"],
       default: "active",
-      index: true, // ✅ Index for Status filtering
+      index: true, //  Index for Status filtering
     },
 
     deletedAt: {
@@ -123,13 +122,13 @@ const ReportDailySchema = new Schema<IReportDaily>(
       default: null, // Added for Soft Delete
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// ✅ Compound Index for generic Vessel Lists sorted by Date
+//  Compound Index for generic Vessel Lists sorted by Date
 ReportDailySchema.index({ vesselId: 1, reportDate: -1 });
 ReportDailySchema.index({ reportDate: -1 }); // Index for global date filtering
-ReportDailySchema.index({ createdAt: -1 });  // Index for default sorting
+ReportDailySchema.index({ createdAt: -1 }); // Index for default sorting
 
 export default mongoose.models.ReportDaily ||
   mongoose.model<IReportDaily>("ReportDaily", ReportDailySchema);

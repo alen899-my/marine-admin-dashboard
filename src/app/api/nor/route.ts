@@ -11,13 +11,13 @@ import Voyage from "@/models/Voyage";
 import { put } from "@vercel/blob";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
-import mongoose from "mongoose"; // ✅ Import Mongoose
+import mongoose from "mongoose"; //  Import Mongoose
 import path from "path";
 const sendResponse = (
   status: number,
   message: string,
   data: any = null,
-  success: boolean = true
+  success: boolean = true,
 ) => {
   return NextResponse.json(
     {
@@ -31,7 +31,7 @@ const sendResponse = (
         path: "/api/nor",
       },
     },
-    { status }
+    { status },
   );
 };
 
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
         403,
         "Forbidden: Insufficient permissions",
         null,
-        false
+        false,
       );
     }
 
@@ -84,10 +84,11 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
-    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
+    const canSeeHistory =
+      user.permissions?.includes("reports.history.views") || isSuperAdmin;
     const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "all";
-  const startDate = searchParams.get("startDate");
+    const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const isAdmin = user.role?.toLowerCase() === "admin";
     let manualDateRange: any = null;
@@ -95,17 +96,17 @@ export async function GET(req: Request) {
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
-    // ✅ Initialize query with soft-delete filter
+    //  Initialize query with soft-delete filter
     const query: Record<string, any> = { eventType: "nor", deletedAt: null };
 
     // =========================================================
     // 🔒 MULTI-TENANCY FILTERING LOGIC
     // =========================================================
-  if (!isSuperAdmin) {
+    if (!isSuperAdmin) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
@@ -139,9 +140,9 @@ export async function GET(req: Request) {
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ 
+        const targetVessels = await Vessel.find({
           company: companyId,
-          deletedAt: null // ✅ Filter out soft-deleted vessels
+          deletedAt: null, //  Filter out soft-deleted vessels
         }).select("_id");
         const targetVesselIds = targetVessels.map((v) => v._id);
 
@@ -172,7 +173,7 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      // ✅ Use $and to combine soft-delete filter with keyword search
+      //  Use $and to combine soft-delete filter with keyword search
       query.$and = [
         { deletedAt: null },
         {
@@ -181,7 +182,7 @@ export async function GET(req: Request) {
             { voyageNo: { $regex: search, $options: "i" } },
             { portName: { $regex: search, $options: "i" } },
           ],
-        }
+        },
       ];
     }
 
@@ -221,10 +222,10 @@ export async function GET(req: Request) {
         .populate("voyageId", "voyageNo")
         .populate({
           path: "vesselId",
-          select: "name company", 
+          select: "name company",
           populate: {
-            path: "company", 
-            select: "name", 
+            path: "company",
+            select: "name",
           },
         })
         .populate("createdBy", "fullName")
@@ -237,12 +238,14 @@ export async function GET(req: Request) {
 
     // 🟢 Step: Add Filter lists if fetchAll is true
     if (fetchAll) {
-      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+      const companyFilter: any = isSuperAdmin
+        ? { deletedAt: null }
+        : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
 
       const vesselFilter: any = { status: "active", deletedAt: null };
@@ -253,7 +256,7 @@ export async function GET(req: Request) {
         Vessel.find(vesselFilter)
           .select("_id name status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
     }
 
@@ -274,7 +277,7 @@ export async function GET(req: Request) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vesselIds },
         status: "active",
-        deletedAt: null // ✅ Ensure only active, non-deleted voyages are used
+        deletedAt: null, //  Ensure only active, non-deleted voyages are used
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();
@@ -316,7 +319,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await auth(); // ✅ Get session
+    const session = await auth(); //  Get session
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.create");
     if (!authz.ok) return authz.response;
@@ -325,7 +328,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
 
     // Extract Fields
-    // ✅ 1. Get vesselId from form data
+    //  1. Get vesselId from form data
     const vesselIdString = formData.get("vesselId") as string;
     const vesselName = formData.get("vesselName") as string;
 
@@ -349,7 +352,7 @@ export async function POST(req: Request) {
       if (file.size > 500 * 1024) {
         return NextResponse.json(
           { error: "File size exceeds the 500 KB limit." },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
@@ -373,12 +376,12 @@ export async function POST(req: Request) {
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ==========================================
-    // ✅ 2. VOYAGE ID LOOKUP LOGIC
+    //  2. VOYAGE ID LOOKUP LOGIC
     // ==========================================
     let voyageObjectId = null;
 
@@ -396,13 +399,13 @@ export async function POST(req: Request) {
       } else {
         return NextResponse.json(
           { error: `Voyage ${voyageNoString} not found for this vessel.` },
-          { status: 404 }
+          { status: 404 },
         );
       }
     } else {
       return NextResponse.json(
         { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -412,11 +415,11 @@ export async function POST(req: Request) {
       status: "active",
       createdBy: currentUserId,
       updatedBy: currentUserId,
-      // ✅ IDs
+      //  IDs
       vesselId: vesselIdString,
       voyageId: voyageObjectId,
 
-      // ✅ Snapshots
+      //  Snapshots
       vesselName,
       voyageNo: voyageNoString, // Save string for snapshot
 
@@ -439,7 +442,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "NOR saved successfully", data: newRecord },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
     console.error("Error saving NOR:", error);
@@ -447,7 +450,7 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json(
       { error: "Failed to save record", details: errorMessage },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

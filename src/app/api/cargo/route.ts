@@ -15,7 +15,7 @@ const sendResponse = (
   status: number,
   message: string,
   data: any = null,
-  success: boolean = true
+  success: boolean = true,
 ) => {
   return NextResponse.json(
     {
@@ -29,7 +29,7 @@ const sendResponse = (
         path: "/api/cargo",
       },
     },
-    { status }
+    { status },
   );
 };
 
@@ -70,7 +70,6 @@ export async function POST(req: Request) {
     const vesselIdString = formData.get("vesselId") as string;
     const voyageNoString = formData.get("voyageNo") as string;
     const vesselName = formData.get("vesselName") as string;
- 
 
     const portName = formData.get("portName") as string;
     const portType = formData.get("portType") as string;
@@ -111,7 +110,7 @@ export async function POST(req: Request) {
     let finalDocumentDate = parseDateString(documentDate) || new Date();
 
     // ==========================================
-    // ✅ VOYAGE ID LOOKUP LOGIC
+    //  VOYAGE ID LOOKUP LOGIC
     // ==========================================
     let voyageObjectId = null;
 
@@ -128,19 +127,19 @@ export async function POST(req: Request) {
       } else {
         return NextResponse.json(
           { error: `Voyage ${voyageNoString} not found.` },
-          { status: 404 }
+          { status: 404 },
         );
       }
     } else {
       return NextResponse.json(
         { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Save to Database
     const newDoc = await Document.create({
-      // ✅ Save Mapped IDs Only (No Strings)
+      //  Save Mapped IDs Only (No Strings)
       vesselId: new mongoose.Types.ObjectId(vesselIdString),
       vesselName,
       voyageId: voyageObjectId,
@@ -164,13 +163,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "Uploaded successfully", data: newDoc },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Upload Error:", error);
     return NextResponse.json(
       { error: error.message || "Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -183,7 +182,7 @@ export async function GET(req: Request) {
         403,
         "Forbidden: Insufficient permissions",
         null,
-        false
+        false,
       );
     }
 
@@ -202,7 +201,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const fetchAll = searchParams.get("all") === "true";
-    const canSeeHistory = user.permissions?.includes("reports.history.views") || isSuperAdmin;
+    const canSeeHistory =
+      user.permissions?.includes("reports.history.views") || isSuperAdmin;
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
@@ -216,7 +216,7 @@ export async function GET(req: Request) {
     const selectedVoyage = searchParams.get("voyageId");
     const companyId = searchParams.get("companyId");
 
-    // ✅ Initialize query to only show non-deleted documents
+    //  Initialize query to only show non-deleted documents
     const query: any = { deletedAt: null };
 
     // =========================================================
@@ -228,17 +228,16 @@ export async function GET(req: Request) {
           403,
           "Access denied: No company assigned.",
           null,
-          false
+          false,
         );
       }
       const companyVessels = await Vessel.find({
         company: userCompanyId,
-        deletedAt: null, // ✅ Only look through active vessels
+        deletedAt: null, //  Only look through active vessels
       }).select("_id");
-    const companyVesselIds = companyVessels.map((v) => v._id.toString());
-    
+      const companyVesselIds = companyVessels.map((v) => v._id.toString());
 
-     if (isAdmin) {
+      if (isAdmin) {
         // ADMIN LOGIC: Can see all documents for company vessels
         if (selectedVessel) {
           if (companyVesselIds.includes(selectedVessel)) {
@@ -254,20 +253,20 @@ export async function GET(req: Request) {
         }
       } else {
         // REGULAR USER LOGIC: Only show documents they uploaded/created
-        query.createdBy = user.id; 
-        
+        query.createdBy = user.id;
+
         // Still restrict within company vessels for safety
         if (selectedVessel) {
-           query.vesselId = selectedVessel;
+          query.vesselId = selectedVessel;
         } else {
-           query.vesselId = { $in: companyVesselIds }; 
+          query.vesselId = { $in: companyVesselIds };
         }
       }
     } else {
       if (companyId && companyId !== "all") {
-        const targetVessels = await Vessel.find({ 
+        const targetVessels = await Vessel.find({
           company: companyId,
-          deletedAt: null // ✅ Filter soft-deleted vessels
+          deletedAt: null, //  Filter soft-deleted vessels
         }).select("_id");
         const targetVesselIds = targetVessels.map((v) => v._id);
         if (selectedVessel) {
@@ -288,53 +287,52 @@ export async function GET(req: Request) {
     }
 
     if (status !== "all") query.status = status;
-// 1. Basic Filters
-if (status !== "all") query.status = status;
-if (selectedVoyage) query.voyageId = selectedVoyage;
+    // 1. Basic Filters
+    if (status !== "all") query.status = status;
+    if (selectedVoyage) query.voyageId = selectedVoyage;
 
-// 2. Soft Delete Filter (Always applied)
-query.deletedAt = null;
+    // 2. Soft Delete Filter (Always applied)
+    query.deletedAt = null;
 
-// 3. Merged Search Logic
-if (search) {
-  // We use $and to make sure the search is combined correctly with other filters
-  query.$or = [
-    { vesselName: { $regex: search, $options: "i" } },
-    { voyageNo: { $regex: search, $options: "i" } },
-    { portName: { $regex: search, $options: "i" } },
-    { "file.originalName": { $regex: search, $options: "i" } }
-  ];
-}
+    // 3. Merged Search Logic
+    if (search) {
+      // We use $and to make sure the search is combined correctly with other filters
+      query.$or = [
+        { vesselName: { $regex: search, $options: "i" } },
+        { voyageNo: { $regex: search, $options: "i" } },
+        { portName: { $regex: search, $options: "i" } },
+        { "file.originalName": { $regex: search, $options: "i" } },
+      ];
+    }
 
-// 4. Merged Date & Security Logic
+    // 4. Merged Date & Security Logic
 
+    if (startDate || endDate) {
+      manualDateRange = {};
+      const s = parseDateString(startDate);
+      const e = parseDateString(endDate);
 
-if (startDate || endDate) {
-  manualDateRange = {};
-  const s = parseDateString(startDate);
-  const e = parseDateString(endDate);
-  
-  if (s) manualDateRange.$gte = s;
-  if (e) {
-    const end = new Date(e);
-    end.setHours(23, 59, 59, 999);
-    manualDateRange.$lte = end;
-  }
-}
+      if (s) manualDateRange.$gte = s;
+      if (e) {
+        const end = new Date(e);
+        end.setHours(23, 59, 59, 999);
+        manualDateRange.$lte = end;
+      }
+    }
 
-// Security Check: Restricted users only see today, Admins see manual range
-if (!canSeeHistory) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const now = new Date();
+    // Security Check: Restricted users only see today, Admins see manual range
+    if (!canSeeHistory) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
 
-  query.reportDate = {
-    $gte: startOfDay,
-    $lte: now, 
-  };
-} else if (manualDateRange) {
-  query.reportDate = manualDateRange;
-}
+      query.reportDate = {
+        $gte: startOfDay,
+        $lte: now,
+      };
+    } else if (manualDateRange) {
+      query.reportDate = manualDateRange;
+    }
     const promises: any[] = [
       Document.find(query)
         .populate({
@@ -356,15 +354,17 @@ if (!canSeeHistory) {
     ];
 
     if (fetchAll) {
-      const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+      const companyFilter: any = isSuperAdmin
+        ? { deletedAt: null }
+        : { _id: userCompanyId, deletedAt: null };
       promises.push(
         Company.find(companyFilter)
           .select("_id name status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
 
-      const vesselFilter: any = { status: "active", deletedAt: null }; // ✅ Exclude deleted vessels
+      const vesselFilter: any = { status: "active", deletedAt: null }; //  Exclude deleted vessels
       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
       else if (companyId && companyId !== "all")
         vesselFilter.company = companyId;
@@ -372,7 +372,7 @@ if (!canSeeHistory) {
         Vessel.find(vesselFilter)
           .select("_id name company status")
           .sort({ name: 1 })
-          .lean()
+          .lean(),
       );
     }
 
@@ -392,7 +392,7 @@ if (!canSeeHistory) {
       const activeVoyages = await Voyage.find({
         vesselId: { $in: vIds },
         status: "active",
-        deletedAt: null // ✅ Exclude soft-deleted voyages
+        deletedAt: null, //  Exclude soft-deleted voyages
       })
         .select("vesselId voyageNo schedule.startDate")
         .lean();
@@ -433,7 +433,7 @@ if (!canSeeHistory) {
       500,
       error.message || "Internal Server Error",
       null,
-      false
+      false,
     );
   }
 }

@@ -4,29 +4,29 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useState,useEffect } from "react";
+import { useEffect, useState } from "react";
 import AddVoyage from "./AddVoyage";
 import VoyageTable from "./VoyageTable";
-import { useAuthorization } from "@/hooks/useAuthorization"; 
 
 export default function VoyageManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState("all");
-  
+
   const { can, isReady, user } = useAuthorization();
   const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
-  
+
   // Use the shared persistent filter logic
   const { isFilterVisible, setIsFilterVisible } =
     useFilterPersistence("voyage");
 
-  // ✅ Permissions logic
- 
+  //  Permissions logic
+
   const [vessels, setVessels] = useState<any[]>([]);
-  const canView = can("voyage.view"); 
+  const canView = can("voyage.view");
   const canAdd = can("voyage.create");
 
   // --- Filter State ---
@@ -43,7 +43,9 @@ export default function VoyageManagement() {
           const json = await res.json();
           setCompanies(json.data || []);
         }
-      } catch (err) { console.error("Failed to load companies", err); }
+      } catch (err) {
+        console.error("Failed to load companies", err);
+      }
     }
     if (isReady && isSuperAdmin) fetchCompanies();
   }, [isReady, isSuperAdmin]);
@@ -56,7 +58,9 @@ export default function VoyageManagement() {
           const result = await res.json();
           setVessels(Array.isArray(result) ? result : result.data || []);
         }
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+      }
     }
     if (isReady) fetchVessels();
   }, [isReady]);
@@ -69,7 +73,9 @@ export default function VoyageManagement() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500">You do not have permission to access Voyage Management.</p>
+        <p className="text-gray-500">
+          You do not have permission to access Voyage Management.
+        </p>
       </div>
     );
   }
@@ -82,26 +88,26 @@ export default function VoyageManagement() {
           Voyage Management
         </h2>
 
-   <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible} 
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddVoyage 
-        onSuccess={handleRefresh} 
-        vesselList={vessels} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddVoyage
+                onSuccess={handleRefresh}
+                vesselList={vessels}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard

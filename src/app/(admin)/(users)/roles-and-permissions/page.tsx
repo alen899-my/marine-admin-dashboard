@@ -4,17 +4,17 @@ import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
 import RoleFilters from "@/components/roles/RoleFilters";
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
 import { useState } from "react";
 import AddRoleButton from "./AddRoleButton";
 import RolesTable from "./RolesTable";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function RoleManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady } = useAuthorization();
   const canView = can("roles.view");
   const canCreate = can("roles.create");
@@ -37,7 +37,9 @@ export default function RoleManagement() {
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">You do not have permission to access Roles & Permissions.</p>
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Roles & Permissions.
+        </p>
       </div>
     );
   }
@@ -47,28 +49,28 @@ export default function RoleManagement() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Roles 
+          Roles
         </h2>
 
-<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canCreate && (
-    <div className="w-full sm:w-auto">
-      <AddRoleButton 
-        onSuccess={handleRefresh} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canCreate && (
+            <div className="w-full sm:w-auto">
+              <AddRoleButton
+                onSuccess={handleRefresh}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard

@@ -67,8 +67,9 @@ export default function RolesTable({
   const [editData, setEditData] = useState<IRole | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isSelectedRoleSuperAdmin = selectedRole?.name?.toLowerCase() === "super-admin";
-const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
+  const isSelectedRoleSuperAdmin =
+    selectedRole?.name?.toLowerCase() === "super-admin";
+  const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
   // Status Options
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -128,7 +129,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, setTotalCount]
+    [search, status, startDate, endDate, setTotalCount],
   );
 
   useEffect(() => {
@@ -198,7 +199,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
       toast.error("Failed to delete role");
     } finally {
       setOpenDelete(false);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   };
 
@@ -240,7 +241,7 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
-               onRowClick={handleView}
+              onRowClick={handleView}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -256,67 +257,73 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
         </div>
       </div>
 
-     {/* --- VIEW MODAL --- */}
-<ViewModal
-  isOpen={openView}
-  onClose={() => setOpenView(false)}
-  title="Role Details"
+      {/* --- VIEW MODAL --- */}
+      <ViewModal
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title="Role Details"
+      >
+        <div className="space-y-4 text-sm">
+          <RoleComponentCard title="General Information">
+            {/* Changed to items-start for better label alignment */}
+            <div className="flex flex-row items-start justify-between w-full px-1">
+              {/* Left Side: Role Name */}
+              <div className="flex flex-col gap-1">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                  Role Name
+                </p>
+                <p className=" text-gray-900 dark:text-white text-base">
+                  {selectedRole?.name}
+                </p>
+              </div>
 
->
-  <div className="space-y-4 text-sm">
-    <RoleComponentCard title="General Information">
-      {/* Changed to items-start for better label alignment */}
-      <div className="flex flex-row items-start justify-between w-full px-1">
-        {/* Left Side: Role Name */}
-        <div className="flex flex-col gap-1">
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
-            Role Name
-          </p>
-          <p className=" text-gray-900 dark:text-white text-base">
-            {selectedRole?.name}
-          </p>
-        </div>
+              {/* Right Side: Status - Added text-right to push badge to the edge */}
+              <div className="flex flex-col gap-1 items-end ">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                  Role Status
+                </p>
+                <Badge
+                  color={
+                    selectedRole?.status === "active" ? "success" : "error"
+                  }
+                >
+                  <span className="uppercase font-bold text-[10px]">
+                    {selectedRole?.status === "active" ? "Active" : "Inactive"}
+                  </span>
+                </Badge>
+              </div>
+            </div>
+          </RoleComponentCard>
 
-        {/* Right Side: Status - Added text-right to push badge to the edge */}
-        <div className="flex flex-col gap-1 items-end ">
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
-           Role Status
-          </p>
-          <Badge
-            color={selectedRole?.status === "active" ? "success" : "error"}
+          <RoleComponentCard
+            title="Assigned Permissions"
+            legend={<PermissionLegend />}
           >
-            <span className="uppercase font-bold text-[10px]">
-              {selectedRole?.status === "active" ? "Active" : "Inactive"}
-            </span>
-          </Badge>
+            {selectedRole && (
+              <div className="space-y-8">
+                <div>
+                  <PermissionGrid
+                    allPermissions={allPermissions}
+                    selectedPermissions={selectedRole.permissions}
+                    isReadOnly={true}
+                  />
+                </div>
+                {/* Dashboard Widgets */}
+                <div className=" opacity-80  border-gray-200 dark:border-white/10 ">
+                  <DashboardWidgetSection
+                    isSuperAdmin={
+                      selectedRole.name.toLowerCase() === "super-admin"
+                    }
+                    allPermissions={allPermissions}
+                    selectedPermissions={selectedRole.permissions}
+                    onToggle={() => {}}
+                  />
+                </div>
+              </div>
+            )}
+          </RoleComponentCard>
         </div>
-      </div>
-    </RoleComponentCard>
-
-    <RoleComponentCard title="Assigned Permissions" legend={<PermissionLegend />}>
-      {selectedRole && (
-        <div className="space-y-8">
-          <div>
-            <PermissionGrid 
-              allPermissions={allPermissions}
-              selectedPermissions={selectedRole.permissions}
-              isReadOnly={true}
-            />
-          </div>
-          {/* Dashboard Widgets */}
-          <div className=" opacity-80  border-gray-200 dark:border-white/10 ">
-            <DashboardWidgetSection 
-              isSuperAdmin={selectedRole.name.toLowerCase() === "super-admin"}
-            allPermissions={allPermissions}
-              selectedPermissions={selectedRole.permissions}
-              onToggle={() => {}} 
-            />
-          </div>
-        </div>
-      )}
-    </RoleComponentCard>
-  </div>
-</ViewModal>
+      </ViewModal>
       {/* --- EDIT MODAL --- */}
       <EditModal
         isOpen={openEdit}
@@ -356,7 +363,11 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
 
             <RoleComponentCard
               title="Permissions"
-  desc={isEditingSuperAdmin ? "Super Admin has all permissions by default." : "Assign permissions to this role by selecting from the list below."}
+              desc={
+                isEditingSuperAdmin
+                  ? "Super Admin has all permissions by default."
+                  : "Assign permissions to this role by selecting from the list below."
+              }
               className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
               legend={<PermissionLegend />}
             >
@@ -378,10 +389,10 @@ const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
                     }}
                   />
                 </div>
-                 <DashboardWidgetSection 
-                 isReadOnly={isEditingSuperAdmin}
-                  isSuperAdmin={isEditingSuperAdmin} 
-                 allPermissions={allPermissions}
+                <DashboardWidgetSection
+                  isReadOnly={isEditingSuperAdmin}
+                  isSuperAdmin={isEditingSuperAdmin}
+                  allPermissions={allPermissions}
                   selectedPermissions={editData.permissions}
                   onToggle={(slug, checked) => {
                     const newPerms = checked

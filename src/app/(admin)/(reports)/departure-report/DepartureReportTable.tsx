@@ -48,7 +48,7 @@ interface IDepartureStats {
 interface IDepartureReport {
   _id: string;
   vesselName: string;
-  // ✅ FIX: Allow Populated Objects
+  //  FIX: Allow Populated Objects
   vesselId:
     | string
     | {
@@ -109,7 +109,15 @@ export default function DepartureReportTable({
 }: DepartureReportTableProps) {
   // Apply interfaces to state
   const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    vesselId,
+    voyageId,
+    companyId,
+  });
   const [reports, setReports] = useState<IDepartureReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [openView, setOpenView] = useState(false);
@@ -118,7 +126,7 @@ export default function DepartureReportTable({
     { value: string; label: string }[]
   >([]);
   const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(
-    null
+    null,
   );
   const [editData, setEditData] = useState<IDepartureReport | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -165,7 +173,7 @@ export default function DepartureReportTable({
     return r.voyageNo || "-";
   };
 
-  // ✅ NEW HELPER: Get Vessel Name
+  //  NEW HELPER: Get Vessel Name
   const getVesselName = (r: IDepartureReport | null) => {
     if (!r) return "-";
     if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -216,11 +224,11 @@ export default function DepartureReportTable({
       render: (r: IDepartureReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-            {/* ✅ Use Helper */}
+            {/*  Use Helper */}
             {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            {/* ✅ Use Helper */}
+            {/*  Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
           <span
@@ -381,7 +389,7 @@ export default function DepartureReportTable({
         setLoading(false);
       }
     },
-    [search, status, startDate, endDate, vesselId, voyageId, companyId]
+    [search, status, startDate, endDate, vesselId, voyageId, companyId],
   );
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -390,7 +398,7 @@ export default function DepartureReportTable({
 
     try {
       const payload = {
-        // ✅ FIX 3: Include vesselId.
+        //  FIX 3: Include vesselId.
         // The backend needs this to lookup the correct Voyage ObjectId.
         vesselId:
           typeof editData.vesselId === "object"
@@ -411,7 +419,7 @@ export default function DepartureReportTable({
 
         navigation: {
           distance_to_next_port_nm: Number(
-            editData.navigation?.distanceToNextPortNm
+            editData.navigation?.distanceToNextPortNm,
           ),
           etaNextPort: editData.navigation?.etaNextPort
             ? `${editData.navigation.etaNextPort}+05:30`
@@ -422,16 +430,16 @@ export default function DepartureReportTable({
           robVlsfo: Number(editData.departureStats?.robVlsfo),
           robLsmgo: Number(editData.departureStats?.robLsmgo),
           bunkers_received_vlsfo_mt: Number(
-            editData.departureStats?.bunkersReceivedVlsfo
+            editData.departureStats?.bunkersReceivedVlsfo,
           ),
           bunkers_received_lsmgo_mt: Number(
-            editData.departureStats?.bunkersReceivedLsmgo
+            editData.departureStats?.bunkersReceivedLsmgo,
           ),
           cargo_qty_loaded_mt: Number(
-            editData.departureStats?.cargoQtyLoadedMt
+            editData.departureStats?.cargoQtyLoadedMt,
           ),
           cargo_qty_unloaded_mt: Number(
-            editData.departureStats?.cargoQtyUnloadedMt
+            editData.departureStats?.cargoQtyUnloadedMt,
           ),
           cargoSummary: editData.departureStats?.cargoSummary,
         },
@@ -448,7 +456,7 @@ export default function DepartureReportTable({
       const { report } = await res.json();
 
       setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r))
+        prev.map((r) => (r._id === report._id ? report : r)),
       );
 
       toast.success("Departure report updated");
@@ -469,7 +477,7 @@ export default function DepartureReportTable({
 
   const { suggestedVoyageNo } = useVoyageLogic(
     vesselIdForLookup || undefined,
-    editData?.reportDate
+    editData?.reportDate,
   );
   const memoizedVoyageList = useMemo(() => {
     if (!vesselIdForLookup) return [];
@@ -507,51 +515,58 @@ export default function DepartureReportTable({
       suggestedVoyageNo !== editData.voyageId
     ) {
       setEditData((prev) =>
-        prev ? { ...prev, voyageId: suggestedVoyageNo } : null
+        prev ? { ...prev, voyageId: suggestedVoyageNo } : null,
       );
     }
   }, [suggestedVoyageNo]);
 
-  // ✅ Corrected Trigger Effect
+  //  Corrected Trigger Effect
   useEffect(() => {
-  if (!isReady) return;
+    if (!isReady) return;
 
-  // 1. Detect if the filters actually changed compared to the last render
-  const filtersChanged =
-    prevFiltersRef.current.search !== search ||
-    prevFiltersRef.current.status !== status ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate ||
-    prevFiltersRef.current.vesselId !== vesselId ||
-    prevFiltersRef.current.voyageId !== voyageId ||
-    prevFiltersRef.current.companyId !== companyId;
+    // 1. Detect if the filters actually changed compared to the last render
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.vesselId !== vesselId ||
+      prevFiltersRef.current.voyageId !== voyageId ||
+      prevFiltersRef.current.companyId !== companyId;
 
-  // 2. If filters changed, reset to page 1
-  if (filtersChanged) {
-    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
-    
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Exit and wait for the next cycle triggered by currentPage change
+    // 2. If filters changed, reset to page 1
+    if (filtersChanged) {
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+        companyId,
+      };
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // Exit and wait for the next cycle triggered by currentPage change
+      }
     }
-  }
 
-  // 3. Otherwise, fetch the data for the current page
-  fetchReports(currentPage);
-
-}, [
-  currentPage,
-  refresh,
-  fetchReports,
-  isReady,
-  search,
-  status,
-  vesselId,
-  voyageId,
-  companyId,
-  startDate,
-  endDate,
-]);
+    // 3. Otherwise, fetch the data for the current page
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -569,7 +584,7 @@ export default function DepartureReportTable({
 
     // Try to find vessel in the list as fallback
     const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName
+      (v: any) => v.name === report.vesselName,
     );
     const voyageIdString = getVoyageDisplay(report);
     const vesselIdStr =
@@ -630,7 +645,7 @@ export default function DepartureReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   }
   if (!isReady) return null;
@@ -878,7 +893,7 @@ export default function DepartureReportTable({
                   {/* 1. DOWNLOAD BUTTON */}
                   <DownloadPdfButton
                     title={`Departure Report - ${getVesselName(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     filename={`Departure_${
                       selectedReport.portName
@@ -897,7 +912,7 @@ export default function DepartureReportTable({
                         (selectedReport.navigation?.distanceToNextPortNm ||
                           "0") + " NM",
                       "ETA Next Port": formatDate(
-                        selectedReport.navigation?.etaNextPort
+                        selectedReport.navigation?.etaNextPort,
                       ),
                       "ROB VLSFO":
                         (selectedReport.departureStats?.robVlsfo || "0") +
@@ -926,7 +941,7 @@ export default function DepartureReportTable({
                   {/* 2. SHARE BUTTON */}
                   <SharePdfButton
                     title={`Departure Report - ${getVesselName(
-                      selectedReport
+                      selectedReport,
                     )}`}
                     filename={`Departure_${
                       selectedReport.portName
@@ -944,7 +959,7 @@ export default function DepartureReportTable({
                         (selectedReport.navigation?.distanceToNextPortNm ||
                           "0") + " NM",
                       "ETA Next Port": formatDate(
-                        selectedReport.navigation?.etaNextPort
+                        selectedReport.navigation?.etaNextPort,
                       ),
                       "ROB VLSFO":
                         (selectedReport.departureStats?.robVlsfo || "0") +
@@ -1010,7 +1025,7 @@ export default function DepartureReportTable({
                     value={editData.vesselName}
                     onChange={(val) => {
                       const selected = vesselList.find(
-                        (v: any) => v.name === val
+                        (v: any) => v.name === val,
                       );
                       setEditData({
                         ...editData,
@@ -1034,7 +1049,7 @@ export default function DepartureReportTable({
                     value={
                       typeof editData.voyageId === "string"
                         ? editData.voyageId
-                        : editData.voyageId?.voyageNo ?? ""
+                        : (editData.voyageId?.voyageNo ?? "")
                     }
                     onChange={(val) =>
                       setEditData({ ...editData, voyageId: val })

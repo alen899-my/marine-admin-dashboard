@@ -3,15 +3,15 @@
 import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
-import Link from "next/link";
-import Image from "next/image";
-import { useState, ChangeEvent, FormEvent } from "react";
-import Select from "../form/Select";
-import Alert from "../ui/alert/Alert";
+import { registerValidation } from "@/lib/validations/userValidation";
 import { EyeIcon, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react"; // <--- Import NextAuth
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation"; // <--- Import Router
-import { registerValidation } from "@/lib/validations/userValidation";
+import { ChangeEvent, FormEvent, useState } from "react";
+import Select from "../form/Select";
+import Alert from "../ui/alert/Alert";
 
 // 1. Define Types
 interface FormState {
@@ -61,7 +61,9 @@ export default function SignUpForm() {
 
   // 4. Handle Input Changes
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement> | { target: { name: string; value: string } }
+    e:
+      | ChangeEvent<HTMLInputElement>
+      | { target: { name: string; value: string } },
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     // Clear error for this field when user types
@@ -69,89 +71,85 @@ export default function SignUpForm() {
   };
 
   const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  setFieldErrors({});
-  setSuccessMessage("");
+    e.preventDefault();
+    setFieldErrors({});
+    setSuccessMessage("");
 
-  // ✅ Terms check (non-Joi)
-  if (!isChecked) {
-    setFieldErrors({ general: "Please accept Terms and Conditions" });
-    return;
-  }
-
-  // ✅ RUN JOI VALIDATION (CLIENT SIDE)
-  const { error } = registerValidation.validate(
-    {
-      ...form,
-      assignedVesselId: form.assignedVesselId || null,
-    },
-    { abortEarly: false } // 🔥 collect all errors
-  );
-
-  if (error) {
-    const errors: FieldErrors = {};
-
-    error.details.forEach((detail) => {
-      const key = detail.path[0] as keyof FieldErrors;
-      errors[key] = detail.message;
-    });
-
-    setFieldErrors(errors);
-    return; // ⛔ STOP submit
-  }
-
-  setLoading(true);
-
-  try {
-    // ✅ CALL REGISTER API ONLY AFTER VALIDATION
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        assignedVesselId: form.assignedVesselId || null,
-      }),
-    });
-
-    const data = await res.json();
-
-
-    // ✅ SUCCESS
-    setSuccessMessage("Account created! Logging you in...");
-
-    const loginResult = await signIn("credentials", {
-      redirect: false,
-      email: form.email,
-      password: form.password,
-    });
-
-    if (loginResult?.error) {
-      setTimeout(() => router.push("/signin"), 1500);
-    } else {
-      router.push("/");
-      router.refresh();
+    //  Terms check (non-Joi)
+    if (!isChecked) {
+      setFieldErrors({ general: "Please accept Terms and Conditions" });
+      return;
     }
 
-  } catch (err) {
-    setFieldErrors({ general: "Network error or server unavailable" });
-    setLoading(false);
-  }
-};
+    //  RUN JOI VALIDATION (CLIENT SIDE)
+    const { error } = registerValidation.validate(
+      {
+        ...form,
+        assignedVesselId: form.assignedVesselId || null,
+      },
+      { abortEarly: false }, // 🔥 collect all errors
+    );
 
+    if (error) {
+      const errors: FieldErrors = {};
+
+      error.details.forEach((detail) => {
+        const key = detail.path[0] as keyof FieldErrors;
+        errors[key] = detail.message;
+      });
+
+      setFieldErrors(errors);
+      return; // ⛔ STOP submit
+    }
+
+    setLoading(true);
+
+    try {
+      //  CALL REGISTER API ONLY AFTER VALIDATION
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          assignedVesselId: form.assignedVesselId || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      //  SUCCESS
+      setSuccessMessage("Account created! Logging you in...");
+
+      const loginResult = await signIn("credentials", {
+        redirect: false,
+        email: form.email,
+        password: form.password,
+      });
+
+      if (loginResult?.error) {
+        setTimeout(() => router.push("/signin"), 1500);
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch (err) {
+      setFieldErrors({ general: "Network error or server unavailable" });
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full overflow-y-auto no-scrollbar">
       <div className="flex flex-col justify-center flex-1 w-full max-w-xl mx-auto">
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-          
           {/* LOGO */}
           <div className="flex justify-center mb-6">
-            <Image 
-              src="/images/logo/logo-icon.svg" 
-              alt="Logo" 
-              width={48} 
-              height={48} 
-              className="h-12 w-auto" 
+            <Image
+              src="/images/logo/logo-icon.svg"
+              alt="Logo"
+              width={48}
+              height={48}
+              className="h-12 w-auto"
               priority
             />
           </div>
@@ -196,7 +194,9 @@ export default function SignUpForm() {
                   className={fieldErrors.fullName ? "border-red-500" : ""}
                 />
                 {fieldErrors.fullName && (
-                  <p className="text-red-500 text-sm mt-1">{fieldErrors.fullName}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.fullName}
+                  </p>
                 )}
               </div>
 
@@ -214,7 +214,9 @@ export default function SignUpForm() {
                   className={fieldErrors.email ? "border-red-500" : ""}
                 />
                 {fieldErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.email}
+                  </p>
                 )}
               </div>
 
@@ -237,11 +239,17 @@ export default function SignUpForm() {
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
                   >
-                    {showPassword ? <EyeIcon className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                    {showPassword ? (
+                      <EyeIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeOff className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.password}
+                  </p>
                 )}
               </div>
 
@@ -257,10 +265,14 @@ export default function SignUpForm() {
                   onChange={(value) =>
                     handleChange({ target: { name: "role", value } })
                   }
-                  className={fieldErrors.role ? "border-red-500" : "border-gray-300"}
+                  className={
+                    fieldErrors.role ? "border-red-500" : "border-gray-300"
+                  }
                 />
                 {fieldErrors.role && (
-                  <p className="text-red-500 text-sm mt-1">{fieldErrors.role}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.role}
+                  </p>
                 )}
               </div>
 
@@ -273,10 +285,14 @@ export default function SignUpForm() {
                   value={form.assignedVesselId}
                   onChange={handleChange}
                   placeholder="Enter vessel ID or leave empty"
-                  className={fieldErrors.assignedVesselId ? "border-red-500" : ""}
+                  className={
+                    fieldErrors.assignedVesselId ? "border-red-500" : ""
+                  }
                 />
                 {fieldErrors.assignedVesselId && (
-                  <p className="text-red-500 text-sm mt-1">{fieldErrors.assignedVesselId}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.assignedVesselId}
+                  </p>
                 )}
               </div>
 
@@ -289,11 +305,14 @@ export default function SignUpForm() {
                 />
                 <p className="text-gray-500 dark:text-gray-400">
                   By creating an account you agree to the{" "}
-                  <span className="text-gray-800 dark:text-white cursor-pointer">Terms</span>{" "}
+                  <span className="text-gray-800 dark:text-white cursor-pointer">
+                    Terms
+                  </span>{" "}
                   and{" "}
                   <span className="text-gray-800 dark:text-white cursor-pointer">
                     Privacy Policy
-                  </span>.
+                  </span>
+                  .
                 </p>
               </div>
 

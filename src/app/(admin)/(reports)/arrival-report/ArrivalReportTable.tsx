@@ -18,7 +18,15 @@ import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
-import { Dispatch, SetStateAction, useCallback, useEffect,useRef, useState,useMemo } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
 // --- Types ---
 interface ArrivalStats {
@@ -37,7 +45,7 @@ interface NorDetails {
 interface ArrivalReport {
   _id: string;
   vesselName: string;
-  // ✅ FIX: Allow Populated Object
+  //  FIX: Allow Populated Object
   vesselId:
     | string
     | {
@@ -88,7 +96,11 @@ interface ArrivalReportTableProps {
   vesselList: any[]; // Added this
   setTotalCount?: Dispatch<SetStateAction<number>>;
   companyId: string;
-  onFilterDataLoad?: (filterData: { vessels: any[]; companies: any[]; voyages: any[] }) => void;
+  onFilterDataLoad?: (filterData: {
+    vessels: any[];
+    companies: any[];
+    voyages: any[];
+  }) => void;
 }
 
 interface VoyageMetrics {
@@ -110,18 +122,27 @@ export default function ArrivalReportTable({
   voyageId,
   vesselList,
   setTotalCount,
-  companyId,onFilterDataLoad
+  companyId,
+  onFilterDataLoad,
 }: ArrivalReportTableProps) {
   const [reports, setReports] = useState<ArrivalReport[]>([]);
   const [loading, setLoading] = useState(true);
   const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    vesselId,
+    voyageId,
+    companyId,
+  });
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
-    null
+    null,
   );
   const [voyageList, setVoyageList] = useState<
     { value: string; label: string }[]
@@ -133,7 +154,7 @@ export default function ArrivalReportTable({
   const [totalPages, setTotalPages] = useState(1);
 
   const [voyageMetrics, setVoyageMetrics] = useState<VoyageMetrics | null>(
-    null
+    null,
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
@@ -141,7 +162,7 @@ export default function ArrivalReportTable({
   const { can, isReady } = useAuthorization();
   const canEdit = can("arrival.edit");
   const canDelete = can("arrival.delete");
-    const canSeeHistory = can("reports.history.view");
+  const canSeeHistory = can("reports.history.view");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   const getVoyageDisplay = (r: ArrivalReport | null) => {
@@ -156,7 +177,7 @@ export default function ArrivalReportTable({
     return r.voyageNo || "-";
   };
 
-  // ✅ NEW HELPER: Get Vessel Name
+  //  NEW HELPER: Get Vessel Name
   const getVesselName = (r: ArrivalReport | null) => {
     if (!r) return "-";
     if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -229,11 +250,11 @@ export default function ArrivalReportTable({
       render: (r: ArrivalReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-            {/* ✅ Use Helper */}
+            {/*  Use Helper */}
             {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            {/* ✅ Use Helper */}
+            {/*  Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
           <span
@@ -269,7 +290,7 @@ export default function ArrivalReportTable({
               {formatDate(r.eventTime)}
             </span>
           </div>
-          {/* ✅ NEW: NOR Time added below Arrival Time */}
+          {/*  NEW: NOR Time added below Arrival Time */}
           {r?.norDetails?.norTime && (
             <div className="flex flex-col pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
               <span className="text-[10px] text-gray-400 uppercase font-bold">
@@ -288,7 +309,7 @@ export default function ArrivalReportTable({
       render: (r: ArrivalReport) => (
         <div className="flex flex-col">
           <div className="font-bold text-xs">{r?.portName ?? "-"}</div>
-          {/* ✅ NEW: Cargo Quantity added below Port Name */}
+          {/*  NEW: Cargo Quantity added below Port Name */}
           <div className="text-sm font-medium mt-1">
             Cargo: {r?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ?? 0}{" "}
             MT
@@ -319,7 +340,7 @@ export default function ArrivalReportTable({
     },
     {
       header: "Status",
-      render: (r: ArrivalReport) => getStatusBadge(r.status), // ✅ Updated Status Badge
+      render: (r: ArrivalReport) => getStatusBadge(r.status), //  Updated Status Badge
     },
   ];
 
@@ -328,7 +349,7 @@ export default function ArrivalReportTable({
   // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
 
   // Replace your existing fetchReports with this clean version
-const fetchReports = useCallback(
+  const fetchReports = useCallback(
     async (page = 1) => {
       try {
         setLoading(true);
@@ -386,7 +407,7 @@ const fetchReports = useCallback(
       voyageId,
       companyId,
       setTotalCount,
-    ]
+    ],
   );
 
   const [isMobile, setIsMobile] = useState(false);
@@ -399,45 +420,52 @@ const fetchReports = useCallback(
   }, []);
 
   useEffect(() => {
-  if (!isReady) return;
+    if (!isReady) return;
 
-  // 1. Detect if the filters actually changed compared to the last render
-  const filtersChanged =
-    prevFiltersRef.current.search !== search ||
-    prevFiltersRef.current.status !== status ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate ||
-    prevFiltersRef.current.vesselId !== vesselId ||
-    prevFiltersRef.current.voyageId !== voyageId ||
-    prevFiltersRef.current.companyId !== companyId;
+    // 1. Detect if the filters actually changed compared to the last render
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.vesselId !== vesselId ||
+      prevFiltersRef.current.voyageId !== voyageId ||
+      prevFiltersRef.current.companyId !== companyId;
 
-  // 2. If filters changed, reset to page 1
-  if (filtersChanged) {
-    // Update ref with new filter values
-    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
-    
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Stop here; the currentPage change will re-trigger this effect
+    // 2. If filters changed, reset to page 1
+    if (filtersChanged) {
+      // Update ref with new filter values
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+        companyId,
+      };
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // Stop here; the currentPage change will re-trigger this effect
+      }
     }
-  }
 
-  // 3. If we are here, either the page changed or the filters stayed the same
-  fetchReports(currentPage);
-
-}, [
-  currentPage,
-  refresh,
-  fetchReports,
-  isReady,
-  search,
-  status,
-  vesselId,
-  voyageId,
-  companyId,
-  startDate,
-  endDate,
-]);
+    // 3. If we are here, either the page changed or the filters stayed the same
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -460,7 +488,7 @@ const fetchReports = useCallback(
   function handleEdit(report: ArrivalReport) {
     setSelectedReport(report);
     const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName
+      (v: any) => v.name === report.vesselName,
     );
     // Check if Arrival and NOR are the same to toggle the checkbox
     const isSame = report.eventTime === report.norDetails?.norTime;
@@ -487,7 +515,7 @@ const fetchReports = useCallback(
   }
   const { suggestedVoyageNo } = useVoyageLogic(
     editData?.vesselId,
-    editData?.reportDate
+    editData?.reportDate,
   );
   useEffect(() => {
     if (
@@ -496,23 +524,26 @@ const fetchReports = useCallback(
       suggestedVoyageNo !== editData.voyageId
     ) {
       setEditData((prev) =>
-        prev ? { ...prev, voyageId: suggestedVoyageNo } : null
+        prev ? { ...prev, voyageId: suggestedVoyageNo } : null,
       );
     }
   }, [suggestedVoyageNo]);
   const memoizedVoyageList = useMemo(() => {
-  if (!editData?.vesselId) return [];
-  
-  const activeVoyage = vesselList.find(v => v._id === editData.vesselId)?.activeVoyageNo;
-  const options = [];
-  
-  if (activeVoyage) options.push({ value: activeVoyage, label: activeVoyage });
-  if (editData.voyageId && editData.voyageId !== activeVoyage) {
-    options.push({ value: editData.voyageId, label: editData.voyageId });
-  }
-  
-  return options;
-}, [editData?.vesselId, editData?.voyageId, vesselList]);
+    if (!editData?.vesselId) return [];
+
+    const activeVoyage = vesselList.find(
+      (v) => v._id === editData.vesselId,
+    )?.activeVoyageNo;
+    const options = [];
+
+    if (activeVoyage)
+      options.push({ value: activeVoyage, label: activeVoyage });
+    if (editData.voyageId && editData.voyageId !== activeVoyage) {
+      options.push({ value: editData.voyageId, label: editData.voyageId });
+    }
+
+    return options;
+  }, [editData?.vesselId, editData?.voyageId, vesselList]);
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -540,7 +571,7 @@ const fetchReports = useCallback(
       const { report } = await res.json();
 
       setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r))
+        prev.map((r) => (r._id === report._id ? report : r)),
       );
 
       toast.success("Arrival report updated");
@@ -575,7 +606,7 @@ const fetchReports = useCallback(
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   }
   if (!isReady) return null;
@@ -974,7 +1005,7 @@ const fetchReports = useCallback(
                       "Report Date": formatDate(selectedReport.reportDate),
                       "Arrival Time": formatDate(selectedReport.eventTime),
                       "NOR Tendered": formatDate(
-                        selectedReport.norDetails?.norTime
+                        selectedReport.norDetails?.norTime,
                       ),
 
                       // --- Arrival Stats ---
@@ -1023,7 +1054,7 @@ const fetchReports = useCallback(
                       "Report Date": formatDate(selectedReport.reportDate),
                       "Arrival Time": formatDate(selectedReport.eventTime),
                       "NOR Tendered": formatDate(
-                        selectedReport.norDetails?.norTime
+                        selectedReport.norDetails?.norTime,
                       ),
 
                       "Cargo Quantity":
@@ -1095,7 +1126,7 @@ const fetchReports = useCallback(
                     value={editData.vesselName}
                     onChange={(selectedName) => {
                       const selectedVessel = vesselList.find(
-                        (v: any) => v.name === selectedName
+                        (v: any) => v.name === selectedName,
                       );
 
                       setEditData({
@@ -1111,13 +1142,13 @@ const fetchReports = useCallback(
                 <div className="relative">
                   <Label>Voyage No / ID</Label>
                   <SearchableSelect
-                   options={memoizedVoyageList}
+                    options={memoizedVoyageList}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
                         : memoizedVoyageList.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageId}
                     onChange={(val) =>
