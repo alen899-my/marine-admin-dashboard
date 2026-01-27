@@ -18,6 +18,7 @@ import {
   Building2,
   GaugeCircle,
   Gauge,
+  FileCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -95,6 +96,12 @@ const navItems: NavItem[] = [
     name: "Voyage",
     path: "/voyage",
     requiredPermission: "voyage.view",
+  },
+  {
+    icon: <FileCheck size={25} />, // or <ClipboardCheck size={25} />
+    name: "Pre-Arrival ",
+    path: "/pre-arrival",
+    requiredPermission: "prearrival.view", 
   },
   {
     icon:<Users2 size={25}/>,

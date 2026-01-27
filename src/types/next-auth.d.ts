@@ -8,6 +8,7 @@ declare module "next-auth" {
     fullName: string;
     role: string;
     permissions: string[];
+    assignedVesselId?: string;
     profilePicture?: string | null; // ✅ Add this
     company?: {
       id: string;
@@ -22,6 +23,7 @@ declare module "next-auth" {
       fullName: string;
       role: string;
       permissions: string[];
+      assignedVesselName?: string;
       profilePicture?: string | null;
       company?: {
         id: string;
