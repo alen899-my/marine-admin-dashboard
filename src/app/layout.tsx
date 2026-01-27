@@ -28,8 +28,10 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-    <html lang="en">
-      <body className={`${outfit.className} dark:bg-gray-900`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${outfit.className} dark:bg-gray-900`}
+      suppressHydrationWarning
+      >
         <NextTopLoader
           color="#00A6B8"
           initialPosition={0.08}
