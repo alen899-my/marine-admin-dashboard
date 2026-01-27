@@ -1,26 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import FilterToggleButton from "@/components/common/FilterToggleButton"; 
+import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; 
+import CompanyFilters from "@/components/Companies/CompanyFilters";
+import { useAuthorization } from "@/hooks/useAuthorization";
+import { useFilterPersistence } from "@/hooks/useFilterPersistence";
+import { useState } from "react";
 import AddCompanyButton from "./AddCompanyButton";
 import CompaniesTable from "./CompaniesTable";
-import CompanyFilters from "@/components/Companies/CompanyFilters";
-import { useAuthorization } from "@/hooks/useAuthorization"; 
 
 export default function CompanyManagement() {
   const [refresh, setRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady } = useAuthorization();
   const canView = can("company.view");
   const canAdd = can("company.create");
 
   // Use the shared persistent filter logic for companies
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("companies");
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("companies");
 
   // --- Filter State ---
   const [search, setSearch] = useState("");
@@ -53,24 +54,24 @@ export default function CompanyManagement() {
         </h2>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Second (Right) | Mobile: Top */}
-  {canAdd && (
-    <div className="w-full sm:w-auto">
-      <AddCompanyButton 
-        onSuccess={handleRefresh} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Second (Right) | Mobile: Top */}
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddCompanyButton
+                onSuccess={handleRefresh}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* --- Main Content Card --- */}

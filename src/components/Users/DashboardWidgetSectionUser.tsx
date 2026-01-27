@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useMemo } from "react";
 import Checkbox, { CheckboxVariant } from "@/components/form/input/Checkbox";
-import Tooltip from "@/components/ui/tooltip/Tooltip"; // ✅ Tooltip imported
+import Tooltip from "@/components/ui/tooltip/Tooltip"; //  Tooltip imported
+import { useMemo } from "react";
 
 // Match the permission interface used across your application
 interface IPermission {
-
   _id: string;
   slug: string;
   name: string;
@@ -19,7 +18,7 @@ interface IPermission {
 }
 
 interface DashboardWidgetSectionUserProps {
-  allPermissions: IPermission[]; 
+  allPermissions: IPermission[];
   rolePermissions: string[];
   additionalPermissions: string[];
   excludedPermissions: string[];
@@ -28,24 +27,26 @@ interface DashboardWidgetSectionUserProps {
   isSuperAdmin?: boolean;
 }
 
-export default function DashboardWidgetSectionUser({ 
+export default function DashboardWidgetSectionUser({
   allPermissions = [],
-  rolePermissions, 
-  additionalPermissions, 
-  excludedPermissions, 
+  rolePermissions,
+  additionalPermissions,
+  excludedPermissions,
   onToggle,
-  isReadOnly,isSuperAdmin = false
+  isReadOnly,
+  isSuperAdmin = false,
 }: DashboardWidgetSectionUserProps) {
-
   // 🟢 Filter Logic: Identify any permission that is NOT a CRUD operation
   const generalPermissions = useMemo(() => {
     const crudEndings = [".create", ".view", ".edit", ".delete"];
     if (!allPermissions || allPermissions.length === 0) return [];
-    
-    return allPermissions.filter(p => {
+
+    return allPermissions.filter((p) => {
       // Check if it ends with standard CRUD actions
-      const isCrud = crudEndings.some(ending => p.slug.toLowerCase().endsWith(ending));
-      
+      const isCrud = crudEndings.some((ending) =>
+        p.slug.toLowerCase().endsWith(ending),
+      );
+
       // We exclude CRUD so it falls into this "General" section
       return !isCrud;
     });
@@ -67,56 +68,53 @@ export default function DashboardWidgetSectionUser({
           const isExcluded = excludedPermissions.includes(perm.slug);
 
           let isChecked = false;
-let variant: CheckboxVariant = "default";
-let statusLabel = "";
+          let variant: CheckboxVariant = "default";
+          let statusLabel = "";
 
-if (isSuperAdmin && !isExcluded) {
-  isChecked = true;
-  variant = "default";
-  statusLabel = "Super Admin (implicit)";
-}
-else if (isExcluded) {
-  isChecked = true;
-  variant = "danger";
-  statusLabel = "Manually Excluded";
-}
-else if (isInherited) {
-  isChecked = true;
-  variant = "default";
-  statusLabel = "Inherited from Role";
-}
-else if (isAdditional) {
-  isChecked = true;
-  variant = "success";
-  statusLabel = "Manually Added";
-}
+          if (isSuperAdmin && !isExcluded) {
+            isChecked = true;
+            variant = "default";
+            statusLabel = "Super Admin (implicit)";
+          } else if (isExcluded) {
+            isChecked = true;
+            variant = "danger";
+            statusLabel = "Manually Excluded";
+          } else if (isInherited) {
+            isChecked = true;
+            variant = "default";
+            statusLabel = "Inherited from Role";
+          } else if (isAdditional) {
+            isChecked = true;
+            variant = "success";
+            statusLabel = "Manually Added";
+          }
 
           return (
-            /* ✅ Wrapped with Tooltip - Children nested inside */
+            /*  Wrapped with Tooltip - Children nested inside */
             <Tooltip
               key={perm._id}
               position="top"
               content={
                 <div className="">
-                  
                   <p className="text-gray-300 leading-tight">
-                    {perm.description || `Grants the user ${perm.name} capability.`}
+                    {perm.description ||
+                      `Grants the user ${perm.name} capability.`}
                   </p>
                 </div>
               }
             >
-              <div 
+              <div
                 onClick={() => !isReadOnly && onToggle(perm.slug)}
                 className={`
                   flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700
                   hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer select-none h-full w-full
-                  ${isReadOnly ? 'opacity-80 cursor-default pointer-events-none' : ''}
+                  ${isReadOnly ? "opacity-80 cursor-default pointer-events-none" : ""}
                 `}
               >
                 <div className="mt-0.5 pointer-events-none">
-                  <Checkbox 
-                    checked={isChecked} 
-                    onChange={() => {}} 
+                  <Checkbox
+                    checked={isChecked}
+                    onChange={() => {}}
                     variant={variant}
                   />
                 </div>

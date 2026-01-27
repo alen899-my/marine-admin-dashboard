@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IVoyage extends Document {
   vesselId: mongoose.Types.ObjectId;
@@ -31,7 +31,7 @@ export interface IVoyage extends Document {
     endDate?: Date | null;
   };
 
-  // ✅ ADDED THESE INTERFACE FIELDS
+  //  ADDED THESE INTERFACE FIELDS
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -77,7 +77,7 @@ const VoyageSchema = new Schema<IVoyage>(
       endDate: Date,
     },
 
-    // ✅ ADDED THESE SCHEMA FIELDS
+    //  ADDED THESE SCHEMA FIELDS
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -89,7 +89,7 @@ const VoyageSchema = new Schema<IVoyage>(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 VoyageSchema.index({ voyageNo: 1 }, { unique: true });
 export default mongoose.models.Voyage ||

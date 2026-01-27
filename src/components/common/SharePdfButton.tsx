@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useState } from "react";
 import { IoLogoWhatsapp } from "react-icons/io";
 
 export interface SharePdfButtonProps {
@@ -43,8 +43,9 @@ export default function SharePdfButton({
       try {
         const logo = await loadImage("/images/logo/b.png");
         const displayWidth = 45;
-        const displayHeight = (logo.naturalHeight * displayWidth) / logo.naturalWidth;
-        
+        const displayHeight =
+          (logo.naturalHeight * displayWidth) / logo.naturalWidth;
+
         doc.addImage(logo, "PNG", margin, 10, displayWidth, displayHeight);
         logoBottomY = 10 + displayHeight;
 
@@ -53,8 +54,10 @@ export default function SharePdfButton({
         doc.text(title, pageWidth - margin, 18, { align: "right" });
         doc.setFontSize(9);
         doc.text(
-          `Generated: ${new Date().toLocaleString("en-IN")}`, 
-          pageWidth - margin, 24, { align: "right" }
+          `Generated: ${new Date().toLocaleString("en-IN")}`,
+          pageWidth - margin,
+          24,
+          { align: "right" },
         );
       } catch (e) {
         console.warn("Logo failed to load, proceeding with text only", e);
@@ -71,7 +74,7 @@ export default function SharePdfButton({
         head: [["Field", "Value"]],
         body: rows,
         theme: "striped",
-        headStyles: { fillColor: [0, 166, 184]}, // Blue header
+        headStyles: { fillColor: [0, 166, 184] }, // Blue header
       });
 
       // Prepare the PDF Blob
@@ -82,10 +85,13 @@ export default function SharePdfButton({
       let vercelUrl = "";
       try {
         const uniqueFilename = `${filename}_${Date.now()}.pdf`;
-        const response = await fetch(`/api/upload-pdf?filename=${uniqueFilename}`, {
-          method: "POST",
-          body: pdfBlob,
-        });
+        const response = await fetch(
+          `/api/upload-pdf?filename=${uniqueFilename}`,
+          {
+            method: "POST",
+            body: pdfBlob,
+          },
+        );
 
         if (response.ok) {
           const result = await response.json();
@@ -98,10 +104,10 @@ export default function SharePdfButton({
       // -------- 4. THE REDIRECT (WHATSAPP) --------
       // Note: Removed local download block from here
       const message = vercelUrl
-        ? `📄 *${title}*\n\n✅ Click here to view report:\n${vercelUrl}`
+        ? `📄 *${title}*\n\n Click here to view report:\n${vercelUrl}`
         : `📄 *${title}*\n\nReport generated but link failed to generate.`;
 
-    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      const whatsappLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
       // Open WhatsApp Link
       const anchor = document.createElement("a");
@@ -111,7 +117,6 @@ export default function SharePdfButton({
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
-
     } catch (err) {
       console.error("Process failed:", err);
     } finally {
@@ -121,14 +126,14 @@ export default function SharePdfButton({
 
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); generateAndShare(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        generateAndShare();
+      }}
       disabled={loading}
       className="flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 disabled:opacity-60 active:scale-95 w-full sm:w-auto justify-center"
     >
-      <IoLogoWhatsapp 
-        size={18} 
-        className="text-[#25D366]" 
-      />
+      <IoLogoWhatsapp size={18} className="text-[#25D366]" />
       <span className="whitespace-nowrap">
         {loading ? "Sharing..." : buttonLabel}
       </span>

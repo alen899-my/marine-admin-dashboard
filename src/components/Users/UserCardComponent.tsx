@@ -4,8 +4,8 @@ interface UserCardComponentProps {
   userDetails: React.ReactNode;
   userRoles: React.ReactNode;
   className?: string;
-  
-  // ✅ Made optional to support both controlled and uncontrolled modes
+
+  //  Made optional to support both controlled and uncontrolled modes
   activeTab?: "details" | "roles";
   onTabChange?: (tab: "details" | "roles") => void;
 }
@@ -18,7 +18,9 @@ const UserCardComponent: React.FC<UserCardComponentProps> = ({
   onTabChange,
 }) => {
   // 1. Internal state fallback (if parent doesn't provide props)
-  const [internalTab, setInternalTab] = useState<"details" | "roles">("details");
+  const [internalTab, setInternalTab] = useState<"details" | "roles">(
+    "details",
+  );
 
   // 2. Determine which tab to show (Parent prop takes priority)
   const currentTab = activeTab || internalTab;
@@ -38,7 +40,6 @@ const UserCardComponent: React.FC<UserCardComponentProps> = ({
     >
       {/* Tab Header */}
       <div className="flex border-b border-gray-100 dark:border-gray-800">
-        
         {/* DETAILS TAB */}
         <button
           type="button"

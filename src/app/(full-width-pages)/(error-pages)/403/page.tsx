@@ -19,7 +19,7 @@ export default function Error403() {
         </h1>
 
         {/* Note: You can replace these paths with specific 403/Locked SVGs if you have them */}
-        <Image
+        {/* <Image
           src="/images/error/403.svg" 
           alt="403 Forbidden"
           className="dark:hidden mx-auto"
@@ -32,7 +32,7 @@ export default function Error403() {
           className="hidden dark:block mx-auto"
           width={350}
           height={200}
-        />
+        /> */}
 
         <div className="mt-10">
           <h2 className="mb-3 text-xl font-semibold text-gray-800 dark:text-white/90">

@@ -6,7 +6,17 @@ import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
 
-// Define the Props Interface
+// ✅ Define the Data Shape
+export interface FilterData {
+  search: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  vesselId: string;
+  voyageId: string;
+  companyId: string;
+}
+
 interface FilterProps {
   search: string;
   setSearch: (v: string) => void;
@@ -21,15 +31,15 @@ interface FilterProps {
   optionOff?: boolean;
   vesselId?: string;
   setVesselId?: (v: string) => void;
-
   voyageId?: string;
   setVoyageId?: (v: string) => void;
-
   vessels?: any[];
   companyId?: string;
   setCompanyId?: (v: string) => void;
   companies?: any[];
   isSuperAdmin?: boolean;
+  // ✅ New Optional Prop for Batch Updates
+  onApply?: (data: FilterData) => void;
 }
 
 export default function Filters({
@@ -46,15 +56,14 @@ export default function Filters({
   optionOff,
   vesselId = "",
   setVesselId = () => {},
-
   voyageId = "",
   setVoyageId = () => {},
-
   vessels = [],
   companyId = "",
   setCompanyId = () => {},
   companies = [],
   isSuperAdmin = false,
+  onApply, // Destructure new prop
 }: FilterProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
@@ -67,28 +76,16 @@ export default function Filters({
   >([]);
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
 
-  useEffect(() => {
-    setLocalSearch(search);
-  }, [search]);
-  useEffect(() => {
-    setLocalStatus(status);
-  }, [status]);
-  useEffect(() => {
-    setLocalStartDate(startDate);
-  }, [startDate]);
-  useEffect(() => {
-    setLocalEndDate(endDate);
-  }, [endDate]);
-  useEffect(() => {
-    setLocalVesselId(vesselId);
-  }, [vesselId]);
-  useEffect(() => {
-    setLocalVoyageId(voyageId);
-  }, [voyageId]);
-  useEffect(() => {
-    setLocalCompanyId(companyId);
-  }, [companyId]);
+  // Sync props to local state
+  useEffect(() => { setLocalSearch(search); }, [search]);
+  useEffect(() => { setLocalStatus(status); }, [status]);
+  useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
+  useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
+  useEffect(() => { setLocalVesselId(vesselId); }, [vesselId]);
+  useEffect(() => { setLocalVoyageId(voyageId); }, [voyageId]);
+  useEffect(() => { setLocalCompanyId(companyId); }, [companyId]);
 
+  // Fetch Voyages for dropdown
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       if (!localVesselId) {
@@ -115,30 +112,59 @@ export default function Filters({
   }, [localVesselId]);
 
   const handleApplyFilters = () => {
-    setSearch(localSearch);
-    setStatus(localStatus);
-    setStartDate(localStartDate);
-    setEndDate(localEndDate);
-    setVesselId(localVesselId);
-    setVoyageId(localVoyageId);
-    setCompanyId(localCompanyId);
+    // ✅ Check if onApply exists (Server Component Mode)
+    if (onApply) {
+      onApply({
+        search: localSearch,
+        status: localStatus,
+        startDate: localStartDate,
+        endDate: localEndDate,
+        vesselId: localVesselId,
+        voyageId: localVoyageId,
+        companyId: localCompanyId,
+      });
+    } else {
+      // Legacy Mode (Client State)
+      setSearch(localSearch);
+      setStatus(localStatus);
+      setStartDate(localStartDate);
+      setEndDate(localEndDate);
+      setVesselId(localVesselId);
+      setVoyageId(localVoyageId);
+      setCompanyId(localCompanyId);
+    }
   };
 
   const handleClear = () => {
+    // 1. Reset Local State
     setLocalSearch("");
     setLocalStatus("all");
     setLocalStartDate("");
     setLocalEndDate("");
     setLocalVesselId("");
     setLocalVoyageId("");
-    setSearch("");
-    setStatus("all");
-    setStartDate("");
-    setEndDate("");
-    setVesselId("");
-    setVoyageId("");
     setLocalCompanyId("");
-    setCompanyId("");
+
+    // 2. Trigger Update
+    if (onApply) {
+      onApply({
+        search: "",
+        status: "all",
+        startDate: "",
+        endDate: "",
+        vesselId: "",
+        voyageId: "",
+        companyId: "",
+      });
+    } else {
+      setSearch("");
+      setStatus("all");
+      setStartDate("");
+      setEndDate("");
+      setVesselId("");
+      setVoyageId("");
+      setCompanyId("");
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -178,7 +204,7 @@ export default function Filters({
 
   return (
     <div className="flex flex-wrap items-end gap-4 p-4 w-full">
-      {/* SEARCH: Now fixed to 200px minimum, same as others */}
+      {/* SEARCH */}
       <div className="w-full sm:w-auto min-w-[200px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
           Search
@@ -206,7 +232,8 @@ export default function Filters({
         />
       </div>
 
-      {isSuperAdmin && companies.length > 0 && (
+      {/* COMPANY (Super Admin Only) */}
+      {isSuperAdmin && companies && companies.length > 0 && (
         <div className="w-full sm:w-auto min-w-[200px]">
           <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
             Company
@@ -217,10 +244,11 @@ export default function Filters({
               label: c.name,
             }))}
             placeholder="All Companies"
-            value={localCompanyId} // Should be the ID
+            value={localCompanyId}
             onChange={(val) => {
               setLocalCompanyId(val || "all");
-              setLocalVesselId("");
+              // Reset vessel/voyage when company changes
+              setLocalVesselId(""); 
               setLocalVoyageId("");
             }}
           />
@@ -248,7 +276,7 @@ export default function Filters({
                   (v: any) => v.name === selectedName
                 );
                 setLocalVesselId(selectedVessel?._id || "");
-                setLocalVoyageId("");
+                setLocalVoyageId(""); // Reset voyage when vessel changes
               }}
             />
           </div>

@@ -5,18 +5,18 @@ import ExportToExcel from "@/components/common/ExportToExcel"; // Import common 
 import Filters from "@/components/common/Filters";
 import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
 import TableCount from "@/components/common/TableCount";
+import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
 import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AddNORButton from "./AddNORButton";
 import NorReportTable from "./NorReportTable";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
 export default function NoticeOfReadiness() {
   const [refresh, setRefresh] = useState(0);
   const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Authorization logic
+  //  Authorization logic
   const { can, isReady, user } = useAuthorization();
   const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   const canView = can("nor.view");
@@ -32,11 +32,9 @@ export default function NoticeOfReadiness() {
   const [vesselId, setVesselId] = useState("");
   const [voyageId, setVoyageId] = useState("");
   const [companyId, setCompanyId] = useState("all");
- const [companies, setCompanies] = useState<any[]>([]); 
-const [vessels, setVessels] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [vessels, setVessels] = useState<any[]>([]);
   const [voyages, setVoyages] = useState<any[]>([]);
-
- 
 
   const handleRefresh = () => setRefresh((prev) => prev + 1);
 
@@ -69,7 +67,9 @@ const [vessels, setVessels] = useState<any[]>([]);
   if (!canView) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">You do not have permission to access NOR Reports.</p>
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access NOR Reports.
+        </p>
       </div>
     );
   }
@@ -81,37 +81,37 @@ const [vessels, setVessels] = useState<any[]>([]);
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           NOR (Notice of Readiness)
         </h2>
-<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: First (Left) | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Desktop: First (Left) | Mobile: Bottom */}
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={isFilterVisible}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
 
-  {/* Desktop: Middle | Mobile: Middle */}
-  <div className="w-full sm:w-auto">
-    <ExportToExcel
-      data={reportsData}
-      fileName="NOR_Reports"
-      exportMap={excelMapping}
-      className="w-full justify-center"
-    />
-  </div>
+          {/* Desktop: Middle | Mobile: Middle */}
+          <div className="w-full sm:w-auto">
+            <ExportToExcel
+              data={reportsData}
+              fileName="NOR_Reports"
+              exportMap={excelMapping}
+              className="w-full justify-center"
+            />
+          </div>
 
-  {/* Desktop: Last (Right) | Mobile: Top */}
-  {canCreate && (
-    <div className="w-full sm:w-auto">
-      <AddNORButton 
-        onSuccess={handleRefresh} 
-        vesselList={vessels} 
-        allVoyages={voyages} 
-        className="w-full justify-center"
-      />
-    </div>
-  )}
-</div>
+          {/* Desktop: Last (Right) | Mobile: Top */}
+          {canCreate && (
+            <div className="w-full sm:w-auto">
+              <AddNORButton
+                onSuccess={handleRefresh}
+                vesselList={vessels}
+                allVoyages={voyages}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ComponentCard
@@ -156,10 +156,10 @@ const [vessels, setVessels] = useState<any[]>([]);
           companyId={companyId}
           vesselList={vessels}
           onFilterDataLoad={(data) => {
-    setVessels(data.vessels);
-    setCompanies(data.companies);
-    setVoyages(data.voyages);
-  }}
+            setVessels(data.vessels);
+            setCompanies(data.companies);
+            setVoyages(data.voyages);
+          }}
         />
       </ComponentCard>
     </div>

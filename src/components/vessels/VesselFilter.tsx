@@ -1,23 +1,23 @@
 "use client";
 
 import DatePicker from "@/components/form/date-picker";
-import { useEffect, useState } from "react";
 import Input from "@/components/form/input/InputField";
 import Select from "@/components/form/Select";
+import { useEffect, useState } from "react";
 
 interface RoleFiltersProps {
   search: string;
   setSearch: (v: string) => void;
   status: string;
   setStatus: (v: string) => void;
-  
-  // ✅ Made date props optional
+
+  //  Made date props optional
   startDate?: string;
   setStartDate?: (v: string) => void;
   endDate?: string;
   setEndDate?: (v: string) => void;
-  
-  // ✅ New Prop to control visibility (default: true)
+
+  //  New Prop to control visibility (default: true)
   showDateFilters?: boolean;
 }
 
@@ -28,21 +28,29 @@ export default function RoleFilters({
   setStatus,
   startDate = "", // Default to empty string if not provided
   setStartDate,
-  endDate = "",   // Default to empty string if not provided
+  endDate = "", // Default to empty string if not provided
   setEndDate,
   showDateFilters = true, // Default to showing dates
 }: RoleFiltersProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
-  
+
   // Initialize with fallback to empty string
   const [localStartDate, setLocalStartDate] = useState(startDate || "");
   const [localEndDate, setLocalEndDate] = useState(endDate || "");
 
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalStartDate(startDate || ""); }, [startDate]);
-  useEffect(() => { setLocalEndDate(endDate || ""); }, [endDate]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalStartDate(startDate || "");
+  }, [startDate]);
+  useEffect(() => {
+    setLocalEndDate(endDate || "");
+  }, [endDate]);
 
   const handleApplyFilters = () => {
     setSearch(localSearch);
@@ -57,7 +65,7 @@ export default function RoleFilters({
     setLocalStatus("all");
     setLocalStartDate("");
     setLocalEndDate("");
-    
+
     setSearch("");
     setStatus("all");
     if (setStartDate) setStartDate("");
@@ -70,7 +78,6 @@ export default function RoleFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-4 p-4 w-full ms-2">
-      
       {/* SEARCH */}
       <div className="flex-1 min-w-[280px] max-w-full lg:max-w-md">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
@@ -103,7 +110,7 @@ export default function RoleFilters({
         />
       </div>
 
-      {/* ✅ CONDITIONALLY RENDER DATE PICKERS */}
+      {/*  CONDITIONALLY RENDER DATE PICKERS */}
       {showDateFilters && (
         <>
           {/* DATE FROM */}

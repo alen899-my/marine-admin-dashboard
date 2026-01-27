@@ -1,12 +1,12 @@
 // src/app/api/vessels/route.ts
-import { NextResponse } from "next/server";
-import Vessel from "@/models/Vessel";
-import { dbConnect } from "@/lib/db";
-import Voyage from "@/models/Voyage";
-import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi schema
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import { dbConnect } from "@/lib/db";
+import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi schema
 import Company from "@/models/Company";
+import Vessel from "@/models/Vessel";
+import Voyage from "@/models/Voyage";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 
     // 3. Build Filter Object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // ✅ Initialize query to exclude soft-deleted records
+    //  Initialize query to exclude soft-deleted records
     const query: any = { deletedAt: null };
 
     // =========================================================
@@ -46,7 +46,12 @@ export async function GET(req: Request) {
     // =========================================================
     if (isSuperAdmin) {
       // Super Admin: Can filter by any company if provided
-      if (companyIdParam && companyIdParam !== "undefined" && companyIdParam !== "null" && companyIdParam !== "all") {
+      if (
+        companyIdParam &&
+        companyIdParam !== "undefined" &&
+        companyIdParam !== "null" &&
+        companyIdParam !== "all"
+      ) {
         query.company = companyIdParam;
       }
     } else {
@@ -54,7 +59,7 @@ export async function GET(req: Request) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Access denied: No company assigned to your profile." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       query.company = userCompanyId;
@@ -66,19 +71,18 @@ export async function GET(req: Request) {
     if (fetchAll) {
       // 🟢 MODE A: DROPDOWN (Optimized for Speed)
       query.status = "active";
-      
+
       vesselQuery = Vessel.find(query)
         .select("_id name status") // ⚡ PERFORMANCE: Don't fetch heavy fields
-        .sort({ name: 1 })         // Alphabetical for dropdowns
+        .sort({ name: 1 }) // Alphabetical for dropdowns
         .lean();
-        
     } else {
       // 🔵 MODE B: ADMIN LIST (Full Details + Pagination)
       if (status && status !== "all") query.status = status;
       // Note: query.company is already handled by multi-tenancy block above
-      
+
       if (search) {
-        // ✅ Wrap search in $and to ensure deletedAt: null is always enforced
+        //  Wrap search in $and to ensure deletedAt: null is always enforced
         query.$and = [
           { deletedAt: null },
           {
@@ -86,10 +90,10 @@ export async function GET(req: Request) {
               { name: { $regex: search, $options: "i" } },
               { imo: { $regex: search, $options: "i" } },
             ],
-          }
+          },
         ];
       }
-      
+
       if (startDate && endDate) {
         query.createdAt = {
           $gte: new Date(startDate),
@@ -116,16 +120,16 @@ export async function GET(req: Request) {
     // =========================================================
     // 🌟 5. ATTACH ACTIVE VOYAGE (Application-Side Join)
     // =========================================================
-    
+
     const vesselIds = vessels.map((v: any) => v._id);
 
     const activeVoyages = await Voyage.find({
       vesselId: { $in: vesselIds },
       status: "active",
-      deletedAt: null // ✅ Also ensure we only map non-deleted active voyages
+      deletedAt: null, //  Also ensure we only map non-deleted active voyages
     })
-    .select("vesselId voyageNo schedule.startDate")
-    .lean();
+      .select("vesselId voyageNo schedule.startDate")
+      .lean();
 
     const voyageMap = new Map();
     activeVoyages.forEach((voy: any) => {
@@ -134,7 +138,7 @@ export async function GET(req: Request) {
 
     const data = vessels.map((v: any) => ({
       ...v,
-      activeVoyageNo: voyageMap.get(v._id.toString()) || "", 
+      activeVoyageNo: voyageMap.get(v._id.toString()) || "",
     }));
     // =========================================================
 
@@ -147,16 +151,14 @@ export async function GET(req: Request) {
         totalPages: fetchAll ? 1 : Math.ceil(total / limit),
       },
     });
-
   } catch (error) {
     console.error("Error fetching vessels:", error);
     return NextResponse.json(
       { error: "Failed to fetch vessels" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
 
 export async function POST(request: Request) {
   try {
@@ -164,7 +166,7 @@ export async function POST(request: Request) {
     if (!authz.ok) return authz.response;
     await dbConnect();
     const session = await auth();
-    
+
     if (!session || !session.user || !session.user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -183,24 +185,30 @@ export async function POST(request: Request) {
         field: err.path.join("."),
         message: err.message,
       }));
-      return NextResponse.json({ error: "Validation failed", details }, { status: 400 });
+      return NextResponse.json(
+        { error: "Validation failed", details },
+        { status: 400 },
+      );
     }
 
     const validCompany = await Company.findById(value.company);
     if (!validCompany) {
-      return NextResponse.json({ error: "The selected company does not exist." }, { status: 400 });
+      return NextResponse.json(
+        { error: "The selected company does not exist." },
+        { status: 400 },
+      );
     }
 
-    // ❌ REMOVED: Manual check for existingVessel. 
+    // ❌ REMOVED: Manual check for existingVessel.
     // We let the Database throw the error now.
 
     const vesselData = {
       ...value,
       createdBy: currentUserId,
-      updatedBy: currentUserId, 
+      updatedBy: currentUserId,
     };
 
-    const newVessel = await Vessel.create(vesselData) as any;
+    const newVessel = (await Vessel.create(vesselData)) as any;
 
     const populatedVessel = await Vessel.findById(newVessel._id)
       .populate("company", "name")
@@ -209,22 +217,21 @@ export async function POST(request: Request) {
       .lean();
 
     return NextResponse.json(populatedVessel, { status: 201 });
-
   } catch (error: any) {
-    // ✅ HANDLE DUPLICATES HERE (Covers Name AND IMO)
+    //  HANDLE DUPLICATES HERE (Covers Name AND IMO)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0]; // "name" or "imo"
       const label = field === "imo" ? "IMO Number" : "Vessel Name";
       return NextResponse.json(
         { error: `${label} already exists.` },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     console.error("Error creating vessel:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create vessel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import ReportOperational from "@/models/ReportOperational";
-import Voyage from "@/models/Voyage"; // ✅ Import Voyage
-import mongoose from "mongoose"; 
-import path from "path";
-import { writeFile, unlink, mkdir } from "fs/promises";
+import Voyage from "@/models/Voyage"; //  Import Voyage
+import { del, put } from "@vercel/blob";
 import { existsSync } from "fs";
-import { put, del } from "@vercel/blob";
-import { authorizeRequest } from "@/lib/authorizeRequest";
-import { auth } from "@/auth";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import mongoose from "mongoose";
+import { NextResponse } from "next/server";
+import path from "path";
 // --- HELPER: DELETE FILE ---
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
@@ -38,14 +38,14 @@ interface IUpdateNorData {
 // --- PATCH: UPDATE NOR ---
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth(); // ✅ Get session
+    const session = await auth(); //  Get session
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.edit");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const { id } = await params;
     const formData = await req.formData();
@@ -81,18 +81,18 @@ export async function PATCH(
     const lookupVesselId = formVesselId || existingRecord.vesselId?.toString();
 
     if (voyageNoString && lookupVesselId) {
-       // 1. Update the Snapshot String
-       updateData.voyageNo = voyageNoString;
+      // 1. Update the Snapshot String
+      updateData.voyageNo = voyageNoString;
 
-       // 2. Find and Link the real Voyage ObjectId
-       const foundVoyage = await Voyage.findOne({
-          vesselId: new mongoose.Types.ObjectId(lookupVesselId),
-          voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") }
-       }).select("_id");
+      // 2. Find and Link the real Voyage ObjectId
+      const foundVoyage = await Voyage.findOne({
+        vesselId: new mongoose.Types.ObjectId(lookupVesselId),
+        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+      }).select("_id");
 
-       if (foundVoyage) {
-          updateData.voyageId = foundVoyage._id;
-       }
+      if (foundVoyage) {
+        updateData.voyageId = foundVoyage._id;
+      }
     }
 
     // --- C. Other Fields ---
@@ -123,7 +123,10 @@ export async function PATCH(
 
     if (file && file.size > 0) {
       if (file.size > 500 * 1024) {
-        return NextResponse.json({ error: "File size exceeds the 500 KB limit." }, { status: 400 });
+        return NextResponse.json(
+          { error: "File size exceeds the 500 KB limit." },
+          { status: 400 },
+        );
       }
 
       // Delete old file
@@ -140,7 +143,10 @@ export async function PATCH(
         await writeFile(path.join(uploadDir, filename), buffer);
         updateData["norDetails.documentUrl"] = `/uploads/nor/${filename}`;
       } else {
-        const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+        const blob = await put(filename, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
         updateData["norDetails.documentUrl"] = blob.url;
       }
     }
@@ -149,42 +155,46 @@ export async function PATCH(
     const report = await ReportOperational.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
-    // ✅ POPULATE VOYAGE ID (Crucial for frontend display)
-    .populate("voyageId", "voyageNo")
-    .populate({
-  path: "vesselId",
-  select: "name company", // Include name and company reference
-  populate: {
-    path: "company",      // Populate the company document
-    select: "name",       // Only fetch the company name
-  },
-})
-    .populate("createdBy", "fullName") 
-.populate("updatedBy", "fullName"); // 
+      //  POPULATE VOYAGE ID (Crucial for frontend display)
+      .populate("voyageId", "voyageNo")
+      .populate({
+        path: "vesselId",
+        select: "name company", // Include name and company reference
+        populate: {
+          path: "company", // Populate the company document
+          select: "name", // Only fetch the company name
+        },
+      })
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName"); //
 
     return NextResponse.json({ report });
   } catch (error: unknown) {
     console.error("Update Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ error: "Update failed", details: errorMessage }, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json(
+      { error: "Update failed", details: errorMessage },
+      { status: 500 },
+    );
   }
 }
 
 // --- DELETE: REMOVE NOR (Unchanged) ---
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const authz = await authorizeRequest("nor.delete");
     if (!authz.ok) return authz.response;
-    
+
     await dbConnect();
     const { id } = await params;
-    
-    // ✅ Perform Hard Delete
+
+    //  Perform Hard Delete
     // We use findByIdAndDelete to permanently remove the record from the collection.
     const deletedRecord = await ReportOperational.findByIdAndDelete(id);
 
@@ -192,8 +202,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // ✅ Optional: Physical File Cleanup
-    // Since this is a hard delete, you might want to delete the associated file 
+    //  Optional: Physical File Cleanup
+    // Since this is a hard delete, you might want to delete the associated file
     // from your storage (S3/Cloudinary/etc) here if record.fileUrl exists.
 
     return NextResponse.json({ message: "Deleted successfully" });

@@ -1,31 +1,40 @@
 "use client";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import {
   Boxes,
+  Building2,
   ChevronDown,
+  Component,
   Ellipsis,
   FileText,
+  Fingerprint,
   Flag,
+  Gauge,
+  IdCard,
   LayoutDashboard,
+  Map,
+  Ship,
   SquareArrowDownRight,
   SquareArrowUpLeft,
-  ShieldCheck,
   Users2,
-  Ship,
-  Map,
+
   KeyRound,
-  IdCard,Fingerprint,
-  Component,
-  Building2,
+
   GaugeCircle,
-  Gauge,
+
   FileCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSidebar } from "../context/SidebarContext";
-import { useAuthorization } from "@/hooks/useAuthorization";
 
 // 2. Update Type Definition
 type NavItem = {
@@ -33,10 +42,10 @@ type NavItem = {
   icon: React.ReactNode;
   path?: string;
   requiredPermission?: string; // New field for RBAC
-  subItems?: { 
-    name: string; 
-    path: string; 
-    pro?: boolean; 
+  subItems?: {
+    name: string;
+    path: string;
+    pro?: boolean;
     new?: boolean;
     requiredPermission?: string; // Sub-items can also have permissions
   }[];
@@ -47,7 +56,6 @@ const navItems: NavItem[] = [
     icon: <LayoutDashboard size={25} />,
     name: "Dashboard",
     path: "/",
-    
   },
   {
     icon: <FileText size={25} />,
@@ -79,13 +87,13 @@ const navItems: NavItem[] = [
     path: "/cargo-stowage-cargo-documents",
     requiredPermission: "cargo.view",
   },
-  // {
-  //   icon: <Gauge size={25} />, // Or any icon like BarChart3 from lucide-react
-  //   name: "Voyage Analysis / Performance",
-  //   path: "/voyage-analysis-performance",
-  //   // requiredPermission: "voyage_analysis.view",
-  // },
-   {
+  {
+    icon: <Gauge size={25} />, // Or any icon like BarChart3 from lucide-react
+    name: "Voyage Analysis",
+    path: "/voyage-analysis-performance",
+    requiredPermission: "voyageanalysis.view",
+  },
+  {
     icon: <Ship size={25} />,
     name: "Vessels",
     path: "/vessels",
@@ -111,84 +119,84 @@ const navItems: NavItem[] = [
   },
 
   {
-   
-    icon: <Building2 size={25} />, // ✅ Company Icon
+    icon: <Building2 size={25} />, //  Company Icon
     name: "Companies",
-    path: "/manage-companies",      // ✅ Matches your new route
-    requiredPermission: "company.view", // ✅ Matches the RBAC slug
+    path: "/manage-companies", //  Matches your new route
+    requiredPermission: "company.view", //  Matches the RBAC slug
   },
 
   {
-    
-    icon:<IdCard size={25}/>,
-    name:" Roles ",
-    path:"/roles-and-permissions",
-    requiredPermission: "roles.view", 
+    icon: <IdCard size={25} />,
+    name: " Roles ",
+    path: "/roles-and-permissions",
+    requiredPermission: "roles.view",
   },
   {
     icon: <Fingerprint size={25} />,
     name: "Permissions",
     path: "/permissions",
-    requiredPermission:"permission.view"
-    
+    requiredPermission: "permission.view",
   },
   {
     icon: <Component size={25} />,
     name: "Resources",
     path: "/resources",
-    requiredPermission:"resource.view"
+    requiredPermission: "resource.view",
   },
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered,toggleMobileSidebar } = useSidebar();
+  const {
+    isExpanded,
+    isMobileOpen,
+    isHovered,
+    setIsHovered,
+    toggleMobileSidebar,
+  } = useSidebar();
   const pathname = usePathname();
-  
+
   const { can, isReady, isAuthenticated } = useAuthorization();
 
   const filteredNavItems = useMemo(() => {
-  if (!isReady || !isAuthenticated) return [];
+    if (!isReady || !isAuthenticated) return [];
 
-  return navItems.reduce<NavItem[]>((acc, item) => {
-    // 🔐 Parent permission
-    if (item.requiredPermission && !can(item.requiredPermission)) {
-      return acc;
-    }
-
-    // 🔐 Sub-items
-    if (item.subItems) {
-      const visibleSubItems = item.subItems.filter(
-        (sub) => !sub.requiredPermission || can(sub.requiredPermission)
-      );
-
-      if (visibleSubItems.length > 0) {
-        acc.push({ ...item, subItems: visibleSubItems });
+    return navItems.reduce<NavItem[]>((acc, item) => {
+      // 🔐 Parent permission
+      if (item.requiredPermission && !can(item.requiredPermission)) {
+        return acc;
       }
-    } else {
-      acc.push(item);
-    }
 
-    return acc;
-  }, []);
-}, [can, isReady, isAuthenticated]);
+      // 🔐 Sub-items
+      if (item.subItems) {
+        const visibleSubItems = item.subItems.filter(
+          (sub) => !sub.requiredPermission || can(sub.requiredPermission),
+        );
 
+        if (visibleSubItems.length > 0) {
+          acc.push({ ...item, subItems: visibleSubItems });
+        }
+      } else {
+        acc.push(item);
+      }
+
+      return acc;
+    }, []);
+  }, [can, isReady, isAuthenticated]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
   } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
-
   useEffect(() => {
     let submenuMatched = false;
     ["main"].forEach((menuType) => {
-  
       filteredNavItems.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -237,7 +245,7 @@ const AppSidebar: React.FC = () => {
 
   const renderMenuItems = (
     items: NavItem[], // Changed arg name to generic 'items'
-    menuType: "main" | "others"
+    menuType: "main" | "others",
   ) => (
     <ul className="flex flex-col gap-2">
       {items.map((nav, index) => (
@@ -282,10 +290,9 @@ const AppSidebar: React.FC = () => {
             nav.path && (
               <Link
                 href={nav.path}
-               onClick={() => {
-   
-    if (isMobileOpen) toggleMobileSidebar(); 
-  }}
+                onClick={() => {
+                  if (isMobileOpen) toggleMobileSidebar();
+                }}
                 className={`menu-item group ${
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
                 }`}
@@ -323,10 +330,9 @@ const AppSidebar: React.FC = () => {
                   <li key={subItem.name}>
                     <Link
                       href={subItem.path}
-                     onClick={() => {
-    
-    if (isMobileOpen) toggleMobileSidebar(); 
-  }}
+                      onClick={() => {
+                        if (isMobileOpen) toggleMobileSidebar();
+                      }}
                       className={`menu-dropdown-item ${
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
@@ -369,8 +375,8 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
   if (!isReady) {
-  return null; // or skeleton loader
-}
+    return null; // or skeleton loader
+  }
 
   return (
     <aside
@@ -379,8 +385,8 @@ const AppSidebar: React.FC = () => {
           isExpanded || isMobileOpen
             ? "w-[290px]"
             : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
+              ? "w-[290px]"
+              : "w-[90px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -388,10 +394,10 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-  className={`py-5 hidden lg:flex ${ 
-    !isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
-  }`}
->
+        className={`py-5 hidden lg:flex ${
+          !isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
+        }`}
+      >
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
@@ -411,12 +417,7 @@ const AppSidebar: React.FC = () => {
               />
             </>
           ) : (
-            <Image
-              src="/images/logo/p.png"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            <Image src="/images/logo/p.png" alt="Logo" width={32} height={32} />
           )}
         </Link>
       </div>
@@ -431,11 +432,7 @@ const AppSidebar: React.FC = () => {
                     : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  ""
-                ) : (
-                  <Ellipsis />
-                )}
+                {isExpanded || isHovered || isMobileOpen ? "" : <Ellipsis />}
               </h2>
               {/* 7. Pass FILTERED items here */}
               {renderMenuItems(filteredNavItems, "main")}

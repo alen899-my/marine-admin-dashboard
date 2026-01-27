@@ -13,7 +13,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth(); // ✅ Get session
+    const session = await auth(); //  Get session
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("departure.edit");
     if (!authz.ok) return authz.response;
@@ -31,7 +31,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // ✅ VOYAGE LOOKUP LOGIC FOR EDIT
+    //  VOYAGE LOOKUP LOGIC FOR EDIT
     const newVoyageNoString = body.voyageNo || body.voyageId;
     const vesselId = body.vesselId || report.vesselId;
 
@@ -47,7 +47,7 @@ export async function PATCH(
       }
     }
 
-    // ✅ FIX: Cast to ObjectId so Mongoose registers the update
+    //  FIX: Cast to ObjectId so Mongoose registers the update
     if (currentUserId) {
       report.updatedBy = new mongoose.Types.ObjectId(currentUserId) as any;
     }
@@ -83,7 +83,7 @@ export async function PATCH(
 
     await report.save();
 
-    // ✅ FIX: Re-populate to ensure the frontend receives the 'fullName' of the updater
+    //  FIX: Re-populate to ensure the frontend receives the 'fullName' of the updater
     const updatedReport = await ReportOperational.findById(report._id)
       .populate("voyageId", "voyageNo")
       .populate({
@@ -120,10 +120,10 @@ export async function DELETE(
     if (!authz.ok) return authz.response;
     await dbConnect();
 
-    // ✅ IMPORTANT: await params
+    //  IMPORTANT: await params
     const { id } = await context.params;
 
-    // ✅ Perform Hard Delete
+    //  Perform Hard Delete
     // Changed from findOneAndUpdate to findOneAndDelete to permanently remove the record.
     // We still include eventType: "departure" to ensure the correct record type is targeted.
     const deleted = await ReportOperational.findOneAndDelete({

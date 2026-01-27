@@ -30,7 +30,7 @@ export async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("✅ New MongoDB Connection Established");
+      console.log(" New MongoDB Connection Established");
       return mongoose;
     });
   }

@@ -1,168 +1,51 @@
-"use client";
-
-import ComponentCard from "@/components/common/ComponentCard";
-import ExportToExcel from "@/components/common/ExportToExcel";
-import Filters from "@/components/common/Filters";
-import FilterToggleButton from "@/components/common/FilterToggleButton";
-import { useFilterPersistence } from "@/hooks/useFilterPersistence";
-import { useEffect, useState } from "react";
-import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
+import { auth } from "@/auth";
+import { getFilterOptions, getNoonReports } from "@/lib/services/noon-report";
+import DailyNoonReportClient from "./DailyNoonPageClient"; //  Import the new wrapper
 import DailyNoonReportTable from "./DailyNoonReportTable";
-import TableCount from "@/components/common/TableCount";
-import { useAuthorization } from "@/hooks/useAuthorization"; // ✅ Added
 
-export default function DailyNoonReport() {
-  const [refresh, setRefresh] = useState(0);
-  const [reportsData, setReportsData] = useState<any[]>([]);
-  const [companyId, setCompanyId] = useState("all");
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}
 
-  
-  // ✅ Authorization logic
-  const { can, isReady, user } = useAuthorization();
-  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
-  const canView = can("noon.view");
-  const canCreate = can("noon.create");
+export default async function DailyNoonReportPage({ searchParams }: PageProps) {
+  // 1. Auth
+  const session = await auth();
+  if (!session?.user) return <div>Unauthorized</div>;
+  const user = session.user;
+  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
 
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
+  // 2. Data Fetching
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 1;
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [vesselId, setVesselId] = useState("");
-  const [voyageId, setVoyageId] = useState("");
-  const [totalCount, setTotalCount] = useState(0);
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [vessels, setVessels] = useState<any[]>([]);
-  const [allVoyages, setAllVoyages] = useState<any[]>([]);
-  
-  const handleRefresh = () => setRefresh((prev) => prev + 1);
+  const [reportData, filterOptions] = await Promise.all([
+    getNoonReports({
+      ...resolvedParams,
+      page,
+      user,
+    }),
+    getFilterOptions(user),
+  ]);
 
-  const excelMapping = (r: any) => ({
-  "Vessel Name":
-    typeof r.vesselId === "object" && r.vesselId !== null
-      ? r.vesselId.name
-      : r.vesselName || "-",
-  "Voyage No":
-    typeof r.voyageId === "object" && r.voyageId !== null
-      ? r.voyageId.voyageNo
-      : r.voyageNo || "-",
-  "Report Date": r.reportDate ? new Date(r.reportDate).toLocaleString() : "-",
-  Status: r.status || "-",
-  Latitude: r.position?.lat || "-",
-  Longitude: r.position?.long || "-",
-  "Dist Last 24h": r.navigation?.distLast24h ?? 0,
-  "Engine Dist": r.navigation?.engineDist ?? 0,
-  "Slip %": r.navigation?.slip ?? 0,
-  "Next Port": r.navigation?.nextPort || "-",
-  "VLSFO Consumed": r.consumption?.vlsfo ?? 0,
-  "LSMGO Consumed": r.consumption?.lsmgo ?? 0,
-  Wind: r.weather?.wind || "-",
-  "Sea State": r.weather?.seaState || "-",
-  Remarks: r.remarks || "-",
-});
+  const { data, pagination } = reportData;
 
-  // 1. Wait for Auth load
-  if (!isReady) return null;
-
-  // 2. Gate the entire page
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">You do not have permission to access Daily Noon Reports.</p>
-      </div>
-    );
-  }
-
+  // 3. Render
+  // We wrap the Table (Server Component) inside the Client Layout (Interactivity)
+  //
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Daily Noon Report
-        </h2>
-<div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-  {/* Desktop: Left | Mobile: Bottom */}
-  <div className="w-full flex justify-end sm:w-auto">
-    <FilterToggleButton
-      isVisible={isFilterVisible}
-      onToggle={setIsFilterVisible}
-    />
-  </div>
-
-  {/* Desktop: Middle | Mobile: Middle */}
-  <div className="w-full sm:w-auto">
-    <ExportToExcel
-      data={reportsData}
-      fileName="Daily_Noon_Reports"
-      exportMap={excelMapping}
-      className="w-full justify-center"
-    />
-  </div>
-
-  {/* Desktop: Right | Mobile: Top */}
-  {canCreate && (
-    <div className="w-full sm:w-auto">
-      <AddDailyNoonReportButton 
-        onSuccess={handleRefresh} 
-        vesselList={vessels} 
-        allVoyages={allVoyages}
-        className="w-full justify-center" 
+    <DailyNoonReportClient
+      data={data}
+      totalCount={pagination.total}
+      filterOptions={filterOptions}
+      isSuperAdmin={isSuperAdmin}
+    >
+      <DailyNoonReportTable
+        data={data}
+        pagination={pagination}
+        vesselList={filterOptions.vessels}
+        allVoyages={filterOptions.voyages}
       />
-    </div>
-  )}
-</div>
-      </div>
-
-      <ComponentCard
-        headerClassName="p-0 px-1"
-        title={
-          isFilterVisible ? (
-            <Filters
-              search={search}
-              setSearch={setSearch}
-              status={status}
-              setStatus={setStatus}
-              startDate={startDate}
-              setStartDate={setStartDate}
-              endDate={endDate}
-              setEndDate={setEndDate}
-              vesselId={vesselId}
-              setVesselId={setVesselId}
-              voyageId={voyageId}
-              setVoyageId={setVoyageId}
-              vessels={vessels}
-              isSuperAdmin={isSuperAdmin}
-              companies={isSuperAdmin ? companies : []}
-              companyId={companyId}
-              setCompanyId={setCompanyId}
-            />
-          ) : null
-        }
-      >
-        <div className="flex justify-end me-2 mb-2">
-          <TableCount count={totalCount} label="Reports" />
-        </div>
-        <DailyNoonReportTable
-          refresh={refresh}
-          search={search}
-          status={status}
-          startDate={startDate}
-          endDate={endDate}
-          onDataLoad={setReportsData}
-          setTotalCount={setTotalCount} 
-          vesselId={vesselId}
-          voyageId={voyageId}
-          vesselList={vessels}
-          companyId={companyId}
-          onFilterDataLoad={(filterData) => {
-            // 🟢 This correctly populates your filters from the Single API call
-            setVessels(filterData.vessels);
-            setCompanies(filterData.companies);
-            setAllVoyages(filterData.voyages);
-          }}
-        />
-      </ComponentCard>
-    </div>
+    </DailyNoonReportClient>
   );
 }

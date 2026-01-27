@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState ,useMemo} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
@@ -16,12 +16,13 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { Info } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface AddDailyNoonReportButtonProps {
-  onSuccess: () => void;
- vesselList: any[];
-  allVoyages: any[]; 
-   className?: string;
+  onSuccess?: () => void;
+  vesselList: any[];
+  allVoyages: any[];
+  className?: string;
 }
 
 interface APIErrorDetail {
@@ -30,11 +31,15 @@ interface APIErrorDetail {
 }
 
 export default function AddDailyNoonReportButton({
-  onSuccess,vesselList,allVoyages,className
+  onSuccess,
+  vesselList,
+  allVoyages,
+  className,
 }: AddDailyNoonReportButtonProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -72,9 +77,9 @@ export default function AddDailyNoonReportButton({
 
   const { suggestedVoyageNo } = useVoyageLogic(
     form.vesselId || undefined,
-    form.reportDate
+    form.reportDate,
   );
-  // ✅ 2. Sync Logic (Auto-fill Voyage)
+  //  2. Sync Logic (Auto-fill Voyage)
   useEffect(() => {
     if (
       suggestedVoyageNo !== undefined &&
@@ -95,7 +100,6 @@ export default function AddDailyNoonReportButton({
         label: v.voyageNo,
       }));
   }, [form.vesselId, allVoyages]);
- 
 
   useEffect(() => {
     const engineDist = parseFloat(form.engineDistance);
@@ -109,7 +113,11 @@ export default function AddDailyNoonReportButton({
     }
   }, [form.engineDistance, form.distanceTravelled]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
@@ -122,7 +130,7 @@ export default function AddDailyNoonReportButton({
   };
 
   const handleVesselChange = (val: string) => {
-   const selected = vesselList.find((v: any) => v.name === val);
+    const selected = vesselList.find((v: any) => v.name === val);
     setForm((prev) => ({
       ...prev,
       vesselName: val,
@@ -130,7 +138,7 @@ export default function AddDailyNoonReportButton({
       voyageNo: "",
     }));
 
-    // ✅ Clear Vessel Error immediately
+    //  Clear Vessel Error immediately
     if (errors.vesselName) {
       setErrors((prev) => {
         const { vesselName, ...rest } = prev;
@@ -141,8 +149,8 @@ export default function AddDailyNoonReportButton({
 
   const handleVoyageChange = (val: string) => {
     setForm((prev) => ({ ...prev, voyageNo: val }));
-    
-    // ✅ Clear Voyage Error immediately
+
+    //  Clear Voyage Error immediately
     if (errors.voyageNo) {
       setErrors((prev) => {
         const { voyageNo, ...rest } = prev;
@@ -211,7 +219,9 @@ export default function AddDailyNoonReportButton({
       }
 
       toast.success("Daily Noon Report submitted successfully!");
-      onSuccess();
+      //  Trigger Server Refresh Logic
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (err) {
       console.error(err);
@@ -225,8 +235,13 @@ export default function AddDailyNoonReportButton({
   if (!isReady || !canCreate) return null;
 
   return (
-   <>
-      <Button size="md" className={className} variant="primary" onClick={openModal}>
+    <>
+      <Button
+        size="md"
+        className={className}
+        variant="primary"
+        onClick={openModal}
+      >
         Add Daily Noon Report
       </Button>
 
@@ -290,7 +305,7 @@ export default function AddDailyNoonReportButton({
                   )}
                 </div>
 
-                {/* ✅ REPLACED INPUT WITH SMART SELECT */}
+                {/*  REPLACED INPUT WITH SMART SELECT */}
                 <div className="relative">
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
@@ -301,8 +316,8 @@ export default function AddDailyNoonReportButton({
                       !form.vesselId
                         ? "Select Vessel first"
                         : filteredVoyageOptions.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={form.voyageNo}
                     onChange={handleVoyageChange}

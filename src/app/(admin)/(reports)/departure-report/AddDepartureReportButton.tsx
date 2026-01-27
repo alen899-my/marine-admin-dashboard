@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState,useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
@@ -8,18 +8,17 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
-import { useModal } from "@/hooks/useModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import { useVoyageLogic } from "@/hooks/useVoyageLogic"; // ✅ Import Hook
-import SearchableSelect from "@/components/form/SearchableSelect";
+import { useModal } from "@/hooks/useModal";
+import { useVoyageLogic } from "@/hooks/useVoyageLogic"; //  Import Hook
 
 interface AddDepartureReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
-    className?: string;
+  className?: string;
   allVoyages: any[];
 }
 
@@ -29,14 +28,19 @@ interface APIErrorDetail {
 }
 
 export default function AddDepartureReportButton({
-  onSuccess,vesselList,allVoyages,className
+  onSuccess,
+  vesselList,
+  allVoyages,
+  className,
 }: AddDepartureReportButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [voyageList, setVoyageList] = useState<{ value: string; label: string }[]>([]);
+  const [voyageList, setVoyageList] = useState<
+    { value: string; label: string }[]
+  >([]);
   const getCurrentDateTime = () => {
     return new Date()
       .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
@@ -44,10 +48,10 @@ export default function AddDepartureReportButton({
       .slice(0, 16);
   };
 
-  // ✅ 1. STATE MUST BE DEFINED FIRST
+  //  1. STATE MUST BE DEFINED FIRST
   const [formData, setFormData] = useState({
     vesselName: "", // Changed from "AN16" to empty to force selection
-    vesselId: "",   // 👈 Crucial for the hook
+    vesselId: "", // 👈 Crucial for the hook
     voyageId: "",
     portName: "",
     lastPort: "",
@@ -65,12 +69,12 @@ export default function AddDepartureReportButton({
     remarks: "",
   });
 
-  // ✅ 2. CALL HOOK (Now it can see formData)
+  //  2. CALL HOOK (Now it can see formData)
   const { suggestedVoyageNo } = useVoyageLogic(
-     formData.vesselId || undefined,
-     formData.reportDate
-   );
-   const filteredVoyageOptions = useMemo(() => {
+    formData.vesselId || undefined,
+    formData.reportDate,
+  );
+  const filteredVoyageOptions = useMemo(() => {
     if (!formData.vesselId) return [];
 
     return allVoyages
@@ -81,25 +85,28 @@ export default function AddDepartureReportButton({
       }));
   }, [formData.vesselId, allVoyages]);
 
-useEffect(() => {
-    if (suggestedVoyageNo !== undefined && suggestedVoyageNo !== formData.voyageId) {
+  useEffect(() => {
+    if (
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== formData.voyageId
+    ) {
       setFormData((prev) => ({ ...prev, voyageId: suggestedVoyageNo }));
     }
   }, [suggestedVoyageNo]);
 
   // Handle standard input changes
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // ✅ 4. VESSEL SELECTION HANDLER
+  //  4. VESSEL SELECTION HANDLER
   const handleVesselChange = (selectedName: string) => {
     // Find the ID based on the name from the HOOK's vessel list
-  const selectedVessel = vesselList.find((v: any) => v.name === selectedName);;
+    const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
 
     setFormData((prev) => ({
       ...prev,
@@ -157,16 +164,37 @@ useEffect(() => {
         voyageId: formData.voyageId,
         portName: formData.portName,
         lastPort: formData.lastPort,
-        eventTime: formData.eventTime ? `${formData.eventTime}+05:30` : undefined,
+        eventTime: formData.eventTime
+          ? `${formData.eventTime}+05:30`
+          : undefined,
         reportDate: formData.reportDate ? `${formData.reportDate}+05:30` : null,
-        distance_to_next_port_nm: formData.distanceToNextPortNm === "" ? undefined : Number(formData.distanceToNextPortNm),
-        etaNextPort: formData.etaNextPort ? `${formData.etaNextPort}+05:30` : null,
-        robVlsfo: formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
-        robLsmgo: formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
-        bunkers_received_vlsfo_mt: formData.bunkersReceivedVlsfo === "" ? undefined : Number(formData.bunkersReceivedVlsfo),
-        bunkers_received_lsmgo_mt: formData.bunkersReceivedLsmgo === "" ? undefined : Number(formData.bunkersReceivedLsmgo),
-        cargo_qty_loaded_mt: formData.cargoQtyLoadedMt === "" ? undefined : Number(formData.cargoQtyLoadedMt),
-        cargo_qty_unloaded_mt: formData.cargoQtyUnloadedMt === "" ? undefined : Number(formData.cargoQtyUnloadedMt),
+        distance_to_next_port_nm:
+          formData.distanceToNextPortNm === ""
+            ? undefined
+            : Number(formData.distanceToNextPortNm),
+        etaNextPort: formData.etaNextPort
+          ? `${formData.etaNextPort}+05:30`
+          : null,
+        robVlsfo:
+          formData.robVlsfo === "" ? undefined : Number(formData.robVlsfo),
+        robLsmgo:
+          formData.robLsmgo === "" ? undefined : Number(formData.robLsmgo),
+        bunkers_received_vlsfo_mt:
+          formData.bunkersReceivedVlsfo === ""
+            ? undefined
+            : Number(formData.bunkersReceivedVlsfo),
+        bunkers_received_lsmgo_mt:
+          formData.bunkersReceivedLsmgo === ""
+            ? undefined
+            : Number(formData.bunkersReceivedLsmgo),
+        cargo_qty_loaded_mt:
+          formData.cargoQtyLoadedMt === ""
+            ? undefined
+            : Number(formData.cargoQtyLoadedMt),
+        cargo_qty_unloaded_mt:
+          formData.cargoQtyUnloadedMt === ""
+            ? undefined
+            : Number(formData.cargoQtyUnloadedMt),
         cargoSummary: formData.cargoSummary,
         remarks: formData.remarks,
       };
@@ -203,11 +231,11 @@ useEffect(() => {
       setIsSubmitting(false);
     }
   };
-   
+
   useEffect(() => {
     async function fetchAndFilterVoyages() {
       // ❌ WAS: if (!form.vesselId)
-      // ✅ FIX: Use formData
+      //  FIX: Use formData
       if (!formData.vesselId) {
         setVoyageList([]);
         return;
@@ -233,7 +261,7 @@ useEffect(() => {
             const isRelevant =
               v.status === "active" ||
               v.voyageNo === suggestedVoyageNo ||
-              v.voyageNo === formData.voyageId; // ✅ Fixed property name
+              v.voyageNo === formData.voyageId; //  Fixed property name
 
             return isRelevant;
           });
@@ -242,7 +270,7 @@ useEffect(() => {
             filtered.map((v: any) => ({
               value: v.voyageNo,
               label: `${v.voyageNo} ${v.status !== "active" ? "" : ""}`,
-            }))
+            })),
           );
         }
       } catch (error) {
@@ -252,8 +280,12 @@ useEffect(() => {
     }
 
     fetchAndFilterVoyages();
-  }, [formData.vesselId, formData.vesselName, suggestedVoyageNo, formData.voyageId]);
-
+  }, [
+    formData.vesselId,
+    formData.vesselName,
+    suggestedVoyageNo,
+    formData.voyageId,
+  ]);
 
   const canCreate = isReady && can("departure.create");
 
@@ -261,7 +293,12 @@ useEffect(() => {
   return (
     <>
       {/* OPEN MODAL BUTTON */}
-      <Button size="md" variant="primary"   className={className}  onClick={openModal}>
+      <Button
+        size="md"
+        variant="primary"
+        className={className}
+        onClick={openModal}
+      >
         Add Departure Report
       </Button>
 
@@ -317,16 +354,16 @@ useEffect(() => {
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
- options={vesselList.map((v: any) => ({
-    value: v.name,
-    label: v.name,
-  }))}
-  placeholder="Search Vessel"
-  value={formData.vesselName}
-  onChange={handleVesselChange}
-  className={errors.vesselName ? "border-red-500" : ""}
-  error={!!errors.vesselName}
-/>
+                    options={vesselList.map((v: any) => ({
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={formData.vesselName}
+                    onChange={handleVesselChange}
+                    className={errors.vesselName ? "border-red-500" : ""}
+                    error={!!errors.vesselName}
+                  />
 
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
@@ -340,25 +377,25 @@ useEffect(() => {
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
- options={filteredVoyageOptions}
-  placeholder={
-    !formData.vesselId
-      ? "Select Vessel first"
-      : filteredVoyageOptions.length === 0
-      ? "No active voyages found"
-      : "Search Voyage"
-  }
-  value={formData.voyageId}
-  onChange={handleVoyageChange}
+                    options={filteredVoyageOptions}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select Vessel first"
+                        : filteredVoyageOptions.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={formData.voyageId}
+                    onChange={handleVoyageChange}
+                    className={errors.voyageNo ? "border-red-500" : ""}
+                    error={!!errors.voyageId}
+                  />
 
-  className={errors.voyageNo ? "border-red-500" : ""}
-  error={!!errors.voyageId}
-/>
-                  
-                 
-{errors.voyageId && (
-    <p className="text-red-500 text-xs mt-1">{errors.voyageId}</p>
-  )}
+                  {errors.voyageId && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.voyageId}
+                    </p>
+                  )}
                 </div>
 
                 <div>

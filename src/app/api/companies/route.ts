@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       if (file.size > 2 * 1024 * 1024) {
         return NextResponse.json(
           { error: "Logo exceeds 2MB limit." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     if (!name || !email) {
       return NextResponse.json(
         { error: "Missing Name or Email" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (existingCompany) {
       return NextResponse.json(
         { error: "A company with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -111,20 +111,20 @@ export async function POST(req: NextRequest) {
     if (userIds.length > 0) {
       await User.updateMany(
         { _id: { $in: userIds } },
-        { $set: { companyId: newCompany._id } }
+        { $set: { companyId: newCompany._id } },
       );
     }
 
     if (vesselIds.length > 0) {
       await Vessel.updateMany(
         { _id: { $in: vesselIds } },
-        { $set: { companyId: newCompany._id } }
+        { $set: { companyId: newCompany._id } },
       );
     }
 
     return NextResponse.json(
       { success: true, companyId: newCompany._id },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("CREATE COMPANY ERROR →", error);
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Forbidden: No company assigned to your profile." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       // Force filter to ONLY their company
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
 
     const total = await Company.countDocuments(query);
 
-    // ✅ POPULATE audit fields so names appear in the View modal
+    //  POPULATE audit fields so names appear in the View modal
     const companies = await Company.find(query)
       .populate("createdBy", "fullName")
       .populate("updatedBy", "fullName")
@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
     console.error("GET COMPANIES ERROR →", error);
     return NextResponse.json(
       { error: "Failed to fetch companies" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

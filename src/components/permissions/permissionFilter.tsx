@@ -1,10 +1,10 @@
 "use client";
 
+import SearchableSelect from "@/components/form/SearchableSelect";
+import Button from "@/components/ui/button/Button"; //  Use your shared Button component
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
-import SearchableSelect from "@/components/form/SearchableSelect";
-import Button from "@/components/ui/button/Button"; // ✅ Use your shared Button component
 interface ModuleOption {
   id: string;
   name: string;
@@ -14,11 +14,10 @@ interface PermissionFilterProps {
   setSearch: (v: string) => void;
   status: string;
   setStatus: (v: string) => void;
-  module: string; 
+  module: string;
   setModule: (v: string) => void;
- modules: ModuleOption[];
+  modules: ModuleOption[];
 }
-
 
 export default function PermissionFilter({
   search,
@@ -33,9 +32,15 @@ export default function PermissionFilter({
   const [localStatus, setLocalStatus] = useState(status);
   const [localModule, setLocalModule] = useState(module);
 
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalModule(module); }, [module]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalModule(module);
+  }, [module]);
 
   const handleApplyFilters = () => {
     setSearch(localSearch);
@@ -92,17 +97,17 @@ export default function PermissionFilter({
       {/* MODULE / GROUP */}
       <div className="w-full sm:w-auto min-w-[220px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1.5 block">
-          Resource 
+          Resource
         </label>
         <SearchableSelect
-  options={modules.map((m) => ({
-    value: m.id,               // This is what is sent to the backend
-    label: m.name
-  }))}
-  placeholder="All Resource"
-  value={localModule}          // localModule will now hold the ID
-  onChange={setLocalModule}
-/>
+          options={modules.map((m) => ({
+            value: m.id, // This is what is sent to the backend
+            label: m.name,
+          }))}
+          placeholder="All Resource"
+          value={localModule} // localModule will now hold the ID
+          onChange={setLocalModule}
+        />
       </div>
 
       {/* ACTION BUTTONS (Using the shared Button component) */}

@@ -1,34 +1,38 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect ,useMemo} from "react"; // Added useEffect
+import { useEffect, useMemo, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 
 // Imports - Adjust paths to match your project structure
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select"; // Added Select Import
+import SearchableSelect from "@/components/form/SearchableSelect";
 import FileInput from "@/components/form/input/FileInput";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
-import { useModal } from "@/hooks/useModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import SearchableSelect from "@/components/form/SearchableSelect";
+import { useModal } from "@/hooks/useModal";
 // Import validation schema (adjust path as needed)
-import { norSchema } from "@/lib/validations/norSchema";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import { norSchema } from "@/lib/validations/norSchema";
 
 interface AddNORReportButtonProps {
   onSuccess: () => void;
   vesselList: any[];
-  allVoyages: any[]; 
-   className?: string;
+  allVoyages: any[];
+  className?: string;
 }
 
-export default function AddNORButton({ onSuccess,vesselList,allVoyages ,className}: AddNORReportButtonProps) {
+export default function AddNORButton({
+  onSuccess,
+  vesselList,
+  allVoyages,
+  className,
+}: AddNORReportButtonProps) {
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -58,11 +62,11 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
     etaPort: "",
     remarks: "",
   });
-  // ✅ 1. CALL THE HOOK
+  //  1. CALL THE HOOK
   const { suggestedVoyageNo } = useVoyageLogic(
-  formData.vesselId || undefined,
-  formData.reportDate
-);
+    formData.vesselId || undefined,
+    formData.reportDate,
+  );
   const [voyageList, setVoyageList] = useState<
     { value: string; label: string }[]
   >([]);
@@ -77,22 +81,22 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
   }, [suggestedVoyageNo]);
 
   const filteredVoyageOptions = useMemo(() => {
-  if (!formData.vesselId) return [];
-  
-  return allVoyages
-    .filter((v: any) => v.vesselId === formData.vesselId)
-    .map((v: any) => ({
-      value: v.voyageNo,
-      label: v.voyageNo,
-    }));
-}, [formData.vesselId, allVoyages]);
+    if (!formData.vesselId) return [];
+
+    return allVoyages
+      .filter((v: any) => v.vesselId === formData.vesselId)
+      .map((v: any) => ({
+        value: v.voyageNo,
+        label: v.voyageNo,
+      }));
+  }, [formData.vesselId, allVoyages]);
 
   // File State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Handle Text Change
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -110,7 +114,7 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
   // ***** NEW: Specific handler for the custom Select component *****
   const handleVesselChange = (selectedName: string) => {
     // Find the ID based on the name from the HOOK's vessel list
- const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
+    const selectedVessel = vesselList.find((v: any) => v.name === selectedName);
     setFormData((prev) => ({
       ...prev,
       vesselName: selectedName,
@@ -219,18 +223,18 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
       data.append("portName", formData.portName);
       data.append(
         "reportDate",
-        formData.reportDate ? `${formData.reportDate}+05:30` : ""
+        formData.reportDate ? `${formData.reportDate}+05:30` : "",
       );
       // Match the key expected by backend
       data.append("pilotStation", formData.pilotStation);
 
       data.append(
         "norTenderTime",
-        formData.norTenderTime ? `${formData.norTenderTime}+05:30` : ""
+        formData.norTenderTime ? `${formData.norTenderTime}+05:30` : "",
       );
       data.append(
         "etaPort",
-        formData.etaPort ? `${formData.etaPort}+05:30` : ""
+        formData.etaPort ? `${formData.etaPort}+05:30` : "",
       );
       data.append("remarks", formData.remarks);
 
@@ -276,7 +280,12 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
   }
   return (
     <>
-      <Button size="md" variant="primary"  className={className} onClick={openModal}>
+      <Button
+        size="md"
+        variant="primary"
+        className={className}
+        onClick={openModal}
+      >
         Add NOR
       </Button>
 
@@ -330,26 +339,30 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
                     Vessel Name <span className="text-red-500">*</span>
                   </Label>
                   <SearchableSelect
-            options={vesselList.map((v: any) => ({ // ⚡ Use vesselList prop
-    value: v.name,
-    label: v.name,
-  }))}
-            placeholder="Search Vessel"
-            value={formData.vesselName}
-            onChange={(val) => {
-            const selected = vesselList.find((v: any) => v.name === val);
-              setFormData((prev) => ({
-                ...prev,
-                vesselName: val,
-                vesselId: selected?._id || "",
-                voyageNo: "", 
-              }));
-              // ✅ Clear error on change
-              if (errors.vesselName) setErrors(prev => ({ ...prev, vesselName: "" }));
-            }}
-            // ✅ Use the 'error' prop for red border logic
-            error={!!errors.vesselName}
-          />
+                    options={vesselList.map((v: any) => ({
+                      // ⚡ Use vesselList prop
+                      value: v.name,
+                      label: v.name,
+                    }))}
+                    placeholder="Search Vessel"
+                    value={formData.vesselName}
+                    onChange={(val) => {
+                      const selected = vesselList.find(
+                        (v: any) => v.name === val,
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        vesselName: val,
+                        vesselId: selected?._id || "",
+                        voyageNo: "",
+                      }));
+                      //  Clear error on change
+                      if (errors.vesselName)
+                        setErrors((prev) => ({ ...prev, vesselName: "" }));
+                    }}
+                    //  Use the 'error' prop for red border logic
+                    error={!!errors.vesselName}
+                  />
                   {errors.vesselName && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.vesselName}
@@ -361,24 +374,25 @@ export default function AddNORButton({ onSuccess,vesselList,allVoyages ,classNam
                   <Label>
                     Voyage No / ID <span className="text-red-500">*</span>
                   </Label>
-                 <SearchableSelect
-           options={filteredVoyageOptions}
-            placeholder={
-              !formData.vesselId
-                ? "Select Vessel first"
-                : filteredVoyageOptions.length === 0
-                ? "No active voyages found"
-                : "Search Voyage"
-            }
-            value={formData.voyageNo}
-            onChange={(val) => {
-              setFormData((prev) => ({ ...prev, voyageNo: val }));
-              // ✅ Clear error on change
-              if (errors.voyageNo) setErrors(prev => ({ ...prev, voyageNo: "" }));
-            }}
-            // ✅ Use the 'error' prop for red border logic
-            error={!!errors.voyageNo}
-          />
+                  <SearchableSelect
+                    options={filteredVoyageOptions}
+                    placeholder={
+                      !formData.vesselId
+                        ? "Select Vessel first"
+                        : filteredVoyageOptions.length === 0
+                          ? "No active voyages found"
+                          : "Search Voyage"
+                    }
+                    value={formData.voyageNo}
+                    onChange={(val) => {
+                      setFormData((prev) => ({ ...prev, voyageNo: val }));
+                      //  Clear error on change
+                      if (errors.voyageNo)
+                        setErrors((prev) => ({ ...prev, voyageNo: "" }));
+                    }}
+                    //  Use the 'error' prop for red border logic
+                    error={!!errors.voyageNo}
+                  />
 
                   {errors.voyageNo && (
                     <p className="text-xs text-red-500 mt-1">

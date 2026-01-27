@@ -14,35 +14,35 @@ export function useAuthorization() {
   const isSuperAdmin = role === "super-admin";
   const isAdmin = role === "admin";
 
-  // ✅ Convert permissions to Set for O(1) lookup
+  //  Convert permissions to Set for O(1) lookup
   const permissionSet = useMemo(() => {
     return new Set(permissions);
   }, [permissions]);
 
-  // ✅ Memoized permission check
+  //  Memoized permission check
   const can = useCallback(
     (permission: string) => {
       if (status !== "authenticated") return false;
 
-      // ✅ SUPER ADMIN BYPASS (NO PERMISSION CHECK)
+      //  SUPER ADMIN BYPASS (NO PERMISSION CHECK)
       if (isSuperAdmin) return true;
 
       return permissionSet.has(permission);
     },
-    [status, isSuperAdmin, permissionSet]
+    [status, isSuperAdmin, permissionSet],
   );
 
-  // ✅ Memoized multi-permission check
+  //  Memoized multi-permission check
   const canAny = useCallback(
     (perms: string[]) => {
       if (status !== "authenticated") return false;
 
-      // ✅ SUPER ADMIN BYPASS
+      //  SUPER ADMIN BYPASS
       if (isSuperAdmin) return true;
 
       return perms.some((p) => permissionSet.has(p));
     },
-    [status, isSuperAdmin, permissionSet]
+    [status, isSuperAdmin, permissionSet],
   );
 
   return {

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo } from "react";
 import Checkbox from "@/components/form/input/Checkbox";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { useMemo } from "react";
 // Define the shape of the permission object
 export interface IPermission {
   _id: string;
@@ -10,9 +10,11 @@ export interface IPermission {
   name: string;
   description?: string;
   group?: string;
-  resourceId?: {
-    name: string;
-  } | string;
+  resourceId?:
+    | {
+        name: string;
+      }
+    | string;
 }
 
 interface GeneralPermissionsSectionProps {
@@ -20,22 +22,25 @@ interface GeneralPermissionsSectionProps {
   selectedPermissions: string[];
   onToggle: (slug: string, checked: boolean) => void;
   isReadOnly?: boolean;
-   isSuperAdmin?: boolean; // ✅ NEW
+  isSuperAdmin?: boolean; //  NEW
 }
 
-export default function GeneralPermissionsSection({ 
-  allPermissions = [], 
-  selectedPermissions, 
-  onToggle ,isReadOnly = false,isSuperAdmin = false
+export default function GeneralPermissionsSection({
+  allPermissions = [],
+  selectedPermissions,
+  onToggle,
+  isReadOnly = false,
+  isSuperAdmin = false,
 }: GeneralPermissionsSectionProps) {
-
   // 🟢 Change: Filter out CRUD slugs (.create, .view, .edit, .delete)
   const generalPermissions = useMemo(() => {
     const crudEndings = [".create", ".view", ".edit", ".delete"];
-    
-    return allPermissions.filter(p => {
+
+    return allPermissions.filter((p) => {
       // Check if the slug ends with any CRUD action
-      const isCrud = crudEndings.some(ending => p.slug.toLowerCase().endsWith(ending));
+      const isCrud = crudEndings.some((ending) =>
+        p.slug.toLowerCase().endsWith(ending),
+      );
       // Return true if it is NOT a CRUD action
       return !isCrud;
     });
@@ -43,7 +48,7 @@ export default function GeneralPermissionsSection({
 
   // Hide the section if no general permissions are found
   if (generalPermissions.length === 0) return null;
-return (
+  return (
     <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
       <h3 className="text-xs font-bold uppercase text-gray-800 dark:text-gray-200 mb-3 tracking-wider">
         General Permissions
@@ -51,36 +56,32 @@ return (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {generalPermissions.map((perm) => {
-         const isChecked =
-  isSuperAdmin || selectedPermissions.includes(perm.slug);
+          const isChecked =
+            isSuperAdmin || selectedPermissions.includes(perm.slug);
           return (
-            /* ✅ Wrapped with Tooltip */
+            /*  Wrapped with Tooltip */
             <Tooltip
               key={perm._id}
               position="top"
               content={
-                <div >
-               
+                <div>
                   <p>
-                    {perm.description || `Grants the user ${perm.name} capability.`}
+                    {perm.description ||
+                      `Grants the user ${perm.name} capability.`}
                   </p>
                 </div>
               }
             >
-              <div 
-               onClick={() => !isReadOnly && onToggle(perm.slug, !isChecked)}
-              className={`flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors  w-full h-full ${
-                isReadOnly 
-                  ? "cursor-default pointer-events-none opacity-100" 
-                  : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-100"
-              }`}
-               
+              <div
+                onClick={() => !isReadOnly && onToggle(perm.slug, !isChecked)}
+                className={`flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors  w-full h-full ${
+                  isReadOnly
+                    ? "cursor-default pointer-events-none opacity-100"
+                    : "cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] opacity-100"
+                }`}
               >
                 <div className="mt-0.5 pointer-events-none">
-                  <Checkbox 
-                    checked={isChecked} 
-                    onChange={() => {}} 
-                  />
+                  <Checkbox checked={isChecked} onChange={() => {}} />
                 </div>
 
                 <div className="flex flex-col min-w-0">

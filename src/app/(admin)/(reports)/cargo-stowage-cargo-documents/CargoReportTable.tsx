@@ -27,8 +27,9 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
-  useState,useMemo
+  useState,
 } from "react";
 import { toast } from "react-toastify";
 // 1. Define Interface to replace 'any'
@@ -125,7 +126,7 @@ export default function CargoReportTable({
   >([]);
   // Selection States
   const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(
-    null
+    null,
   );
 
   // Edit data state - using Partial or a specific edit interface is safer, but any is acceptable for form state if dynamic
@@ -147,7 +148,15 @@ export default function CargoReportTable({
   const [newFile, setNewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({ search, status, startDate, endDate, vesselId, voyageId, companyId });
+  const prevFiltersRef = useRef({
+    search,
+    status,
+    startDate,
+    endDate,
+    vesselId,
+    voyageId,
+    companyId,
+  });
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -159,21 +168,29 @@ export default function CargoReportTable({
   const canDelete = can("cargo.delete");
 
   const getVesselName = (r: ICargoReport | null) => {
-  if (!r || !r.vesselId) return "-";
-  if (typeof r.vesselId === "object" && r.vesselId !== null && "name" in r.vesselId) {
-    return r.vesselId.name;
-  }
-  return "-";
-};
+    if (!r || !r.vesselId) return "-";
+    if (
+      typeof r.vesselId === "object" &&
+      r.vesselId !== null &&
+      "name" in r.vesselId
+    ) {
+      return r.vesselId.name;
+    }
+    return "-";
+  };
 
-  // ✅ FIX: Handle null report and null voyageId safely
+  //  FIX: Handle null report and null voyageId safely
   const getVoyageNo = (r: ICargoReport | null) => {
-  if (!r || !r.voyageId) return "-";
-  if (typeof r.voyageId === "object" && r.voyageId !== null && "voyageNo" in r.voyageId) {
-    return r.voyageId.voyageNo;
-  }
-  return "-";
-};
+    if (!r || !r.voyageId) return "-";
+    if (
+      typeof r.voyageId === "object" &&
+      r.voyageId !== null &&
+      "voyageNo" in r.voyageId
+    ) {
+      return r.voyageId.voyageNo;
+    }
+    return "-";
+  };
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -207,18 +224,18 @@ export default function CargoReportTable({
   };
   const { suggestedVoyageNo } = useVoyageLogic(
     editData?.vesselId,
-    editData?.reportDate
+    editData?.reportDate,
   );
 
   const getCompanyName = (r: ICargoReport | null) => {
-  // r.vesselId can be null if the record is orphaned or soft-deleted
-  if (r && r.vesselId && typeof r.vesselId === "object") {
-    // Using type assertion 'as any' or a specific interface check 
-    // to access nested populated fields safely
-    return (r.vesselId as any).company?.name || "-";
-  }
-  return "-";
-};
+    // r.vesselId can be null if the record is orphaned or soft-deleted
+    if (r && r.vesselId && typeof r.vesselId === "object") {
+      // Using type assertion 'as any' or a specific interface check
+      // to access nested populated fields safely
+      return (r.vesselId as any).company?.name || "-";
+    }
+    return "-";
+  };
 
   // Helper for Soft Delete Status Badges
   const renderStatusBadge = (reportStatus: string) => {
@@ -241,7 +258,7 @@ export default function CargoReportTable({
     return <Badge color={color}>{label}</Badge>;
   };
 
-  // ✅ 2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
+  //  2. SYNC EFFECT (Auto-correct Voyage in Edit Mode)
   useEffect(() => {
     if (
       editData &&
@@ -249,34 +266,37 @@ export default function CargoReportTable({
       suggestedVoyageNo !== editData.voyageNo
     ) {
       setEditData((prev) =>
-        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null
+        prev ? { ...prev, voyageNo: suggestedVoyageNo } : null,
       );
     }
   }, [suggestedVoyageNo]);
   const filteredVoyageOptionsForEdit = useMemo(() => {
-  if (!editData?.vesselId) return [];
+    if (!editData?.vesselId) return [];
 
-  // 1. Filter voyages from the master list provided via props
-  const vesselVoyages = voyageList.filter(
-    (v: any) => v.vesselId?.toString() === editData.vesselId?.toString()
-  );
+    // 1. Filter voyages from the master list provided via props
+    const vesselVoyages = voyageList.filter(
+      (v: any) => v.vesselId?.toString() === editData.vesselId?.toString(),
+    );
 
-  const options = vesselVoyages.map((v: any) => ({
-    value: v.voyageNo,
-    label: v.voyageNo,
-  }));
+    const options = vesselVoyages.map((v: any) => ({
+      value: v.voyageNo,
+      label: v.voyageNo,
+    }));
 
-  // 2. Add fallback for suggested or current voyage to prevent "undefined"
-  const currentOrSuggested = suggestedVoyageNo || editData.voyageNo;
-  if (currentOrSuggested && !options.some(opt => opt.value === currentOrSuggested)) {
-    options.unshift({
-      value: currentOrSuggested,
-      label: currentOrSuggested,
-    });
-  }
+    // 2. Add fallback for suggested or current voyage to prevent "undefined"
+    const currentOrSuggested = suggestedVoyageNo || editData.voyageNo;
+    if (
+      currentOrSuggested &&
+      !options.some((opt) => opt.value === currentOrSuggested)
+    ) {
+      options.unshift({
+        value: currentOrSuggested,
+        label: currentOrSuggested,
+      });
+    }
 
-  return options;
-}, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
+    return options;
+  }, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
@@ -361,10 +381,10 @@ export default function CargoReportTable({
                     {meta.isPdf
                       ? "PDF"
                       : meta.isExcel
-                      ? "XLS"
-                      : meta.isImage
-                      ? "IMG"
-                      : "DOC"}
+                        ? "XLS"
+                        : meta.isImage
+                          ? "IMG"
+                          : "DOC"}
                   </span>
                 </div>
               ) : (
@@ -452,7 +472,7 @@ export default function CargoReportTable({
       vesselId,
       voyageId,
       companyId,
-    ]
+    ],
   ); // Dependencies for useCallback
 
   async function handleUpdate() {
@@ -469,7 +489,7 @@ export default function CargoReportTable({
 
       formData.append(
         "reportDate",
-        editData.reportDate ? `${editData.reportDate}+05:30` : ""
+        editData.reportDate ? `${editData.reportDate}+05:30` : "",
       );
       formData.append("portName", editData.portName);
       formData.append("portType", editData.portType);
@@ -539,49 +559,57 @@ export default function CargoReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
-      setIsDeleting(false); // ✅ Stop Loading
+      setIsDeleting(false); //  Stop Loading
     }
   }
 
   useEffect(() => {
-  if (!isReady) return;
+    if (!isReady) return;
 
-  // 1. Detect if the filters actually changed compared to the last render
-  const filtersChanged =
-    prevFiltersRef.current.search !== search ||
-    prevFiltersRef.current.status !== status ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate ||
-    prevFiltersRef.current.vesselId !== vesselId ||
-    prevFiltersRef.current.voyageId !== voyageId ||
-    prevFiltersRef.current.companyId !== companyId;
+    // 1. Detect if the filters actually changed compared to the last render
+    const filtersChanged =
+      prevFiltersRef.current.search !== search ||
+      prevFiltersRef.current.status !== status ||
+      prevFiltersRef.current.startDate !== startDate ||
+      prevFiltersRef.current.endDate !== endDate ||
+      prevFiltersRef.current.vesselId !== vesselId ||
+      prevFiltersRef.current.voyageId !== voyageId ||
+      prevFiltersRef.current.companyId !== companyId;
 
-  // 2. If filters changed, reset to page 1
-  if (filtersChanged) {
-    // Update ref immediately with new values
-    prevFiltersRef.current = { search, status, startDate, endDate, vesselId, voyageId, companyId };
-    
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Exit and wait for the effect to re-run with currentPage = 1
+    // 2. If filters changed, reset to page 1
+    if (filtersChanged) {
+      // Update ref immediately with new values
+      prevFiltersRef.current = {
+        search,
+        status,
+        startDate,
+        endDate,
+        vesselId,
+        voyageId,
+        companyId,
+      };
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return; // Exit and wait for the effect to re-run with currentPage = 1
+      }
     }
-  }
 
-  // 3. Fetch data for the current page
-  fetchReports(currentPage);
-}, [
-  currentPage,
-  refresh,
-  fetchReports,
-  isReady,
-  search,
-  status,
-  vesselId,
-  voyageId,
-  companyId,
-  startDate,
-  endDate,
-]);
+    // 3. Fetch data for the current page
+    fetchReports(currentPage);
+  }, [
+    currentPage,
+    refresh,
+    fetchReports,
+    isReady,
+    search,
+    status,
+    vesselId,
+    voyageId,
+    companyId,
+    startDate,
+    endDate,
+  ]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };
@@ -603,7 +631,7 @@ export default function CargoReportTable({
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
     const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName
+      (v: any) => v.name === report.vesselName,
     );
     const vesselIdStr =
       typeof report.vesselId === "object"
@@ -818,8 +846,8 @@ export default function CargoReportTable({
                       {fileMeta.isPdf
                         ? "PDF Document"
                         : fileMeta.isExcel
-                        ? "Excel Spreadsheet"
-                        : "Image File"}
+                          ? "Excel Spreadsheet"
+                          : "Image File"}
                     </p>
 
                     <div className="flex items-center gap-2">
@@ -918,7 +946,7 @@ export default function CargoReportTable({
                       "Document Type":
                         selectedReport.documentType?.replace(/_/g, " ") || "-",
                       "Document Date": formatDateOnly(
-                        selectedReport.documentDate
+                        selectedReport.documentDate,
                       ),
                       "Report Date": formatDate(selectedReport.reportDate),
                       Remarks: selectedReport.remarks || "No Remarks",
@@ -943,7 +971,7 @@ export default function CargoReportTable({
                       "Document Type":
                         selectedReport.documentType?.replace(/_/g, " ") || "-",
                       "Document Date": formatDateOnly(
-                        selectedReport.documentDate
+                        selectedReport.documentDate,
                       ),
                       "Report Date": formatDate(selectedReport.reportDate),
                       Remarks: selectedReport.remarks || "No Remarks",
@@ -989,7 +1017,7 @@ export default function CargoReportTable({
                     value={editData.vesselName}
                     onChange={(val) => {
                       const selected = vesselList.find(
-                        (v: any) => v.name === val
+                        (v: any) => v.name === val,
                       );
                       setEditData({
                         ...editData,
@@ -1003,13 +1031,13 @@ export default function CargoReportTable({
                 <div className="relative">
                   <Label>Voyage No</Label>
                   <SearchableSelect
-                  options={filteredVoyageOptionsForEdit} 
+                    options={filteredVoyageOptionsForEdit}
                     placeholder={
                       !editData.vesselId
                         ? "Select Vessel first"
                         : filteredVoyageOptionsForEdit.length === 0
-                        ? "No active voyages found"
-                        : "Search Voyage"
+                          ? "No active voyages found"
+                          : "Search Voyage"
                     }
                     value={editData.voyageNo}
                     onChange={(val) =>
@@ -1173,8 +1201,8 @@ export default function CargoReportTable({
                           {isPdfPreview
                             ? "PDF Document"
                             : isExcelPreview
-                            ? "Excel File"
-                            : "Image File"}
+                              ? "Excel File"
+                              : "Image File"}
                         </p>
                       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 interface Option {
@@ -28,10 +28,10 @@ export default function SearchableSelect({
   error = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // The text displayed in the input box
   const [inputValue, setInputValue] = useState("");
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 1. Sync Input Display with Selected Value
@@ -65,7 +65,7 @@ export default function SearchableSelect({
 
   // 3. Filter Options based on what the user typed
   const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(inputValue.toLowerCase())
+    opt.label.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
   const handleSelect = (val: string) => {
@@ -77,9 +77,9 @@ export default function SearchableSelect({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
     setIsOpen(true);
-    
+
     // Optional: If you want to clear the selection when they start typing new text
-    if (value) onChange(""); 
+    if (value) onChange("");
   };
 
   return (
@@ -93,21 +93,19 @@ export default function SearchableSelect({
           value={inputValue}
           onChange={handleInputChange}
           onClick={() => !disabled && setIsOpen(true)}
-    
-className={`
+          className={`
   h-11 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm shadow-theme-xs outline-none transition-colors
   placeholder:text-gray-400 
   ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800" : "bg-white text-gray-800 dark:bg-gray-900 dark:text-white/90"}
   
   ${
-    error 
-      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" // ✅ Red in light, gray in dark
+    error
+      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" //  Red in light, gray in dark
       : isOpen
         ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
         : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
   }
 `}
-            
         />
 
         {/* Icons Area */}
@@ -126,8 +124,6 @@ className={`
               <X size={14} />
             </button>
           )}
-          
-         
         </div>
       </div>
 

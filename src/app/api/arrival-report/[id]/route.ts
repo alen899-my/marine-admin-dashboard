@@ -28,7 +28,7 @@ export async function PATCH(
 
     const body = await req.json();
 
-    // 1. ✅ VOYAGE LOOKUP LOGIC
+    // 1.  VOYAGE LOOKUP LOGIC
     // Frontend sends 'voyageId' as a string (e.g. "OP-1225").
     // We need to find the real ObjectId from the Voyage collection.
     const voyageNoString = body.voyageId || body.voyageNo;
@@ -52,12 +52,12 @@ export async function PATCH(
     const updateData: any = {
       vesselName: body.vesselName,
       updatedBy: currentUserId,
-      // ✅ Update Linked IDs
+      //  Update Linked IDs
       // Only update if we found a valid ID, otherwise keep existing (or let it fail validation if critical)
       ...(voyageObjectId && { voyageId: voyageObjectId }),
       ...(vesselId && { vesselId: vesselId }),
 
-      // ✅ Update Snapshot Strings
+      //  Update Snapshot Strings
       ...(voyageNoString && { voyageNo: voyageNoString }),
 
       portName: body.portName,
@@ -96,7 +96,7 @@ export async function PATCH(
       { $set: updateData },
       { new: true, runValidators: true },
     )
-      // ✅ POPULATE Response so Frontend sees readable name immediately
+      //  POPULATE Response so Frontend sees readable name immediately
       .populate("voyageId", "voyageNo")
       .populate({
         path: "vesselId",
@@ -140,14 +140,14 @@ export async function DELETE(
   try {
     await dbConnect();
 
-    // ✅ IMPORTANT: await params
+    //  IMPORTANT: await params
     const { id } = await context.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
     }
 
-    // ✅ Perform Hard Delete
+    //  Perform Hard Delete
     // Swapped findOneAndUpdate for findOneAndDelete to remove the record permanently.
     // We maintain the eventType: "arrival" filter to ensure only the correct type is deleted.
     const deletedReport = await ReportOperational.findOneAndDelete({

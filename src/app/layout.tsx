@@ -1,13 +1,12 @@
-import { Outfit } from "next/font/google";
-import "./globals.css";
 import { Providers } from "@/components/Providers";
+import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import NextTopLoader from 'nextjs-toploader';
-import type { Metadata } from "next";
+import "./globals.css";
 
-
-import { auth } from "@/auth"; 
+import { auth } from "@/auth";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -23,13 +22,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
-  // ✅ CHANGE 2: Fetch session using the v5 helper
+  //  CHANGE 2: Fetch session using the v5 helper
   const session = await auth();
 
   return (
-    <html lang="en">
-      <body className={`${outfit.className} dark:bg-gray-900`}>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${outfit.className} dark:bg-gray-900`}
+        suppressHydrationWarning
+      >
         <NextTopLoader
           color="#00A6B8"
           initialPosition={0.08}
@@ -42,7 +43,7 @@ export default async function RootLayout({
           shadow="0 0 10px #00A6B8,0 0 5px #00A6B8"
           zIndex={1600}
         />
-        
+
         {/* Pass session to providers for instant authentication */}
         <Providers session={session}>
           {children}

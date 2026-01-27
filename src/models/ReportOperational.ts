@@ -1,13 +1,12 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IReportOperational extends Document {
-  
-  voyageId: mongoose.Types.ObjectId; 
+  voyageId: mongoose.Types.ObjectId;
   vesselId: mongoose.Types.ObjectId; // Added for consistency
 
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
-  voyageNo: string; 
+  voyageNo: string;
   vesselName: string;
 
   eventType: "departure" | "arrival" | "nor";
@@ -17,8 +16,8 @@ export interface IReportOperational extends Document {
   reportDate?: Date;
 
   navigation?: {
-    distanceToGo?: number; 
-    distanceToNextPortNm?: number; 
+    distanceToGo?: number;
+    distanceToNextPortNm?: number;
     etaNextPort?: Date;
   };
 
@@ -54,7 +53,7 @@ export interface IReportOperational extends Document {
 
 const ReportOperationalSchema = new Schema<IReportOperational>(
   {
-    // ✅ LINK TO VOYAGE COLLECTION
+    //  LINK TO VOYAGE COLLECTION
     voyageId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Voyage",
@@ -62,7 +61,7 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
       index: true,
     },
 
-    // ✅ LINK TO VESSEL COLLECTION
+    //  LINK TO VESSEL COLLECTION
     vesselId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vessel",
@@ -70,7 +69,7 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
       index: true,
     },
 
-    // ✅ SNAPSHOT STRINGS
+    //  SNAPSHOT STRINGS
     voyageNo: { type: String, required: true }, // "OP-1225-IN"
     vesselName: { type: String, required: true },
     createdBy: {
@@ -88,14 +87,14 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
     },
 
     portName: String,
-    lastPort: String, 
+    lastPort: String,
     eventTime: Date,
 
     reportDate: { type: Date },
 
     navigation: {
       distanceToGo: Number,
-      distanceToNextPortNm: Number, 
+      distanceToNextPortNm: Number,
       etaNextPort: Date,
     },
 
@@ -139,11 +138,11 @@ const ReportOperationalSchema = new Schema<IReportOperational>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.models.ReportOperational ||
   mongoose.model<IReportOperational>(
     "ReportOperational",
-    ReportOperationalSchema
+    ReportOperationalSchema,
   );

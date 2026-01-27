@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import ReportDaily from "@/models/ReportDaily";
-import Voyage from "@/models/Voyage"; // ✅ Import Voyage for ID lookup
+import Voyage from "@/models/Voyage"; //  Import Voyage for ID lookup
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -115,10 +115,10 @@ export async function DELETE(
 
     await dbConnect();
 
-    // ✅ IMPORTANT: await params
+    //  IMPORTANT: await params
     const { id } = await params;
 
-    // ✅ Perform Hard Delete
+    //  Perform Hard Delete
     // Changed from findByIdAndUpdate to findByIdAndDelete to permanently remove the document
     const report = await ReportDaily.findByIdAndDelete(id);
 

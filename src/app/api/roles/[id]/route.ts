@@ -1,15 +1,15 @@
+import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Role from "@/models/Role";
 import User from "@/models/User";
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/authorizeRequest";
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-      const authz = await authorizeRequest("roles.edit");
-        if (!authz.ok) return authz.response;
+    const authz = await authorizeRequest("roles.edit");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
     const { id } = await params;
@@ -23,7 +23,7 @@ export async function PATCH(
         permissions: body.permissions, // Expecting array of permission slugs
         status: body.status,
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updated) {
@@ -34,46 +34,47 @@ export async function PATCH(
     return NextResponse.json({ success: true, role: updated });
   } catch (error: any) {
     console.error("UPDATE ROLE ERROR →", error);
-    
+
     // Optional: Handle duplicate name error specifically
     if (error.code === 11000) {
       return NextResponse.json(
         { error: "A role with this name already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     return NextResponse.json(
       { error: "Failed to update role" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-        const authz = await authorizeRequest("roles.delete");
-        if (!authz.ok) return authz.response;
+    const authz = await authorizeRequest("roles.delete");
+    if (!authz.ok) return authz.response;
     await dbConnect();
 
     const { id } = await params;
 
-    // ✅ 1. CHECK DEPENDENCY: Is this role assigned to any user?
+    //  1. CHECK DEPENDENCY: Is this role assigned to any user?
     const isAssigned = await User.findOne({ role: id });
 
     if (isAssigned) {
       return NextResponse.json(
-        { 
-          error: "Cannot delete this role because it is currently assigned to one or more users. Please reassign those users first." 
-        }, 
-        { status: 409 } // 409 Conflict
+        {
+          error:
+            "Cannot delete this role because it is currently assigned to one or more users. Please reassign those users first.",
+        },
+        { status: 409 }, // 409 Conflict
       );
     }
 
-    // ✅ 2. Proceed with delete if safe
+    //  2. Proceed with delete if safe
     const deleted = await Role.findByIdAndDelete(id);
 
     if (!deleted) {
@@ -88,7 +89,7 @@ export async function DELETE(
     console.error("DELETE ROLE ERROR →", error);
     return NextResponse.json(
       { error: "Failed to delete role" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
