@@ -15,16 +15,14 @@ import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added router
 import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
+
 // --- Interfaces ---
 interface INavigation {
   distanceToNextPortNm: number | string;
@@ -38,23 +36,22 @@ interface UserRef {
 interface IDepartureStats {
   robVlsfo: number | string;
   robLsmgo: number | string;
-  bunkersReceivedVlsfo: number | string; // New
-  bunkersReceivedLsmgo: number | string; // New
-  cargoQtyLoadedMt: number | string; // New
-  cargoQtyUnloadedMt: number | string; // New
+  bunkersReceivedVlsfo: number | string;
+  bunkersReceivedLsmgo: number | string;
+  cargoQtyLoadedMt: number | string;
+  cargoQtyUnloadedMt: number | string;
   cargoSummary: string;
 }
 
-interface IDepartureReport {
+export interface IDepartureReport {
   _id: string;
   vesselName: string;
-  //  FIX: Allow Populated Objects
   vesselId:
     | string
     | {
         _id: string;
         name: string;
-        company?: { name: string }; // Added company nested object
+        company?: { name: string };
       }
     | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
@@ -74,73 +71,55 @@ interface IDepartureReport {
   updatedAt?: string;
 }
 
+// ✅ Updated Props
 interface DepartureReportTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  onDataLoad?: (data: IDepartureReport[]) => void;
-  vesselId: string; // Added this
-  voyageId: string; // Added this
-  vesselList: any[]; // Added this
-  setTotalCount?: Dispatch<SetStateAction<number>>;
-  companyId: string;
-  onFilterDataLoad?: (data: {
-    vessels: any[];
-    companies: any[];
-    voyages: any[];
-  }) => void;
+  data: IDepartureReport[]; // Passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  vesselList: any[];
+  allVoyages: any[]; // New Prop
 }
 
 export default function DepartureReportTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  onDataLoad,
-  vesselId,
-  voyageId,
+  data,
+  pagination,
   vesselList,
-  setTotalCount,
-  companyId,
-  onFilterDataLoad,
+  allVoyages
 }: DepartureReportTableProps) {
-  // Apply interfaces to state
-  const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    vesselId,
-    voyageId,
-    companyId,
-  });
-  const [reports, setReports] = useState<IDepartureReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
+
+  const reports = data; // Use prop directly
+
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const [openEdit, setOpenEdit] = useState(false);
+  
+  // ✅ Derived Voyage List
+  const voyageList = useMemo(() => {
+      return allVoyages.map((v: any) => ({
+        value: v.voyageNo, 
+        label: v.voyageNo,
+        vesselId: v.vesselId,
+      }));
+  }, [allVoyages]);
+
   const [selectedReport, setSelectedReport] = useState<IDepartureReport | null>(
     null,
   );
   const [editData, setEditData] = useState<IDepartureReport | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [openEdit, setOpenEdit] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const LIMIT = 20;
   const { can, isReady } = useAuthorization();
   const canEdit = can("departure.edit");
   const canDelete = can("departure.delete");
 
-  /* ================= FORMAT DATE helper ================= */
+  // Format Helpers
   const formatDate = (date?: string) => {
     if (!date) return "-";
     return new Date(date).toLocaleString("en-IN", {
@@ -161,6 +140,7 @@ export default function DepartureReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
+  
   const getVoyageDisplay = (r: IDepartureReport | null) => {
     if (!r) return "-";
     if (
@@ -173,7 +153,6 @@ export default function DepartureReportTable({
     return r.voyageNo || "-";
   };
 
-  //  NEW HELPER: Get Vessel Name
   const getVesselName = (r: IDepartureReport | null) => {
     if (!r) return "-";
     if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -182,7 +161,6 @@ export default function DepartureReportTable({
     return r.vesselName || "-";
   };
 
-  // Get trimmed Company name
   const getCompanyName = (r: IDepartureReport) => {
     if (r.vesselId && typeof r.vesselId === "object" && r.vesselId.company) {
       const name = r.vesselId.company.name;
@@ -191,25 +169,23 @@ export default function DepartureReportTable({
     return "-";
   };
 
-  // Helper for Soft Delete Status Badges
   const renderStatusBadge = (reportStatus: string) => {
     let color: "success" | "warning" | "error" | "default" = "default";
     let label = reportStatus;
 
     switch (reportStatus?.toLowerCase()) {
-      case "active":
-        color = "success";
-        label = "Active";
-        break;
-      case "inactive":
-        color = "error";
-        label = "Inactive";
-        break;
-      default:
-        color = "default";
-        label = reportStatus || "N/A";
+      case "active": color = "success"; label = "Active"; break;
+      case "inactive": color = "error"; label = "Inactive"; break;
+      default: color = "default"; label = reportStatus || "N/A";
     }
     return <Badge color={color}>{label}</Badge>;
+  };
+
+  // ✅ Page Change
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
   };
 
   /* ================= TABLE COLUMNS ================= */
@@ -217,18 +193,16 @@ export default function DepartureReportTable({
     {
       header: "S.No",
       render: (_: IDepartureReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Vessel & Voyage ID",
       render: (r: IDepartureReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-            {/*  Use Helper */}
             {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            {/*  Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
           <span
@@ -291,7 +265,6 @@ export default function DepartureReportTable({
       header: "ROB & Cargo",
       render: (r: IDepartureReport) => (
         <div className="flex flex-col text-xs gap-1">
-          {/* ROB & Bunkers Received */}
           <div className="flex gap-2">
             <span className="bg-gray-100 dark:bg-white/5 px-1.5 rounded text-gray-600 dark:text-gray-300">
               VLSFO: <b>{r?.departureStats?.robVlsfo ?? 0}</b>
@@ -306,7 +279,6 @@ export default function DepartureReportTable({
               </b>
             </span>
           </div>
-          {/* Cargo Loaded/Unloaded Quantities */}
           <div className="flex gap-2 text-[10px]">
             <span className="uppercase">
               Loaded: {r?.departureStats?.cargoQtyLoadedMt ?? 0} MT
@@ -330,67 +302,100 @@ export default function DepartureReportTable({
     },
   ];
 
-  /* ================= FETCH DATA ================= */
-  // Wrap in useCallback to fix useEffect dependency
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const shouldFetchFilters = !hasLoadedFilters.current;
+  /* ================= ACTIONS ================= */
+  function handleView(report: IDepartureReport) {
+    setSelectedReport(report);
+    setOpenView(true);
+  }
 
-        const queryParams: Record<string, string> = {
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search: search || "",
-          status: status || "all",
-          startDate: startDate || "",
-          endDate: endDate || "",
-          vesselId: vesselId || "",
-          voyageId: voyageId || "",
-          companyId: companyId || "all",
-          all: shouldFetchFilters ? "true" : "false", // 🟢 Send the flag
-        };
+  function handleEdit(report: IDepartureReport) {
+    setSelectedReport(report);
 
-        const query = new URLSearchParams(queryParams);
+    const matchedVessel = vesselList.find(
+      (v: any) => v.name === report.vesselName,
+    );
+    const voyageIdString = getVoyageDisplay(report);
+    const vesselIdStr =
+      typeof report.vesselId === "object"
+        ? report.vesselId?._id
+        : report.vesselId;
+    setEditData({
+      _id: report._id,
+      vesselName: report.vesselName ?? "",
+      vesselId: vesselIdStr || matchedVessel?._id || "",
+      voyageId: voyageIdString,
+      voyageNo: voyageIdString,
+      portName: report.portName ?? "",
+      lastPort: report.lastPort ?? "",
+      eventTime: formatForInput(report.eventTime),
+      reportDate: formatForInput(report.reportDate),
+      status: report.status ?? "active",
+      remarks: report.remarks ?? "",
 
-        const res = await fetch(`/api/departure-report?${query.toString()}`);
+      navigation: {
+        distanceToNextPortNm: report.navigation?.distanceToNextPortNm ?? 0,
+        etaNextPort: formatForInput(report.navigation?.etaNextPort),
+      },
 
-        if (!res.ok) throw new Error();
+      departureStats: {
+        robVlsfo: report.departureStats?.robVlsfo ?? 0,
+        robLsmgo: report.departureStats?.robLsmgo ?? 0,
+        bunkersReceivedVlsfo: report.departureStats?.bunkersReceivedVlsfo ?? 0,
+        bunkersReceivedLsmgo: report.departureStats?.bunkersReceivedLsmgo ?? 0,
+        cargoQtyLoadedMt: report.departureStats?.cargoQtyLoadedMt ?? 0,
+        cargoQtyUnloadedMt: report.departureStats?.cargoQtyUnloadedMt ?? 0,
+        cargoSummary: report.departureStats?.cargoSummary ?? "",
+      },
+    });
 
-        const result = await res.json();
-        const fetchedData = result.data || [];
+    setOpenEdit(true);
+  }
 
-        setReports(result.data || []);
-        if (onDataLoad) onDataLoad(fetchedData);
-        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-          hasLoadedFilters.current = true; // Stop future calls from sending all=true
-          onFilterDataLoad({
-            vessels: result.vessels || [],
-            companies: result.companies || [],
-            voyages: result.voyages || [],
-          });
-        }
+  // Edit Logic Hooks
+  const vesselIdForLookup = useMemo(() => {
+    return typeof editData?.vesselId === "object"
+      ? editData?.vesselId?._id
+      : editData?.vesselId;
+  }, [editData?.vesselId]);
 
-        // Update Total Count
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || 0);
-        }
-
-        if (!result.data || result.data.length === 0) {
-          setTotalPages(1);
-        } else {
-          setTotalPages(result.pagination?.totalPages || 1);
-        }
-      } catch (err) {
-        console.error(err);
-        setReports([]);
-        toast.error("Failed to load departure reports");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, vesselId, voyageId, companyId],
+  const { suggestedVoyageNo } = useVoyageLogic(
+    vesselIdForLookup || undefined,
+    editData?.reportDate,
   );
+
+  // Memoize Voyage Options for Edit Modal
+  const memoizedVoyageList = useMemo(() => {
+    if (!vesselIdForLookup) return [];
+    
+    // ✅ Use voyageList (derived from allVoyages prop)
+    const filtered = voyageList.filter((v:any) => v.vesselId === vesselIdForLookup);
+    
+    const options = filtered.map((v:any) => ({ value: v.value, label: v.label }));
+
+    const currentVoyage = getVoyageDisplay(selectedReport);
+    if (currentVoyage && currentVoyage !== "-" && !options.some((o:any) => o.value === currentVoyage)) {
+        options.unshift({ value: currentVoyage, label: `${currentVoyage} (Current)` });
+    }
+    return options;
+  }, [vesselIdForLookup, voyageList, selectedReport]);
+
+  useEffect(() => {
+    if (
+      editData &&
+      suggestedVoyageNo !== undefined &&
+      suggestedVoyageNo !== editData.voyageId
+    ) {
+      setEditData((prev) =>
+        prev ? { ...prev, voyageId: suggestedVoyageNo } : null,
+      );
+    }
+  }, [suggestedVoyageNo]);
+
+  const statusOptions = [
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ];
+
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -398,17 +403,14 @@ export default function DepartureReportTable({
 
     try {
       const payload = {
-        //  FIX 3: Include vesselId.
-        // The backend needs this to lookup the correct Voyage ObjectId.
         vesselId:
           typeof editData.vesselId === "object"
             ? editData.vesselId?._id
             : editData.vesselId,
 
-        // This sends the readable string (e.g., "OP-1225") from the dropdown
-        voyageId: editData.voyageId, // This is the voyageNo string from dropdown
+        voyageId: editData.voyageId, 
         vesselName: editData.vesselName,
-        voyageNo: editData.voyageId, // Send explicitly for clarity if needed
+        voyageNo: editData.voyageId, 
 
         portName: editData.portName,
         lastPort: editData.lastPort,
@@ -453,11 +455,8 @@ export default function DepartureReportTable({
 
       if (!res.ok) throw new Error();
 
-      const { report } = await res.json();
-
-      setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r)),
-      );
+      // ✅ Refresh Server Data
+      router.refresh();
 
       toast.success("Departure report updated");
       setOpenEdit(false);
@@ -469,159 +468,6 @@ export default function DepartureReportTable({
     }
   }
 
-  const vesselIdForLookup = useMemo(() => {
-    return typeof editData?.vesselId === "object"
-      ? editData?.vesselId?._id
-      : editData?.vesselId;
-  }, [editData?.vesselId]);
-
-  const { suggestedVoyageNo } = useVoyageLogic(
-    vesselIdForLookup || undefined,
-    editData?.reportDate,
-  );
-  const memoizedVoyageList = useMemo(() => {
-    if (!vesselIdForLookup) return [];
-
-    // Find the selected vessel from the list to get its current active voyage
-    const selectedVessel = vesselList.find((v) => v._id === vesselIdForLookup);
-    const activeVoyage = selectedVessel?.activeVoyageNo;
-
-    // If you have the full voyages array from the parent, you can use that.
-    // Otherwise, ensure the dropdown at least shows the current and active voyage.
-    const options = [];
-    if (activeVoyage)
-      options.push({ value: activeVoyage, label: activeVoyage });
-
-    // Add the current report's voyage if it's different
-    const currentVoyage = getVoyageDisplay(selectedReport);
-    if (
-      currentVoyage &&
-      currentVoyage !== activeVoyage &&
-      currentVoyage !== "-"
-    ) {
-      options.push({
-        value: currentVoyage,
-        label: `${currentVoyage} (Reported)`,
-      });
-    }
-
-    return options;
-  }, [vesselIdForLookup, vesselList, selectedReport]);
-
-  useEffect(() => {
-    if (
-      editData &&
-      suggestedVoyageNo !== undefined &&
-      suggestedVoyageNo !== editData.voyageId
-    ) {
-      setEditData((prev) =>
-        prev ? { ...prev, voyageId: suggestedVoyageNo } : null,
-      );
-    }
-  }, [suggestedVoyageNo]);
-
-  //  Corrected Trigger Effect
-  useEffect(() => {
-    if (!isReady) return;
-
-    // 1. Detect if the filters actually changed compared to the last render
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.vesselId !== vesselId ||
-      prevFiltersRef.current.voyageId !== voyageId ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    // 2. If filters changed, reset to page 1
-    if (filtersChanged) {
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-        companyId,
-      };
-
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // Exit and wait for the next cycle triggered by currentPage change
-      }
-    }
-
-    // 3. Otherwise, fetch the data for the current page
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
-
-  const statusOptions = [
-    { value: "active", label: "Active" },
-    { value: "inactive", label: "Inactive" },
-  ];
-
-  /* ================= ACTIONS ================= */
-  function handleView(report: IDepartureReport) {
-    setSelectedReport(report);
-    setOpenView(true);
-  }
-
-  function handleEdit(report: IDepartureReport) {
-    setSelectedReport(report);
-
-    // Try to find vessel in the list as fallback
-    const matchedVessel = vesselList.find(
-      (v: any) => v.name === report.vesselName,
-    );
-    const voyageIdString = getVoyageDisplay(report);
-    const vesselIdStr =
-      typeof report.vesselId === "object"
-        ? report.vesselId?._id
-        : report.vesselId;
-    setEditData({
-      _id: report._id,
-      vesselName: report.vesselName ?? "",
-      vesselId: vesselIdStr || matchedVessel?._id || "",
-      voyageId: voyageIdString,
-      voyageNo: voyageIdString,
-      portName: report.portName ?? "",
-      lastPort: report.lastPort ?? "",
-      eventTime: formatForInput(report.eventTime),
-      reportDate: formatForInput(report.reportDate),
-      status: report.status ?? "active",
-      remarks: report.remarks ?? "",
-
-      navigation: {
-        distanceToNextPortNm: report.navigation?.distanceToNextPortNm ?? 0,
-        etaNextPort: formatForInput(report.navigation?.etaNextPort),
-      },
-
-      departureStats: {
-        robVlsfo: report.departureStats?.robVlsfo ?? 0,
-        robLsmgo: report.departureStats?.robLsmgo ?? 0,
-        bunkersReceivedVlsfo: report.departureStats?.bunkersReceivedVlsfo ?? 0,
-        bunkersReceivedLsmgo: report.departureStats?.bunkersReceivedLsmgo ?? 0,
-        cargoQtyLoadedMt: report.departureStats?.cargoQtyLoadedMt ?? 0,
-        cargoQtyUnloadedMt: report.departureStats?.cargoQtyUnloadedMt ?? 0,
-        cargoSummary: report.departureStats?.cargoSummary ?? "",
-      },
-    });
-
-    setOpenEdit(true);
-  }
   async function handleDelete() {
     if (!selectedReport) return;
     setIsDeleting(true);
@@ -633,11 +479,7 @@ export default function DepartureReportTable({
 
       if (!res.ok) throw new Error();
 
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
-      // Dynamic Update Count
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      router.refresh();
 
       toast.success("Departure report deleted");
     } catch {
@@ -645,11 +487,12 @@ export default function DepartureReportTable({
     } finally {
       setOpenDelete(false);
       setSelectedReport(null);
-      setIsDeleting(false); //  Stop Loading
+      setIsDeleting(false); 
     }
   }
+
   if (!isReady) return null;
-  /* ================= RENDER ================= */
+
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900  rounded-xl">
@@ -658,10 +501,10 @@ export default function DepartureReportTable({
             <CommonReportTable
               data={reports}
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false}
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -1017,7 +860,6 @@ export default function DepartureReportTable({
                   <Label>Vessel Name</Label>
                   <SearchableSelect
                     options={vesselList.map((v: any) => ({
-                      // FIX: Use vesselList
                       value: v.name,
                       label: v.name,
                     }))}

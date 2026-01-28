@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
@@ -13,10 +14,10 @@ import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
-import { useVoyageLogic } from "@/hooks/useVoyageLogic"; //  Import Hook
+import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 
 interface AddDepartureReportButtonProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   vesselList: any[];
   className?: string;
   allVoyages: any[];
@@ -33,6 +34,7 @@ export default function AddDepartureReportButton({
   allVoyages,
   className,
 }: AddDepartureReportButtonProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
 
@@ -222,7 +224,8 @@ export default function AddDepartureReportButton({
         return;
       }
       toast.success("Departure report submitted successfully");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (error) {
       console.error("Failed to submit departure report", error);
