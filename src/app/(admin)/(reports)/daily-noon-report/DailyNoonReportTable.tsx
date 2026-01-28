@@ -475,8 +475,6 @@ export default function DailyNoonReportTable({
 
       if (!res.ok) throw new Error();
 
-      // const { report } = await res.json(); // ❌ Don't need response to set local state
-
       //  Refresh Server Data
       router.refresh();
 

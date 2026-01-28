@@ -12,11 +12,12 @@ import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 interface AddArrivalReportButtonProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   vesselList: any[];
   className?: string;
   allVoyages: any[]; //  Added from parent
@@ -28,6 +29,7 @@ export default function AddArrivalReportButton({
   className,
   allVoyages, //  Destructured
 }: AddArrivalReportButtonProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -190,7 +192,8 @@ export default function AddArrivalReportButton({
       }
 
       toast.success("Arrival report submitted successfully");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (error) {
       console.error("Arrival report submit failed", error);
