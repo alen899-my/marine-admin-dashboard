@@ -37,6 +37,8 @@ export default function UserDropdown() {
   const fullName = dbUser?.fullName || user?.fullName || "User";
   const email = dbUser?.email || user?.email || "";
   const profilePicture = dbUser?.profilePicture || user?.profilePicture;
+  const roleName = dbUser?.role?.name;
+  const companyName = dbUser?.company?.name;
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -99,14 +101,59 @@ export default function UserDropdown() {
         onClose={closeDropdown}
         className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
-        <div>
-          <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
+        <div className="">
+  
+  {/* ID Card Container */}
+  <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+
+    <div className="relative p-4">
+      <div className="flex items-start gap-3">
+        
+        
+
+        {/* User Details */}
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-md font-semibold text-gray-900 dark:text-white">
             {fullName}
-          </span>
-          <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
+          </h3>
+          
+          {/* Role Badge */}
+          {roleName && (
+            <div className="mt-1 flex items-center">
+              <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                {roleName}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Grid Info Section */}
+      <div className="mt-4 grid grid-cols-1 gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+        
+        {/* Email Field */}
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase text-gray-400">Email ID</span>
+          <span className="truncate text-xs font-medium text-gray-700 dark:text-gray-300 font-mono">
             {email}
           </span>
         </div>
+
+        {/* Company Field */}
+        {companyName && (
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase text-gray-400">Company</span>
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-xs font-medium text-gray-700 dark:text-gray-300">
+                {companyName}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
 
         <ul className="flex flex-col gap-1 pt-4 pb-3 border-b border-gray-200 dark:border-gray-800">
           <li>
