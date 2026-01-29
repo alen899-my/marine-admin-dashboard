@@ -297,23 +297,24 @@ const handleShareViaWhatsApp = async () => {
       </div>
 
 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end w-full gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-white/5 shrink-0">
+  {/* Cancel/Close Button - Stays full width on mobile, auto width on desktop */}
   <Button 
     size="sm" 
     variant="outline" 
     onClick={onClose} 
     disabled={uploading || isZipping || isSharing}
-    className="w-full sm:w-auto order-last sm:order-first"
+    className="w-full sm:w-auto order-last sm:order-first sm:px-6"
   >
     {isReadOnly ? "Close" : "Cancel"}
   </Button>
 
   {isReadOnly && can("zip.download") && (
     <>
-      {/* ZIP Download Button */}
+      {/* ZIP Download Button - Optimized width for large screens */}
       <Button
         size="sm"
         variant="primary"
-        className="w-full sm:min-w-[140px]"
+        className="w-full sm:w-auto sm:px-6 flex items-center justify-center"
         onClick={handleZipDownload}
         disabled={isZipping || isSharing}
       >
@@ -325,11 +326,11 @@ const handleShareViaWhatsApp = async () => {
         {isZipping ? "Generating..." : "Download ZIP"}
       </Button>
 
-      {/* Share ZIP Button */}
+      {/* Share ZIP Button - Optimized width for large screens */}
       <Button
         size="sm"
         variant="outline"
-        className="w-full sm:w-auto border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 shadow-sm transition-all active:scale-95"
+        className="w-full sm:w-auto sm:px-6 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 shadow-sm transition-all active:scale-95 flex items-center justify-center"
         onClick={handleShareViaWhatsApp}
         disabled={isZipping || isSharing}
       >
@@ -346,10 +347,11 @@ const handleShareViaWhatsApp = async () => {
   )}
 
   {!isReadOnly && (
+    /* Save Button - Optimized width for large screens */
     <Button
       size="sm"
       variant="primary"
-      className="w-full sm:min-w-[120px]"
+      className="w-full sm:w-auto sm:px-8 flex items-center justify-center"
       onClick={handleSave}
       disabled={uploading}
     >
@@ -358,6 +360,7 @@ const handleShareViaWhatsApp = async () => {
     </Button>
   )}
 </div>
+
     </Modal>
   );
 }
