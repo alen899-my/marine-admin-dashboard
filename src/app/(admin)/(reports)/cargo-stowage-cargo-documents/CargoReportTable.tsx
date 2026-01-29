@@ -11,6 +11,8 @@ import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
+import DatePicker from "@/components/form/date-picker"; // Kept original import
+import FileInput from "@/components/form/input/FileInput"; // Kept original import
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -22,17 +24,17 @@ import {
   FileWarning,
   ImageIcon,
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation"; //  Added Router
 import {
   Dispatch,
   SetStateAction,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
-// 1. Define Interface to replace 'any'
+
+// 1. Define Interfaces
 interface ICargoReportFile {
   url: string;
   name?: string;
@@ -41,7 +43,7 @@ interface UserRef {
   _id: string;
   fullName: string;
 }
-interface ICargoReport {
+export interface ICargoReport {
   _id: string;
   vesselName: string;
   vesselId:
@@ -66,6 +68,7 @@ interface ICargoReport {
   createdAt?: string;
   updatedAt?: string;
 }
+
 interface IEditData {
   status: string;
   vesselName: string;
@@ -79,93 +82,64 @@ interface IEditData {
   remarks: string;
 }
 
+//  Updated Props to receive Server Data
 interface CargoReportTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  onDataLoad?: (data: ICargoReport[]) => void;
-  vesselId: string; // Added this
-  voyageId: string; // Added this
-  vesselList: any[]; // Added this
-  setTotalCount?: Dispatch<SetStateAction<number>>;
-  companyId: string;
-  onFilterDataLoad?: (data: {
-    vessels: any[];
-    companies: any[];
-    voyages: any[];
-  }) => void;
+  data: ICargoReport[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  vesselList: any[];
+  allVoyages: any[]; // Passed from parent
 }
 
 export default function CargoReportTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  onDataLoad,
-  vesselId,
-  voyageId,
+  data,
+  pagination,
   vesselList,
-  setTotalCount,
-  companyId,
-  onFilterDataLoad,
+  allVoyages,
 }: CargoReportTableProps) {
+  const router = useRouter(); //  Init Router
+  const searchParams = useSearchParams();
+
   // 2. Apply Interface to State
-  const [reports, setReports] = useState<ICargoReport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const reports = data; //  Use prop data directly
+
   // Modal States
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Selection States
   const [selectedReport, setSelectedReport] = useState<ICargoReport | null>(
     null,
   );
 
-  // Edit data state - using Partial or a specific edit interface is safer, but any is acceptable for form state if dynamic
-  // We will keep it loosely typed for form handling flexibility or define a specific shape:
-  const [editData, setEditData] = useState<{
-    status: string;
-    vesselName: string;
-    vesselId?: string;
-    voyageNo: string;
-    reportDate: string;
-    portName: string;
-    portType: string;
-    documentType: string;
-    documentDate: string;
-    remarks: string;
-  } | null>(null);
+  // Edit data state
+  const [editData, setEditData] = useState<IEditData | null>(null);
 
   // New File State for Edit Mode
   const [newFile, setNewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    vesselId,
-    voyageId,
-    companyId,
-  });
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
+  // Loading States
   const [saving, setSaving] = useState(false);
 
-  const LIMIT = 20;
   const { can, isReady } = useAuthorization();
   const canEdit = can("cargo.edit");
   const canDelete = can("cargo.delete");
+
+  //  Voyage List (Derived from props)
+  const voyageList = useMemo(() => {
+    return allVoyages.map((v: any) => ({
+      value: v.voyageNo,
+      label: v.voyageNo,
+      vesselId: v.vesselId,
+    }));
+  }, [allVoyages]);
 
   const getVesselName = (r: ICargoReport | null) => {
     if (!r || !r.vesselId) return "-";
@@ -191,6 +165,7 @@ export default function CargoReportTable({
     }
     return "-";
   };
+
   /* ================= HELPER FUNCTIONS ================= */
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -222,6 +197,7 @@ export default function CargoReportTable({
       .replace(" ", "T")
       .slice(0, 16);
   };
+  
   const { suggestedVoyageNo } = useVoyageLogic(
     editData?.vesselId,
     editData?.reportDate,
@@ -270,6 +246,7 @@ export default function CargoReportTable({
       );
     }
   }, [suggestedVoyageNo]);
+
   const filteredVoyageOptionsForEdit = useMemo(() => {
     if (!editData?.vesselId) return [];
 
@@ -279,8 +256,8 @@ export default function CargoReportTable({
     );
 
     const options = vesselVoyages.map((v: any) => ({
-      value: v.voyageNo,
-      label: v.voyageNo,
+      value: v.value,
+      label: v.label,
     }));
 
     // 2. Add fallback for suggested or current voyage to prevent "undefined"
@@ -298,12 +275,19 @@ export default function CargoReportTable({
     return options;
   }, [editData?.vesselId, editData?.voyageNo, voyageList, suggestedVoyageNo]);
 
+  //  Page Change Logic
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
     {
       header: "S.No",
       render: (_: ICargoReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Vessel & Voyage ID",
@@ -407,73 +391,7 @@ export default function CargoReportTable({
     },
   ];
 
-  /* ================= 2. API FUNCTIONS ================= */
-
-  // 3. Fix useEffect dependency warning: Wrap in useCallback
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const shouldFetchFilters = !hasLoadedFilters.current;
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId, // Added to query
-          voyageId, // Added to query
-          companyId,
-          all: shouldFetchFilters ? "true" : "false",
-        });
-
-        const res = await fetch(`/api/cargo?${query.toString()}`);
-
-        if (!res.ok) throw new Error(`Error: ${res.status}`);
-
-        const result = await res.json();
-        const fetchedData = result.data || [];
-        setReports(fetchedData);
-        if (onDataLoad) onDataLoad(fetchedData);
-
-        setReports(result.data || []);
-        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-          onFilterDataLoad({
-            vessels: result.vessels || [],
-            companies: result.companies || [],
-            voyages: result.voyages || [],
-          });
-          hasLoadedFilters.current = true; // Mark as loaded so next calls use all=false
-        }
-
-        // Update Dynamic Count
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || 0);
-        }
-
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        // Fix 'err' unused: Log it or use a typed catch
-        console.error(err);
-        toast.error("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      LIMIT,
-      search,
-      status,
-      startDate,
-      endDate,
-      isFirstLoad,
-      onDataLoad,
-      vesselId,
-      voyageId,
-      companyId,
-    ],
-  ); // Dependencies for useCallback
+  /* ================= 2. API FUNCTIONS (Updated) ================= */
 
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
@@ -511,9 +429,8 @@ export default function CargoReportTable({
         throw new Error(errorData.error || "Update failed");
       }
 
-      const { data } = await res.json();
-
-      await fetchReports(currentPage);
+      //  Refresh Server Data
+      router.refresh();
 
       toast.success("Record updated successfully");
       setOpenEdit(false);
@@ -542,15 +459,9 @@ export default function CargoReportTable({
 
       if (!res.ok) throw new Error("Delete failed");
 
-      // Update Local State
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
+      //  Refresh Server Data
+      router.refresh();
 
-      // Update Dynamic Count
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
-
-      await fetchReports(currentPage);
       toast.success("Record deleted");
     } catch (err) {
       // Fix unused err by removing it or logging it
@@ -562,54 +473,6 @@ export default function CargoReportTable({
       setIsDeleting(false); //  Stop Loading
     }
   }
-
-  useEffect(() => {
-    if (!isReady) return;
-
-    // 1. Detect if the filters actually changed compared to the last render
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.vesselId !== vesselId ||
-      prevFiltersRef.current.voyageId !== voyageId ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    // 2. If filters changed, reset to page 1
-    if (filtersChanged) {
-      // Update ref immediately with new values
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-        companyId,
-      };
-
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // Exit and wait for the effect to re-run with currentPage = 1
-      }
-    }
-
-    // 3. Fetch data for the current page
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
 
   const getFileMeta = (url?: string) => {
     if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };
@@ -630,6 +493,7 @@ export default function CargoReportTable({
     setSelectedReport(report);
     setNewFile(null);
     setPreviewUrl(report.file?.url || null);
+    
     const matchedVessel = vesselList.find(
       (v: any) => v.name === report.vesselName,
     );
@@ -701,10 +565,10 @@ export default function CargoReportTable({
             <CommonReportTable
               data={reports}
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false}
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -1059,6 +923,7 @@ export default function CargoReportTable({
                   <div className="relative">
                     <Select
                       options={statusOptions}
+                      placeholder="Select Status"
                       value={editData.status}
                       onChange={(val) =>
                         setEditData({ ...editData, status: val })
@@ -1103,11 +968,12 @@ export default function CargoReportTable({
                 </div>
                 <div>
                   <Label>Document Date</Label>
-                  <Input
-                    type="date"
-                    value={editData.documentDate}
-                    onChange={(e) =>
-                      setEditData({ ...editData, documentDate: e.target.value })
+                  <DatePicker
+                    id="edit-doc-date"
+                    placeholder="Select Date"
+                    defaultDate={editData.documentDate}
+                    onChange={(date, dateStr) =>
+                      setEditData({ ...editData, documentDate: dateStr })
                     }
                   />
                 </div>
@@ -1212,9 +1078,9 @@ export default function CargoReportTable({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-4 py-1.5 text-xs font-medium 
-                                       text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
-                                       rounded-md transition shadow-sm
-                                       dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+                                     text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
+                                     rounded-md transition shadow-sm
+                                     dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                         >
                           Open
                         </a>
@@ -1223,8 +1089,8 @@ export default function CargoReportTable({
                           href={previewUrl}
                           download={newFile ? newFile.name : "download"}
                           className="px-4 py-1.5 text-xs font-medium 
-                                       text-white bg-brand-500 hover:bg-brand-500
-                                       rounded-md transition shadow-sm border border-transparent"
+                                     text-white bg-brand-500 hover:bg-brand-500
+                                     rounded-md transition shadow-sm border border-transparent"
                         >
                           Download
                         </a>
@@ -1248,7 +1114,6 @@ export default function CargoReportTable({
         )}
       </EditModal>
 
-      {/* ================= DELETE MODAL ================= */}
       <ConfirmDeleteModal
         isOpen={openDelete}
         onClose={() => setOpenDelete(false)}

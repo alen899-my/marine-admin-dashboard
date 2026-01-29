@@ -11,7 +11,7 @@ type PropsType = {
   mode?: "single" | "multiple" | "range" | "time";
   onChange?: Hook | Hook[];
   defaultDate?: DateOption;
-  label?: string;
+  label?: any;
   placeholder?: string;
   className?: string; // 1. Added className to type definition
 };
