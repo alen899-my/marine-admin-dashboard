@@ -209,11 +209,9 @@ const handleRefresh = useCallback(async () => {
     const config = statusConfig[dbStatus] || statusConfig.draft;
 
     return (
-      <div className="flex flex-col">
-        <Badge color={config.color}>
+     <Badge color={config.color}>
           {config.label}
         </Badge>
-      </div>
     );
   },
 },

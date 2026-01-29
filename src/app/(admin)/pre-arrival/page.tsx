@@ -2,11 +2,14 @@
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { getPreArrivalData } from "@/lib/services/preArrivalService";
 import PreArrivalClient from "./PreArrivalClient";
-
+import { redirect } from "next/navigation";
 export default async function PreArrivalManagement() {
   // 1. Authorize on Server
-  const authz = await authorizeRequest("prearrival.view");
-  if (!authz.ok || !authz.session) return authz.response;
+const authz = await authorizeRequest("prearrival.view");
+if (!authz.ok || !authz.session) {
+    redirect("/login"); 
+    // Alternatively, you could return: <div>You are not authorized to view this page.</div>
+  }
 
   // 2. Direct DB Call (No internal HTTP request!)
   const initialData = await getPreArrivalData({

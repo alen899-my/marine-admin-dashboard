@@ -62,7 +62,7 @@ export default function StatutoryChecklistTable({
   
   const hasVerifyPerm = can("prearrival.verify");
   const canSeeAll = can("prearrival.viewall");
-  const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected">("all");
+const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected" | "pending">("all");
   const [historyModal, setHistoryModal] = useState<{
     isOpen: boolean;
     data: any[];
@@ -173,6 +173,11 @@ export default function StatutoryChecklistTable({
     if (filterStatus !== "all") {
     baseDocs = baseDocs.filter((doc) => {
       const status = uploadedData?.[doc.id]?.status || "draft";
+      const fileInfo = uploadedData?.[doc.id];
+      const isUploaded = !!fileInfo?.fileUrl || !!tempFiles[doc.id];
+      if (filterStatus === "pending") {
+      return isUploaded && status !== "approved" && status !== "rejected";
+    }
       return status === filterStatus;
     });
   }
@@ -238,8 +243,7 @@ export default function StatutoryChecklistTable({
   // Simple Rejection Reason Modal
 
   const stats = useMemo(() => {
-    // ✅ IMPORTANT: Use allDocuments (the master list) to calculate total stats
-    // This ensures the Rejected count shows even if the rows are hidden from the table.
+    
     const myDocIds = allDocuments
       .filter((doc) => {
         // Filter by permission so Ship user only sees their own stats
@@ -253,6 +257,12 @@ export default function StatutoryChecklistTable({
     const approvedCount = myDocIds.filter((id) => {
       return uploadedData?.[id]?.status === "approved";
     }).length;
+    const pendingCount = myDocIds.filter((id) => {
+    const doc = uploadedData?.[id];
+    const isUploaded = !!doc?.fileUrl || !!doc?.vesselCertId || !!tempFiles[id];
+    return isUploaded && doc?.status !== "approved" && doc?.status !== "rejected";
+  }).length;
+  
 
     const rejectedCount = myDocIds.filter((id) => {
       return uploadedData?.[id]?.status === "rejected";
@@ -265,7 +275,7 @@ export default function StatutoryChecklistTable({
 
     const total = myDocIds.length;
 
-    return { total, uploadedCount, approvedCount, rejectedCount };
+    return { total, uploadedCount, approvedCount, rejectedCount,pendingCount };
   }, [
     allDocuments,
     uploadedData,
@@ -309,6 +319,7 @@ export default function StatutoryChecklistTable({
       {stats.approvedCount}
     </Badge>
   </div>
+  
 
   {/* Rejected Count */}
   <div
@@ -322,6 +333,10 @@ export default function StatutoryChecklistTable({
       {stats.rejectedCount}
     </Badge>
   </div>
+  <div className="flex items-center gap-2 border-l border-gray-200 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setFilterStatus(filterStatus === "pending" ? "all" : "pending")}>
+              <span className={`text-[10px] font-bold uppercase whitespace-nowrap ${filterStatus === "pending" ? "text-amber-600" : "text-gray-400"}`}>Pending</span>
+              <Badge color="warning" size="sm" variant= "light">{stats.pendingCount}</Badge>
+            </div>
 
   {/* Total Progress */}
   <div

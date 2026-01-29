@@ -20,5 +20,6 @@ export const routePermissions: Record<string, string> = {
   "/permissions": "permission.view",
   "/resources":"resource.view",
   "/manage-companies": "company.view",
-  "/voyage-analysis-performance": "voyageanalysis.view"
+  "/voyage-analysis-performance": "voyageanalysis.view",
+  "/pre-arrival": "prearrival.view",
 };
