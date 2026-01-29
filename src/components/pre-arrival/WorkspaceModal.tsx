@@ -266,7 +266,15 @@ const handleShareViaWhatsApp = async () => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      className="w-full max-w-[1400px] p-4 sm:p-8 overflow-hidden flex flex-col"
+      className="
+        w-full
+        max-w-[95vw]
+        sm:max-w-[90vw]
+        md:max-w-[720px]
+        lg:max-w-[1100px]
+        p-4
+        sm:p-6
+        lg:p-8 hide-scrollbar flex flex-col"
     >
       <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
@@ -279,7 +287,7 @@ const handleShareViaWhatsApp = async () => {
         </button>
       </div>
 
-      <div className="max-h-[70dvh] overflow-y-auto custom-scrollbar p-1 space-y-6 flex-1 pr-2">
+      <div className="max-h-[65dvh] overflow-y-auto custom-scrollbar p-1 space-y-6 flex-1 pr-2">
         <section className="animate-in fade-in duration-300">
           <PortCallDetailsCard data={data} />
         </section>

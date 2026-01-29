@@ -610,7 +610,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
   
     <TextArea
       placeholder="Add a note..."
-      className="text-[13px] bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 min-w-[180px] p-2 resize-none"
+      className="text-[13px] hide-scrollbar bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 min-w-[180px] p-2 resize-none"
       rows={4}
       maxLength={120}
       defaultValue={fileInfo?.note || ""}
