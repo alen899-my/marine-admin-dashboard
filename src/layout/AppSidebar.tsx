@@ -3,13 +3,14 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import {
   Boxes,
   Building2,
+  ChartSpline,
   ChevronDown,
   Component,
   Ellipsis,
+  FileCheck,
   FileText,
   Fingerprint,
   Flag,
-  Gauge,
   IdCard,
   LayoutDashboard,
   Map,
@@ -17,12 +18,6 @@ import {
   SquareArrowDownRight,
   SquareArrowUpLeft,
   Users2,
-
-  KeyRound,
-
-  GaugeCircle,
-
-  FileCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -88,7 +83,7 @@ const navItems: NavItem[] = [
     requiredPermission: "cargo.view",
   },
   {
-    icon: <Gauge size={25} />, // Or any icon like BarChart3 from lucide-react
+    icon: <ChartSpline size={25} />, // Or any icon like BarChart3 from lucide-react
     name: "Voyage Analysis",
     path: "/voyage-analysis-performance",
     requiredPermission: "voyageanalysis.view",
@@ -109,12 +104,12 @@ const navItems: NavItem[] = [
     icon: <FileCheck size={25} />, // or <ClipboardCheck size={25} />
     name: "Pre-Arrival ",
     path: "/pre-arrival",
-    requiredPermission: "prearrival.view", 
+    requiredPermission: "prearrival.view",
   },
   {
-    icon:<Users2 size={25}/>,
-    name:" Users",
-    path:"/manage-users",
+    icon: <Users2 size={25} />,
+    name: " Users",
+    path: "/manage-users",
     requiredPermission: "users.view",
   },
 
