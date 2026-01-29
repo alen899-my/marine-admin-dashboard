@@ -21,7 +21,7 @@ import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { norSchema } from "@/lib/validations/norSchema";
 
 interface AddNORReportButtonProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   vesselList: any[];
   allVoyages: any[];
   className?: string;
@@ -33,6 +33,7 @@ export default function AddNORButton({
   allVoyages,
   className,
 }: AddNORReportButtonProps) {
+  
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -255,7 +256,8 @@ export default function AddNORButton({
       }
 
       toast.success("NOR Record added successfully!");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
       router.refresh();
     } catch (error: unknown) {
@@ -480,7 +482,7 @@ export default function AddNORButton({
               </div>
 
               <div className="mt-4">
-                <Label>NOR Document (PDF / Image) - Max 500 KB</Label>
+                <Label>NOR Document (PDF / Image) - Max 500 KB <span className="text-red-500">*</span></Label>
 
                 {/* Pass the error class directly to FileInput */}
                 <div>

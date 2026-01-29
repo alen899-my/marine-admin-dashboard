@@ -1,167 +1,48 @@
-"use client";
-
-import ComponentCard from "@/components/common/ComponentCard";
-import ExportToExcel from "@/components/common/ExportToExcel"; // Import common component
-import Filters from "@/components/common/Filters";
-import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
-import TableCount from "@/components/common/TableCount";
-import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useState } from "react";
-import AddNORButton from "./AddNORButton";
+import { auth } from "@/auth";
+import { getNorReports, getFilterOptions } from "@/lib/services/nor-report";
 import NorReportTable from "./NorReportTable";
+import NorPageClient from "./NorPageClient";
 
-export default function NoticeOfReadiness() {
-  const [refresh, setRefresh] = useState(0);
-  const [reportsData, setReportsData] = useState<any[]>([]); // State for export data
-  const [totalCount, setTotalCount] = useState(0);
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}
 
-  //  Authorization logic
-  const { can, isReady, user } = useAuthorization();
-  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
-  const canView = can("nor.view");
-  const canCreate = can("nor.create");
+export default async function NoticeOfReadiness({ searchParams }: PageProps) {
+  // 1. Auth
+  const session = await auth();
+  if (!session?.user) return <div>Unauthorized</div>;
+  const user = session.user;
+  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
 
-  // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("nor");
+  // 2. Data Fetching
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 1;
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [vesselId, setVesselId] = useState("");
-  const [voyageId, setVoyageId] = useState("");
-  const [companyId, setCompanyId] = useState("all");
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [vessels, setVessels] = useState<any[]>([]);
-  const [voyages, setVoyages] = useState<any[]>([]);
+  const [reportData, filterOptions] = await Promise.all([
+    getNorReports({
+      ...resolvedParams,
+      page,
+      user,
+    }),
+    getFilterOptions(user),
+  ]);
 
-  const handleRefresh = () => setRefresh((prev) => prev + 1);
+  const { data, pagination } = reportData;
 
-  // Define how NOR Data maps to Excel Columns
-  const excelMapping = (r: any) => ({
-    "Vessel Name":
-      typeof r.vesselId === "object" ? r.vesselId?.name : r.vesselName,
-    "Voyage No":
-      typeof r.voyageId === "object" ? r.voyageId?.voyageNo : r.voyageNo,
-    "Port Name": r.portName || "-",
-    "NOR Tendered Time": r.norDetails?.tenderTime
-      ? new Date(r.norDetails.tenderTime).toLocaleString("en-IN")
-      : "-",
-    "ETA Port": r.norDetails?.etaPort
-      ? new Date(r.norDetails.etaPort).toLocaleString("en-IN")
-      : "-",
-    "Pilot Station": r.norDetails?.pilotStation || "N/A",
-    "Report Date": r.reportDate
-      ? new Date(r.reportDate).toLocaleString("en-IN")
-      : "-",
-    Status: r.status === "active" ? "Active" : "Inactive",
-    Remarks: r.remarks || "No Remarks",
-    "Document URL": r.norDetails?.documentUrl || "No Attachment",
-  });
-
-  // 1. Wait for Auth check
-  if (!isReady) return null;
-
-  // 2. Full Page Guard
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">
-          You do not have permission to access NOR Reports.
-        </p>
-      </div>
-    );
-  }
-
+  // 3. Render
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          NOR (Notice of Readiness)
-        </h2>
-        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {/* Desktop: First (Left) | Mobile: Bottom */}
-          <div className="w-full flex justify-end sm:w-auto">
-            <FilterToggleButton
-              isVisible={isFilterVisible}
-              onToggle={setIsFilterVisible}
-            />
-          </div>
-
-          {/* Desktop: Middle | Mobile: Middle */}
-          <div className="w-full sm:w-auto">
-            <ExportToExcel
-              data={reportsData}
-              fileName="NOR_Reports"
-              exportMap={excelMapping}
-              className="w-full justify-center"
-            />
-          </div>
-
-          {/* Desktop: Last (Right) | Mobile: Top */}
-          {canCreate && (
-            <div className="w-full sm:w-auto">
-              <AddNORButton
-                onSuccess={handleRefresh}
-                vesselList={vessels}
-                allVoyages={voyages}
-                className="w-full justify-center"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <ComponentCard
-        headerClassName="p-0 px-1"
-        title={
-          isFilterVisible ? (
-            <Filters
-              search={search}
-              setSearch={setSearch}
-              status={status}
-              setStatus={setStatus}
-              startDate={startDate}
-              setStartDate={setStartDate}
-              endDate={endDate}
-              setEndDate={setEndDate}
-              vesselId={vesselId}
-              setVesselId={setVesselId}
-              voyageId={voyageId}
-              setVoyageId={setVoyageId}
-              vessels={vessels}
-              isSuperAdmin={isSuperAdmin}
-              companies={companies}
-              companyId={companyId}
-              setCompanyId={setCompanyId}
-            />
-          ) : null
-        }
-      >
-        <div className="flex justify-end me-2 mb-2">
-          <TableCount count={totalCount} label="Reports" />
-        </div>
-        <NorReportTable
-          refresh={refresh}
-          search={search}
-          status={status}
-          startDate={startDate}
-          endDate={endDate}
-          onDataLoad={setReportsData} // Capture data from the table
-          setTotalCount={setTotalCount}
-          vesselId={vesselId}
-          voyageId={voyageId}
-          companyId={companyId}
-          vesselList={vessels}
-          onFilterDataLoad={(data) => {
-            setVessels(data.vessels);
-            setCompanies(data.companies);
-            setVoyages(data.voyages);
-          }}
-        />
-      </ComponentCard>
-    </div>
+    <NorPageClient
+      data={data}
+      totalCount={pagination.total}
+      filterOptions={filterOptions}
+      isSuperAdmin={isSuperAdmin}
+    >
+      <NorReportTable
+        data={data}
+        pagination={pagination}
+        vesselList={filterOptions.vessels}
+        allVoyages={filterOptions.voyages}
+      />
+    </NorPageClient>
   );
 }
