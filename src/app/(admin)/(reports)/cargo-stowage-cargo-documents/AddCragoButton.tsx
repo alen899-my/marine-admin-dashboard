@@ -15,10 +15,11 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { cargoSchema } from "@/lib/validations/cargoValidation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react"; // Added useEffect
 import { toast } from "react-toastify";
 interface AddCargoReportButtonProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   vesselList: any[];
   className?: string;
   allVoyages: any[];
@@ -30,6 +31,7 @@ export default function AddCargoButton({
   allVoyages,
   className,
 }: AddCargoReportButtonProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -307,7 +309,8 @@ export default function AddCargoButton({
       }
 
       toast.success("Cargo document uploaded successfully!");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (error: unknown) {
       console.error(error);
@@ -520,7 +523,11 @@ export default function AddCargoButton({
                 <div>
                   <DatePicker
                     id="document-date"
-                    label="Document Date"
+                    label={
+    <span>
+      Document Date <span className="text-red-500">*</span>
+    </span>
+  }
                     placeholder="Select a date"
                     onChange={handleDateChange}
                     className={

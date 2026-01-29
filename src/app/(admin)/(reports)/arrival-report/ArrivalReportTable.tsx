@@ -18,16 +18,16 @@ import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { Clock, Fuel, Gauge, InfoIcon, Navigation } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added router
 import {
   Dispatch,
   SetStateAction,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
+
 // --- Types ---
 interface ArrivalStats {
   robVlsfo: number | string;
@@ -42,7 +42,7 @@ interface NorDetails {
   norTime?: string; // NEW
 }
 
-interface ArrivalReport {
+export interface ArrivalReport {
   _id: string;
   vesselName: string;
   //  FIX: Allow Populated Object
@@ -67,6 +67,7 @@ interface ArrivalReport {
   updatedBy?: UserRef;
   createdAt?: string;
   updatedAt?: string;
+  metrics?: VoyageMetrics; // ✅ Added metrics prop (from server calculation)
 }
 
 interface EditFormData {
@@ -84,23 +85,17 @@ interface EditFormData {
   arrivalStats: ArrivalStats;
 }
 
+// ✅ Updated Props Interface
 interface ArrivalReportTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  onDataLoad?: (data: ArrivalReport[]) => void;
-  vesselId: string; // Added this
-  voyageId: string; // Added this
-  vesselList: any[]; // Added this
-  setTotalCount?: Dispatch<SetStateAction<number>>;
-  companyId: string;
-  onFilterDataLoad?: (filterData: {
-    vessels: any[];
-    companies: any[];
-    voyages: any[];
-  }) => void;
+  data: ArrivalReport[]; // Passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  vesselList: any[];
+  allVoyages: any[]; // Passed from server
 }
 
 interface VoyageMetrics {
@@ -112,31 +107,16 @@ interface VoyageMetrics {
 }
 
 export default function ArrivalReportTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  onDataLoad,
-  vesselId,
-  voyageId,
+  data,
+  pagination,
   vesselList,
-  setTotalCount,
-  companyId,
-  onFilterDataLoad,
+  allVoyages,
 }: ArrivalReportTableProps) {
-  const [reports, setReports] = useState<ArrivalReport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    vesselId,
-    voyageId,
-    companyId,
-  });
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
+
+  const reports = data; // ✅ Use prop data directly
+
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -144,25 +124,29 @@ export default function ArrivalReportTable({
   const [selectedReport, setSelectedReport] = useState<ArrivalReport | null>(
     null,
   );
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
+  
+  // ✅ Derived Voyage List
+  const voyageList = useMemo(() => {
+      return allVoyages.map((v: any) => ({
+        value: v.voyageNo, 
+        label: v.voyageNo,
+        vesselId: v.vesselId,
+      }));
+  }, [allVoyages]);
+
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [editNorSameAsArrival, setEditNorSameAsArrival] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
+  
+  // Metrics state for View Modal (populated from server data)
   const [voyageMetrics, setVoyageMetrics] = useState<VoyageMetrics | null>(
     null,
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  const LIMIT = 20;
   const { can, isReady } = useAuthorization();
   const canEdit = can("arrival.edit");
   const canDelete = can("arrival.delete");
-  const canSeeHistory = can("reports.history.view");
 
   /* ================= HELPERS (Moved up for usage in Columns) ================= */
   const getVoyageDisplay = (r: ArrivalReport | null) => {
@@ -238,23 +222,30 @@ export default function ArrivalReportTable({
     return <Badge color={color}>{label}</Badge>;
   };
 
+  // ✅ Handle Page Change via URL
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   /* ================= COLUMNS ================= */
   const columns = [
     {
       header: "S.No",
       render: (_: ArrivalReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Vessel & Voyage ID",
       render: (r: ArrivalReport) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase text-gray-900 dark:text-white">
-            {/*  Use Helper */}
+            {/* Use Helper */}
             {getVesselName(r)}
           </span>
           <span className="text-xs text-gray-500 uppercase tracking-tighter">
-            {/*  Use Helper */}
+            {/* Use Helper */}
             ID: {getVoyageDisplay(r)}
           </span>
           <span
@@ -290,7 +281,7 @@ export default function ArrivalReportTable({
               {formatDate(r.eventTime)}
             </span>
           </div>
-          {/*  NEW: NOR Time added below Arrival Time */}
+          {/* NEW: NOR Time added below Arrival Time */}
           {r?.norDetails?.norTime && (
             <div className="flex flex-col pt-1 border-t border-dashed border-gray-100 dark:border-white/5">
               <span className="text-[10px] text-gray-400 uppercase font-bold">
@@ -309,7 +300,7 @@ export default function ArrivalReportTable({
       render: (r: ArrivalReport) => (
         <div className="flex flex-col">
           <div className="font-bold text-xs">{r?.portName ?? "-"}</div>
-          {/*  NEW: Cargo Quantity added below Port Name */}
+          {/* NEW: Cargo Quantity added below Port Name */}
           <div className="text-sm font-medium mt-1">
             Cargo: {r?.arrivalStats?.arrivalCargoQtyMt?.toLocaleString() ?? 0}{" "}
             MT
@@ -344,72 +335,6 @@ export default function ArrivalReportTable({
     },
   ];
 
-  /* ================= FETCH ================= */
-  // useCallback fixes the missing dependency warning
-  // src\app\(admin)\(reports)\arrival-report\ArrivalReportTable.tsx
-
-  // Replace your existing fetchReports with this clean version
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const shouldFetchFilters = !hasLoadedFilters.current;
-
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search: search || "",
-          status: status || "all",
-          startDate: startDate || "",
-          endDate: endDate || "",
-          vesselId: vesselId || "",
-          voyageId: voyageId || "",
-          companyId: companyId || "all",
-          all: shouldFetchFilters ? "true" : "false",
-        });
-
-        const res = await fetch(`/api/arrival-report?${query.toString()}`);
-        if (!res.ok) throw new Error();
-
-        const result = await res.json();
-        const rawReports = result.data || [];
-
-        setReports(rawReports);
-        if (onDataLoad) onDataLoad(rawReports);
-
-        // 🟢 Callback to parent ONLY when data is returned
-        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-          hasLoadedFilters.current = true;
-          onFilterDataLoad({
-            vessels: result.vessels || [],
-            companies: result.companies || [],
-            voyages: result.voyages || [],
-          });
-        }
-
-        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-        setReports([]);
-        toast.error("Failed to load arrival reports");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      search,
-      status,
-      startDate,
-      endDate,
-      onDataLoad,
-      vesselId,
-      voyageId,
-      companyId,
-      setTotalCount,
-    ],
-  );
-
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -418,54 +343,6 @@ export default function ArrivalReportTable({
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-
-  useEffect(() => {
-    if (!isReady) return;
-
-    // 1. Detect if the filters actually changed compared to the last render
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.vesselId !== vesselId ||
-      prevFiltersRef.current.voyageId !== voyageId ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    // 2. If filters changed, reset to page 1
-    if (filtersChanged) {
-      // Update ref with new filter values
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-        companyId,
-      };
-
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // Stop here; the currentPage change will re-trigger this effect
-      }
-    }
-
-    // 3. If we are here, either the page changed or the filters stayed the same
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -528,22 +405,25 @@ export default function ArrivalReportTable({
       );
     }
   }, [suggestedVoyageNo]);
+  
+  // Memoize Voyage Options for Edit
   const memoizedVoyageList = useMemo(() => {
     if (!editData?.vesselId) return [];
+    
+    // ✅ Use voyageList (derived from allVoyages prop)
+    const filtered = voyageList.filter((v:any) => v.vesselId === editData?.vesselId);
+    
+    const options = filtered.map((v:any) => ({ value: v.value, label: v.label }));
 
-    const activeVoyage = vesselList.find(
-      (v) => v._id === editData.vesselId,
-    )?.activeVoyageNo;
-    const options = [];
+    const currentVoyage = getVoyageDisplay(selectedReport);
 
-    if (activeVoyage)
-      options.push({ value: activeVoyage, label: activeVoyage });
-    if (editData.voyageId && editData.voyageId !== activeVoyage) {
-      options.push({ value: editData.voyageId, label: editData.voyageId });
+    if (editData.voyageId && editData.voyageId !== "-" && !options.some((o:any) => o.value === editData.voyageId)) {
+      options.unshift({ value: editData.voyageId, label: `${editData.voyageId} (Current)` });
     }
 
     return options;
-  }, [editData?.vesselId, editData?.voyageId, vesselList]);
+  }, [editData?.vesselId, editData?.voyageId, voyageList, selectedReport]);
+
   async function handleUpdate() {
     if (!selectedReport || !editData) return;
 
@@ -568,11 +448,8 @@ export default function ArrivalReportTable({
 
       if (!res.ok) throw new Error();
 
-      const { report } = await res.json();
-
-      setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r)),
-      );
+      // ✅ Refresh Server Data
+      router.refresh();
 
       toast.success("Arrival report updated");
       setOpenEdit(false);
@@ -595,11 +472,8 @@ export default function ArrivalReportTable({
 
       if (!res.ok) throw new Error();
 
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport._id));
-      // Dynamic Update Count
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      router.refresh(); // ✅ Refresh Server Data
+      
       toast.success("Arrival report deleted");
     } catch {
       toast.error("Failed to delete arrival report");
@@ -617,12 +491,12 @@ export default function ArrivalReportTable({
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={reports}
+              data={reports} // ✅ Prop Data
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false} // ✅ No local loading
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} // ✅ URL Pagination
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -1289,190 +1163,6 @@ export default function ArrivalReportTable({
                   setEditData({ ...editData, remarks: e.target.value })
                 }
               />
-            </ComponentCard>
-
-            <ComponentCard title="Voyage Performance Summary">
-              {/* --- VOYAGE PERFORMANCE SECTION --- */}
-              <section>
-                {metricsLoading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[...Array(4)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-24 bg-gray-100 dark:bg-white/5 animate-pulse rounded-2xl"
-                      />
-                    ))}
-                  </div>
-                ) : voyageMetrics ? (
-                  <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/5">
-                      {/* Time Metric */}
-                      <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Clock
-                              size={16}
-                              className="text-blue-600 dark:text-blue-400"
-                            />
-                            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                              Total Time
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Total Time = Arrival Time - Departure Time"
-                            position={isMobile ? "left" : "right"}
-                          >
-                            <InfoIcon
-                              size={14}
-                              className="text-slate-300 hover:text-slate-500 cursor-help transition-colors"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {voyageMetrics.totalTimeHours}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-400">
-                              Hrs
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-blue-500 font-semibold mt-1 w-fit px-2 py-0.5 rounded-md">
-                            ≈ {(voyageMetrics.totalTimeHours / 24).toFixed(1)}{" "}
-                            Days
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Distance Metric */}
-                      <div className="p-6 flex flex-col gap-2 sm:border-b lg:border-b-0 border-slate-100 dark:border-white/5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Navigation
-                              size={16}
-                              className="text-indigo-600 dark:text-indigo-400"
-                            />
-                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                              Total Distance
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Total Distance = Σ (Distance Last 24h from all Noon Reports)"
-                            position={isMobile ? "left" : "top"}
-                          >
-                            <InfoIcon
-                              size={14}
-                              className="text-slate-300 hover:text-slate-500 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {voyageMetrics.totalDistance}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-400">
-                            NM
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Speed Metric */}
-                      <div className="p-6 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Gauge
-                              size={16}
-                              className="text-amber-600 dark:text-amber-400"
-                            />
-                            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                              Avg Speed
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Avg Speed = Total Distance / Total Time"
-                            position={isMobile ? "left" : "top"}
-                          >
-                            <InfoIcon
-                              size={14}
-                              className="text-slate-300 hover:text-slate-500 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {voyageMetrics.avgSpeed}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-400">
-                            Kts
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Fuel Metric */}
-                      <div className="p-6 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Fuel
-                              size={16}
-                              className="text-emerald-600 dark:text-emerald-400"
-                            />
-                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                              Consumption
-                            </span>
-                          </div>
-                          <Tooltip
-                            content="Consumed = (Dep ROB + Bunkers) - Arr ROB"
-                            position="left"
-                          >
-                            <InfoIcon
-                              size={14}
-                              className="text-slate-300 hover:text-slate-500 cursor-help"
-                            />
-                          </Tooltip>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">
-                              VLSFO
-                            </span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">
-                              {voyageMetrics.consumedVlsfo}{" "}
-                              <span className="text-[10px] text-slate-400 font-normal">
-                                MT
-                              </span>
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">
-                              LSMGO
-                            </span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">
-                              {voyageMetrics.consumedLsmgo}{" "}
-                              <span className="text-[10px] text-slate-400 font-normal">
-                                MT
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Empty State */
-                  <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/30 dark:bg-white/[0.01]">
-                    <div className="p-3 bg-white dark:bg-white/5 shadow-sm rounded-full mb-4">
-                      <InfoIcon size={24} className="text-slate-300" />
-                    </div>
-                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
-                      Missing Departure Data
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-[280px] leading-relaxed">
-                      A Departure Report is required to calculate performance
-                      metrics. Please link your reports to see analytics.
-                    </p>
-                  </div>
-                )}
-              </section>
             </ComponentCard>
           </div>
         )}

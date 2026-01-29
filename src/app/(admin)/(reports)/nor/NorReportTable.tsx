@@ -16,16 +16,16 @@ import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useVoyageLogic } from "@/hooks/useVoyageLogic";
 import { FileCheck, FileText, FileWarning, ImageIcon } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added router
 import {
   Dispatch,
   SetStateAction,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { toast } from "react-toastify";
+
 // --- Interfaces ---
 interface INorDetails {
   tenderTime?: string;
@@ -37,7 +37,7 @@ interface UserRef {
   _id: string;
   fullName: string;
 }
-interface INorReport {
+export interface INorReport {
   _id: string;
   vesselId:
     | string
@@ -77,52 +77,29 @@ interface IEditNorData {
   etaPort: string;
 }
 
+// ✅ Updated Props
 interface NORReportTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  onDataLoad?: (data: INorReport[]) => void;
-  vesselId: string; // Added this
-  voyageId: string; // Added this
-  vesselList: any[]; // Added this
-  setTotalCount?: Dispatch<SetStateAction<number>>;
-  companyId: string;
-  onFilterDataLoad?: (data: {
-    vessels: any[];
-    companies: any[];
-    voyages: any[];
-  }) => void;
+  data: INorReport[]; // Passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  vesselList: any[];
+  allVoyages: any[]; // New Prop
 }
 
 export default function NorReportTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  onDataLoad,
-  vesselId,
-  voyageId,
+  data,
+  pagination,
   vesselList,
-  setTotalCount,
-  companyId,
-  onFilterDataLoad,
+  allVoyages,
 }: NORReportTableProps) {
-  const hasLoadedFilters = useRef(false);
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    vesselId,
-    voyageId,
-    companyId,
-  });
-  // Apply interfaces
-  const [reports, setReports] = useState<INorReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
+
+  const reports = data; // Use prop directly
 
   // Modal States
   const [openView, setOpenView] = useState(false);
@@ -139,13 +116,19 @@ export default function NorReportTable({
 
   // Removed unused imageError state
 
-  // Pagination & Loading States
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  // Pagination & Loading States (Loading is now false since data is pre-fetched)
   const [saving, setSaving] = useState(false);
-  const [voyageList, setVoyageList] = useState<
-    { value: string; label: string }[]
-  >([]);
+  
+  // ✅ Voyage List from Props
+  const voyageList = useMemo(() => {
+     return allVoyages.map((v: any) => ({
+        value: v.voyageNo, 
+        label: v.voyageNo,
+        vesselId: v.vesselId,
+        status: "active" // Assuming active if passed from server filter
+     }));
+  }, [allVoyages]);
+
   const LIMIT = 20;
   const { can, isReady } = useAuthorization();
   const canEdit = can("nor.edit");
@@ -167,6 +150,7 @@ export default function NorReportTable({
       );
     }
   }, [suggestedVoyageNo]);
+  
   const getVesselName = (r: INorReport | null) => {
     if (!r) return "-";
     if (r.vesselId && typeof r.vesselId === "object" && "name" in r.vesselId) {
@@ -224,15 +208,15 @@ export default function NorReportTable({
 
     // 1. Filter voyages from the master list provided via props (syncing with Cargo logic)
     // We check both ID and Name to be safe, just like in your Cargo table
+    // ✅ Using the 'voyageList' derived from props above
     const vesselVoyages = voyageList.filter(
       (v: any) =>
-        v.vesselId?.toString() === editData.vesselId?.toString() ||
-        v.vesselName === editData.vesselName,
+        v.vesselId?.toString() === editData.vesselId?.toString()
     );
 
     const options = vesselVoyages.map((v: any) => ({
-      value: v.voyageNo,
-      label: `${v.voyageNo} ${v.status !== "active" ? "(Closed)" : ""}`,
+      value: v.value,
+      label: v.label,
     }));
 
     // 2. Add fallback for suggested or current voyage to prevent "undefined" display
@@ -276,13 +260,29 @@ export default function NorReportTable({
     }
     return <Badge color={color}>{label}</Badge>;
   };
+  
+  // ✅ Page Change Logic
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
+  /* ================= HELPER: FILE META EXTRACTION ================= */
+  const getFileMeta = (url?: string) => {
+    if (!url) return { name: "", isPdf: false, isImage: false };
+    const name = url.split("/").pop() || "Document";
+    const isPdf = name.toLowerCase().endsWith(".pdf");
+    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name);
+    return { name, isPdf, isImage };
+  };
 
   /* ================= 1. TABLE COLUMNS ================= */
   const columns = [
     {
       header: "S.No",
       render: (_: INorReport, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Vessel & Voyage ID",
@@ -394,66 +394,30 @@ export default function NorReportTable({
     },
   ];
 
-  /* ================= 2. API FUNCTIONS ================= */
+  /* ================= HANDLERS ================= */
+  function handleView(report: INorReport) {
+    setSelectedReport(report);
+    setOpenView(true);
+  }
 
-  const fetchReports = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const shouldFetchFilters = !hasLoadedFilters.current;
+  const statusOptions = [
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ];
+  // Determine if preview is PDF
+  const isPdfPreview = newFile
+    ? newFile.type === "application/pdf"
+    : previewUrl?.toLowerCase().endsWith(".pdf");
 
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-          vesselId,
-          voyageId,
-          companyId,
-          all: shouldFetchFilters ? "true" : "false",
-        });
+  /* ================= RENDER ================= */
+  const fileMeta = selectedReport?.norDetails?.documentUrl
+    ? getFileMeta(selectedReport.norDetails.documentUrl)
+    : null;
 
-        const res = await fetch(`/api/nor?${query.toString()}`);
-        const result = await res.json();
-
-        const fetchedData = result.data || [];
-        setReports(fetchedData);
-
-        // Call the parent callbacks
-        if (onDataLoad) onDataLoad(fetchedData);
-
-        if (shouldFetchFilters && result.vessels && onFilterDataLoad) {
-          // We set the ref to true BEFORE calling the parent to be safe
-          hasLoadedFilters.current = true;
-          onFilterDataLoad({
-            vessels: result.vessels || [],
-            companies: result.companies || [],
-            voyages: result.voyages || [],
-          });
-        }
-
-        if (setTotalCount) setTotalCount(result.pagination?.total || 0);
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-      // 🟢 REMOVED onFilterDataLoad and onDataLoad from here to prevent identity-based loops
-    },
-    [
-      search,
-      status,
-      startDate,
-      endDate,
-      vesselId,
-      voyageId,
-      companyId,
-      setTotalCount,
-    ],
-  );
+  // Get current file meta for Edit modal (using selectedReport directly as it holds the saved URL)
+  const currentFileMeta = selectedReport?.norDetails?.documentUrl
+    ? getFileMeta(selectedReport.norDetails.documentUrl)
+    : null;
 
   function handleEdit(report: INorReport) {
     setSelectedReport(report);
@@ -517,10 +481,10 @@ export default function NorReportTable({
         body: formData,
       });
       if (!res.ok) throw new Error("Update failed");
-      const { report } = await res.json();
-      setReports((prev) =>
-        prev.map((r) => (r._id === report._id ? report : r)),
-      );
+      
+      // ✅ Refresh Server Data
+      router.refresh();
+      
       toast.success("Updated");
       setOpenEdit(false);
       setSelectedReport(null);
@@ -542,11 +506,9 @@ export default function NorReportTable({
 
       if (!res.ok) throw new Error("Delete failed");
 
-      setReports((prev) => prev.filter((r) => r._id !== selectedReport?._id));
-      // Dynamic Update Count
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      // ✅ Refresh Server Data
+      router.refresh();
+
       toast.success("Record deleted");
     } catch (err) {
       console.error(err);
@@ -557,87 +519,6 @@ export default function NorReportTable({
     }
   }
 
-  useEffect(() => {
-    if (!isReady) return;
-
-    // 1. Detect if the filters actually changed compared to the last render
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.vesselId !== vesselId ||
-      prevFiltersRef.current.voyageId !== voyageId ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    // 2. If filters changed, reset to page 1
-    if (filtersChanged) {
-      // Update ref with new filter values immediately
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        vesselId,
-        voyageId,
-        companyId,
-      };
-
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // Stop here; the currentPage change will re-trigger this effect
-      }
-    }
-
-    // 3. Fetch the data for the current page
-    fetchReports(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchReports,
-    isReady,
-    search,
-    status,
-    vesselId,
-    voyageId,
-    companyId,
-    startDate,
-    endDate,
-  ]);
-
-  /* ================= HELPER: FILE META EXTRACTION ================= */
-  const getFileMeta = (url?: string) => {
-    if (!url) return { name: "", isPdf: false, isImage: false };
-    const name = url.split("/").pop() || "Document";
-    const isPdf = name.toLowerCase().endsWith(".pdf");
-    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name);
-    return { name, isPdf, isImage };
-  };
-
-  /* ================= HANDLERS ================= */
-  function handleView(report: INorReport) {
-    setSelectedReport(report);
-    setOpenView(true);
-  }
-
-  const statusOptions = [
-    { value: "active", label: "Active" },
-    { value: "inactive", label: "Inactive" },
-  ];
-  // Determine if preview is PDF
-  const isPdfPreview = newFile
-    ? newFile.type === "application/pdf"
-    : previewUrl?.toLowerCase().endsWith(".pdf");
-
-  /* ================= RENDER ================= */
-  const fileMeta = selectedReport?.norDetails?.documentUrl
-    ? getFileMeta(selectedReport.norDetails.documentUrl)
-    : null;
-
-  // Get current file meta for Edit modal (using selectedReport directly as it holds the saved URL)
-  const currentFileMeta = selectedReport?.norDetails?.documentUrl
-    ? getFileMeta(selectedReport.norDetails.documentUrl)
-    : null;
   if (!isReady) return null;
   return (
     <>
@@ -645,12 +526,12 @@ export default function NorReportTable({
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={reports}
+              data={reports} // ✅ Prop Data
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false} // ✅ No local loading
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} // ✅ URL Pagination
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -1144,9 +1025,9 @@ export default function NorReportTable({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-4 py-1.5 text-xs font-medium 
-                                       text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
-                                       rounded-md transition shadow-sm
-                                       dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+                                     text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
+                                     rounded-md transition shadow-sm
+                                     dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                         >
                           Open
                         </a>
@@ -1155,8 +1036,8 @@ export default function NorReportTable({
                           href={previewUrl}
                           download={newFile ? newFile.name : "download"}
                           className="px-4 py-1.5 text-xs font-medium 
-                                       text-white bg-brand-500 hover:bg-brand-600 
-                                       rounded-md transition shadow-sm border border-transparent"
+                                     text-white bg-brand-500 hover:bg-brand-600 
+                                     rounded-md transition shadow-sm border border-transparent"
                         >
                           Download
                         </a>
