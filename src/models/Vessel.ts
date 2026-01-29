@@ -23,6 +23,7 @@ export interface IVessel extends Document {
     fileUrl: string;               
     note?: string;
     expiryDate?: Date;
+    rejectionReason?: string;
     updatedAt: Date;
     uploadedBy?: mongoose.Types.ObjectId;
   }[];
@@ -95,6 +96,7 @@ const VesselSchema = new Schema<IVessel>(
           fileName: { type: String, required: true },
           fileUrl: { type: String, required: true },
           note: String,
+          rejectionReason: { type: String, default: "" },
           expiryDate: Date,
           updatedAt: { type: Date, default: Date.now },
           uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }

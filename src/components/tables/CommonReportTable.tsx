@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, PenBox, Trash2 } from "lucide-react";
+import { Eye, PenBox, Trash2 ,Upload} from "lucide-react";
 import React from "react";
 
 type Column<T> = {
@@ -27,6 +27,7 @@ interface CommonReportTableProps<T> {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onUpload?: (row: T) => void;
   onRowClick?: (row: T) => void;
 }
 
@@ -37,6 +38,7 @@ export default function CommonReportTable<T>({
   currentPage,
   totalPages,
   onPageChange,
+  onUpload,
   onView,
   onEdit,
   onDelete,
@@ -134,7 +136,7 @@ const SkeletonRow = () => {
                       </TableCell>
                     ))}
 
-                    {(onView || onEdit || onDelete) && (
+                    {(onView || onEdit ||onUpload || onDelete) && (
                       <TableCell className="px-5 py-3">
                         <div className="flex gap-2 justify-start">
                           {onView && (
@@ -150,7 +152,19 @@ const SkeletonRow = () => {
                               <Eye className="h-4 w-4 text-blue-500" />
                             </Button>
                           )}
-
+                        {onUpload && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-emerald-500/50 hover:bg-emerald-500/10 dark:border-emerald-400/30 group"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpload(row);
+                  }}
+                >
+                  <Upload className="h-4 w-4 text-emerald-500 dark:text-emerald-400 group-hover:text-emerald-600 transition-colors" />
+                </Button>
+              )}
                           {onEdit && (
                             <Button
                               size="sm"

@@ -6,11 +6,13 @@ interface TextareaProps {
   placeholder?: string;
   rows?: number;
   value?: string;
+  defaultValue?: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   className?: string;
   disabled?: boolean;
   error?: boolean;
   hint?: string;
+  maxLength?: number;
 }
 
 const TextArea: React.FC<TextareaProps> = ({
@@ -18,14 +20,18 @@ const TextArea: React.FC<TextareaProps> = ({
   name,
   placeholder = "Enter your message",
   rows = 3,
-  value = "",
+  value,
+  defaultValue,
   onChange,
   className = "",
   disabled = false,
   error = false,
   hint = "",
+  maxLength
 }) => {
-  // Base classes: use a readable text color, and separate placeholder color
+  // Base 
+  // classes: use a readable text color, and separate placeholder color
+  
   let textareaClasses = [
     "w-full",
     "rounded-lg",
@@ -60,9 +66,12 @@ const TextArea: React.FC<TextareaProps> = ({
         placeholder={placeholder}
         rows={rows}
         value={value}
+        defaultValue={defaultValue}
         onChange={onChange}
         disabled={disabled}
+      maxLength={maxLength}
         className={textareaClasses}
+        
       />
       {hint && (
         <p

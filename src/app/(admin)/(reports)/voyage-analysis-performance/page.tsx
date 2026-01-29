@@ -624,10 +624,10 @@ export default function VoyageAnalysisPage() {
                                   e.target.value.slice(0, 1000),
                                 )
                               }
-                              // We keep the italic style and min-height, but remove textarea-specific classes like 'resize-none'
+
                               className="italic min-h-[40px] w-sm"
                               placeholder="Sea state, Wind, etc..."
-                              // Note: Ensure your Input component supports the 'maxLength' prop (see step 2)
+                            
                               maxLength={100}
                             />
                           </td>
