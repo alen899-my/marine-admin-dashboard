@@ -666,7 +666,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                                       : "!bg-transparent !text-gray-400 !border-gray-200 dark:!text-gray-500 dark:!border-white/10"
                                   }`}
                                 >
-                                  Approve
+                                 {currentStatus === "approved" ? "Approved" : "Approve"}
                                 </Button>
                                 <Button
                                   onClick={() =>
@@ -679,7 +679,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                                       : "!bg-transparent !text-gray-400 !border-gray-200 dark:!text-gray-500 dark:!border-white/10"
                                   }`}
                                 >
-                                  Reject
+                                 {  currentStatus === "rejected" ? "Rejected" : "Reject"}
                                 </Button>
                               </div>
                             )}

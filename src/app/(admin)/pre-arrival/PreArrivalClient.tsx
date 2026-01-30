@@ -291,7 +291,7 @@ const handleRefresh = useCallback(async () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">Pre‑Arrival Pack Management</h2>
-          <p className="text-sm text-gray-500 italic">Manage port entry documentation and compliance.</p>
+           <p className="text-sm text-gray-500 mt-0.5">Manage port entry documentation and compliance.</p>
         </div>
 
         <div className="flex items-center gap-3">
