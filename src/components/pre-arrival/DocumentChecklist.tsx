@@ -311,57 +311,68 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
   return (
     <ComponentCard
       title={isReadOnly ? "Approved Document Pack" : "Upload All Documents "}
-     action={
+ action={
   <div className="flex flex-col items-end w-full sm:w-auto">
-    {/* flex-wrap ensures that on mobile, items drop to the next line instead of disappearing */}
- <div className="flex flex-wrap items-center justify-end gap-2">
-  {/* Unified Container */}
- <div className="flex flex-wrap items-center">
-  {/* Approved Count */}
-  <div
-    className="flex items-center gap-2 px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity"
-    onClick={() => setFilterStatus(filterStatus === "approved" ? "all" : "approved")}
-  >
-    <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "approved" ? "text-emerald-600" : "text-gray-400"}`}>
-      Approved
-    </span>
-    <Badge color="success" size="sm" variant="light">
-      {stats.approvedCount}
-    </Badge>
-  </div>
-  
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center">
+        
+        {/* 1. Approved Count - Always Visible */}
+        <div
+          className="flex items-center gap-2 px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setFilterStatus(filterStatus === "approved" ? "all" : "approved")}
+        >
+          <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "approved" ? "text-emerald-600" : "text-gray-400"}`}>
+            Approved
+          </span>
+          <Badge color="success" size="sm" variant="light">
+            {stats.approvedCount}
+          </Badge>
+        </div>
 
-  {/* Rejected Count */}
-  <div
-    className="flex items-center gap-2 border-l border-gray-200/50 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity"
-    onClick={() => setFilterStatus(filterStatus === "rejected" ? "all" : "rejected")}
-  >
-    <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "rejected" ? "text-red-600" : "text-gray-400"}`}>
-      Rejected
-    </span>
-    <Badge color="error" size="sm" variant="light">
-      {stats.rejectedCount}
-    </Badge>
-  </div>
-  <div className="flex items-center gap-2 border-l border-gray-200 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setFilterStatus(filterStatus === "pending" ? "all" : "pending")}>
-              <span className={`text-[10px] font-bold uppercase whitespace-nowrap ${filterStatus === "pending" ? "text-amber-600" : "text-gray-400"}`}>Pending</span>
-              <Badge color="warning" size="sm" variant= "light">{stats.pendingCount}</Badge>
-            </div>
+        {/* 2. Rejected Count - Only in Edit Mode */}
+        {!isReadOnly && (
+          <div
+            className="flex items-center gap-2 border-l border-gray-200/50 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => setFilterStatus(filterStatus === "rejected" ? "all" : "rejected")}
+          >
+            <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "rejected" ? "text-red-600" : "text-gray-400"}`}>
+              Rejected
+            </span>
+            <Badge color="error" size="sm" variant="light">
+              {stats.rejectedCount}
+            </Badge>
+          </div>
+        )}
 
-  {/* Total Progress */}
-  <div
-    className="flex items-center gap-2 border-l border-gray-200/50 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity"
-    onClick={() => setFilterStatus("all")}
-  >
-    <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "all" ? "text-brand-500" : "text-gray-400"}`}>
-      {progressLabel}
-    </span>
-    <Badge color="primary" size="sm" variant="light">
-      {stats.uploadedCount} / {stats.total}
-    </Badge>
-  </div>
-</div>
-</div>
+        {/* 3. Pending Count - Only in Edit Mode */}
+        {!isReadOnly && (
+          <div 
+            className="flex items-center gap-2 border-l border-gray-200 dark:border-white/10 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity" 
+            onClick={() => setFilterStatus(filterStatus === "pending" ? "all" : "pending")}
+          >
+            <span className={`text-[10px] font-bold uppercase whitespace-nowrap ${filterStatus === "pending" ? "text-amber-600" : "text-gray-400"}`}>
+              Pending
+            </span>
+            <Badge color="warning" size="sm" variant="light">
+              {stats.pendingCount}
+            </Badge>
+          </div>
+        )}
+
+        {/* 4. Total Progress - Always Visible */}
+        <div
+          className={`flex items-center gap-2 px-2 sm:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity ${!isReadOnly ? 'border-l border-gray-200/50 dark:border-white/10' : 'border-l border-gray-200/50 dark:border-white/10'}`}
+          onClick={() => setFilterStatus("all")}
+        >
+          <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${filterStatus === "all" ? "text-brand-500" : "text-gray-400"}`}>
+            {progressLabel}
+          </span>
+          <Badge color="primary" size="sm" variant="light">
+            {stats.uploadedCount} / {stats.total}
+          </Badge>
+        </div>
+      </div>
+    </div>
   </div>
 }
     >
