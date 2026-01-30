@@ -10,6 +10,7 @@ export interface DownloadPdfButtonProps {
   filename: string;
   data: Record<string, any>;
   buttonLabel?: string;
+  disabled?: boolean;
 }
 
 export default function DownloadPdfButton({
@@ -17,6 +18,7 @@ export default function DownloadPdfButton({
   filename,
   data,
   buttonLabel = "Download Report",
+  disabled = false,
 }: DownloadPdfButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -84,15 +86,25 @@ export default function DownloadPdfButton({
     }
   };
 
+  const isButtonDisabled = loading || disabled;
+
   return (
     <button
       onClick={(e) => { e.stopPropagation(); generateAndDownload(); }}
-      disabled={loading}
-      className="flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 disabled:opacity-60 active:scale-95 w-full sm:w-auto justify-center"
+      disabled={isButtonDisabled}
+      className={`
+        flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border transition-all
+        w-full sm:w-auto justify-center
+        
+        ${isButtonDisabled 
+          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-70 dark:bg-slate-800/50 dark:border-white/5 dark:text-gray-600" 
+          : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 active:scale-95 hover:border-brand-200"
+        }
+      `}
     >
       <HiOutlineDownload 
         size={18} 
-        className="text-brand-500" 
+        className={isButtonDisabled ? "text-gray-400 dark:text-gray-600" : "text-brand-500"} 
       />
       <span className="whitespace-nowrap">
         {loading ? "Generating..." : buttonLabel}

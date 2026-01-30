@@ -341,6 +341,7 @@ export default function VoyageAnalysisPage() {
             filename={`Voyage_Report_${voyageNo}_${vesselName}`}
             data={pdfData}
             buttonLabel="Export PDF"
+            disabled={!vessel || !legId}
           />
         </div>
       </div>
