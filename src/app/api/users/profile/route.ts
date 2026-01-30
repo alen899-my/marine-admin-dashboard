@@ -72,7 +72,8 @@ export async function PATCH(req: NextRequest) {
 
     const updatedUser = await User.findByIdAndUpdate(session.user.id, updateData, { new: true })
       .select("-password")
-      .populate("role", "name");
+      .populate("role", "name")
+      .populate("company", "name");
 
     return NextResponse.json(updatedUser);
   } catch (error: any) {

@@ -7,6 +7,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { toast } from "react-toastify";
 import { User as UserIcon } from "lucide-react"; // Import for the profile icon
+import Badge from "../ui/badge/Badge";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -114,9 +115,9 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
               </label>
               <div className="mt-4 text-center">
                 <p className="text-lg font-bold text-gray-800 dark:text-white">{formData.fullName || "User"}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{formData.roleName}</p>
+                <Badge><span className="uppercase">{formData.roleName}</span></Badge>
                 {/* Displaying Company Name below Role */}
-                <p className="text-xs font-medium text-gray-500 mt-1 uppercase tracking-wide">{formData.companyName}</p>
+                <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-wide">{formData.companyName}</p>
               </div>
             </div>
 
@@ -125,7 +126,7 @@ export default function EditProfileModal({ isOpen, onClose, onSuccess, initialDa
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className="lg:col-span-2">
                   <Label>Full Name</Label>
-                  <Input type="text" name="fullName" value={formData.fullName} onChange={handleChange} />
+                  <Input type="text" name="fullName" value={formData.fullName} onChange={handleChange} maxLength={20} />
                 </div>
                 <div>
                   <Label>Email Address</Label>
