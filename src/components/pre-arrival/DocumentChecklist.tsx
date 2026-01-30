@@ -457,7 +457,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
       {/* Container changed to flex-wrap to handle longer names */}
       <div className="flex flex-wrap items-center gap-2 mt-2">
         <p className="text-sm text-gray-900 dark:text-white whitespace-normal break-words leading-tight font-medium">
-          {row.name} <span className="text-red-500 ml-1">*</span>
+          {row.name}    {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
         </p>
 
         {/* ✅ History Trigger Button - Now wraps correctly with text */}
