@@ -65,7 +65,7 @@ export async function POST(req: Request) {
             vesselCertId: cert._id,
             fileName: null,
             fileUrl: null,
-            status: "pending_review", 
+            status: "approved",
             note: "",
             uploadedBy: cert.uploadedBy || session?.user?.id,
             uploadedAt: cert.updatedAt || new Date(),
