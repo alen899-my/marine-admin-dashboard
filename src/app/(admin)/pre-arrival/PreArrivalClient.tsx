@@ -224,60 +224,57 @@ const handleRefresh = useCallback(async () => {
     const isAdmin = serverUser?.role?.toLowerCase() === "admin";
     const canSeeAll = can("prearrival.viewall");
     
-    // 1. Convert Map to Array if necessary and get all documents
-    const allDocs = Object.values(row.documents || {});
-    
-    // 2. Determine Logic based on Role
+    // 1. Get the actual data from the DB
+    const uploadedDocs = row.documents || {};
+    const allDocEntries = Object.entries(uploadedDocs);
+
+    // 2. Define the hard totals based on your Phase-2 requirements
+    const TOTAL_OFFICE_DOCS = 12;
+    const TOTAL_SHIP_DOCS = 13;
+    const TOTAL_PACK_DOCS = 25;
+
     let current = 0;
     let total = 0;
     let label = "";
 
     if (isSuperAdmin || isAdmin || canSeeAll) {
-      // ADMIN LOGIC: Total approved out of 25 (including auto-approved office docs)
-      current = allDocs.filter((d: any) => 
-        (!!d.fileUrl || !!d.vesselCertId) && d.status === "approved"
-      ).length;
-      total = 25; 
+      // Admin sees total approved out of 25
+      current = allDocEntries.filter(([_, d]: any) => d.status === "approved").length;
+      total = TOTAL_PACK_DOCS;
       label = "Total Pack Progress";
     } else {
-      // SHIP LOGIC: Only show progress for ship-owned documents
-      const shipDocs = allDocs.filter((d: any) => d.owner === "ship");
-      current = shipDocs.filter((d: any) => 
-        (!!d.fileUrl || !!d.vesselCertId) && d.status === "approved"
+      // SHIP LOGIC: Count approved ship docs out of the 13 they are REQUIRED to handle
+      current = allDocEntries.filter(([_, d]: any) => 
+        d.owner === "ship" && d.status === "approved"
       ).length;
-      total = shipDocs.length || 13; // Dynamic based on ship assignments
-      label = " Submissions";
+      
+      // ✅ FIX: Force the total to be 13 (the requirement) so it doesn't drop to 0/1
+      total = TOTAL_SHIP_DOCS;
+      label = "Submissions";
     }
 
-    const percentage = Math.min((current / total) * 100, 100);
+    const percentage = Math.round((current / total) * 100);
 
     return (
       <div className="w-40">
-        <div className="flex justify-between text-[10px] font-bold mb-1  text-gray-400">
-          <div className="flex flex-col">
-            <span>{label}</span>
-          </div>
-          <span className="text-brand-500 font-mono">
-            {current}/{total}
-          </span>
+        <div className="flex justify-between text-[10px] font-bold mb-1 text-gray-400">
+          <span>{label}</span>
+          <span className="text-brand-500 font-mono">{current}/{total}</span>
         </div>
-        <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-         <div
-  className={`h-full transition-all duration-1000 ease-out relative ${
-    percentage === 100 
-      ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
-      : "bg-gradient-to-r from-brand-600 to-brand-400"
-  }`}
-  style={{ width: `${percentage}%` }}
->
-  {/* Glossy Overlay effect */}
-  <div className="absolute inset-0 bg-white/20 w-full h-[1px] top-0" />
-  
-  {/* Subtle Pulse for active progress (less than 100%) */}
-  {percentage > 0 && percentage < 100 && (
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite] -skew-x-12" />
-  )}
-</div>
+        <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden border border-gray-200/50 dark:border-white/5">
+          <div
+            className={`h-full transition-all duration-1000 ease-out relative ${
+              percentage === 100 
+                ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
+                : "bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+            }`}
+            style={{ width: `${percentage}%` }}
+          >
+            <div className="absolute inset-0 bg-white/20 w-full h-[1px] top-0" />
+            {percentage > 0 && percentage < 100 && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse -skew-x-12" />
+            )}
+          </div>
         </div>
       </div>
     );

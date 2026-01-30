@@ -13,6 +13,7 @@ import FileInput from "@/components/form/input/FileInput";
 import Input from "@/components/form/input/InputField";
 import { toast } from "react-toastify";
 import Badge from "@/components/ui/badge/Badge";
+import { saveAs } from "file-saver";
 import {
   FileText,
   FileSpreadsheet,
@@ -203,7 +204,16 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
     uploadedData,
     filterStatus
   ]);
-
+  const handleDownloadFile = async (url: string, fileName: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    saveAs(blob, fileName);
+  } catch (error) {
+    console.error("Download failed", error);
+    toast.error("Failed to download file");
+  }
+};
   const handleInstantVerify = (
     docId: string,
     status: "approved" | "rejected",
@@ -623,14 +633,13 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                       <TableCell className="px-4 py-2 align-top text-left w-1/4">
                         {isUploaded ? (
                           <div className="flex items-center gap-3">
-                            <a
-                              href={fileInfo?.fileUrl}
-                              download
-                              className="flex items-center justify-center h-[45px] w-[45px] bg-blue-50 dark:bg-transparent text-blue-600 rounded-lg border border-blue-100 dark:border-gray-100/10 transition-colors"
-                              title="Download File"
-                            >
-                              <Download className="h-4 w-4" />
-                            </a>
+                           <button
+          onClick={() => handleDownloadFile(fileInfo?.fileUrl, fileName)}
+          className="flex items-center justify-center h-[45px] w-[45px] bg-blue-50 dark:bg-transparent text-blue-600 rounded-lg border border-blue-100 dark:border-gray-100/10 transition-colors hover:bg-blue-100"
+          title="Download File"
+        >
+          <Download className="h-4 w-4" />
+        </button>
 
                             {/* ✅ Only show Approve/Reject if the document owner is the Ship */}
                             {row.owner === "ship" && (
