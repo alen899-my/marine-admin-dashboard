@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
-import { auth } from "@/auth"; 
 import { put } from "@vercel/blob";
-import bcrypt from "bcryptjs"; 
+import bcrypt from "bcryptjs";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     }
 
     await dbConnect();
-    
+
     const user = await User.findById(session.user.id)
       .select("-password")
       .populate("role", "name") // Fetch the role name (e.g. "Admin", "Manager")
@@ -54,7 +54,10 @@ export async function PATCH(req: NextRequest) {
     // Handle Password Update
     if (password) {
       if (password.length < 6) {
-        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Password must be at least 6 characters" },
+          { status: 400 },
+        );
       }
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
@@ -63,14 +66,24 @@ export async function PATCH(req: NextRequest) {
     // Handle Profile Picture
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json({ error: "Max file size is 2MB" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Max file size is 2MB" },
+          { status: 400 },
+        );
       }
       const filename = `profile_${session.user.id}_${Date.now()}`;
-      const blob = await put(filename, file, { access: "public", addRandomSuffix: true });
+      const blob = await put(filename, file, {
+        access: "public",
+        addRandomSuffix: true,
+      });
       updateData.profilePicture = blob.url;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(session.user.id, updateData, { new: true })
+    const updatedUser = await User.findByIdAndUpdate(
+      session.user.id,
+      updateData,
+      { new: true },
+    )
       .select("-password")
       .populate("role", "name")
       .populate("company", "name");

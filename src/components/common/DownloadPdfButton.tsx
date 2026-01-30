@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useState } from "react";
 import { HiOutlineDownload } from "react-icons/hi"; // Using a download icon
 
 export interface DownloadPdfButtonProps {

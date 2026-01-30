@@ -2,6 +2,7 @@
 
 import * as XLSX from "xlsx-js-style";
 import Button from "../ui/button/Button";
+import { RiFileExcel2Fill } from "react-icons/ri";
 
 interface ExportToExcelProps {
   data: any[];
@@ -100,11 +101,7 @@ export default function ExportToExcel({
       onClick={handleExport}
       disabled={!data || data.length === 0}
       startIcon={
-        <img
-          src="/images/icons/xls.png"
-          alt="Excel"
-          className="h-6 w-6 object-contain"
-        />
+        <RiFileExcel2Fill className="h-5 w-5 text-green-600" />
       }
     >
       Export Excel

@@ -12,7 +12,6 @@ import {
   Activity,
   AlertTriangle,
   Anchor,
-  ArrowRight,
   Fuel,
   Info,
   Minus,
@@ -518,9 +517,7 @@ export default function VoyageAnalysisPage() {
           </ComponentCard>
 
           {/* Noon Reports Table */}
-          <ComponentCard
-            title="Daily Noon Reports"
-          >
+          <ComponentCard title="Daily Noon Reports">
             <div className="flex justify-end mb-4">
               <Button
                 variant="outline"
@@ -625,10 +622,8 @@ export default function VoyageAnalysisPage() {
                                   e.target.value.slice(0, 1000),
                                 )
                               }
-
                               className="italic min-h-[40px] w-sm"
                               placeholder="Sea state, Wind, etc..."
-                            
                               maxLength={100}
                             />
                           </td>
@@ -804,7 +799,7 @@ export default function VoyageAnalysisPage() {
             {/* Fuel Consumption Section */}
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-3 px-1 text-slate-400 dark:text-slate-500">
-                <Fuel/>
+                <Fuel />
                 <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">
                   Fuel Consumption
                 </h4>
