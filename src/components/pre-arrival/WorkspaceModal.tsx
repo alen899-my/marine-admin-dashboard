@@ -36,6 +36,8 @@ export default function WorkspaceModal({
   const { can } = useAuthorization();
  const [isZipping, setIsZipping] = useState(false);
 const [isSharing, setIsSharing] = useState(false);
+// Inside WorkspaceModal component
+
 
   if (!data) return null;
 
@@ -215,7 +217,31 @@ const handleShareViaWhatsApp = async () => {
     }
   };
 
-  const handleSave = async () => {
+ const handleSave = async () => {
+    // 1. Define the full list of required document IDs
+    const REQUIRED_DOC_IDS = [
+      "pre_arrival_form", "health_decl", "temp_14_days", "crew_health_decl",
+      "arrival_nil_cargo", "arms_decl", "nil_list", "bond_store", "rob_dg",
+      "imo_maritime_decl", "registry_cert", "tonnage_cert", "isps_ship",
+      "pi_cert", "msm_cert", "last_10_ports", "ships_particulars",
+      "hull_machinery", "safety_equipment", "sanitation_cert",
+      "medical_chest", "isps_officer", "port_clearance", "imo_crew_list",
+      "security_report"
+    ];
+
+    // 2. Perform Validation: Check if every required ID has a file
+    const missingDocs = REQUIRED_DOC_IDS.filter((id) => {
+      const isAlreadyUploaded = !!(data.documents?.[id]?.fileUrl || data.documents?.[id]?.vesselCertId);
+      const isPendingUpload = !!pendingFiles[id];
+      return !isAlreadyUploaded && !isPendingUpload;
+    });
+
+    if (missingDocs.length > 0) {
+      toast.error(`Required: Please upload all documents before saving (${missingDocs.length} missing).`);
+      return;
+    }
+
+    // 3. Change Detection (Existing Logic)
     const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
     if (changedIds.length === 0) {
       toast.info("No changes to save");
