@@ -522,7 +522,7 @@ export default function DailyNoonReportTable({
                   dark:border-white/10 dark:bg-slate-900 dark:text-gray-100 rounded-xl"
       >
         <div className=" max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1300px]">
             <CommonReportTable
               data={reports} //  Prop Data
               columns={columns}

@@ -209,7 +209,7 @@ const handleRefresh = useCallback(async () => {
     const config = statusConfig[dbStatus] || statusConfig.draft;
 
     return (
-     <Badge color={config.color}>
+     <Badge color={config.color} size="sm">
           {config.label}
         </Badge>
     );
