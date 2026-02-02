@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useState } from "react";
 import { HiOutlineDownload } from "react-icons/hi"; // Using a download icon
+import Button from "../ui/button/Button";
 
 export interface DownloadPdfButtonProps {
   title: string;
@@ -89,18 +90,10 @@ export default function DownloadPdfButton({
   const isButtonDisabled = loading || disabled;
 
   return (
-    <button
+    <Button
       onClick={(e) => { e.stopPropagation(); generateAndDownload(); }}
       disabled={isButtonDisabled}
-      className={`
-        flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border transition-all
-        w-full sm:w-auto justify-center
-        
-        ${isButtonDisabled 
-          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-70 dark:bg-slate-800/50 dark:border-white/5 dark:text-gray-600" 
-          : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 active:scale-95 hover:border-brand-200"
-        }
-      `}
+      variant="outline"
     >
       <HiOutlineDownload 
         size={18} 
@@ -109,6 +102,6 @@ export default function DownloadPdfButton({
       <span className="whitespace-nowrap">
         {loading ? "Generating..." : buttonLabel}
       </span>
-    </button>
+    </Button>
   );
 }

@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useState } from "react";
 import { IoLogoWhatsapp } from "react-icons/io";
+import Button from "../ui/button/Button";
 
 export interface SharePdfButtonProps {
   title: string;
@@ -125,18 +126,18 @@ export default function SharePdfButton({
   };
 
   return (
-    <button
+    <Button
       onClick={(e) => {
         e.stopPropagation();
         generateAndShare();
       }}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300 disabled:opacity-60 active:scale-95 w-full sm:w-auto justify-center"
+      variant="outline"
     >
       <IoLogoWhatsapp size={18} className="text-[#25D366]" />
       <span className="whitespace-nowrap">
         {loading ? "Sharing..." : buttonLabel}
       </span>
-    </button>
+    </Button>
   );
 }
