@@ -8,7 +8,7 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode, useEffect, useState } from "react";
 import AddNORButton from "./AddNORButton";
 import NorFilterWrapper from "./NorFilterWrapper";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 const excelMapping = (r: any) => ({
     "Vessel Name": typeof r.vesselId === "object" ? r.vesselId?.name : r.vesselName,
     "Voyage No": typeof r.voyageId === "object" ? r.voyageId?.voyageNo : r.voyageNo,
@@ -41,12 +41,23 @@ export default function NorPageClient({
   filterOptions,
   isSuperAdmin,
 }: NorPageClientProps) {
+   const { can, isReady } = useAuthorization();
+  const canView = can("nor.view");
+  const canCreate = can("nor.create");
+
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("nor");
-  const [mounted, setMounted] = useState(false);
+  
+  if (!isReady) return null;
 
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
-
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access NOR Reports.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -57,7 +68,7 @@ export default function NorPageClient({
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -84,7 +95,7 @@ export default function NorPageClient({
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <NorFilterWrapper
               vessels={filterOptions.vessels}
               companies={filterOptions.companies}

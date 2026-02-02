@@ -22,10 +22,7 @@ export default function CompanyPageClient({ children, totalCount }: CompanyPageC
   const canAdd = can("company.create");
 
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("companies");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
+ 
 
   if (!isReady) return null;
 
@@ -49,7 +46,7 @@ export default function CompanyPageClient({ children, totalCount }: CompanyPageC
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -67,7 +64,7 @@ export default function CompanyPageClient({ children, totalCount }: CompanyPageC
 
       <ComponentCard
         headerClassName="p-0 px-1"
-        title={effectiveFilterVisibility ? <CompanyFilterWrapper /> : null}
+        title={isFilterVisible ? <CompanyFilterWrapper /> : null}
       >
         <div className="flex justify-end me-2 mb-2">
           <TableCount count={totalCount} label="companies" />

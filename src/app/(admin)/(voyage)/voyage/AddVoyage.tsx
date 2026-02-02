@@ -321,7 +321,13 @@ export default function AddVoyage({
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleChange}
+                     className={errors.startDate ? "border-red-500" : ""}
                   />
+                    {errors.startDate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.startDate}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label>ETA (Estimated Arrival)</Label>

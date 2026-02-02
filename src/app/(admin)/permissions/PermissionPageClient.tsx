@@ -30,11 +30,8 @@ export default function PermissionPageClient({
 
   // Filter Persistence
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("permission");
-  const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch for persistent filters
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
+
 
   // 1. Loading State
   if (!isReady) return null;
@@ -64,7 +61,7 @@ export default function PermissionPageClient({
           {/* Filter Toggle */}
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+             isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -85,7 +82,7 @@ export default function PermissionPageClient({
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <PermissionFilterWrapper modules={resourceOptions} />
           ) : null
         }

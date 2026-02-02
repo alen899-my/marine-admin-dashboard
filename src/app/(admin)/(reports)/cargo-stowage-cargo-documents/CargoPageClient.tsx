@@ -8,7 +8,7 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode, useEffect, useState } from "react";
 import AddCargoButton from "./AddCragoButton"; // Note: Kept original import name
 import CargoFilterWrapper from "./CargoFilterWrapper";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 const excelMapping = (r: any) => ({
     "Vessel Name": typeof r.vesselId === "object" ? r.vesselId?.name : r.vesselName,
     "Voyage ID": typeof r.voyageId === "object" ? r.voyageId?.voyageNo : r.voyageNo,
@@ -41,11 +41,22 @@ export default function CargoPageClient({
   filterOptions,
   isSuperAdmin,
 }: CargoPageClientProps) {
+   const { can, isReady } = useAuthorization();
+  const canView = can("cargo.view");
+  const canCreate = can("cargo.create");
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("cargoDocuments");
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
+  if (!isReady) return null;
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Cargo Documents.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -57,7 +68,7 @@ export default function CargoPageClient({
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -84,7 +95,7 @@ export default function CargoPageClient({
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <CargoFilterWrapper
               vessels={filterOptions.vessels}
               companies={filterOptions.companies}

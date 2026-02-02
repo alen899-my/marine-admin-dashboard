@@ -22,10 +22,7 @@ export default function RolePageClient({ children, totalCount }: RolePageClientP
   const canCreate = can("roles.create");
 
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
 
   if (!isReady) return null;
 
@@ -49,7 +46,7 @@ export default function RolePageClient({ children, totalCount }: RolePageClientP
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -67,7 +64,7 @@ export default function RolePageClient({ children, totalCount }: RolePageClientP
 
       <ComponentCard
         headerClassName="p-0 px-1"
-        title={effectiveFilterVisibility ? <RoleFilterWrapper /> : null}
+        title={isFilterVisible ? <RoleFilterWrapper /> : null}
       >
         <div className="flex justify-end me-2 mb-2">
           <TableCount count={totalCount} label="roles" />

@@ -8,7 +8,7 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode, useEffect, useState } from "react";
 import AddDepartureReportButton from "./AddDepartureReportButton";
 import DepartureFilterWrapper from "./DepartureFilterWrapper";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 // Excel Mapping
 const excelMapping = (r: any) => ({
     "Vessel Name": typeof r.vesselId === "object" && r.vesselId ? r.vesselId.name : r.vesselName || "-",
@@ -49,13 +49,22 @@ export default function DeparturePageClient({
   filterOptions,
   isSuperAdmin,
 }: DeparturePageClientProps) {
+    const { can, isReady } = useAuthorization();
+  const canView = can("departure.view");
+  const canCreate = can("departure.create");
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("departure");
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+    if (!isReady) return null;
 
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
-
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Departure Reports.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -66,7 +75,7 @@ export default function DeparturePageClient({
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -93,7 +102,7 @@ export default function DeparturePageClient({
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <DepartureFilterWrapper
               vessels={filterOptions.vessels}
               companies={filterOptions.companies}

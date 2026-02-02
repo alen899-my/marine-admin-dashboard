@@ -8,7 +8,7 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode, useEffect, useState } from "react";
 import AddArrivalReportButton from "./AddArrivalReportButton";
 import ArrivalFilterWrapper from "./ArrivalFilterWrapper";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 const excelMapping = (r: any) => ({
     "Vessel Name": typeof r.vesselId === "object" ? r.vesselId?.name : r.vesselName,
     "Voyage ID": typeof r.voyageId === "object" ? r.voyageId?.voyageNo : r.voyageNo,
@@ -47,11 +47,23 @@ export default function ArrivalPageClient({
   filterOptions,
   isSuperAdmin,
 }: ArrivalPageClientProps) {
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("arrival");
-  const [mounted, setMounted] = useState(false);
+   const { can, isReady } = useAuthorization();
+  const canView = can("arrival.view");
+  const canCreate = can("arrival.create");
 
-  useEffect(() => { setMounted(true); }, []);
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("arrival");
+  if (!isReady) return null;
+
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Arrival Reports.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -63,7 +75,7 @@ export default function ArrivalPageClient({
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility}
+              isVisible={isFilterVisible}
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -90,7 +102,7 @@ export default function ArrivalPageClient({
       <ComponentCard
         headerClassName="p-0 px-1"
         title={
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <ArrivalFilterWrapper
               vessels={filterOptions.vessels}
               companies={filterOptions.companies}

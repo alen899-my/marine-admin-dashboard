@@ -8,7 +8,7 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode, useEffect, useState } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonFilterWrapper from "./DailyNoonFilterWrapper";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 // Excel Mapping (Client Side)
 const excelMapping = (r: any) => ({
   "Vessel Name":
@@ -53,20 +53,23 @@ export default function DailyNoonReportClient({
   filterOptions,
   isSuperAdmin,
 }: DailyNoonPageClientProps) {
+   const { can, isReady } = useAuthorization();
+  const canView = can("noon.view");
+  const canCreate = can("noon.create");
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
 
-  //  FIX: Add mounted state to prevent Hydration Mismatch
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+   if (!isReady) return null;
 
-  // Determine effective visibility:
-  // On Server & First Render -> Always False (matches server)
-  // After Mount -> Use the value from LocalStorage
-  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
-
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Noon.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       {/* --- HEADER SECTION --- */}
@@ -79,7 +82,7 @@ export default function DailyNoonReportClient({
           {/* 1. Filter Toggle Button */}
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
-              isVisible={effectiveFilterVisibility} //  Use safe variable
+              isVisible={isFilterVisible} //  Use safe variable
               onToggle={setIsFilterVisible}
             />
           </div>
@@ -110,7 +113,7 @@ export default function DailyNoonReportClient({
         headerClassName="p-0 px-1"
         title={
           //  Conditional Rendering based on safe variable
-          effectiveFilterVisibility ? (
+          isFilterVisible ? (
             <DailyNoonFilterWrapper
               vessels={filterOptions.vessels}
               companies={filterOptions.companies}

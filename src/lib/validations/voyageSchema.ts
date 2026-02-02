@@ -47,7 +47,10 @@ export const voyageSchema = Joi.object({
 
   // Schedule Object
   schedule: Joi.object({
-    startDate: Joi.date().allow(null, "").optional(),
+    startDate: Joi.date().allow(null, "").required().messages({
+      
+      "any.required": "Start Date is required",
+    }),
     eta: Joi.date().allow(null, "").optional(),
     endDate: Joi.date().allow(null, "").optional(),
   }).optional(),

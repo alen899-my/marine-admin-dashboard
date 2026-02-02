@@ -288,6 +288,8 @@ export default function Filters({
             </label>
             <SearchableSelect
               options={voyageList}
+              //disable if no vessel selected
+              disabled={!localVesselId}
               placeholder={
                 !localVesselId ? "Select Vessel first" : "Search Voyage"
               }
