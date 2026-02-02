@@ -53,7 +53,7 @@ export default function PreArrivalClient({
   const [isDeleting, setIsDeleting] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const modalRef = useRef<any>(null);
-
+  const [processingId, setProcessingId] = useState<string | null>(null);
   // Re-fetch logic for refresh/pagination
 const handleRefresh = useCallback(async () => {
     setIsLoading(true);
@@ -124,7 +124,7 @@ const handleRefresh = useCallback(async () => {
   };
 
   const handleUpload = async (row: any) => {
-    setIsModalLoading(true);
+  setProcessingId(row._id);
     try {
       const res = await fetch(`/api/pre-arrival/${row._id}`);
       const fullData = await res.json();
@@ -136,12 +136,12 @@ const handleRefresh = useCallback(async () => {
     } catch (error) {
       toast.error("Error connecting to server");
     } finally {
-      setIsModalLoading(false);
+    setProcessingId(null);
     }
   };
 
   const handleView = async (row: any) => {
-    setIsModalLoading(true);
+    setProcessingId(row._id);
     try {
       const res = await fetch(`/api/pre-arrival/${row._id}`);
       const fullData = await res.json();
@@ -153,7 +153,7 @@ const handleRefresh = useCallback(async () => {
     } catch (error) {
       toast.error("Error connecting to server");
     } finally {
-      setIsModalLoading(false);
+     setProcessingId(null);
     }
   };
 
@@ -188,7 +188,7 @@ const handleRefresh = useCallback(async () => {
       render: (row: any) => (
         <div className="text-xs space-y-0.5">
           <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">ETA:</span> {formatDate(row.eta)}</p>
-          <p className="text-gray-500 dark:text-gray-400 text-[10px] font-semibold uppercase tracking-wider">Due: {formatDate(row.dueDate)}</p>
+       <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">DUE:</span> {formatDate(row.dueDate)}</p>
         </div>
       ),
     },
@@ -322,7 +322,7 @@ const handleRefresh = useCallback(async () => {
         <CommonReportTable
           data={requests}
           columns={columns}
-          loading={isLoading}
+          loading={isLoading|| processingId !== null}
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}

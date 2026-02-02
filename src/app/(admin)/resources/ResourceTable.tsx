@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, Dispatch,
-  SetStateAction, } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthorization } from "@/hooks/useAuthorization";
 
 // UI Components
@@ -26,19 +26,21 @@ interface Resource {
 }
 
 interface ResourceTableProps {
-  refresh: number;
-  search: string;
-  status: string; 
-   setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: Resource[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
-export default function ResourceTable({ refresh, search, status,setTotalCount }: ResourceTableProps) {
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+export default function ResourceTable({ data, pagination }: ResourceTableProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { can, isReady } = useAuthorization();
+  
+  const canEdit = can("resource.edit");
+  const canDelete = can("resource.delete");
 
   // Modals
   const [openView, setOpenView] = useState(false);
@@ -49,17 +51,24 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
 
   // Selection
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
-  const [editData, setEditData] = useState<{ name: string; status: "active" | "inactive" } | null>(null);
+  const [editData, setEditData] = useState<{
+    name: string;
+    status: "active" | "inactive";
+  } | null>(null);
 
-  const { can, isReady } = useAuthorization();
-  const canEdit = can("resource.edit");
-  const canDelete = can("resource.delete");
+  /* ================= NAVIGATION ================= */
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`?${params.toString()}`);
+  };
 
   /* ================= COLUMNS ================= */
   const columns = [
     {
       header: "S.No",
-      render: (_: Resource, index: number) => (currentPage - 1) * 20 + index + 1,
+      render: (_: Resource, index: number) =>
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Resource Name",
@@ -79,49 +88,12 @@ export default function ResourceTable({ refresh, search, status,setTotalCount }:
     },
   ];
 
-  /* ================= FETCH (UPDATED FOR SERVER-SIDE) ================= */
-  const fetchResources = useCallback(async () => {
-    try {
-      setLoading(true);
-      // Pass pagination, search, and status to the API
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: "20",
-        search: search,
-        status: status
-      });
-
-      const res = await fetch(`/api/resources?${queryParams.toString()}`);
-      if (!res.ok) throw new Error();
-      const result = await res.json();
-      
-      setResources(result.data || []);
-      if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.data?.length || 0);
-        }
-      setTotalPages(result.pagination?.totalPages || 1); 
-    } catch (err) {
-      toast.error("Failed to load resources");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, search, status,setTotalCount]); // Dependencies updated
-
-  useEffect(() => {
-  if (currentPage !== 1) {
-    setCurrentPage(1);
-  }
-}, [search, status]);
-useEffect(() => {
-  fetchResources();
-}, [currentPage, refresh, search, status]);
-
-
-  const handleView = (r: Resource) => {
-  setSelectedResource(r);
-  setOpenView(true);
-};
   /* ================= ACTIONS ================= */
+  const handleView = (r: Resource) => {
+    setSelectedResource(r);
+    setOpenView(true);
+  };
+
   const handleEdit = (r: Resource) => {
     setSelectedResource(r);
     setEditData({ name: r.name, status: r.status });
@@ -138,26 +110,34 @@ useEffect(() => {
         body: JSON.stringify(editData),
       });
       if (!res.ok) throw new Error();
+      
       toast.success("Resource updated");
       setOpenEdit(false);
-      fetchResources();
+      router.refresh(); // Sync server data
     } catch {
       toast.error("Update failed");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!selectedResource) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/resources/${selectedResource._id}`, { method: "DELETE" });
+      const res = await fetch(`/api/resources/${selectedResource._id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error();
+      
       toast.success("Resource removed");
       setOpenDelete(false);
-      fetchResources();
+      router.refresh(); // Sync server data
     } catch {
       toast.error("Delete failed");
-    } finally { setIsDeleting(false); }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (!isReady) return null;
@@ -165,28 +145,41 @@ useEffect(() => {
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden">
-         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]"> 
-        <CommonReportTable
-          data={resources}
-          columns={columns}
-          loading={loading}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-           onRowClick={handleView}
-          onView={(r) => { setSelectedResource(r); setOpenView(true); }}
-          onEdit={canEdit ? handleEdit : undefined}
-          onDelete={canDelete ? (r) => {
-            setSelectedResource(r);
-            setOpenDelete(true);
-          } : undefined}
-        />
-        </div>
+        <div className="max-w-full overflow-x-auto">
+          <div className="min-w-[1200px]">
+            <CommonReportTable
+              data={data}
+              columns={columns}
+              loading={false} // Data is pre-fetched
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              onRowClick={handleView}
+              onView={(r) => {
+                setSelectedResource(r);
+                setOpenView(true);
+              }}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={
+                canDelete
+                  ? (r) => {
+                      setSelectedResource(r);
+                      setOpenDelete(true);
+                    }
+                  : undefined
+              }
+            />
+          </div>
         </div>
       </div>
 
-      <ViewModal isOpen={openView} onClose={() => setOpenView(false)} title="Resource Details" size="sm">
+      {/* VIEW MODAL */}
+      <ViewModal
+        isOpen={openView}
+        onClose={() => setOpenView(false)}
+        title="Resource Details"
+        size="sm"
+      >
         <div className="space-y-4 p-2">
           <div className="flex justify-between border-b pb-2">
             <span className="text-gray-500">Name</span>
@@ -194,14 +187,17 @@ useEffect(() => {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Status</span>
-            <Badge color={selectedResource?.status === "active" ? "success" : "error"}>
+            <Badge
+              color={selectedResource?.status === "active" ? "success" : "error"}
+            >
               {selectedResource?.status}
             </Badge>
           </div>
         </div>
       </ViewModal>
 
-     <EditModal
+      {/* EDIT MODAL */}
+      <EditModal
         isOpen={openEdit}
         onClose={() => setOpenEdit(false)}
         title="Edit Resource"
@@ -245,7 +241,14 @@ useEffect(() => {
         )}
       </EditModal>
 
-      <ConfirmDeleteModal description="This resource is in use by other modules. It will be marked as inactive to protect data integrity while removing it from active selection." isOpen={openDelete} onClose={() => setOpenDelete(false)} onConfirm={handleDelete} loading={isDeleting} />
+      {/* DELETE MODAL */}
+      <ConfirmDeleteModal
+        description="This resource is in use by other modules. It will be marked as inactive to protect data integrity while removing it from active selection."
+        isOpen={openDelete}
+        onClose={() => setOpenDelete(false)}
+        onConfirm={handleDelete}
+        loading={isDeleting}
+      />
     </>
   );
 }

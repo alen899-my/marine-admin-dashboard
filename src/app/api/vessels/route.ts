@@ -1,8 +1,8 @@
-// src/app/api/vessels/route.ts
+
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
-import { vesselSchema } from "@/lib/validations/vesselSchema"; // Import the Joi schema
+import { vesselSchema } from "@/lib/validations/vesselSchema";
 import Company from "@/models/Company";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";

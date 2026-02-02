@@ -12,50 +12,55 @@ import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useRouter, useSearchParams } from "next/navigation"; // 1. Added Router
 import {
   Dispatch,
   SetStateAction,
-  useCallback,
   useEffect,
   useState,
 } from "react";
 import { toast } from "react-toastify";
-// 1. Import the Widget Section
 import DashboardWidgetSection from "@/components/roles/DashboardWidgetSection";
 
 // --- Types ---
 interface IRole {
   _id: string;
   name: string;
-  permissions: string[]; // Array of slugs
+  permissions: string[];
   status: string;
   createdAt: string;
 }
 
+// 2. Updated Props Interface
 interface RolesTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: IRole[]; // Received from Server
+  pagination: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export default function RolesTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  setTotalCount,
+  data,
+  pagination,
 }: RolesTableProps) {
-  const [roles, setRoles] = useState<IRole[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // 3. Optimistic State (Initialized from props)
+  const [roles, setRoles] = useState<IRole[]>(data);
   const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // No longer needed for initial load
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  // 4. Sync Effect: Update local state when server data changes
+  useEffect(() => {
+    setRoles(data);
+  }, [data]);
+
+  // Pagination State (Derived from props effectively, but kept for UI control)
+  const currentPage = pagination.page;
+  const totalPages = pagination.totalPages;
   const LIMIT = 20;
 
   // Modal States
@@ -67,27 +72,29 @@ export default function RolesTable({
   const [editData, setEditData] = useState<IRole | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isSelectedRoleSuperAdmin =
-    selectedRole?.name?.toLowerCase() === "super-admin";
+  
+  const isSelectedRoleSuperAdmin = selectedRole?.name?.toLowerCase() === "super-admin";
   const isEditingSuperAdmin = editData?.name?.toLowerCase() === "super-admin";
-  // Status Options
+  
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
   ];
 
   const { can, isReady } = useAuthorization();
-  const canEdit = can("roles.edit"); // Corrected permission check
+  const canEdit = can("roles.edit");
   const canDelete = can("roles.delete");
 
-  // --- Fetch Permissions ---
+  // --- Fetch Permissions (Keep Client-Side for Modal) ---
   useEffect(() => {
     async function fetchPerms() {
       try {
+        // We only need this list when opening the Edit/View modal
         const res = await fetch("/api/permissions");
         if (res.ok) {
-          const data = await res.json();
-          setAllPermissions(data);
+          const result = await res.json();
+          // Adjust based on your API response structure (array vs { data: [] })
+          setAllPermissions(Array.isArray(result) ? result : result.data || []);
         }
       } catch (err) {
         console.error("Failed to load permissions", err);
@@ -96,50 +103,12 @@ export default function RolesTable({
     fetchPerms();
   }, []);
 
-  // --- Fetch Roles ---
-  const fetchRoles = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-        });
-
-        const res = await fetch(`/api/roles?${query.toString()}`);
-        if (!res.ok) throw new Error();
-        const result = await res.json();
-
-        setRoles(result.data || []);
-
-        // UPDATE DYNAMIC COUNT
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.length || 0);
-        }
-
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-        setRoles([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, setTotalCount],
-  );
-
-  useEffect(() => {
-    fetchRoles(1);
-    setCurrentPage(1);
-  }, [refresh, fetchRoles]);
-
-  useEffect(() => {
-    fetchRoles(currentPage);
-  }, [currentPage, fetchRoles]);
+  // 5. Handle Page Change via Router
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
 
   // --- Actions ---
   const handleView = (role: IRole) => {
@@ -170,9 +139,14 @@ export default function RolesTable({
       if (!res.ok) throw new Error();
       const { role } = await res.json();
 
+      // 6. Optimistic Update
       setRoles((prev) => prev.map((r) => (r._id === role._id ? role : r)));
+      
       toast.success("Role updated successfully");
       setOpenEdit(false);
+      
+      // 7. Sync Server
+      router.refresh();
     } catch {
       toast.error("Failed to update role");
     } finally {
@@ -189,17 +163,18 @@ export default function RolesTable({
       });
       if (!res.ok) throw new Error();
 
+      // 6. Optimistic Update
       setRoles((prev) => prev.filter((r) => r._id !== selectedRole._id));
-      // UPDATE DYNAMIC COUNT ON DELETE
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      
       toast.success("Role deleted successfully");
+      setOpenDelete(false);
+      
+      // 7. Sync Server
+      router.refresh();
     } catch {
       toast.error("Failed to delete role");
     } finally {
-      setOpenDelete(false);
-      setIsDeleting(false); //  Stop Loading
+      setIsDeleting(false);
     }
   };
 
@@ -235,23 +210,16 @@ export default function RolesTable({
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={roles}
+              data={roles} // Use optimistic data
               columns={columns}
               loading={loading}
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              onPageChange={handlePageChange}
               onRowClick={handleView}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
-              onDelete={
-                canDelete
-                  ? (r: IRole) => {
-                      setSelectedRole(r);
-                      setOpenDelete(true);
-                    }
-                  : undefined
-              }
+              onDelete={canDelete ? (r: IRole) => { setSelectedRole(r); setOpenDelete(true); } : undefined}
             />
           </div>
         </div>
@@ -265,9 +233,7 @@ export default function RolesTable({
       >
         <div className="space-y-4 text-sm">
           <RoleComponentCard title="General Information">
-            {/* Changed to items-start for better label alignment */}
             <div className="flex flex-row items-start justify-between w-full px-1">
-              {/* Left Side: Role Name */}
               <div className="flex flex-col gap-1">
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
                   Role Name
@@ -277,15 +243,12 @@ export default function RolesTable({
                 </p>
               </div>
 
-              {/* Right Side: Status - Added text-right to push badge to the edge */}
               <div className="flex flex-col gap-1 items-end ">
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
                   Role Status
                 </p>
                 <Badge
-                  color={
-                    selectedRole?.status === "active" ? "success" : "error"
-                  }
+                  color={selectedRole?.status === "active" ? "success" : "error"}
                 >
                   <span className="uppercase font-bold text-[10px]">
                     {selectedRole?.status === "active" ? "Active" : "Inactive"}
@@ -308,12 +271,9 @@ export default function RolesTable({
                     isReadOnly={true}
                   />
                 </div>
-                {/* Dashboard Widgets */}
-                <div className=" opacity-80  border-gray-200 dark:border-white/10 ">
+                <div className=" opacity-80 border-gray-200 dark:border-white/10 ">
                   <DashboardWidgetSection
-                    isSuperAdmin={
-                      selectedRole.name.toLowerCase() === "super-admin"
-                    }
+                    isSuperAdmin={selectedRole.name.toLowerCase() === "super-admin"}
                     allPermissions={allPermissions}
                     selectedPermissions={selectedRole.permissions}
                     onToggle={() => {}}
@@ -324,6 +284,7 @@ export default function RolesTable({
           </RoleComponentCard>
         </div>
       </ViewModal>
+
       {/* --- EDIT MODAL --- */}
       <EditModal
         isOpen={openEdit}
@@ -354,7 +315,7 @@ export default function RolesTable({
                     options={statusOptions}
                     value={editData.status}
                     onChange={(val) =>
-                      setEditData({ ...editData, status: val })
+                      setEditData({ ...editData, status: val as any })
                     }
                   />
                 </div>
@@ -372,8 +333,6 @@ export default function RolesTable({
               legend={<PermissionLegend />}
             >
               <div className="space-y-8">
-                {/* 3. Dashboard Widgets (Editable) */}
-
                 <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                 <div>

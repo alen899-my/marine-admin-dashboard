@@ -17,7 +17,7 @@ import ViewModal from "@/components/common/ViewModal";
 import CompanyFormModal from "@/components/Companies/CompanyFormModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
-
+import { useRouter, useSearchParams } from "next/navigation";
 // --- Hooks ---
 import { useAuthorization } from "@/hooks/useAuthorization";
 
@@ -43,12 +43,12 @@ interface ICompany {
 }
 
 interface CompanyTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: ICompany[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 const formatDate = (dateString?: string) => {
@@ -63,15 +63,15 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function CompaniesTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  setTotalCount,
+data,
+  pagination,
 }: CompanyTableProps) {
   // --- Data State ---
-  const [companies, setCompanies] = useState<ICompany[]>([]);
+  const router = useRouter();
+  const [companies, setCompanies] = useState<ICompany[]>(data);
+  useEffect(() => {
+    setCompanies(data);
+  }, [data]);
   const [loading, setLoading] = useState(true);
 
   // --- Modal States ---
@@ -81,7 +81,7 @@ export default function CompaniesTable({
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<ICompany | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
+const searchParams = useSearchParams();
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -91,51 +91,11 @@ export default function CompaniesTable({
   const canEdit = can("company.edit");
   const canDelete = can("company.delete");
 
-  // --- 1. Fetch Companies ---
-  const fetchCompanies = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          startDate,
-          endDate,
-        });
-
-        const res = await fetch(`/api/companies?${query.toString()}`);
-        if (!res.ok) throw new Error("Failed to fetch companies");
-        const result = await res.json();
-
-        setCompanies(result.data || []);
-
-        if (setTotalCount) {
-          setTotalCount(result.pagination?.total || result.data?.length || 0);
-        }
-
-        setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err) {
-        console.error(err);
-        setCompanies([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, setTotalCount, LIMIT],
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-    if (currentPage === 1) {
-      fetchCompanies(1);
-    }
-  }, [search, status, startDate, endDate, refresh]);
-
-  useEffect(() => {
-    fetchCompanies(currentPage);
-  }, [currentPage, fetchCompanies]);
+const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`?${params.toString()}`);
+  };
 
   // --- HANDLERS ---
   const handleView = (company: ICompany) => {
@@ -162,12 +122,10 @@ export default function CompaniesTable({
         throw new Error(data.error || "Failed to delete");
       }
 
-      setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
+     setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
 
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
       toast.success("Company deleted successfully");
+      router.refresh();
     } catch (error: any) {
       console.error(error);
       toast.error(error.message);
@@ -237,10 +195,10 @@ export default function CompaniesTable({
             <CommonReportTable
               data={companies}
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false} // Data is pre-fetched
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -406,7 +364,7 @@ export default function CompaniesTable({
       <CompanyFormModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        onSuccess={() => fetchCompanies(currentPage)}
+     onSuccess={() => router.refresh()}
         initialData={companyToEdit}
       />
 

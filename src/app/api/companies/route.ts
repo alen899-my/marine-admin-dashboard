@@ -10,6 +10,109 @@ import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 
+
+
+// --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
+export async function GET(req: NextRequest) {
+  try {
+    // 1. Get current user session
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = session;
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id;
+
+    await dbConnect();
+    const { searchParams } = new URL(req.url);
+
+    // =========================================================
+    // 🔒 MULTI-TENANCY & AUTHORIZATION LOGIC
+    // =========================================================
+    // Initializing query with soft-delete filter
+    const query: any = { deletedAt: null };
+
+    if (!isSuperAdmin) {
+      // Regular users don't need 'company.view' permission to see their OWN company
+      // (Required for dropdowns in User/Vessel forms)
+      if (!userCompanyId) {
+        return NextResponse.json(
+          { error: "Forbidden: No company assigned to your profile." },
+          { status: 403 },
+        );
+      }
+      // Force filter to ONLY their company
+      query._id = userCompanyId;
+    } else {
+      // Super Admin: Perform standard permission check for the management list
+      const authz = await authorizeRequest("company.view");
+      if (!authz.ok) return authz.response;
+    }
+    // =========================================================
+
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 20;
+    const search = searchParams.get("search")?.trim() || "";
+    const status = searchParams.get("status") || "all";
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    const skip = (page - 1) * limit;
+
+    if (status !== "all") query.status = status;
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { address: { $regex: search, $options: "i" } },
+        { contactName: { $regex: search, $options: "i" } },
+        { contactEmail: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (startDate || endDate) {
+      const dateQuery: any = {};
+      if (startDate) dateQuery.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateQuery.$lte = end;
+      }
+      query.createdAt = dateQuery;
+    }
+
+    const total = await Company.countDocuments(query);
+
+    //  POPULATE audit fields so names appear in the View modal
+    const companies = await Company.find(query)
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    return NextResponse.json({
+      data: companies,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error: any) {
+    console.error("GET COMPANIES ERROR →", error);
+    return NextResponse.json(
+      { error: "Failed to fetch companies" },
+      { status: 500 },
+    );
+  }
+}
 // --- CREATE COMPANY (POST) ---
 export async function POST(req: NextRequest) {
   try {
@@ -129,107 +232,5 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("CREATE COMPANY ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-// --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
-export async function GET(req: NextRequest) {
-  try {
-    // 1. Get current user session
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { user } = session;
-    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    const userCompanyId = user.company?.id;
-
-    await dbConnect();
-    const { searchParams } = new URL(req.url);
-
-    // =========================================================
-    // 🔒 MULTI-TENANCY & AUTHORIZATION LOGIC
-    // =========================================================
-    // Initializing query with soft-delete filter
-    const query: any = { deletedAt: null };
-
-    if (!isSuperAdmin) {
-      // Regular users don't need 'company.view' permission to see their OWN company
-      // (Required for dropdowns in User/Vessel forms)
-      if (!userCompanyId) {
-        return NextResponse.json(
-          { error: "Forbidden: No company assigned to your profile." },
-          { status: 403 },
-        );
-      }
-      // Force filter to ONLY their company
-      query._id = userCompanyId;
-    } else {
-      // Super Admin: Perform standard permission check for the management list
-      const authz = await authorizeRequest("company.view");
-      if (!authz.ok) return authz.response;
-    }
-    // =========================================================
-
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 20;
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status") || "all";
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-
-    const skip = (page - 1) * limit;
-
-    if (status !== "all") query.status = status;
-
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { address: { $regex: search, $options: "i" } },
-        { contactName: { $regex: search, $options: "i" } },
-        { contactEmail: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    if (startDate || endDate) {
-      const dateQuery: any = {};
-      if (startDate) dateQuery.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateQuery.$lte = end;
-      }
-      query.createdAt = dateQuery;
-    }
-
-    const total = await Company.countDocuments(query);
-
-    //  POPULATE audit fields so names appear in the View modal
-    const companies = await Company.find(query)
-      .populate("createdBy", "fullName")
-      .populate("updatedBy", "fullName")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    return NextResponse.json({
-      data: companies,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    console.error("GET COMPANIES ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch companies" },
-      { status: 500 },
-    );
   }
 }

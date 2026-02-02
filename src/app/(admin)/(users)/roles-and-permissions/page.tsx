@@ -1,108 +1,38 @@
-"use client";
-
-import ComponentCard from "@/components/common/ComponentCard";
-import FilterToggleButton from "@/components/common/FilterToggleButton"; // Shared Component
-import TableCount from "@/components/common/TableCount";
-import RoleFilters from "@/components/roles/RoleFilters";
-import { useAuthorization } from "@/hooks/useAuthorization"; //  Added
-import { useFilterPersistence } from "@/hooks/useFilterPersistence"; // Shared Hook
-import { useState } from "react";
-import AddRoleButton from "./AddRoleButton";
+import { auth } from "@/auth";
+import { getRoles } from "@/lib/services/roleService";
+import { redirect } from "next/navigation";
+import RolePageClient from "./RolePageClient";
 import RolesTable from "./RolesTable";
 
-export default function RoleManagement() {
-  const [refresh, setRefresh] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}
 
-  //  Authorization logic
-  const { can, isReady } = useAuthorization();
-  const canView = can("roles.view");
-  const canCreate = can("roles.create");
+export default async function RoleManagementPage({ searchParams }: PageProps) {
+  // 1. Auth Check
+  const session = await auth();
+  if (!session?.user) redirect("/login");
 
-  // Use the shared persistent filter logic
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("roles");
+  // 2. Parse Params
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 1;
+  const limit = 20;
+  const search = resolvedParams.search || "";
+  const status = resolvedParams.status || "all";
 
-  // --- Filter State ---
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // 3. Fetch Data Directly (No API Call)
+  const { data, pagination } = await getRoles({
+    page,
+    limit,
+    search,
+    status,
+    user: session.user,
+  });
 
-  const handleRefresh = () => setRefresh((prev) => prev + 1);
-
-  // 1. Wait for Auth check to complete
-  if (!isReady) return null;
-
-  // 2. Full Page Guard
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 font-medium">
-          You do not have permission to access Roles & Permissions.
-        </p>
-      </div>
-    );
-  }
-
+  // 4. Render
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Roles
-        </h2>
-
-        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {/* Desktop: First (Left) | Mobile: Bottom */}
-          <div className="w-full flex justify-end sm:w-auto">
-            <FilterToggleButton
-              isVisible={isFilterVisible}
-              onToggle={setIsFilterVisible}
-            />
-          </div>
-
-          {/* Desktop: Second (Right) | Mobile: Top */}
-          {canCreate && (
-            <div className="w-full sm:w-auto">
-              <AddRoleButton
-                onSuccess={handleRefresh}
-                className="w-full justify-center"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <ComponentCard
-        headerClassName="p-0 px-1"
-        title={
-          isFilterVisible ? (
-            <RoleFilters
-              search={search}
-              setSearch={setSearch}
-              status={status}
-              setStatus={setStatus}
-              startDate={startDate}
-              setStartDate={setStartDate}
-              endDate={endDate}
-              setEndDate={setEndDate}
-              showDateFilters={false}
-            />
-          ) : null
-        }
-      >
-        <div className="flex justify-end me-2 mb-2">
-          <TableCount count={totalCount} label="roles" />
-        </div>
-        <RolesTable
-          refresh={refresh}
-          search={search}
-          status={status}
-          startDate={startDate}
-          endDate={endDate}
-          setTotalCount={setTotalCount}
-        />
-      </ComponentCard>
-    </div>
+    <RolePageClient totalCount={pagination.total}>
+      <RolesTable data={data} pagination={pagination} />
+    </RolePageClient>
   );
 }

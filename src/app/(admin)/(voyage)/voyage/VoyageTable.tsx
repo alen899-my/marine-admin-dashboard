@@ -160,7 +160,7 @@ export default function VoyageTable({
     if (!date) return "-";
     return new Date(date).toLocaleDateString("en-IN", {
       day: "2-digit",
-      month: "short",
+      month: "2-digit",
       year: "numeric",
     });
   };
@@ -266,7 +266,7 @@ export default function VoyageTable({
           </div>
           <div className="flex gap-2">
             <span className="text-gray-400 w-8">ETA:</span>
-            <span className="text-gray-900 dark:text-white font-bold">
+           <span className="text-gray-700 dark:text-gray-300">
               {formatDateOnly(v.schedule?.eta)}
             </span>
           </div>
