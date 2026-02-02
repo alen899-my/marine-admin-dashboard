@@ -3,12 +3,17 @@ import ReportOperational from "@/models/ReportOperational";
 import ReportDaily from "@/models/ReportDaily";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
 export async function getVoyagePerformanceData(voyageId: string) {
   if (!voyageId) return null;
   await dbConnect();
 
-  // 1. Fetch Operational Reports (Departure and Arrival)
+  // 1. Permission Check
+  const authz = await authorizeRequest("voyageanalysis.view");
+  if (!authz.ok) throw new Error("Unauthorized: Insufficient permissions");
+
+  // 2. Fetch Operational Reports
   const [departureReport, arrivalReport] = await Promise.all([
     ReportOperational.findOne({
       voyageId,
@@ -22,7 +27,7 @@ export async function getVoyagePerformanceData(voyageId: string) {
     }).lean(),
   ]);
 
-  // 2. Fetch Daily Noon Reports
+  // 3. Fetch Daily Noon Reports
   const dailyReports = await ReportDaily.find({
     voyageId,
     type: "noon",
@@ -31,20 +36,21 @@ export async function getVoyagePerformanceData(voyageId: string) {
     .sort({ reportDate: 1 })
     .lean();
 
-  // 3. Construct Response Object
+  const safeISO = (date: any) => (date ? new Date(date).toISOString() : "");
+
   return {
     operational: {
       departure: {
-        eventTime: departureReport?.eventTime ? departureReport.eventTime.toISOString() : "",
+        eventTime: safeISO(departureReport?.eventTime),
         plannedNm: departureReport?.navigation?.distanceToNextPortNm || "",
-        rfaDt: departureReport?.eventTime ? departureReport.eventTime.toISOString() : "",
+        rfaDt: safeISO(departureReport?.eventTime), 
         stats: {
           robVlsfo: departureReport?.departureStats?.robVlsfo || 0,
           robLsmgo: departureReport?.departureStats?.robLsmgo || 0,
         },
       },
       arrival: {
-        eventTime: arrivalReport?.eventTime ? arrivalReport.eventTime.toISOString() : "",
+        eventTime: safeISO(arrivalReport?.eventTime) || safeISO(arrivalReport?.arrivalStats?.arrivalTime),
         stats: {
           robVlsfo: arrivalReport?.arrivalStats?.robVlsfo || 0,
           robLsmgo: arrivalReport?.arrivalStats?.robLsmgo || 0,
@@ -52,7 +58,7 @@ export async function getVoyagePerformanceData(voyageId: string) {
       },
     },
     dailyReports: dailyReports.map((report: any) => ({
-      reportDate: report.reportDate ? report.reportDate.toISOString() : "",
+      reportDate: safeISO(report.reportDate),
       navigation: {
         distLast24h: report.navigation?.distLast24h || 0,
       },
@@ -63,19 +69,34 @@ export async function getVoyagePerformanceData(voyageId: string) {
   };
 }
 
-// Fetch Dropdown Options
-export async function getAnalysisOptions(vesselId?: string) {
+// ✅ FIX: Strict Multi-Tenancy Logic
+export async function getAnalysisOptions(vesselId?: string, user?: any) {
   await dbConnect();
 
+  const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
+  
+  // Robustly extract company ID (handles your specific user object structure)
+  const userCompanyId = user?.company?.id || user?.company?._id || user?.company;
+
+  const vesselQuery: any = { status: "active", deletedAt: null };
+  
+  if (!isSuperAdmin) {
+    // 🛑 SECURITY CHECK: If we can't identify the company, return NOTHING.
+    // This prevents the "All vessels" leak if the user object is missing or malformed.
+    if (!userCompanyId) {
+      return { vessels: [], voyages: [] };
+    }
+    vesselQuery.company = userCompanyId;
+  }
+
   // Fetch Vessels
-  const vessels = await Vessel.find({ status: "active", deletedAt: null })
+  const vessels = await Vessel.find(vesselQuery)
     .select("_id name")
     .sort({ name: 1 })
     .lean();
 
   let voyages: any[] = [];
   
-  // Fetch Voyages only if a vessel is selected
   if (vesselId) {
     voyages = await Voyage.find({ 
         vesselId, 

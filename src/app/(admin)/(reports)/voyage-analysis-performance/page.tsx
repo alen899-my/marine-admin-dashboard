@@ -18,7 +18,7 @@ export default async function VoyageAnalysisPage({ searchParams }: PageProps) {
 
   // 3. Parallel Fetching (Options & Performance Data)
   const [options, performanceData] = await Promise.all([
-    getAnalysisOptions(vesselId),
+    getAnalysisOptions(vesselId, session.user),
     voyageId ? getVoyagePerformanceData(voyageId) : Promise.resolve(null)
   ]);
 
