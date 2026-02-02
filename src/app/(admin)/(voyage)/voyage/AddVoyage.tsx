@@ -12,10 +12,11 @@ import { Modal } from "@/components/ui/modal";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { voyageSchema } from "@/lib/validations/voyageSchema";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
 interface AddVoyageProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   vesselList: { _id: string; name: string }[];
   className?: string;
 }
@@ -25,6 +26,7 @@ export default function AddVoyage({
   vesselList,
   className,
 }: AddVoyageProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -152,7 +154,8 @@ export default function AddVoyage({
       }
 
       toast.success("Voyage added successfully");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (error) {
       console.error("Voyage submit failed", error);

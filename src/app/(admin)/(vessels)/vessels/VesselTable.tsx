@@ -12,13 +12,8 @@ import Select from "@/components/form/Select";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useAuthorization } from "@/hooks/useAuthorization";
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added Router
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 // --- Types Matching Mongoose Schema ---
@@ -69,27 +64,25 @@ interface Vessel {
 // Helper for Edit Form Data (Flattened where needed for inputs, but keeping structure is also fine)
 interface EditFormData extends Omit<Vessel, "_id" | "createdAt"> {}
 
+// ✅ Updated Props Interface
 interface VesselTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  companyId: string;
-  startDate: string;
-  endDate: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: Vessel[]; // Data passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
-export default function VesselTable({
-  refresh,
-  search,
-  status,
-  companyId,
-  startDate,
-  endDate,
-  setTotalCount,
-}: VesselTableProps) {
-  const [vessels, setVessels] = useState<Vessel[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function VesselTable({ data, pagination }: VesselTableProps) {
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
+
+  // Apply props to state
+  const vessels = data;
+
+  const [loading, setLoading] = useState(false); // No internal loading needed
   const [companiesList, setCompaniesList] = useState<
     { value: string; label: string }[]
   >([]);
@@ -104,9 +97,6 @@ export default function VesselTable({
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
 
   // Permissions
@@ -128,7 +118,14 @@ export default function VesselTable({
     });
   };
 
-  // 4. Fetch companies when Edit Modal opens
+  // ✅ Page Change Logic (via URL)
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
+  // 4. Fetch companies when Edit Modal opens (Preserved Logic)
   useEffect(() => {
     async function fetchCompanies() {
       try {
@@ -153,7 +150,7 @@ export default function VesselTable({
     {
       header: "S.No",
       render: (_: Vessel, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Vessel Name",
@@ -338,70 +335,6 @@ export default function VesselTable({
       },
     },
   ];
-  /* ================= FETCH ================= */
-  const fetchVessels = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status: status === "all" ? "" : status,
-
-          companyId: companyId === "all" ? "" : companyId,
-
-          startDate,
-          endDate,
-        });
-
-        const res = await fetch(`/api/vessels?${query.toString()}`);
-        if (!res.ok) throw new Error();
-
-        const result = await res.json();
-
-        // Handle API response structure (assuming { data: [], pagination: {} } or similar)
-        // Adjust based on your actual API response structure
-        if (Array.isArray(result)) {
-          // If API returns plain array (from previous GET example), we manually paginate or handle it
-          setVessels(result);
-          setTotalPages(1);
-        } else {
-          setVessels(result.data || []);
-
-          // UPDATE DYNAMIC COUNT
-          if (setTotalCount) {
-            setTotalCount(result.pagination?.total || result.length || 0);
-          }
-
-          setTotalPages(result.pagination?.totalPages || 1);
-        }
-      } catch (err) {
-        setVessels([]);
-        setTotalPages(1);
-        toast.error("Failed to load vessels");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, companyId],
-  );
-
-  useEffect(() => {
-    fetchVessels(1);
-    setCurrentPage(1);
-  }, [fetchVessels, companyId]);
-
-  useEffect(() => {
-    if (currentPage > 1) fetchVessels(currentPage);
-  }, [currentPage, fetchVessels]);
-
-  useEffect(() => {
-    if (refresh) {
-      fetchVessels(1);
-      setCurrentPage(1);
-    }
-  }, [refresh, fetchVessels]);
 
   /* ================= ACTIONS ================= */
   function handleView(vessel: Vessel) {
@@ -466,18 +399,13 @@ export default function VesselTable({
       });
 
       if (!res.ok) throw new Error();
-      const responseData = await res.json();
-      const updatedVesselData = responseData.report || responseData.data;
 
-      setVessels((prev) =>
-        prev.map((v) =>
-          v._id === updatedVesselData._id ? updatedVesselData : v,
-        ),
-      );
+      // ✅ Refresh Server Data
+      router.refresh();
+
       toast.success("Vessel updated successfully");
       setOpenEdit(false);
       setSelectedVessel(null);
-      if (refresh) fetchVessels(currentPage);
     } catch {
       toast.error("Failed to update vessel");
     } finally {
@@ -494,12 +422,8 @@ export default function VesselTable({
       });
       if (!res.ok) throw new Error();
 
-      setVessels((prev) => prev.filter((v) => v._id !== selectedVessel._id));
-
-      // UPDATE DYNAMIC COUNT ON DELETE
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      // ✅ Refresh Server Data
+      router.refresh();
 
       toast.success("Vessel deleted successfully");
     } catch {
@@ -548,12 +472,12 @@ export default function VesselTable({
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={vessels}
+              data={vessels} // ✅ Prop Data
               columns={columns}
               loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} // ✅ URL Pagination
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={

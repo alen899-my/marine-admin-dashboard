@@ -1,14 +1,8 @@
 "use client";
 
 import { useAuthorization } from "@/hooks/useAuthorization";
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added Router
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 // UI Components
@@ -108,30 +102,29 @@ interface EditFormData {
   };
 }
 
+// ✅ Updated Props to receive Server Data
 interface VoyageTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  companyId: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: Voyage[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
   vesselList: any[];
 }
 
 export default function VoyageTable({
-  refresh,
-  search,
-  status,
-  startDate,
-  endDate,
-  companyId,
-  setTotalCount,
+  data,
+  pagination,
   vesselList,
 }: VoyageTableProps) {
-  const [voyages, setVoyages] = useState<Voyage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [vessels, setVessels] = useState<{ _id: string; name: string }[]>([]);
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
+
+  // 1. Use Props for Data
+  const voyages = data;
+
   // Modals
   const [openView, setOpenView] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -142,16 +135,7 @@ export default function VoyageTable({
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  // Pagination
-  const prevFiltersRef = useRef({
-    search,
-    status,
-    startDate,
-    endDate,
-    companyId,
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
   const LIMIT = 20;
 
   // Permissions
@@ -181,12 +165,19 @@ export default function VoyageTable({
     });
   };
 
+  // ✅ Handle Page Change via URL
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   /* ================= COLUMNS ================= */
   const columns = [
     {
       header: "S.No",
       render: (_: Voyage, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Voyage Info",
@@ -329,96 +320,11 @@ export default function VoyageTable({
     },
   ];
 
-  /* ================= FETCH ================= */
-  const fetchVoyages = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status: status === "all" ? "" : status,
-          companyId: companyId === "all" ? "" : companyId,
-          startDate,
-          endDate,
-        });
-
-        const res = await fetch(`/api/voyages?${query.toString()}`);
-        if (!res.ok) throw new Error();
-
-        const result = await res.json();
-
-        if (Array.isArray(result)) {
-          setVoyages(result);
-          setTotalPages(1);
-        } else {
-          setVoyages(result.data || []);
-
-          // UPDATE DYNAMIC COUNT
-          if (setTotalCount) {
-            setTotalCount(result.pagination?.total || result.length || 0);
-          }
-
-          setTotalPages(result.pagination?.totalPages || 1);
-        }
-      } catch (err) {
-        setVoyages([]);
-        setTotalPages(1);
-        toast.error("Failed to load voyages");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, status, startDate, endDate, companyId],
-  );
-
   /* ================= ACTIONS ================= */
   function handleView(voyage: Voyage) {
     setSelectedVoyage(voyage);
     setOpenView(true);
   }
-  useEffect(() => {
-    if (!isReady) return;
-
-    // 1. Detect if the filters actually changed since the last render
-    const filtersChanged =
-      prevFiltersRef.current.search !== search ||
-      prevFiltersRef.current.status !== status ||
-      prevFiltersRef.current.startDate !== startDate ||
-      prevFiltersRef.current.endDate !== endDate ||
-      prevFiltersRef.current.companyId !== companyId;
-
-    // 2. If filters changed, reset to page 1
-    if (filtersChanged) {
-      // Update the ref with the new values
-      prevFiltersRef.current = {
-        search,
-        status,
-        startDate,
-        endDate,
-        companyId,
-      };
-
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-        return; // The change in currentPage will re-trigger this effect
-      }
-    }
-
-    // 3. Fetch the data for the current page
-    fetchVoyages(currentPage);
-  }, [
-    currentPage,
-    refresh,
-    fetchVoyages,
-    isReady,
-    search,
-    status,
-    companyId,
-    startDate,
-    endDate,
-  ]);
 
   function handleEdit(voyage: Voyage) {
     setSelectedVoyage(voyage);
@@ -475,12 +381,10 @@ export default function VoyageTable({
       });
 
       if (!res.ok) throw new Error();
-      const responseData = await res.json();
-      const updatedVoyage = responseData.report || responseData.data;
 
-      setVoyages((prev) =>
-        prev.map((v) => (v._id === updatedVoyage._id ? updatedVoyage : v)),
-      );
+      // ✅ Refresh Server Data
+      router.refresh();
+
       toast.success("Voyage updated successfully");
       setOpenEdit(false);
       setSelectedVoyage(null);
@@ -500,12 +404,8 @@ export default function VoyageTable({
       });
       if (!res.ok) throw new Error();
 
-      setVoyages((prev) => prev.filter((v) => v._id !== selectedVoyage._id));
-
-      // UPDATE DYNAMIC COUNT ON DELETE
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+      // ✅ Refresh Server Data
+      router.refresh();
 
       toast.success("Voyage deleted successfully");
     } catch {
@@ -543,12 +443,12 @@ export default function VoyageTable({
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
             <CommonReportTable
-              data={voyages}
+              data={voyages} // ✅ Uses Prop Data
               columns={columns}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              loading={false} // ✅ No local loading
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} // ✅ URL Pagination
               onView={handleView}
               onEdit={canEdit ? handleEdit : undefined}
               onDelete={
@@ -761,7 +661,7 @@ export default function VoyageTable({
       >
         {editData && (
           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-3">
-            {/* GENERAL */}
+            {/* 1. GENERAL INFORMATION */}
             <ComponentCard title="General">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -778,7 +678,7 @@ export default function VoyageTable({
                     placeholder="Search Vessel"
                   />
                 </div>
-                <InputField
+                <Input
                   label="Voyage No"
                   value={editData.voyageNo}
                   onChange={(e) => handleEditChange("voyageNo", e.target.value)}
@@ -798,17 +698,17 @@ export default function VoyageTable({
               </div>
             </ComponentCard>
 
-            {/* ROUTE */}
-            <ComponentCard title="Route">
+            {/* 2. ROUTE DETAILS */}
+            <ComponentCard title="Route Details">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <InputField
+                <Input
                   label="Load Port"
                   value={editData.route.loadPort}
                   onChange={(e) =>
                     handleNestedEditChange("route", "loadPort", e.target.value)
                   }
                 />
-                <InputField
+                <Input
                   label="Discharge Port"
                   value={editData.route.dischargePort}
                   onChange={(e) =>
@@ -819,15 +719,17 @@ export default function VoyageTable({
                     )
                   }
                 />
-                <InputField
-                  label="Via"
-                  value={editData.route.via}
-                  onChange={(e) =>
-                    handleNestedEditChange("route", "via", e.target.value)
-                  }
-                />
-                <InputField
-                  label="Distance (NM)"
+                <div className="md:col-span-1">
+                  <Input
+                    label="Via (Optional)"
+                    value={editData.route.via}
+                    onChange={(e) =>
+                      handleNestedEditChange("route", "via", e.target.value)
+                    }
+                  />
+                </div>
+                <Input
+                  label="Total Distance (NM)"
                   type="number"
                   value={editData.route.totalDistance}
                   onChange={(e) =>
@@ -841,7 +743,7 @@ export default function VoyageTable({
               </div>
             </ComponentCard>
 
-            {/* SCHEDULE */}
+            {/* 3. SCHEDULE */}
             <ComponentCard title="Schedule">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
@@ -869,7 +771,7 @@ export default function VoyageTable({
                   />
                 </div>
                 <div>
-                  <Label>End Date</Label>
+                  <Label>End Date (Optional)</Label>
                   <Input
                     type="datetime-local"
                     value={editData.schedule.endDate?.slice(0, 16)}
@@ -885,11 +787,11 @@ export default function VoyageTable({
               </div>
             </ComponentCard>
 
-            {/* CHARTER & CARGO */}
-            <ComponentCard title="Commercial">
+            {/* 4. CHARTER PARTY */}
+            <ComponentCard title="Charter Party Details">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <InputField
-                  label="Charterer"
+                <Input
+                  label="Charterer Name"
                   value={editData.charter.chartererName}
                   onChange={(e) =>
                     handleNestedEditChange(
@@ -899,14 +801,63 @@ export default function VoyageTable({
                     )
                   }
                 />
-                <InputField
+
+                {/* CP Date */}
+                <div>
+                  <Label>CP Date</Label>
+                  <DatePicker
+                    id="edit-cp-date"
+                    placeholder="Select Date"
+                    defaultDate={editData.charter.charterPartyDate}
+                    onChange={(_, dateStr) =>
+                      handleNestedEditChange(
+                        "charter",
+                        "charterPartyDate",
+                        dateStr,
+                      )
+                    }
+                  />
+                </div>
+
+                {/* Laycan Start */}
+                <div>
+                  <Label>Laycan Start</Label>
+                  <DatePicker
+                    id="edit-laycan-start"
+                    placeholder="Select Date"
+                    defaultDate={editData.charter.laycanStart}
+                    onChange={(_, dateStr) =>
+                      handleNestedEditChange("charter", "laycanStart", dateStr)
+                    }
+                  />
+                </div>
+
+                {/* Laycan End */}
+                <div>
+                  <Label>Laycan End</Label>
+                  <DatePicker
+                    id="edit-laycan-end"
+                    placeholder="Select Date"
+                    defaultDate={editData.charter.laycanEnd}
+                    onChange={(_, dateStr) =>
+                      handleNestedEditChange("charter", "laycanEnd", dateStr)
+                    }
+                  />
+                </div>
+              </div>
+            </ComponentCard>
+
+            {/* 5. CARGO */}
+            <ComponentCard title="Cargo Information">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <Input
                   label="Commodity"
                   value={editData.cargo.commodity}
                   onChange={(e) =>
                     handleNestedEditChange("cargo", "commodity", e.target.value)
                   }
                 />
-                <InputField
+                <Input
                   label="Quantity (MT)"
                   type="number"
                   value={editData.cargo.quantity}
@@ -914,28 +865,13 @@ export default function VoyageTable({
                     handleNestedEditChange("cargo", "quantity", e.target.value)
                   }
                 />
-
-                {/* Dates using DatePicker - Added IDs here */}
-                <div>
-                  <Label>Laycan Start</Label>
-                  <DatePicker
-                    id="edit-laycan-start" //  ADDED ID
-                    defaultDate={editData.charter.laycanStart}
-                    onChange={(_, date) =>
-                      handleNestedEditChange("charter", "laycanStart", date)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Laycan End</Label>
-                  <DatePicker
-                    id="edit-laycan-end" //  ADDED ID
-                    defaultDate={editData.charter.laycanEnd}
-                    onChange={(_, date) =>
-                      handleNestedEditChange("charter", "laycanEnd", date)
-                    }
-                  />
-                </div>
+                <Input
+                  label="Grade"
+                  value={editData.cargo.grade}
+                  onChange={(e) =>
+                    handleNestedEditChange("cargo", "grade", e.target.value)
+                  }
+                />
               </div>
             </ComponentCard>
           </div>

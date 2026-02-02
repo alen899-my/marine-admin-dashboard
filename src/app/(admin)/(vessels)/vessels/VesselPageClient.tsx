@@ -1,0 +1,77 @@
+"use client";
+
+import ComponentCard from "@/components/common/ComponentCard";
+import FilterToggleButton from "@/components/common/FilterToggleButton";
+import TableCount from "@/components/common/TableCount";
+import { useFilterPersistence } from "@/hooks/useFilterPersistence";
+import { ReactNode, useEffect, useState } from "react";
+import AddVesselButton from "./AddVesselButton";
+import VesselFilterWrapper from "./VesselFilterWrapper";
+
+interface VesselPageClientProps {
+  children: ReactNode;
+  totalCount: number;
+  companies: any[];
+  isSuperAdmin: boolean;
+  canAdd: boolean;
+}
+
+export default function VesselPageClient({
+  children,
+  totalCount,
+  companies,
+  isSuperAdmin,
+  canAdd,
+}: VesselPageClientProps) {
+  const { isFilterVisible, setIsFilterVisible } =
+    useFilterPersistence("vessels");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const effectiveFilterVisibility = mounted ? isFilterVisible : false;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+          Vessel Management
+        </h2>
+
+        <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="w-full flex justify-end sm:w-auto">
+            <FilterToggleButton
+              isVisible={effectiveFilterVisibility}
+              onToggle={setIsFilterVisible}
+            />
+          </div>
+
+          {canAdd && (
+            <div className="w-full sm:w-auto">
+              <AddVesselButton className="w-full justify-center" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ComponentCard
+        headerClassName="p-0 px-1"
+        title={
+          effectiveFilterVisibility ? (
+            <VesselFilterWrapper
+              companies={companies}
+              isSuperAdmin={isSuperAdmin}
+            />
+          ) : null
+        }
+      >
+        <div className="flex justify-end me-2 mb-2">
+          <TableCount count={totalCount} label="Vessels" />
+        </div>
+
+        {children}
+      </ComponentCard>
+    </div>
+  );
+}

@@ -3,16 +3,17 @@
 import Button from "@/components/ui/button/Button";
 import UserFormModal from "@/components/Users/UserFormModal";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function AddUserButton({
   onSuccess,
   className,
-  
 }: {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   className?: string;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { can, isReady } = useAuthorization();
 
@@ -23,14 +24,22 @@ export default function AddUserButton({
 
   return (
     <>
-      <Button size="md" className={className} variant="primary" onClick={() => setIsOpen(true)}>
+      <Button
+        size="md"
+        className={className}
+        variant="primary"
+        onClick={() => setIsOpen(true)}
+      >
         Add User
       </Button>
 
       <UserFormModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        onSuccess={onSuccess}
+        onSuccess={() => {
+          router.refresh();
+          if (onSuccess) onSuccess();
+        }}
         initialData={null}
       />
     </>

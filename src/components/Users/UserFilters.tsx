@@ -1,9 +1,16 @@
 "use client";
 
-import DatePicker from "@/components/form/date-picker";
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
+
+export interface UserFilterValues {
+  search: string;
+  status: string;
+  companyId: string;
+  startDate: string;
+  endDate: string;
+}
 
 // Defined props to match the UserManagement page state
 interface UserFiltersProps {
@@ -18,6 +25,10 @@ interface UserFiltersProps {
   setStartDate: (v: string) => void;
   endDate: string;
   setEndDate: (v: string) => void;
+  // ✅ Added props for Server Component Architecture
+  companies?: { value: string; label: string }[];
+  onApply?: (values: UserFilterValues) => void;
+  onClear?: () => void;
 }
 
 export default function UserFilters({
@@ -25,12 +36,16 @@ export default function UserFilters({
   setSearch,
   status,
   setStatus,
-  companyId, setCompanyId,
+  companyId,
+  setCompanyId,
   isSuperAdmin,
   startDate,
   setStartDate,
   endDate,
   setEndDate,
+  companies = [],
+  onApply,
+  onClear,
 }: UserFiltersProps) {
   // Local state for debounced/deferred updates
   const [localSearch, setLocalSearch] = useState(search);
@@ -38,35 +53,42 @@ export default function UserFilters({
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
-  const [companies, setCompanies] = useState<{value: string, label: string}[]>([]);
-
-  useEffect(() => {
-    if (isSuperAdmin) {
-      fetch("/api/companies") // Ensure you have this GET endpoint
-        .then(res => res.json())
-        .then(json => {
-          const list = (json.data || []).map((c: any) => ({
-            value: c._id,
-            label: c.name
-          }));
-          setCompanies([{ value: "all", label: "All Companies" }, ...list]);
-        });
-    }
-  }, [isSuperAdmin]);
 
   // Sync local state if parent state changes externally (e.g. refresh)
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalCompanyId(companyId); }, [companyId]);
-  useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
-  useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalCompanyId(companyId);
+  }, [companyId]);
+  useEffect(() => {
+    setLocalStartDate(startDate);
+  }, [startDate]);
+  useEffect(() => {
+    setLocalEndDate(endDate);
+  }, [endDate]);
 
   const handleApplyFilters = () => {
-    setSearch(localSearch);
-    setStatus(localStatus);
-    setCompanyId(localCompanyId);
-    setStartDate(localStartDate);
-    setEndDate(localEndDate);
+    // ✅ Logic Branch: If onApply exists (Server Component mode), use it.
+    // Otherwise fallback to individual setters (Legacy mode).
+    if (onApply) {
+      onApply({
+        search: localSearch,
+        status: localStatus,
+        companyId: localCompanyId,
+        startDate: localStartDate,
+        endDate: localEndDate,
+      });
+    } else {
+      setSearch(localSearch);
+      setStatus(localStatus);
+      setCompanyId(localCompanyId);
+      setStartDate(localStartDate);
+      setEndDate(localEndDate);
+    }
   };
 
   const handleClear = () => {
@@ -75,13 +97,17 @@ export default function UserFilters({
     setLocalCompanyId("all");
     setLocalStartDate("");
     setLocalEndDate("");
-    
-    // Immediately clear parent state too
-    setSearch("");
-    setStatus("all");
-    setCompanyId("all");
-    setStartDate("");
-    setEndDate("");
+
+    if (onClear) {
+      onClear();
+    } else {
+      // Immediately clear parent state too (Legacy)
+      setSearch("");
+      setStatus("all");
+      setCompanyId("all");
+      setStartDate("");
+      setEndDate("");
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -90,7 +116,6 @@ export default function UserFilters({
 
   return (
     <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
-      
       {/* SEARCH - Updated to match common component size */}
       <div className="w-full sm:w-auto min-w-[200px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
@@ -133,37 +158,10 @@ export default function UserFilters({
             value={localCompanyId}
             onChange={setLocalCompanyId}
             placeholder="Select Company"
-            options={companies}
+            options={[{ value: "all", label: "All Companies" }, ...companies]}
           />
         </div>
       )}
-
-      {/* JOINED DATE FROM - (Kept commented out as per your code)
-      <div className="w-full sm:w-auto min-w-[180px] shrink-0">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Joined Date From
-        </label>
-        <DatePicker
-          key={localStartDate}
-          id="filter-start-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localStartDate}
-          onChange={(_, dateStr) => setLocalStartDate(dateStr)}
-        />
-      </div>
-
-      <div className="w-full sm:w-auto min-w-[180px] shrink-0">
-        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-          Joined Date To
-        </label>
-        <DatePicker
-          key={localEndDate}
-          id="filter-end-date"
-          placeholder="dd/mm/yyyy"
-          defaultDate={localEndDate}
-          onChange={(_, dateStr) => setLocalEndDate(dateStr)}
-        />
-      </div> */}
 
       {/* ACTION BUTTONS - ml-auto removed to keep them on the left */}
       <div className="flex items-center gap-2 mt-2 sm:mt-0 shrink-0">

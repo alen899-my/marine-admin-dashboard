@@ -13,11 +13,12 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { vesselSchema } from "@/lib/validations/vesselSchema";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 interface AddVesselButtonProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export default function AddVesselButton({
   onSuccess,
   className,
 }: AddVesselButtonProps) {
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -226,7 +228,8 @@ export default function AddVesselButton({
       }
 
       toast.success("Vessel added successfully");
-      onSuccess();
+      router.refresh();
+      if (onSuccess) onSuccess();
       handleClose();
     } catch (error) {
       console.error("Vessel submit failed", error);

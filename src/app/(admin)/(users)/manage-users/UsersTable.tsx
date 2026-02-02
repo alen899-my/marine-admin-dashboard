@@ -1,14 +1,9 @@
 "use client";
 
-import { User as UserIcon } from "lucide-react"; //  Import Icon for fallback
-import Image from "next/image"; //  Import Image
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { User as UserIcon } from "lucide-react"; // Import Icon for fallback
+import Image from "next/image"; // Import Image
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added Router
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 // --- Components ---
@@ -40,7 +35,7 @@ interface RoleData {
   permissions?: string[];
 }
 
-interface IUser {
+export interface IUser {
   _id: string;
   fullName: string;
   email: string;
@@ -48,39 +43,42 @@ interface IUser {
   role: any;
   company?: { _id: string; name: string } | any;
   status: string;
-  profilePicture?: string; //  Added this
+  profilePicture?: string;
   lastLogin?: string;
   createdAt: string;
   additionalPermissions?: string[];
   excludedPermissions?: string[];
 }
 
+// ✅ Updated Props Interface
 interface UserTableProps {
-  refresh: number;
-  search: string;
-  status: string;
-  companyId: string;
-  startDate: string;
-  endDate: string;
-  setTotalCount?: Dispatch<SetStateAction<number>>;
+  data: IUser[]; // Data passed from Server
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  roles: RoleData[];
+  permissions: IPermission[];
 }
 
 export default function UserTable({
-  refresh,
-  search,
-  status,
-  companyId,
-  startDate,
-  endDate,
-  setTotalCount,
+  data,
+  pagination,
+  roles,
+  permissions,
 }: UserTableProps) {
-  // --- Data State ---
-  const [users, setUsers] = useState<IUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter(); // ✅ Init Router
+  const searchParams = useSearchParams();
 
-  // --- Metadata State ---
-  const [rolesList, setRolesList] = useState<RoleData[]>([]);
-  const [allPermissions, setAllPermissions] = useState<IPermission[]>([]);
+  // 1. Use Props for Data
+  const users = data;
+  const loading = false; // Data is pre-fetched
+
+  // Metadata State (from props)
+  const rolesList = roles;
+  const allPermissions = permissions;
 
   // --- Modal States ---
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -89,10 +87,7 @@ export default function UserTable({
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  // --- Pagination State ---
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const LIMIT = 20;
+
   const { can } = useAuthorization();
 
   const canEditUser = can("users.edit");
@@ -128,18 +123,25 @@ export default function UserTable({
     );
   };
 
+  // ✅ Page Change Logic (via URL)
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   // --- Table Columns ---
   const columns = [
     {
       header: "S.No",
       render: (_: IUser, index: number) =>
-        (currentPage - 1) * LIMIT + index + 1,
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "Full Name",
       render: (u: IUser) => (
         <div className="flex items-center gap-3">
-          {/*  Avatar Display in Table */}
+          {/* Avatar Display in Table */}
           <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
             {u.profilePicture ? (
               <Image
@@ -199,45 +201,6 @@ export default function UserTable({
     },
   ];
 
-  const fetchUsers = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const query = new URLSearchParams({
-          page: page.toString(),
-          limit: LIMIT.toString(),
-          search,
-          status,
-          companyId,
-          startDate,
-          endDate,
-        });
-
-        // This single call now gets EVERYTHING
-        const res = await fetch(`/api/users?${query.toString()}`);
-        if (!res.ok) throw new Error("Failed to fetch");
-
-        const result = await res.json();
-
-        // 1. Set Users and Pagination
-        setUsers(result.users?.data || []);
-        if (setTotalCount) {
-          setTotalCount(result.users?.pagination?.total || 0);
-        }
-        setTotalPages(result.users?.pagination?.totalPages || 1);
-
-        // 2. Set Metadata (This replaces the old useEffect)
-        if (result.roles) setRolesList(result.roles);
-        if (result.permissions) setAllPermissions(result.permissions);
-      } catch (err) {
-        console.error("Fetch Error:", err);
-        setUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [LIMIT, search, status, companyId, startDate, endDate, setTotalCount],
-  );
   const selectedUserRoleName =
     typeof selectedUser?.role === "object"
       ? selectedUser.role.name
@@ -245,14 +208,6 @@ export default function UserTable({
 
   const isSelectedUserSuperAdmin =
     selectedUserRoleName?.toLowerCase() === "super-admin";
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, status, companyId, startDate, endDate, refresh]);
-
-  useEffect(() => {
-    fetchUsers(currentPage);
-  }, [currentPage, fetchUsers, refresh]);
 
   // --- HANDLERS ---
   const handleView = (user: IUser) => {
@@ -274,11 +229,10 @@ export default function UserTable({
         method: "DELETE",
       });
       if (!res.ok) throw new Error();
-      setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
-      // UPDATE DYNAMIC COUNT ON DELETE
-      if (setTotalCount) {
-        setTotalCount((prev) => Math.max(0, prev - 1));
-      }
+
+      // ✅ Refresh Server Data
+      router.refresh();
+
       toast.success("User deleted successfully");
     } catch (error) {
       console.error(error);
@@ -299,9 +253,9 @@ export default function UserTable({
               data={users}
               columns={columns}
               loading={loading}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange} // ✅ URL Pagination
               onView={handleView}
               onRowClick={handleView}
               onEdit={canEditUser ? handleEdit : undefined}
@@ -343,6 +297,7 @@ export default function UserTable({
                         sizes="64px"
                         className="object-cover"
                         priority
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
@@ -459,7 +414,7 @@ export default function UserTable({
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         onSuccess={() => {
-          fetchUsers(currentPage); // Refresh
+          router.refresh(); // ✅ Refresh on Edit Success
         }}
         initialData={userToEdit}
       />
