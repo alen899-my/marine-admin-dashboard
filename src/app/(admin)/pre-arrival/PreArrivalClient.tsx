@@ -123,39 +123,17 @@ const handleRefresh = useCallback(async () => {
     }
   };
 
-  const handleUpload = async (row: any) => {
-  setProcessingId(row._id);
-    try {
-      const res = await fetch(`/api/pre-arrival/${row._id}`);
-      const fullData = await res.json();
-      if (res.ok) {
-        setSelectedRequest(fullData);
-        setIsViewMode(false);
-        setIsWorkspaceOpen(true);
-      }
-    } catch (error) {
-      toast.error("Error connecting to server");
-    } finally {
-    setProcessingId(null);
-    }
-  };
+const handleUpload = (row: any) => {
+  setSelectedRequest(row); // Use existing data immediately
+  setIsViewMode(false);
+  setIsWorkspaceOpen(true);
+};
 
-  const handleView = async (row: any) => {
-    setProcessingId(row._id);
-    try {
-      const res = await fetch(`/api/pre-arrival/${row._id}`);
-      const fullData = await res.json();
-      if (res.ok) {
-        setSelectedRequest(fullData);
-        setIsViewMode(true);
-        setIsWorkspaceOpen(true);
-      }
-    } catch (error) {
-      toast.error("Error connecting to server");
-    } finally {
-     setProcessingId(null);
-    }
-  };
+const handleView = (row: any) => {
+  setSelectedRequest(row); // Use existing data immediately
+  setIsViewMode(true);
+  setIsWorkspaceOpen(true);
+};
 
   const columns = useMemo(() => [
     {

@@ -18,7 +18,7 @@ export async function getResources({
   user,
 }: GetResourcesParams) {
   await dbConnect();
-
+  
   const userRole = user.role;
   const userPermissions = user.permissions || [];
   const skip = (page - 1) * limit;

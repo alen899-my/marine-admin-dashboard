@@ -21,6 +21,7 @@ export default function ResourcePageClient({
 }: ResourcePageClientProps) {
   const router = useRouter();
   const { can, isReady } = useAuthorization();
+  const canView = can("resource.view");
   const canAdd = can("resource.create");
 
 const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources");
@@ -34,6 +35,15 @@ const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources"
   };
 
   if (!isReady) return null;
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 font-medium">
+          You do not have permission to access Resource Management.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

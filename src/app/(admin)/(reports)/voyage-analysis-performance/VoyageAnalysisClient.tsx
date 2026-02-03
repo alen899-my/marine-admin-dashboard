@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added
 import React, { useEffect, useMemo, useState } from "react";
-
+import { useAuthorization } from "@/hooks/useAuthorization";
 // --- Helper for HTML datetime-local format (YYYY-MM-DDTHH:mm) ---
 const formatDateTimeLocal = (dateStr: string | Date | undefined) => {
   if (!dateStr) return "";
@@ -54,6 +54,22 @@ export default function VoyageAnalysisClient({
   voyageOptions,
   performanceData,
 }: VoyageAnalysisClientProps) {
+   const { can, isReady } = useAuthorization();
+    const canView = can("voyageanalysis.view");
+   
+    
+  
+    if (!isReady) return null;
+  
+    if (!canView) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-gray-500 font-medium">
+            You do not have permission to access Voyage Analysis.
+          </p>
+        </div>
+      );
+    }
   const router = useRouter();
   const searchParams = useSearchParams();
 
