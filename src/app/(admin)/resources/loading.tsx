@@ -3,11 +3,11 @@ import TablePageSkeleton from "@/components/skeletons/TablePageSkeleton";
 export default function Loading() {
   return (
     <TablePageSkeleton 
-      columnCount={6}   // Matches your 8 data columns
+      columnCount={1}   // Matches your 8 data columns
       rowCount={20}      // 6 rows look good on most screens
-      isComplex={true}  // Renders double-lines for "Navigation/Fuel" feel
+      isComplex={false}  // Renders double-lines for "Navigation/Fuel" feel
       hasFilter={true}
-      hasExport={true}
+      hasExport={false}
       hasAdd={true}
     />
   );

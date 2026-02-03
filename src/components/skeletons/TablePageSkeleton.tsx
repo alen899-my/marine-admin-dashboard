@@ -13,6 +13,8 @@ interface TablePageSkeletonProps {
   hasAdd?: boolean;
   /** If true, renders thicker cells to simulate multi-line data like address/navigation (default: false) */
   isComplex?: boolean;
+  /** Show a specific Status column with a badge skeleton? (default: true) */
+  hasStatus?: boolean;
 }
 
 export default function TablePageSkeleton({
@@ -22,6 +24,7 @@ export default function TablePageSkeleton({
   hasExport = true,
   hasAdd = true,
   isComplex = false,
+  hasStatus = true,
 }: TablePageSkeletonProps) {
   return (
     <div className="space-y-6 animate-pulse">
@@ -71,11 +74,18 @@ export default function TablePageSkeleton({
                   <th className="px-4 py-3 text-left w-16">
                     <div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
                   </th>
+                  {/* Dynamic Data Headers */}
                   {[...Array(columnCount)].map((_, i) => (
                     <th key={i} className="px-4 py-3 text-left">
                       <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
                     </th>
                   ))}
+                  {/* Status Header */}
+                  {hasStatus && (
+                    <th className="px-4 py-3 text-left w-24">
+                      <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                    </th>
+                  )}
                   {/* Action Column Header */}
                   <th className="px-4 py-3 text-left w-32">
                     <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -107,6 +117,13 @@ export default function TablePageSkeleton({
                         )}
                       </td>
                     ))}
+
+                    {/* Status Column (Badge Style) */}
+                    {hasStatus && (
+                      <td className="px-4 py-4">
+                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                      </td>
+                    )}
 
                     {/* Action Column */}
                     <td className="px-4 py-4">

@@ -7,7 +7,7 @@ export default function Loading() {
       rowCount={20}      // 6 rows look good on most screens
       isComplex={true}  // Renders double-lines for "Navigation/Fuel" feel
       hasFilter={true}
-      hasExport={true}
+      hasExport={false}
       hasAdd={true}
     />
   );
