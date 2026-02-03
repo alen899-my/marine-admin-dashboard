@@ -4,7 +4,7 @@ import { dbConnect } from "@/lib/db";
 import ReportDaily from "@/models/ReportDaily";
 import Voyage from "@/models/Voyage"; //  Import Voyage for ID lookup
 import { NextRequest, NextResponse } from "next/server";
-
+import { revalidatePath, revalidateTag } from "next/cache";
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -90,7 +90,8 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
-
+    revalidateTag("noon-reports-tag", ""); // This clears the unstable_cache
+    revalidatePath("/(admin)/(reports)/daily-noon-report");
     return NextResponse.json({
       success: true,
       report: updated,
@@ -125,6 +126,8 @@ export async function DELETE(
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
+  revalidateTag("noon-reports-tag", ""); // This clears the unstable_cache
+    revalidatePath("/(admin)/(reports)/daily-noon-report");
 
     return NextResponse.json({
       success: true,

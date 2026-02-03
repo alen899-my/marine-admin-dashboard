@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
 import { noonReportSchema } from "@/lib/validations/noonReportSchema";
 import { NextRequest, NextResponse } from "next/server";
-
+import { revalidatePath, revalidateTag } from "next/cache";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 
 import Company from "@/models/Company";
@@ -465,6 +465,8 @@ export async function POST(req: NextRequest) {
 
       remarks: `${generalRemarks || ""}`,
     });
+   revalidateTag("noon-reports-tag", ""); // This clears the unstable_cache
+       revalidatePath("/(admin)/(reports)/daily-noon-report");
 
     return NextResponse.json(
       {
