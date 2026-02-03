@@ -5,7 +5,7 @@ import NextTopLoader from "nextjs-toploader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
-
+import { ThemeScript } from "@/components/ThemeScript";
 import { auth } from "@/auth";
 
 const outfit = Outfit({
@@ -31,6 +31,7 @@ export default async function RootLayout({
         className={`${outfit.className} dark:bg-gray-900`}
         suppressHydrationWarning
       >
+        <ThemeScript />
         <NextTopLoader
           color="#00A6B8"
           initialPosition={0.08}

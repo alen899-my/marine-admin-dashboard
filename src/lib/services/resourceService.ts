@@ -51,7 +51,7 @@ export async function getResources({
   if (status && status !== "all") {
     query.status = status.toLowerCase();
   }
-
+  console.time("getResources Query Build Time");
   // 5. Execute Query
   const [data, total] = await Promise.all([
     Resource.find(query)
@@ -62,7 +62,7 @@ export async function getResources({
       .lean(),
     Resource.countDocuments(query),
   ]);
-
+  console.timeEnd("getResources Query Build Time");
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // 6. Serialize & Return
