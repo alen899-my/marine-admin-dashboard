@@ -1,14 +1,15 @@
-import { auth } from "@/auth"; // Your NextAuth configuration
+import { Suspense } from "react";
+import { auth } from "@/auth";
 import CompanyFilter from "@/components/dashboard/CompanyFilter";
 import { Metrics } from "@/components/dashboard/Metrics";
+import { MetricsSkeleton } from "@/components/dashboard/MetricsSkeleton"; // Import the new skeleton
 import { dbConnect } from "@/lib/db";
 import { getDashboardMetrics } from "@/lib/services/dashboard";
 import Company from "@/models/Company";
 
-// 1. Helper to fetch company list for dropdown (Server Side)
+// Helper: Fetch Companies (Kept here as it's likely fast or needed for the filter UI immediately)
 async function getCompanyOptions() {
   await dbConnect();
-  // Fetch only necessary fields
   const companies = await Company.find({ status: "active", deletedAt: null })
     .select("_id name")
     .lean();
@@ -26,21 +27,19 @@ interface PageProps {
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
-  // 2. Get Session
+  // 1. Get Session FAST (Do not block long for this)
   const session = await auth();
   if (!session?.user) return <div>Unauthorized</div>;
 
   const isSuperAdmin = session.user.role?.toLowerCase() === "super-admin";
-
+  
+  // Resolve params
   const resolvedSearchParams = await searchParams;
   const selectedCompanyId = (resolvedSearchParams?.companyId as string) || "";
 
-  // 4. Parallel Data Fetching
-  // We fetch metrics AND company list (if admin) at the same time
-  const [metricsData, companyOptions] = await Promise.all([
-    getDashboardMetrics(session.user, selectedCompanyId),
-    isSuperAdmin ? getCompanyOptions() : Promise.resolve([]),
-  ]);
+  // 2. Fetch Filter Options (usually fast)
+  // We keep this awaited here so the filter appears immediately with the skeleton
+  const companyOptions = isSuperAdmin ? await getCompanyOptions() : [];
 
   return (
     <div className="space-y-6">
@@ -48,8 +47,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         {isSuperAdmin && <CompanyFilter options={companyOptions} />}
       </div>
 
-      {/* 5. Pass pre-fetched data to the client component */}
-      <Metrics data={metricsData} />
+      {/* 3. Wrap the SLOW metrics fetching in Suspense.
+           We pass the 'user' to the Skeleton so it knows which boxes to show.
+      */}
+      <Suspense fallback={<MetricsSkeleton user={session.user} />}>
+        <MetricsLoader user={session.user} companyId={selectedCompanyId} />
+      </Suspense>
     </div>
   );
+}
+
+// --- Internal Component to handle Data Fetching ---
+async function MetricsLoader({ user, companyId }: { user: any; companyId: string }) {
+  // This performs the slow DB call
+  const metricsData = await getDashboardMetrics(user, companyId);
+  
+  return <Metrics data={metricsData} />;
 }
