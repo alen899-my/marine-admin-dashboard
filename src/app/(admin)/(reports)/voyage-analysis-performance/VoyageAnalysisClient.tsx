@@ -256,11 +256,25 @@ export default function VoyageAnalysisClient({
   const vesselName = vesselsList.find((v) => v.value === vessel)?.label || "N/A";
   const voyageNo = voyagesList.find((v) => v.value === legId)?.label || "N/A";
 
+  // date time format function for pdf
+  const formatDateTimeForPdf = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Kolkata",
+    });
+  };
+
   const pdfData = {
     vessel: vesselName,
     voyageNumber: voyageNo,
-    departureTime: depDt || "N/A",
-    arrivalTime: arrDt || "N/A",
+    departureTime: formatDateTimeForPdf(depDt) || "N/A",
+    arrivalTime: formatDateTimeForPdf(arrDt) || "N/A",
     totalDistance: `${performance.totalDist} NM`,
     averageSpeed: `${performance.avgSpeed} knots`,
     totalSteamingTime: `${performance.totalHrs} hours`,
