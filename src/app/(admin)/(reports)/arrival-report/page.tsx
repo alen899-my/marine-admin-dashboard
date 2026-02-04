@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getArrivalReports, getFilterOptions } from "@/lib/services/arrival-report";
 import ArrivalReportTable from "./ArrivalReportTable";
 import ArrivalPageClient from "./ArrivalPageClient";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Arrival Report | Parkora Falcon",
+  description: "Comprehensive arrival report management for maritime operations.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

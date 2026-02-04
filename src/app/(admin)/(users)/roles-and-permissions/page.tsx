@@ -3,6 +3,12 @@ import { getRoles } from "@/lib/services/roleService";
 import { redirect } from "next/navigation";
 import RolePageClient from "./RolePageClient";
 import RolesTable from "./RolesTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Role Management | Parkora Falcon",
+  description: "Manage roles and permissions for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

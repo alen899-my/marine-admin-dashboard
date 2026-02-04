@@ -4,6 +4,12 @@ import { authorizeRequest } from "@/lib/authorizeRequest"; // Assuming you might
 import ResourcePageClient from "./ResourcePageClient";
 import ResourceTable from "./ResourceTable";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Resource Management | Parkora Falcon",
+  description: "Manage resource information and operations for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

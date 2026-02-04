@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { getAnalysisOptions, getVoyagePerformanceData } from "@/lib/services/voyage-performance";
 import VoyageAnalysisClient from "./VoyageAnalysisClient";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Voyage Analysis & Performance Report | Parkora Falcon",
+  description: "Comprehensive voyage analysis and performance report management for maritime operations.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

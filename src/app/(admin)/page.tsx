@@ -6,6 +6,12 @@ import { MetricsSkeleton } from "@/components/dashboard/MetricsSkeleton"; // Imp
 import { dbConnect } from "@/lib/db";
 import { getDashboardMetrics } from "@/lib/services/dashboard";
 import Company from "@/models/Company";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard | Parkora Falcon",
+  description: "Professional Dashboard for Parkora Falcon Maritime Operations.",
+};
 
 // Helper: Fetch Companies (Kept here as it's likely fast or needed for the filter UI immediately)
 async function getCompanyOptions() {

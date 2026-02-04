@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getUserMetadata, getUsers } from "@/lib/services/users";
 import UserPageClient from "./UserPageClient";
 import UserTable from "./UsersTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "User Management | Parkora Falcon",
+  description: "Manage user information and operations for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

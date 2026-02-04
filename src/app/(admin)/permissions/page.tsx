@@ -3,6 +3,12 @@ import { getPermissions } from "@/lib/services/permissionService";
 import PermissionPageClient from "./PermissionPageClient";
 import PermissionTable from "./PermissionTable";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Permission Management | Parkora Falcon",
+  description: "Manage permissions for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

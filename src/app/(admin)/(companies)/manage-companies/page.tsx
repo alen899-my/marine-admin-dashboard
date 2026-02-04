@@ -3,6 +3,12 @@ import { getCompanies } from "@/lib/services/companyService";
 import { redirect } from "next/navigation";
 import CompanyPageClient from "./CompanyPageClient";
 import CompaniesTable from "./CompaniesTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Company Management | Parkora Falcon",
+  description: "Manage company information and operations for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

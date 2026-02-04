@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getVoyageOptions, getVoyages } from "@/lib/services/voyages";
 import VoyagePageClient from "./VoyagePageClient";
 import VoyageTable from "./VoyageTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Voyage Management | Parkora Falcon",
+  description: "Manage voyage information and operations for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

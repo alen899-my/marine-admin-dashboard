@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getCompanyOptions, getVessels } from "@/lib/services/vessels";
 import VesselPageClient from "./VesselPageClient";
 import VesselTable from "./VesselTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Vessel Management | Parkora Falcon",
+  description: "Manage vessel information and operations for maritime vessels.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

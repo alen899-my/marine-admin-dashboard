@@ -2,8 +2,8 @@ import SignUpForm from "@/components/auth/SignUpForm";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Parkora Falcon",
-  description: "Professional Dashboard",
+  title: "Sign Up | Parkora Falcon",
+  description: "Create a new account for Parkora Falcon.",
 };
 
 export default function SignUp() {

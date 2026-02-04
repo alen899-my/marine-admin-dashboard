@@ -3,6 +3,13 @@ import { authorizeRequest } from "@/lib/authorizeRequest";
 import { getPreArrivalData } from "@/lib/services/preArrivalService";
 import PreArrivalClient from "./PreArrivalClient";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pre-Arrival Management | Parkora Falcon",
+  description: "Manage pre-arrival operations for maritime vessels.",
+};
+
 export default async function PreArrivalManagement() {
   // 1. Authorize on Server
 const authz = await authorizeRequest("prearrival.view");

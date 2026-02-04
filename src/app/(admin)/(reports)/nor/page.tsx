@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getNorReports, getFilterOptions } from "@/lib/services/nor-report";
 import NorReportTable from "./NorReportTable";
 import NorPageClient from "./NorPageClient";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Notice of Readiness Report | Parkora Falcon",
+  description: "Comprehensive notice of readiness report management for maritime operations.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

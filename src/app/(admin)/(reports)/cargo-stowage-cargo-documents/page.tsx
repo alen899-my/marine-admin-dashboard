@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getCargoReports, getFilterOptions } from "@/lib/services/cargo-report";
 import CargoReportTable from "./CargoReportTable";
 import CargoPageClient from "./CargoPageClient";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Cargo Stowage & Cargo Documents Report | Parkora Falcon",
+  description: "Comprehensive cargo stowage and cargo documents report management for maritime operations.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

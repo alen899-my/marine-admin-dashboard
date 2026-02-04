@@ -2,6 +2,12 @@ import { auth } from "@/auth";
 import { getFilterOptions, getNoonReports } from "@/lib/services/noon-report";
 import DailyNoonReportClient from "./DailyNoonPageClient"; //  Import the new wrapper
 import DailyNoonReportTable from "./DailyNoonReportTable";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Daily Noon Report | Parkora Falcon",
+  description: "Comprehensive daily noon report management for maritime operations.",
+};
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;
