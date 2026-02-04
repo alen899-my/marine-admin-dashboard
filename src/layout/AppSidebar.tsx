@@ -18,6 +18,9 @@ import {
   SquareArrowDownRight,
   SquareArrowUpLeft,
   Users2,
+  Database,
+  ShieldCheck,
+  ClipboardList,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,18 +34,17 @@ import React, {
 } from "react";
 import { useSidebar } from "../context/SidebarContext";
 
-// 2. Update Type Definition
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  requiredPermission?: string; // New field for RBAC
+  requiredPermission?: string;
   subItems?: {
     name: string;
     path: string;
     pro?: boolean;
     new?: boolean;
-    requiredPermission?: string; // Sub-items can also have permissions
+    requiredPermission?: string;
   }[];
 };
 
@@ -53,90 +55,96 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
-    icon: <FileText size={25} />,
-    name: "Daily Noon Report",
-    path: "/daily-noon-report",
-    requiredPermission: "noon.view",
+    icon: <ClipboardList size={25} />,
+    name: "Reports",
+    // Permission for the group (optional)
+    subItems: [
+      {
+        name: "Daily Noon Report",
+        path: "/daily-noon-report",
+        requiredPermission: "noon.view",
+      },
+      {
+        name: "Departure Report",
+        path: "/departure-report",
+        requiredPermission: "departure.view",
+      },
+      {
+        name: "Arrival Report",
+        path: "/arrival-report",
+        requiredPermission: "arrival.view",
+      },
+      {
+        name: "NOR Report",
+        path: "/nor",
+        requiredPermission: "nor.view",
+      },
+      {
+        name: "Cargo Stowage Report",
+        path: "/cargo-stowage-cargo-documents",
+        requiredPermission: "cargo.view",
+      },
+      {
+        name: "Voyage Analysis",
+        path: "/voyage-analysis-performance",
+        requiredPermission: "voyageanalysis.view",
+      },
+     
+    ],
   },
   {
-    icon: <SquareArrowUpLeft size={25} />,
-    name: "Departure Report",
-    path: "/departure-report",
-    requiredPermission: "departure.view",
-  },
-  {
-    icon: <SquareArrowDownRight size={25} />,
-    name: "Arrival Report",
-    path: "/arrival-report",
-    requiredPermission: "arrival.view",
-  },
-  {
-    icon: <Flag size={25} />,
-    name: "NOR Report",
-    path: "/nor",
-    requiredPermission: "nor.view",
-  },
-  {
-    icon: <Boxes size={25} />,
-    name: "Cargo Stowage Report",
-    path: "/cargo-stowage-cargo-documents",
-    requiredPermission: "cargo.view",
-  },
-  {
-    icon: <ChartSpline size={25} />, // Or any icon like BarChart3 from lucide-react
-    name: "Voyage Analysis",
-    path: "/voyage-analysis-performance",
-    requiredPermission: "voyageanalysis.view",
-  },
-  {
-    icon: <Ship size={25} />,
-    name: "Vessels",
-    path: "/vessels",
-    requiredPermission: "vessels.view",
-  },
-  {
-    icon: <Map size={25} />,
-    name: "Voyage",
-    path: "/voyage",
-    requiredPermission: "voyage.view",
-  },
-  {
-    icon: <FileCheck size={25} />, // or <ClipboardCheck size={25} />
-    name: "Pre-Arrival ",
+    icon: <FileCheck size={25} />, // Old icon restored
+    name: "Pre-Arrival Management",
     path: "/pre-arrival",
     requiredPermission: "prearrival.view",
   },
+  
   {
-    icon: <Users2 size={25} />,
-    name: " Users",
-    path: "/manage-users",
-    requiredPermission: "users.view",
+    icon: <Database size={25} />,
+    name: "Master",
+    subItems: [
+      {
+        name: "Vessels",
+        path: "/vessels",
+        requiredPermission: "vessels.view",
+      },
+      {
+        name: "Voyage",
+        path: "/voyage",
+        requiredPermission: "voyage.view",
+      },
+      {
+        name: "Companies",
+        path: "/manage-companies",
+        requiredPermission: "company.view",
+      },
+      {
+        name: "Users",
+        path: "/manage-users",
+        requiredPermission: "users.view",
+      },
+    ],
   },
-
   {
-    icon: <Building2 size={25} />, //  Company Icon
-    name: "Companies",
-    path: "/manage-companies", //  Matches your new route
-    requiredPermission: "company.view", //  Matches the RBAC slug
-  },
-
-  {
-    icon: <IdCard size={25} />,
-    name: " Roles ",
-    path: "/roles-and-permissions",
-    requiredPermission: "roles.view",
-  },
-  {
-    icon: <Fingerprint size={25} />,
-    name: "Permissions",
-    path: "/permissions",
-    requiredPermission: "permission.view",
-  },
-  {
-    icon: <Component size={25} />,
-    name: "Resources",
-    path: "/resources",
-    requiredPermission: "resource.view",
+    icon: <ShieldCheck size={25} />,
+    name: "Roles & Permissions",
+    subItems: [
+      {
+        name: "Roles",
+        path: "/roles-and-permissions",
+        requiredPermission: "roles.view",
+      },
+      {
+        name: "Permissions ",
+        path: "/permissions",
+        requiredPermission: "permission.view",
+      },
+      {
+        name: "Resources",
+        path: "/resources",
+        requiredPermission: "resource.view",
+      },
+    ],
   },
 ];
 
@@ -156,21 +164,23 @@ const AppSidebar: React.FC = () => {
     if (!isReady || !isAuthenticated) return [];
 
     return navItems.reduce<NavItem[]>((acc, item) => {
-      // 🔐 Parent permission
+      // Check parent permission if it exists
       if (item.requiredPermission && !can(item.requiredPermission)) {
         return acc;
       }
 
-      // 🔐 Sub-items
+      // Handle logic for items with sub-items
       if (item.subItems) {
         const visibleSubItems = item.subItems.filter(
-          (sub) => !sub.requiredPermission || can(sub.requiredPermission),
+          (sub) => !sub.requiredPermission || can(sub.requiredPermission)
         );
 
+        // Only add the parent if it has at least one visible sub-item
         if (visibleSubItems.length > 0) {
           acc.push({ ...item, subItems: visibleSubItems });
         }
       } else {
+        // Simple link item
         acc.push(item);
       }
 
@@ -182,37 +192,29 @@ const AppSidebar: React.FC = () => {
     type: "main" | "others";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {},
-  );
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
   useEffect(() => {
     let submenuMatched = false;
-    ["main"].forEach((menuType) => {
-      filteredNavItems.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
+    filteredNavItems.forEach((nav, index) => {
+      if (nav.subItems) {
+        nav.subItems.forEach((subItem) => {
+          if (isActive(subItem.path)) {
+            setOpenSubmenu({ type: "main", index });
+            submenuMatched = true;
+          }
+        });
+      }
     });
 
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
+    if (!submenuMatched && openSubmenu?.type === "main") {
+      // Optional: keep open if you prefer, or close if no path matches
     }
-  }, [pathname, isActive, filteredNavItems]); // Add filteredNavItems dependency
+  }, [pathname, isActive, filteredNavItems]);
 
-  // Height calculation effect remains the same
   useEffect(() => {
     if (openSubmenu !== null) {
       const key = `${openSubmenu.type}-${openSubmenu.index}`;
@@ -226,40 +228,29 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
+    setOpenSubmenu((prev) => {
+      if (prev?.type === menuType && prev?.index === index) return null;
       return { type: menuType, index };
     });
   };
 
-  const renderMenuItems = (
-    items: NavItem[], // Changed arg name to generic 'items'
-    menuType: "main" | "others",
-  ) => (
+  const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-2">
       {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group  ${
+              className={`menu-item group w-full ${
                 openSubmenu?.type === menuType && openSubmenu?.index === index
                   ? "menu-item-active"
                   : "menu-item-inactive"
               } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
+                !isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
               }`}
             >
               <span
-                className={` ${
+                className={`${
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
@@ -272,9 +263,8 @@ const AppSidebar: React.FC = () => {
               )}
               {(isExpanded || isHovered || isMobileOpen) && (
                 <ChevronDown
-                  className={`ml-auto w-5 h-5 transition-transform duration-200  ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
+                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
+                    openSubmenu?.type === menuType && openSubmenu?.index === index
                       ? "rotate-180 text-brand-500"
                       : ""
                   }`}
@@ -294,9 +284,7 @@ const AppSidebar: React.FC = () => {
               >
                 <span
                   className={`${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
+                    isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"
                   }`}
                 >
                   {nav.icon}
@@ -307,6 +295,7 @@ const AppSidebar: React.FC = () => {
               </Link>
             )
           )}
+
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div
               ref={(el) => {
@@ -335,30 +324,6 @@ const AppSidebar: React.FC = () => {
                       }`}
                     >
                       {subItem.name}
-                      <span className="flex items-center gap-1 ml-auto">
-                        {subItem.new && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            new
-                          </span>
-                        )}
-                        {subItem.pro && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            pro
-                          </span>
-                        )}
-                      </span>
                     </Link>
                   </li>
                 ))}
@@ -369,47 +334,24 @@ const AppSidebar: React.FC = () => {
       ))}
     </ul>
   );
-  if (!isReady) {
-    return null; // or skeleton loader
-  }
+
+  if (!isReady) return null;
 
   return (
     <aside
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 hide-scrollbar
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[290px]"
-            : isHovered
-              ? "w-[290px]"
-              : "w-[90px]"
-        }
+        ${isExpanded || isMobileOpen ? "w-[290px]" : isHovered ? "w-[290px]" : "w-[90px]"}
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        className={`py-5 hidden lg:flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
-        }`}
-      >
+      <div className={`py-5 hidden lg:flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-center"}`}>
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/b.png"
-                alt="Logo"
-                width={160}
-                height={50}
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/parkora_logo_dark.png"
-                alt="Logo"
-                width={160}
-                height={50}
-              />
+              <Image className="dark:hidden" src="/images/logo/b.png" alt="Logo" width={160} height={50} />
+              <Image className="hidden dark:block" src="/images/logo/parkora_logo_dark.png" alt="Logo" width={160} height={50} />
             </>
           ) : (
             <Image src="/images/logo/p.png" alt="Logo" width={32} height={32} />
@@ -420,16 +362,9 @@ const AppSidebar: React.FC = () => {
         <nav className="mb-6 pb-20">
           <div className="flex flex-col gap-4">
             <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
+              <h2 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"}`}>
                 {isExpanded || isHovered || isMobileOpen ? "" : <Ellipsis />}
               </h2>
-              {/* 7. Pass FILTERED items here */}
               {renderMenuItems(filteredNavItems, "main")}
             </div>
           </div>
