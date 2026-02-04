@@ -93,7 +93,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <FileCheck size={25} />, // Old icon restored
+    icon: <FileCheck size={25} />, 
     name: "Pre-Arrival Management",
     path: "/pre-arrival",
     requiredPermission: "prearrival.view",
