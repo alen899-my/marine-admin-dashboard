@@ -377,7 +377,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
 }
     >
       <div className="max-h-[55vh] overflow-y-auto relative custom-scrollbar border border-gray-100 dark:border-white/5 rounded-xl overflow-anchor-none">
-        <Table>
+        <Table className="w-full min-w-[900px]">
           <TableHeader className="relative z-20">
             <TableRow className="border-b border-gray-100 dark:border-white/10">
               <TableCell
@@ -584,6 +584,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                             (hasUploadPerm &&
                               !hasVerifyPerm &&
                               row.owner === "ship") ? (
+                                <div className="w-full min-w-[180px] shrink-0">
                             <FileInput
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -602,6 +603,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                                 onUpload(row, file);
                               }}
                             />
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2 text-gray-400 opacity-50 italic">
                               <span className="text-[11px]">

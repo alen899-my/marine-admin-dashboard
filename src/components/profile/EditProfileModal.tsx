@@ -89,11 +89,11 @@ export default function EditProfileModal({
       setSaving(false);
     }
   };
-
-  return (
+return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[850px] m-4">
-      <div className="no-scrollbar relative w-full overflow-y-auto rounded-3xl bg-white p-6 dark:bg-gray-900 lg:p-10">
-        <div className="mb-8">
+      <div className="no-scrollbar relative w-full max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-gray-900 overflow-hidden">
+        {/* Fixed Title Section */}
+        <div className="p-6 lg:p-10 pb-5">
           <h4 className="text-2xl font-semibold text-gray-800 dark:text-white/90">
             Edit Profile
           </h4>
@@ -102,115 +102,121 @@ export default function EditProfileModal({
           </p>
         </div>
 
-        <form onSubmit={handleSave}>
-          <div className="flex flex-col gap-8 lg:flex-row">
-            {/* Left Column: Compact Profile */}
-            <div className="flex flex-col items-center w-full lg:w-1/3 lg:border-r lg:border-gray-200 lg:dark:border-gray-800 lg:pr-8">
-              <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-                {previewImage ? (
-                  <Image
-                    fill
-                    src={previewImage}
-                    alt="Profile"
-                    className="object-cover"
-                    unoptimized
+        {/* Form takes full remaining height and uses flex to separate scrolling area from buttons */}
+        <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+          
+          {/* Scrollable Input Area */}
+          <div className="flex-1 overflow-y-auto px-6 lg:px-10 no-scrollbar">
+            <div className="flex flex-col gap-8 lg:flex-row pb-6">
+              {/* Left Column: Compact Profile */}
+              <div className="flex flex-col items-center w-full lg:w-1/3 lg:border-r lg:border-gray-200 lg:dark:border-gray-800 lg:pr-8">
+                <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+                  {previewImage ? (
+                    <Image
+                      fill
+                      src={previewImage}
+                      alt="Profile"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <UserIcon
+                      size={56}
+                      className="text-gray-400 dark:text-gray-500"
+                    />
+                  )}
+                </div>
+                <label className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600">
+                  Update Photo
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setSelectedFile(e.target.files[0]);
+                        setPreviewImage(URL.createObjectURL(e.target.files[0]));
+                      }
+                    }}
                   />
-                ) : (
-                  <UserIcon
-                    size={56}
-                    className="text-gray-400 dark:text-gray-500"
-                  />
-                )}
+                </label>
+                <div className="mt-4 text-center">
+                  <p className="text-lg font-bold text-gray-800 dark:text-white">
+                    {formData.fullName || "User"}
+                  </p>
+                  <Badge>
+                    <span className="uppercase">{formData.roleName}</span>
+                  </Badge>
+                  <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-wide">
+                    {formData.companyName}
+                  </p>
+                </div>
               </div>
-              <label className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600">
-                Update Photo
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setSelectedFile(e.target.files[0]);
-                      setPreviewImage(URL.createObjectURL(e.target.files[0]));
-                    }
-                  }}
-                />
-              </label>
-              <div className="mt-4 text-center">
-                <p className="text-lg font-bold text-gray-800 dark:text-white">
-                  {formData.fullName || "User"}
-                </p>
-                <Badge>
-                  <span className="uppercase">{formData.roleName}</span>
-                </Badge>
-                {/* Displaying Company Name below Role */}
-                <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-wide">
-                  {formData.companyName}
-                </p>
-              </div>
-            </div>
 
-            {/* Right Column: Surrounding Inputs */}
-            <div className="flex-1">
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <div className="lg:col-span-2">
-                  <Label>Full Name</Label>
-                  <Input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    maxLength={20}
-                  />
-                </div>
-                <div>
-                  <Label>Email Address</Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label>Phone Number</Label>
-                  <Input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div>
-                  <Label>New Password</Label>
-                  <Input
-                    type="password"
-                    name="password"
-                    placeholder="••••••••"
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label>Confirm Password</Label>
-                  <Input
-                    type="password"
-                    name="confirmPassword"
-                    placeholder="••••••••"
-                    onChange={handleChange}
-                  />
+              {/* Right Column: Inputs */}
+              <div className="flex-1">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  <div className="lg:col-span-2">
+                    <Label>Full Name</Label>
+                    <Input
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email Address</Label>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <Input
+                      type="text"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <Label>New Password</Label>
+                    <Input
+                      type="password"
+                      name="password"
+                      placeholder="••••••••"
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <Label>Confirm Password</Label>
+                    <Input
+                      type="password"
+                      name="confirmPassword"
+                      placeholder="••••••••"
+                      onChange={handleChange}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 mt-10 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={onClose} type="button">
-              Cancel
-            </Button>
-            <Button size="sm" type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
+          {/* Fixed Button Section (Inside Form, but outside Scroll Div) */}
+          <div className="p-6 lg:px-10    bg-white dark:bg-gray-900">
+            <div className="flex items-center gap-3 justify-end">
+              <Button size="sm" variant="outline" onClick={onClose} type="button">
+                Cancel
+              </Button>
+              <Button size="sm" type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
