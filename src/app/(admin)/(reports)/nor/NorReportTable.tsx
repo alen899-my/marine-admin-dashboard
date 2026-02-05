@@ -494,9 +494,10 @@ export default function NorReportTable({
       setSaving(false);
     }
   }
-
-  async function handleDelete() {
+async function handleDelete() {
     if (!selectedReport) return;
+    
+    // 1. Start loading
     setIsDeleting(true);
 
     try {
@@ -504,18 +505,31 @@ export default function NorReportTable({
         method: "DELETE",
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Delete failed");
+      }
 
-      // ✅ Refresh Server Data
-      router.refresh();
-
-      toast.success("Record deleted");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete record");
-    } finally {
+      // 2. Immediate UI Feedback: Close modal and clear selection 
+      // BEFORE the router refresh completes to prevent "ghost" states
       setOpenDelete(false);
       setSelectedReport(null);
+      
+      toast.success("Record deleted successfully");
+
+      // 3. Trigger server-side data refresh
+      router.refresh();
+
+    } catch (err) {
+      console.error("Delete Error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete record");
+      
+      // If it fails, we still want to close the modal so the user isn't stuck
+      setOpenDelete(false);
+      setSelectedReport(null);
+    } finally {
+      // 4. Reset loading state
+      setIsDeleting(false);
     }
   }
 
