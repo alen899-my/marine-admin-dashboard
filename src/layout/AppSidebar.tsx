@@ -92,16 +92,11 @@ const navItems: NavItem[] = [
      
     ],
   },
-  {
-    icon: <FileCheck size={25} />, 
-    name: "Pre-Arrival Management",
-    path: "/pre-arrival",
-    requiredPermission: "prearrival.view",
-  },
+ 
   
   {
     icon: <Database size={25} />,
-    name: "Master",
+    name: "Masters",
     subItems: [
       {
         name: "Vessels",
@@ -124,6 +119,12 @@ const navItems: NavItem[] = [
         requiredPermission: "users.view",
       },
     ],
+  },
+   {
+    icon: <FileCheck size={25} />, 
+    name: "Pre-Arrival Management",
+    path: "/pre-arrival",
+    requiredPermission: "prearrival.view",
   },
   {
     icon: <ShieldCheck size={25} />,
