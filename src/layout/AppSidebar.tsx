@@ -21,6 +21,7 @@ import {
   Database,
   ShieldCheck,
   ClipboardList,
+   Briefcase,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -146,6 +147,13 @@ const navItems: NavItem[] = [
         requiredPermission: "resource.view",
       },
     ],
+  },
+  //jobs
+ {
+    icon: <Briefcase size={25} />, 
+    name: "Candidate Profiles",
+    path: "/jobs",
+    requiredPermission: "jobs.view",
   },
 ];
 
