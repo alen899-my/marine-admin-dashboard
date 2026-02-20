@@ -4,6 +4,7 @@ import Crew from "@/models/Application";
 import CrewApplicationForm from "@/components/Jobs/Application";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -41,6 +42,10 @@ export default async function EditApplicationPage({ params }: PageProps) {
 
   return (
     <div className="">
+      <PageBreadcrumb
+        pageTitle="Edit Application"
+        items={[{ label: "Crew Applications", href: "/jobs" }]}
+      />
       <CrewApplicationForm
         mode="edit"
         companyId={companyId}

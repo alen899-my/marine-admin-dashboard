@@ -28,6 +28,7 @@ interface FilterProps {
   setEndDate: (v: string) => void;
   searchVessel?: boolean;
   searchVoyage?: boolean;
+  searchJob?: boolean;
   optionOff?: boolean;
   vesselId?: string;
   setVesselId?: (v: string) => void;
@@ -53,14 +54,15 @@ export default function Filters({
   setEndDate,
   searchVessel,
   searchVoyage,
+  searchJob,
   optionOff,
   vesselId = "",
-  setVesselId = () => {},
+  setVesselId = () => { },
   voyageId = "",
-  setVoyageId = () => {},
+  setVoyageId = () => { },
   vessels = [],
   companyId = "",
-  setCompanyId = () => {},
+  setCompanyId = () => { },
   companies = [],
   isSuperAdmin = false,
   onApply, // Destructure new prop
@@ -189,6 +191,18 @@ export default function Filters({
         { value: "completed", label: "Completed" },
       ];
     }
+    if (searchJob) {
+      return [
+        { value: "all", label: "All Status" },
+        { value: "draft", label: "Draft" },
+        { value: "submitted", label: "Submitted" },
+        { value: "reviewing", label: "Reviewing" },
+        { value: "approved", label: "Approved" },
+        { value: "rejected", label: "Rejected" },
+        { value: "on_hold", label: "On Hold" },
+        { value: "archived", label: "Archived" },
+      ];
+    }
     return [
       { value: "all", label: "All Status" },
       { value: "active", label: "Active" },
@@ -199,6 +213,7 @@ export default function Filters({
   const getSearchPlaceholder = () => {
     if (searchVessel) return "Search by Name, IMO or Fleet";
     if (searchVoyage) return "Search by Voyage No, Port or Vessel";
+    if (searchJob) return "Search by Name, Email, Rank or Nationality";
     return "Search by Vessel Name or Voyage ID";
   };
 
@@ -248,7 +263,7 @@ export default function Filters({
             onChange={(val) => {
               setLocalCompanyId(val || "all");
               // Reset vessel/voyage when company changes
-              setLocalVesselId(""); 
+              setLocalVesselId("");
               setLocalVoyageId("");
             }}
           />
@@ -258,45 +273,49 @@ export default function Filters({
       {!optionOff && (
         <>
           {/* VESSEL NAME */}
-          <div className="w-full sm:w-auto min-w-[200px]">
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-              Vessel Name
-            </label>
-            <SearchableSelect
-              options={(vessels || []).map((v: any) => ({
-                value: v.name,
-                label: v.name,
-              }))}
-              placeholder="Select Vessel"
-              value={
-                (vessels || []).find((v) => v._id === localVesselId)?.name || ""
-              }
-              onChange={(selectedName) => {
-                const selectedVessel = (vessels || []).find(
-                  (v: any) => v.name === selectedName
-                );
-                setLocalVesselId(selectedVessel?._id || "");
-                setLocalVoyageId(""); // Reset voyage when vessel changes
-              }}
-            />
-          </div>
+          {!searchJob && (
+            <div className="w-full sm:w-auto min-w-[200px]">
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+                Vessel Name
+              </label>
+              <SearchableSelect
+                options={(vessels || []).map((v: any) => ({
+                  value: v.name,
+                  label: v.name,
+                }))}
+                placeholder="Select Vessel"
+                value={
+                  (vessels || []).find((v) => v._id === localVesselId)?.name || ""
+                }
+                onChange={(selectedName) => {
+                  const selectedVessel = (vessels || []).find(
+                    (v: any) => v.name === selectedName
+                  );
+                  setLocalVesselId(selectedVessel?._id || "");
+                  setLocalVoyageId(""); // Reset voyage when vessel changes
+                }}
+              />
+            </div>
+          )}
 
           {/* VOYAGE ID */}
-          <div className="w-full sm:w-auto min-w-[200px]">
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
-              Voyage ID
-            </label>
-            <SearchableSelect
-              options={voyageList}
-              //disable if no vessel selected
-              disabled={!localVesselId}
-              placeholder={
-                !localVesselId ? "Select Vessel first" : "Search Voyage"
-              }
-              value={localVoyageId}
-              onChange={setLocalVoyageId}
-            />
-          </div>
+          {!searchJob && (
+            <div className="w-full sm:w-auto min-w-[200px]">
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+                Voyage ID
+              </label>
+              <SearchableSelect
+                options={voyageList}
+                //disable if no vessel selected
+                disabled={!localVesselId}
+                placeholder={
+                  !localVesselId ? "Select Vessel first" : "Search Voyage"
+                }
+                value={localVoyageId}
+                onChange={setLocalVoyageId}
+              />
+            </div>
+          )}
 
           {/* DATE FROM */}
           <div className="w-full sm:w-auto min-w-[180px]">

@@ -30,7 +30,7 @@ export default function JobPageClient({
   const { can, isReady } = useAuthorization();
 
   // Aligned to the same permission namespace used in the API routes
-  const canView   = can("jobs.view");
+  const canView = can("jobs.view");
   const canCreate = can("jobs.create") || canAdd;
 
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("jobs");

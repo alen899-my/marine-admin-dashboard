@@ -4,6 +4,7 @@ import Crew from "@/models/Application";
 import CrewApplicationForm from "@/components/Jobs/Application";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -40,7 +41,11 @@ export default async function ViewApplicationPage({ params }: PageProps) {
       : application.company?.$oid ?? String(application.company);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="">
+      <PageBreadcrumb
+        pageTitle="View Application"
+        items={[{ label: "Crew Applications", href: "/jobs" }]}
+      />
       <CrewApplicationForm
         mode="view"
         companyId={companyId}

@@ -33,21 +33,21 @@ export default function JobFilterWrapper({
   );
 
   return (
-   <Filters
+    <Filters
       search={searchParams.get("search") || ""}
       status={searchParams.get("status") || "all"}
       companyId={searchParams.get("companyId") || "all"}
       startDate={searchParams.get("startDate") || ""}
       endDate={searchParams.get("endDate") || ""}
       onApply={handleApply}
-      setSearch={() => {}}
-      setStatus={() => {}}
-      setStartDate={() => {}}
-      setEndDate={() => {}}
-      setCompanyId={() => {}}
+      setSearch={() => { }}
+      setStatus={() => { }}
+      setStartDate={() => { }}
+      setEndDate={() => { }}
+      setCompanyId={() => { }}
       companies={companies}
       isSuperAdmin={isSuperAdmin}
-      optionOff={true}
+      searchJob={true}
     />
   );
 }

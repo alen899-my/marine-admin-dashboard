@@ -19,7 +19,13 @@ const Label: FC<LabelProps> = ({ htmlFor, children, className }) => {
         className
       )}
     >
-      {children}
+      {typeof children === "string" && children.includes("*") ? (
+        <>
+          {children.replace("*", "").trim()} <span className="text-error-500">*</span>
+        </>
+      ) : (
+        children
+      )}
     </label>
   );
 };

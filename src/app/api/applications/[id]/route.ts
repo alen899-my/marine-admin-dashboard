@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 2. Permission ────────────────────────────────────────────────────
-    const authz = await authorizeRequest("crew.edit");
+    const authz = await authorizeRequest("jobs.edit");
     if (!authz.ok) return authz.response;
 
     // ── 3. Validate ID ───────────────────────────────────────────────────
@@ -49,11 +49,28 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 4. Parse body ────────────────────────────────────────────────────
-    let body: Record<string, unknown>;
+    let body: Record<string, unknown> = {};
     try {
-      body = await req.json();
+      const contentType = req.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        body = await req.json();
+      } else {
+        const formData = await req.formData();
+        formData.forEach((value, key) => {
+          body[key] = value;
+        });
+        const jsonFields = [
+          "licences", "passports", "seamansBooks", "visas",
+          "endorsements", "stcwCertificates", "otherCertificates", "seaExperience"
+        ];
+        for (const field of jsonFields) {
+          if (typeof body[field] === "string") {
+            try { body[field] = JSON.parse(body[field] as string); } catch {}
+          }
+        }
+      }
     } catch {
-      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request body format." }, { status: 400 });
     }
 
     await dbConnect();
@@ -290,7 +307,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 2. Permission ────────────────────────────────────────────────────
-    const authz = await authorizeRequest("crew.delete");
+    const authz = await authorizeRequest("jobs.delete");
     if (!authz.ok) return authz.response;
 
     // ── 3. Validate ID ───────────────────────────────────────────────────

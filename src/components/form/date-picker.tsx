@@ -13,7 +13,9 @@ type PropsType = {
   defaultDate?: DateOption;
   label?: any;
   placeholder?: string;
-  className?: string; // 1. Added className to type definition
+  className?: string;
+  error?: boolean;
+  hint?: string;
 };
 
 export default function DatePicker({
@@ -23,7 +25,9 @@ export default function DatePicker({
   label,
   defaultDate,
   placeholder,
-  className, // 2. Destructure className from props
+  className,
+  error = false,
+  hint,
 }: PropsType) {
   useEffect(() => {
     const flatPickr = flatpickr(`#${id}`, {
@@ -50,14 +54,18 @@ export default function DatePicker({
         <input
           id={id}
           placeholder={placeholder}
-          // 3. Append the className to the end of the string so the error styles (border-red-500) override the defaults
-          className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-800 ${className || ""}`}
+          className={`h-11 w-full rounded-lg appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 bg-transparent border border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-800 text-gray-800 ${className || ""}`}
         />
 
         <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-          <Calendar className="size-4 " />
+          <Calendar className="size-4" />
         </span>
       </div>
+      {hint && (
+        <p className={`mt-1.5 text-xs ${error ? "text-error-500" : "text-gray-500"}`}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

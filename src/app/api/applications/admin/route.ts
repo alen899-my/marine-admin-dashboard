@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 2. Permission check ────────────────────────────────────────────────
-    const authz = await authorizeRequest("crew.create");
+    const authz = await authorizeRequest("jobs.create");
     if (!authz.ok) return authz.response;
 
     // ── 3. Parse JSON body ─────────────────────────────────────────────────
@@ -338,7 +338,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── 2. Permission check ────────────────────────────────────────────────
-    const authz = await authorizeRequest("crew.view");
+    const authz = await authorizeRequest("jobs.view");
     if (!authz.ok) return authz.response;
 
     await dbConnect();

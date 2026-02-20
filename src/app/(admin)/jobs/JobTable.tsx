@@ -7,7 +7,6 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Mail, Calendar, Globe } from "lucide-react";
 
 interface Application {
   _id: string;
@@ -21,7 +20,7 @@ interface Application {
   dateOfAvailability?: string;
   cellPhone?: string;
   createdAt: string;
-   company: string; 
+  company: string;
 }
 
 interface JobTableProps {
@@ -42,8 +41,8 @@ export default function JobTable({ data, pagination }: JobTableProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { can, isReady } = useAuthorization();
-  const canEdit   = can("applications.edit");
-  const canDelete = can("applications.delete");
+  const canEdit = can("jobs.edit");
+  const canDelete = can("jobs.delete");
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -85,13 +84,11 @@ export default function JobTable({ data, pagination }: JobTableProps) {
       header: "Candidate Name",
       render: (a: Application) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-gray-900 dark:text-white uppercase">
+          <span className="text-xs font-semibold text-gray-900 dark:text-white">
             {a.lastName}, {a.firstName}
           </span>
-          <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-1">
-            <span className="flex items-center gap-1">
-              <Mail size={10} /> {a.email}
-            </span>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+            <span>{a.email}</span>
           </div>
         </div>
       ),
@@ -99,12 +96,12 @@ export default function JobTable({ data, pagination }: JobTableProps) {
     {
       header: "Position & Rank",
       render: (a: Application) => (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+        <div className="flex flex-col gap-1 text-xs">
+          <span className="text-gray-900 dark:text-white font-medium">
             {a.rank || "N/A"}
           </span>
-          <span className="text-[10px] text-gray-500 italic">
-            Applied: {a.positionApplied || "Not specified"}
+          <span className="text-gray-500">
+            {a.positionApplied || "Not specified"}
           </span>
         </div>
       ),
@@ -112,14 +109,16 @@ export default function JobTable({ data, pagination }: JobTableProps) {
     {
       header: "Details",
       render: (a: Application) => (
-        <div className="grid grid-cols-1 gap-1 text-[11px]">
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <Globe size={12} className="text-gray-400" />
-            <span>{a.nationality || "-"}</span>
+        <div className="flex flex-col gap-1 text-xs min-w-[140px]">
+          <div className="grid grid-cols-[70px_1fr] items-center">
+            <span className="text-gray-400">Nationality</span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium text-right sm:text-left">
+              {a.nationality || "-"}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <Calendar size={12} className="text-gray-400" />
-            <span>
+          <div className="grid grid-cols-[70px_1fr] items-center">
+            <span className="text-gray-400">Available</span>
+            <span className="text-gray-700 dark:text-gray-300 font-medium text-right sm:text-left">
               {a.dateOfAvailability
                 ? new Date(a.dateOfAvailability).toLocaleDateString()
                 : "Immediate"}
@@ -131,7 +130,7 @@ export default function JobTable({ data, pagination }: JobTableProps) {
     {
       header: "Applied Date",
       render: (a: Application) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
           {new Date(a.createdAt).toLocaleDateString("en-GB")}
         </span>
       ),
@@ -140,13 +139,13 @@ export default function JobTable({ data, pagination }: JobTableProps) {
       header: "Status",
       render: (a: Application) => {
         const statusMap: Record<string, { color: any; label: string }> = {
-          draft:     { color: "default", label: "Draft" },
-          submitted: { color: "info",    label: "Submitted" },
+          draft: { color: "default", label: "Draft" },
+          submitted: { color: "info", label: "Submitted" },
           reviewing: { color: "warning", label: "Reviewing" },
-          approved:  { color: "success", label: "Approved" },
-          rejected:  { color: "error",   label: "Rejected" },
-          on_hold:   { color: "warning", label: "On Hold" },
-          archived:  { color: "default", label: "Archived" },
+          approved: { color: "success", label: "Approved" },
+          rejected: { color: "error", label: "Rejected" },
+          on_hold: { color: "warning", label: "On Hold" },
+          archived: { color: "default", label: "Archived" },
         };
         const config = statusMap[a.status] ?? statusMap.draft;
         return <Badge color={config.color}>{config.label}</Badge>;
@@ -160,28 +159,31 @@ export default function JobTable({ data, pagination }: JobTableProps) {
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
-          <CommonReportTable
-            data={data}
-            columns={columns}
-            loading={false}
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            onPageChange={handlePageChange}
-            onView={(a: Application) => router.push(`/jobs/view/${a._id}`)}
-            onEdit={
-              canEdit
-                ? (a: Application) => router.push(`/jobs/edit/${a._id}`)
-                : undefined
-            }
-            onDelete={
-              canDelete
-                ? (a: Application) => {
+          <div className="min-w-[1300px]">
+            <CommonReportTable
+              data={data}
+              columns={columns}
+              loading={false}
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              onView={(a: Application) => router.push(`/jobs/view/${a._id}`)}
+              onEdit={
+                canEdit
+                  ? (a: Application) => router.push(`/jobs/edit/${a._id}`)
+                  : undefined
+              }
+              onDelete={
+                canDelete
+                  ? (a: Application) => {
                     setSelectedId(a._id);
                     setOpenDelete(true);
                   }
-                : undefined
-            }
-          />
+                  : undefined
+              }
+              onRowClick={(a: Application) => router.push(`/jobs/view/${a._id}`)}
+            />
+          </div>
         </div>
       </div>
 

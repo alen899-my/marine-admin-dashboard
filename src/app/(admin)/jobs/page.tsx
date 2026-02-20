@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Manage crew applications, CVs, and recruitment workflow.",
 };
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }
@@ -61,7 +63,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
 
   // Build filter
   const filter: Record<string, unknown> = {
-    company:   companyObjId,
+    company: companyObjId,
     deletedAt: null,
   };
 
@@ -72,12 +74,25 @@ export default async function JobManagement({ searchParams }: PageProps) {
   if (resolvedParams.search?.trim()) {
     const s = resolvedParams.search.trim();
     filter.$or = [
-      { firstName:   { $regex: s, $options: "i" } },
-      { lastName:    { $regex: s, $options: "i" } },
-      { email:       { $regex: s, $options: "i" } },
-      { rank:        { $regex: s, $options: "i" } },
+      { firstName: { $regex: s, $options: "i" } },
+      { lastName: { $regex: s, $options: "i" } },
+      { email: { $regex: s, $options: "i" } },
+      { rank: { $regex: s, $options: "i" } },
       { nationality: { $regex: s, $options: "i" } },
     ];
+  }
+
+  if (resolvedParams.startDate || resolvedParams.endDate) {
+    const dateQuery: any = {};
+    if (resolvedParams.startDate) {
+      dateQuery.$gte = new Date(resolvedParams.startDate);
+    }
+    if (resolvedParams.endDate) {
+      const endOfDay = new Date(resolvedParams.endDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+      dateQuery.$lte = endOfDay;
+    }
+    filter.createdAt = dateQuery;
   }
 
   try {
@@ -95,15 +110,15 @@ export default async function JobManagement({ searchParams }: PageProps) {
 
       isSuperAdmin
         ? Company.find({ deletedAt: null })
-            .select("_id name")
-            .sort({ name: 1 })
-            .lean()
+          .select("_id name")
+          .sort({ name: 1 })
+          .lean()
         : Promise.resolve([]),
     ]);
 
     // Serialize: converts all ObjectIds, Dates, and Buffers to plain JSON-safe values
     const applications = JSON.parse(JSON.stringify(applicationsRaw));
-    const companies    = JSON.parse(JSON.stringify(companiesRaw));
+    const companies = JSON.parse(JSON.stringify(companiesRaw));
 
     const companyOptions = (companies as { _id: string; name: string }[]).map(
       (c) => ({ id: c._id, name: c.name })
@@ -120,9 +135,9 @@ export default async function JobManagement({ searchParams }: PageProps) {
         <JobTable
           data={applications}
           pagination={{
-            page:       currentPage,
-            limit:      limit,
-            total:      total,
+            page: currentPage,
+            limit: limit,
+            total: total,
             totalPages: Math.ceil(total / limit),
           }}
         />

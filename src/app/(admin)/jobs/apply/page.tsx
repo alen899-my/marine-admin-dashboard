@@ -1,8 +1,7 @@
-// src/app/(admin)/jobs/apply/page.tsx
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import CrewApplicationForm from "@/components/Jobs/Application"; 
-import ComponentCard from "@/components/common/ComponentCard";
+import CrewApplicationForm from "@/components/Jobs/Application";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 
 export default async function NewApplicationPage() {
   const session = await auth();
@@ -19,33 +18,23 @@ export default async function NewApplicationPage() {
     return (
       <div className="p-6 text-red-500 bg-red-50 rounded-lg">
         <p>
-        Error: Your account is not linked to a company. You cannot create applications.
-      </p>
+          Error: Your account is not linked to a company. You cannot create applications.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className=" mx-auto py-">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          New Crew Application
-        </h1>
-        <p className="text-gray-500 text-sm">
-          Fill in the details below to register a new crew member for {user.company?.name}.
-        </p>
-      </div>
+    <div className=" mx-auto">
+      <PageBreadcrumb
+        pageTitle="New Application"
+        items={[{ label: "Crew Applications", href: "/jobs" }]}
+      />
 
-  
-        {/* Pass the companyId and adminId to your form 
-           so the Server Action knows who is creating it 
-        */}
-        <CrewApplicationForm
-          companyId={companyId} 
-        
-     
-        />
-     
+      <CrewApplicationForm
+        companyId={companyId}
+        companyName={user.company?.name}
+      />
     </div>
   );
 }
