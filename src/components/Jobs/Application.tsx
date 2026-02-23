@@ -20,6 +20,7 @@ import Joi from "joi";
 import { toast } from "react-toastify";
 import SimpleDatePicker from "@/components/form/new-datepicker";
 import { Download } from "lucide-react";
+import Badge from "../ui/badge/Badge";
 
 // ─────────────────────────────────────────────────────────────────
 // MODE TYPE
@@ -1033,7 +1034,7 @@ export default function CrewApplicationForm({
               fileUrl: doc._fileUrl || undefined,
               fileName: doc._fileName || undefined,
               uploadStatus: doc._fileUrl
-                ? ("uploaded" as const)
+                ? ("pending" as const)
                 : ("not_uploaded" as const),
             };
           }
@@ -1099,573 +1100,754 @@ export default function CrewApplicationForm({
 
     // ── Tiny shared components ────────────────────────────────────────────────
 
-    // Section heading with a numbered badge
+    // Section heading — government form style with colored bar
     const Sec = ({ n, title }: { n: string; title: string }) => (
-      <div className="flex items-center gap-2 pt-2 pb-3 border-b border-gray-200 dark:border-white/10 mb-4">
+      <div className="flex items-center gap-2 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-3 py-2 mb-0">
         <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
           {n}
         </span>
-        <span className="text-sm font-semibold text-gray-800 dark:text-white/90">
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-white/80">
           {title}
         </span>
       </div>
     );
 
-    // Single label + value pair
-    const F = ({ label, value }: { label: string; value?: string | null }) => (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+    // Single field cell — bordered box with label on top, value below
+    const F = ({
+      label,
+      value,
+      span2,
+    }: {
+      label: string;
+      value?: React.ReactNode;
+      span2?: boolean;
+    }) => (
+      <div
+        className={`border border-gray-300 dark:border-white/15 px-2 py-1.5 min-w-0 ${span2 ? "col-span-2 sm:col-span-2" : ""}`}
+      >
+        <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
           {label}
-        </span>
-        <span className="text-sm text-gray-800 dark:text-white/90 break-words">
-          {value?.trim() || (
-            <span className="text-gray-300 dark:text-gray-600 italic">—</span>
+        </p>
+        <p className="text-sm text-gray-800 dark:text-white/90 break-words leading-snug">
+         {value ?? (
+            <span className="text-gray-300 dark:text-gray-600">—</span>
           )}
-        </span>
+        </p>
       </div>
     );
 
-    // Responsive grid wrapper
+    // Bordered grid — cells share borders (no gap, borders collapse)
     const G2 = ({ children }: { children: React.ReactNode }) => (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
-        {children}
-      </div>
-    );
+  <div className="
+    grid 
+    grid-cols-1
+    sm:grid-cols-2
+    lg:grid-cols-4
+    border-l border-t border-gray-300 dark:border-white/15
+    [&>*]:border-r [&>*]:border-b
+    [&>*]:border-gray-300 dark:[&>*]:border-white/15
+  ">
+    {children}
+  </div>
+);
     const G3 = ({ children }: { children: React.ReactNode }) => (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 border-l border-t border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
         {children}
       </div>
     );
 
-    // Thin divider
-    const Hr = () => (
-      <hr className="border-gray-100 dark:border-white/5 my-5" />
+    // Sub-section title row (spans full width inside a bordered grid)
+    const SubTitle = ({ title }: { title: string }) => (
+      <div className="col-span-full bg-gray-50 dark:bg-white/5 border-r border-b border-gray-300 dark:border-white/15 px-2 py-1">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+          {title}
+        </p>
+      </div>
     );
+
+    // Thin divider (between grid groups within a section)
+    const Hr = () => <div className="h-2" />;
 
     // Small repeating-record label (Record 1, Record 2…)
     const RecLabel = ({ i }: { i: number }) =>
       i === 0 ? null : (
-        <div className="mt-5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+        <div className="mt-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
           Record {i + 1}
         </div>
       );
+ type StatusColor =
+  | "default"
+  | "info"
+  | "warning"
+  | "success"
+  | "error";
+
+const statusMap: Record<string, { color: StatusColor; label: string }> = {
+  draft: { color: "default", label: "Draft" },
+  submitted: { color: "info", label: "Submitted" },
+  reviewing: { color: "warning", label: "Reviewing" },
+  approved: { color: "success", label: "Approved" },
+  rejected: { color: "error", label: "Rejected" },
+  on_hold: { color: "warning", label: "On Hold" },
+  archived: { color: "default", label: "Archived" },
+};
 
     // ── Page ─────────────────────────────────────────────────────────────────
 
     return (
       <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden pb-2">
-        {/* ── PROFILE HEADER ─────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row gap-4 p-5">
-          {/* Photo */}
-          {d.profilePhoto ? (
-            <img
-              src={d.profilePhoto}
-              alt="Profile"
-              className="h-20 w-20 shrink-0 rounded-lg object-cover border border-gray-200 dark:border-white/10"
-            />
-          ) : (
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
-              <span className="text-[10px] text-gray-400 uppercase tracking-wide">
-                No Photo
-              </span>
-            </div>
-          )}
+       {/* ── PROFILE HEADER ─────────────────────────────────────────────── */}
+<div className="p-5">
+  <div className="flex flex-col sm:flex-row sm:items-center gap-5">
 
-          {/* Name + meta */}
-          <div className="flex flex-1 flex-col justify-center gap-1.5">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
-              {d.firstName} {d.lastName}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {[d.rank, d.positionApplied, d.nationality]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {d.status && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300 capitalize">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                  {d.status.replace("_", " ")}
-                </span>
-              )}
-              {d.email && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                  {d.email}
-                </span>
-              )}
-              {d.cellPhone && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                  {d.cellPhone}
-                </span>
-              )}
-            </div>
-          </div>
+    {/* Photo */}
+    <div className="shrink-0">
+      {d.profilePhoto ? (
+        <img
+          src={d.profilePhoto}
+          alt="Profile"
+          className="h-24 w-24 rounded-xl object-cover border border-gray-200 dark:border-white/10 shadow-sm"
+        />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5">
+          <span className="text-[10px] text-gray-400 uppercase tracking-wide">
+            No Photo
+          </span>
         </div>
+      )}
+    </div>
 
-        {/* ── 01 PERSONAL INFORMATION ───────────────────────────────────── */}
-        <div className="p-5 space-y-5">
-          <Sec n="01" title="Personal Information" />
-          <G3>
-            <F label="First Name" value={d.firstName} />
-            <F label="Last Name" value={d.lastName} />
-            <F label="Nationality" value={d.nationality} />
-            <F label="Date of Birth" value={formatDate(d.dateOfBirth)} />
-            <F label="Place of Birth" value={d.placeOfBirth} />
-            <F label="Marital Status" value={d.maritalStatus} />
-            <F label="Father's Name" value={d.fatherName} />
-            <F label="Mother's Name" value={d.motherName} />
-          </G3>
-          <Hr />
-          <G2>
-            <F label="Email" value={d.email} />
-            <F label="Cell Phone" value={d.cellPhone} />
-            <F label="Home Phone" value={d.homePhone} />
-            <F label="Languages" value={langDisplay} />
-          </G2>
-          <F label="Present Address" value={d.presentAddress} />
-          <Hr />
-          <G3>
-            <F label="Nearest Airport" value={d.nearestAirport} />
-            <F label="Km from Airport" value={String(d.kmFromAirport ?? "")} />
-            <F label="Weight (kg)" value={String(d.weightKg ?? "")} />
-            <F label="Height (cm)" value={String(d.heightCm ?? "")} />
-            <F label="Coverall Size" value={d.coverallSize} />
-            <F label="Shoe Size" value={d.shoeSize} />
-            <F label="Hair Color" value={d.hairColor} />
-            <F label="Eye Color" value={d.eyeColor} />
-            <F
-              label="Medical Cert. Issued"
-              value={formatDate(d.medicalCertIssuedDate)}
-            />
-            <F
-              label="Medical Cert. Expired"
-              value={formatDate(d.medicalCertExpiredDate)}
-            />
-          </G3>
+    {/* Info */}
+    <div className="flex flex-1 flex-col gap-2">
 
-          {/* Next of Kin */}
-          {d.nextOfKin?.name && (
-            <>
-              <Hr />
+      {/* Name */}
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+        {d.firstName} {d.lastName}
+      </h1>
 
-              <G2>
-                <F label="Name" value={d.nextOfKin.name} />
-                <F label="Relationship" value={d.nextOfKin.relationship} />
-                <F label="Phone" value={d.nextOfKin.phone} />
-                <F label="Address" value={d.nextOfKin.address} />
-              </G2>
-            </>
-          )}
-        </div>
+      {/* Meta line */}
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {[d.rank, d.positionApplied, d.nationality].filter(Boolean).join(" · ")}
+      </p>
+
+      {/* Tags */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+
+       {d.status && (() => {
+  const config = statusMap[d.status] ?? statusMap.draft;
+  return (
+    <Badge color={config.color}>
+      {config.label}
+    </Badge>
+  );
+})()}
+       {/* Email */}
+{d.email && (
+  <span className="text-sm text-gray-600 dark:text-gray-400">
+    <span className="font-medium text-gray-800 dark:text-gray-200">
+      Email:
+    </span>{" "}
+    {d.email}
+  </span>
+)}
+
+{/* Phone */}
+{d.cellPhone && (
+  <span className="text-sm text-gray-600 dark:text-gray-400">
+    <span className="font-medium text-gray-800 dark:text-gray-200">
+      Phone:
+    </span>{" "}
+    {d.cellPhone}
+  </span>
+)}
+      </div>
+    </div>
+  </div>
+</div>
+{/* ── 01 PERSONAL INFORMATION ───────────────────────────────────── */}
+<div className="p-4">
+  <Sec n="01" title="Personal Information" />
+
+  {/* Basic Info */}
+  <G3>
+    <F label="First Name" value={d.firstName || "—"} />
+    <F label="Last Name" value={d.lastName || "—"} />
+    <F label="Nationality" value={d.nationality || "—"} />
+    <F label="Date of Birth" value={formatDate(d.dateOfBirth) || "—"} />
+    <F label="Place of Birth" value={d.placeOfBirth || "—"} />
+    <F label="Marital Status" value={d.maritalStatus || "—"} />
+    <F label="Father's Name" value={d.fatherName || "—"} />
+    <F label="Mother's Name" value={d.motherName || "—"} />
+  </G3>
+
+  <Hr />
+
+  {/* Contact */}
+  <G3>
+    <F label="Email" value={d.email || "—"} />
+    <F label="Cell Phone" value={d.cellPhone || "—"} />
+    <F label="Languages" value={langDisplay || "—"} />
+  </G3>
+
+  {/* Address */}
+  <div className="grid grid-cols-1 border-l border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
+    <F label="Present Address" value={d.presentAddress || "—"} />
+  </div>
+
+  <Hr />
+
+  {/* Physical + Medical */}
+  <G3>
+    <F label="Nearest Airport" value={d.nearestAirport || "—"} />
+    <F label="Km from Airport" value={d.kmFromAirport ?? "—"} />
+    <F label="Weight (kg)" value={d.weightKg ?? "—"} />
+    <F label="Height (cm)" value={d.heightCm ?? "—"} />
+    <F label="Coverall Size" value={d.coverallSize || "—"} />
+    <F label="Shoe Size" value={d.shoeSize || "—"} />
+    <F label="Hair Color" value={d.hairColor || "—"} />
+    <F label="Eye Color" value={d.eyeColor || "—"} />
+    <F
+      label="Medical Cert. Issued"
+      value={formatDate(d.medicalCertIssuedDate) || "—"}
+    />
+    <F
+      label="Medical Cert. Expired"
+      value={formatDate(d.medicalCertExpiredDate) || "—"}
+    />
+  </G3>
+
+  {/* Next of Kin */}
+  {d.nextOfKin?.name && (
+    <>
+      <Hr />
+      <G3>
+        <SubTitle title="Next of Kin" />
+        <F label="Name" value={d.nextOfKin.name || "—"} />
+        <F label="Relationship" value={d.nextOfKin.relationship || "—"} />
+        <F label="Phone" value={d.nextOfKin.phone || "—"} />
+        <F label="Address" value={d.nextOfKin.address || "—"} />
+      </G3>
+    </>
+  )}
+</div>
 
         {/* ── 02 AVAILABILITY ───────────────────────────────────────────── */}
-        <div className="p-5 space-y-4">
-          <Sec n="02" title="Position & Availability" />
-          <G2>
-            <F label="Position Applied" value={d.positionApplied} />
-            <F label="Rank" value={d.rank} />
-            <F
-              label="Date of Availability"
-              value={formatDate(d.dateOfAvailability)}
-            />
-            <F label="Availability Note" value={d.availabilityNote} />
-          </G2>
+<div className="p-4">
+  <Sec n="02" title="Position & Availability" />
+
+  <div className="overflow-x-auto">
+    <div className="min-w-[800px]">
+
+      {/* header */}
+      <div className="grid grid-cols-4 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        {[
+          "Position Applied",
+          "Rank",
+          "Date of Availability",
+          "Availability Note",
+        ].map((h) => (
+          <div
+            key={h}
+            className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+          >
+            {h}
+          </div>
+        ))}
+      </div>
+
+      {/* row */}
+      <div className="grid grid-cols-4 border-l border-r border-b border-gray-300 dark:border-white/15">
+        <F label="" value={d.positionApplied || "—"} />
+        <F label="" value={d.rank || "—"} />
+        <F label="" value={formatDate(d.dateOfAvailability) || "—"} />
+        <F label="" value={d.availabilityNote || "—"} />
+      </div>
+
+    </div>
+  </div>
+</div>
+
+       {/* ── 06 CoC ────────────────────────────────────────────────────── */}
+{cocItems.length > 0 && (
+  <div className="p-4">
+    <Sec n="03" title="Certificates of Competency (CoC)" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[1000px]">
+
+        {/* header */}
+        <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Country",
+            "Grade",
+            "Licence No.",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
         </div>
 
-        {/* ── 06 CoC ────────────────────────────────────────────────────── */}
-        {cocItems.length > 0 && (
-          <div className="p-5 space-y-0">
-            <Sec n="06" title="Certificates of Competency (CoC)" />
-            {cocItems.map((l, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {cocItems.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <G3>
-                  <F label="Country" value={l.country} />
-                  <F label="Grade" value={l.grade} />
-                  <F label="Licence No." value={l.number} />
-                  <F label="Place Issued" value={l.placeIssued} />
-                  <F
-                    label="Date Issued"
-                    value={formatDate(l.dateIssued as string)}
-                  />
-                  <F
-                    label="Date Expired"
-                    value={formatDate(l.dateExpired as string) || "Unlimited"}
-                  />
-                </G3>
-              </div>
-            ))}
+        {/* rows */}
+        {cocItems.map((l, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={l.country || "—"} />
+            <F label="" value={l.grade || "—"} />
+            <F label="" value={l.number || "—"} />
+            <F label="" value={l.placeIssued || "—"} />
+            <F label="" value={formatDate(l.dateIssued) || "—"} />
+            <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
           </div>
-        )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+{/* ── 07 CoE ────────────────────────────────────────────────────── */}
+{coeItems.length > 0 && (
+  <div className="p-4">
+    <Sec n="04" title="Certificates of Equivalency (CoE)" />
 
-        {/* ── 07 CoE ────────────────────────────────────────────────────── */}
-        {coeItems.length > 0 && (
-          <div className="p-5 space-y-0">
-            <Sec n="07" title="Certificates of Equivalency (CoE)" />
-            {coeItems.map((l, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {coeItems.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <G3>
-                  <F label="Country" value={l.country} />
-                  <F label="Grade" value={l.grade} />
-                  <F label="Licence No." value={l.number} />
-                  <F label="Place Issued" value={l.placeIssued} />
-                  <F
-                    label="Date Issued"
-                    value={formatDate(l.dateIssued as string)}
-                  />
-                  <F
-                    label="Date Expired"
-                    value={formatDate(l.dateExpired as string) || "Unlimited"}
-                  />
-                </G3>
-              </div>
-            ))}
-          </div>
-        )}
+    <div className="overflow-x-auto">
+      <div className="min-w-[1000px]">
 
-        {/* ── 08 PASSPORTS ──────────────────────────────────────────────── */}
-        {(d.passports?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="08" title="Passports" />
-            {d.passports!.map((p, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.passports!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <G3>
-                  <F label="Passport No." value={p.number} />
-                  <F label="Country" value={p.country} />
-                  <F label="Place Issued" value={p.placeIssued} />
-                  <F
-                    label="Date Issued"
-                    value={formatDate(p.dateIssued as string)}
-                  />
-                  <F
-                    label="Date Expired"
-                    value={formatDate(p.dateExpired as string)}
-                  />
-                </G3>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* header */}
+        <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Country",
+            "Grade",
+            "Licence No.",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
 
-        {/* ── 09 SEAMAN'S BOOKS ─────────────────────────────────────────── */}
-        {(d.seamansBooks?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="09" title="Seaman's Books" />
-            {d.seamansBooks!.map((s, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.seamansBooks!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <G3>
-                  <F label="Book No." value={s.number} />
-                  <F label="Country" value={s.country} />
-                  <F label="Place Issued" value={s.placeIssued} />
-                  <F
-                    label="Date Issued"
-                    value={formatDate(s.dateIssued as string)}
-                  />
-                  <F
-                    label="Date Expired"
-                    value={formatDate(s.dateExpired as string) || "Unlimited"}
-                  />
-                </G3>
-              </div>
-            ))}
+        {/* rows */}
+        {coeItems.map((l, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={l.country || "—"} />
+            <F label="" value={l.grade || "—"} />
+            <F label="" value={l.number || "—"} />
+            <F label="" value={l.placeIssued || "—"} />
+            <F label="" value={formatDate(l.dateIssued) || "—"} />
+            <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
           </div>
-        )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+{/* ── 08 PASSPORTS ──────────────────────────────────────────────── */}
+{(d.passports?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="05" title="Passports" />
 
-        {/* ── 10 VISAS ──────────────────────────────────────────────────── */}
-        {(d.visas?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="10" title="Visas" />
-            {d.visas!.map((v, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.visas!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <G3>
-                  <F label="Country" value={v.country} />
-                  <F label="Visa Type" value={v.visaType} />
-                  <F label="Visa No." value={v.number} />
-                  <F label="Place Issued" value={v.placeIssued} />
-                  <F
-                    label="Date Issued"
-                    value={formatDate(v.dateIssued as string)}
-                  />
-                  <F
-                    label="Date Expired"
-                    value={formatDate(v.dateExpired as string)}
-                  />
-                </G3>
-              </div>
-            ))}
+    <div className="overflow-x-auto">
+      <div className="min-w-[900px]">
+
+        {/* header */}
+        <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Passport No.",
+            "Country",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.passports!.map((p, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={p.number || "—"} />
+            <F label="" value={p.country || "—"} />
+            <F label="" value={p.placeIssued || "—"} />
+            <F label="" value={formatDate(p.dateIssued) || "—"} />
+            <F label="" value={formatDate(p.dateExpired) || "—"} />
           </div>
-        )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+{/* ── 09 SEAMAN'S BOOKS ─────────────────────────────────────────── */}
+{(d.seamansBooks?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="06" title="Seaman's Books" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[900px]">
+
+        {/* header */}
+        <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Book No.",
+            "Country",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.seamansBooks!.map((s, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={s.number || "—"} />
+            <F label="" value={s.country || "—"} />
+            <F label="" value={s.placeIssued || "—"} />
+            <F label="" value={formatDate(s.dateIssued) || "—"} />
+            <F label="" value={formatDate(s.dateExpired) || "Unlimited"} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ── 10 VISAS ──────────────────────────────────────────────────── */}
+{(d.visas?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="07" title="Visas" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[1000px]">
+
+        {/* header */}
+        <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Country",
+            "Visa Type",
+            "Visa No.",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.visas!.map((v, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={v.country || "—"} />
+            <F label="" value={v.visaType || "—"} />
+            <F label="" value={v.number || "—"} />
+            <F label="" value={v.placeIssued || "—"} />
+            <F label="" value={formatDate(v.dateIssued) || "—"} />
+            <F label="" value={formatDate(v.dateExpired) || "—"} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
         {/* ── 11 ENDORSEMENTS ───────────────────────────────────────────── */}
-        {(d.endorsements?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="11" title="Endorsements" />
-            {d.endorsements!.map((e, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.endorsements!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <div className="space-y-4">
-                  <F label="Certificate Name" value={e.name} />
-                  <G3>
-                    <F label="Number" value={e.number} />
-                    <F label="Place Issued" value={e.placeIssued} />
-                    <F
-                      label="Date Issued"
-                      value={formatDate(e.dateIssued as string)}
-                    />
-                    <F
-                      label="Date Expired"
-                      value={formatDate(e.dateExpired as string) || "Unlimited"}
-                    />
-                  </G3>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+{(d.endorsements?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="08" title="Endorsements" />
 
-        {/* ── 12 STCW CERTIFICATES ──────────────────────────────────────── */}
-        {(d.stcwCertificates?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="12" title="Training Certificates (STCW)" />
-            {d.stcwCertificates!.map((c, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.stcwCertificates!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <div className="space-y-4">
-                  <F label="Certificate Name" value={c.name} />
-                  <G3>
-                    <F label="Course No." value={c.courseNumber} />
-                    <F label="Place Issued" value={c.placeIssued} />
-                    <F
-                      label="Date Issued"
-                      value={formatDate(c.dateIssued as string)}
-                    />
-                    <F
-                      label="Expiry Date"
-                      value={formatDate(c.dateExpired as string) || "No Expiry"}
-                    />
-                  </G3>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+    <div className="overflow-x-auto">
+      <div className="min-w-[900px]">
 
-        {/* ── 12b OTHER CERTIFICATES ────────────────────────────────────── */}
-        {(d.otherCertificates?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="12b" title="Other Certificates" />
-            {d.otherCertificates!.map((c, i) => (
-              <div key={i}>
-                {i > 0 && <Hr />}
-                {d.otherCertificates!.length > 1 && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                    Record {i + 1}
-                  </p>
-                )}
-                <div className="space-y-4">
-                  <F label="Certificate Name" value={c.name} />
-                  <G3>
-                    <F label="Course No." value={c.courseNumber} />
-                    <F label="Place Issued" value={c.placeIssued} />
-                    <F
-                      label="Date Issued"
-                      value={formatDate(c.dateIssued as string)}
-                    />
-                    <F
-                      label="Expiry Date"
-                      value={formatDate(c.dateExpired as string) || "No Expiry"}
-                    />
-                  </G3>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── 13 SEA SERVICE RECORD ─────────────────────────────────────── */}
-        {(d.seaExperience?.length ?? 0) > 0 && (
-          <div className="p-5">
-            <Sec n="13" title="Sea Service Record" />
-            <div className="overflow-x-auto -mx-1">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-white/10">
-                    {[
-                      "Vessel",
-                      "Flag",
-                      "Type",
-                      "GRT",
-                      "Engine",
-                      "KW",
-                      "Company",
-                      "Rank",
-                      "From",
-                      "To",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="pb-2 pr-5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 whitespace-nowrap"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                  {d.seaExperience!.map((s, i) => (
-                    <tr key={i} className="align-top">
-                      <td className="py-3 pr-5 font-medium text-gray-800 dark:text-white/90 whitespace-nowrap">
-                        {s.vesselName || "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.flag || "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.vesselType || "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.grt ?? "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.engineType || "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.engineKW ?? "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {s.company || "—"}
-                      </td>
-                      <td className="py-3 pr-5 font-medium text-brand-600 dark:text-brand-400 whitespace-nowrap">
-                        {s.rank || "—"}
-                      </td>
-                      <td className="py-3 pr-5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {formatDate(s.periodFrom as string) || "—"}
-                      </td>
-                      <td className="py-3 pr-5 whitespace-nowrap">
-                        {s.periodTo ? (
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {formatDate(s.periodTo as string)}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
-                            Present
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* header */}
+        <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Certificate Name",
+            "Number",
+            "Place Issued",
+            "Date Issued",
+            "Date Expired",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
             </div>
-            {/* Job descriptions below table if any */}
-            {d.seaExperience!.some((s) => s.jobDescription) && (
-              <div className="mt-4 space-y-3">
-                {d.seaExperience!.map((s, i) =>
-                  s.jobDescription ? (
-                    <div key={i}>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                        {s.vesselName} — Remarks
-                      </span>
-                      <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-                        {s.jobDescription}
-                      </p>
-                    </div>
-                  ) : null,
-                )}
-              </div>
-            )}
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.endorsements!.map((e, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={e.name} />
+            <F label="" value={e.number} />
+            <F label="" value={e.placeIssued} />
+            <F label="" value={formatDate(e.dateIssued)} />
+            <F
+              label=""
+              value={formatDate(e.dateExpired) || "Unlimited"}
+            />
           </div>
-        )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* ── 12 STCW CERTIFICATES ──────────────────────────────────────── */}
+{(d.stcwCertificates?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="09" title="Training Certificates (STCW)" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[900px]">
+
+        {/* header */}
+        <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Certificate Name",
+            "Course No.",
+            "Place Issued",
+            "Date Issued",
+            "Expiry Date",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.stcwCertificates!.map((c, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={c.name} />
+            <F label="" value={c.courseNumber} />
+            <F label="" value={c.placeIssued} />
+            <F label="" value={formatDate(c.dateIssued)} />
+            <F
+              label=""
+              value={formatDate(c.dateExpired) || "No Expiry"}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+
+{/* ── 12b OTHER CERTIFICATES ────────────────────────────────────── */}
+{(d.otherCertificates?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="11b" title="Other Certificates" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[900px]">
+
+        {/* header */}
+        <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Certificate Name",
+            "Course No.",
+            "Place Issued",
+            "Date Issued",
+            "Expiry Date",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.otherCertificates!.map((c, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={c.name} />
+            <F label="" value={c.courseNumber} />
+            <F label="" value={c.placeIssued} />
+            <F label="" value={formatDate(c.dateIssued)} />
+            <F
+              label="Expiry Date"
+              value={formatDate(c.dateExpired) || "No Expiry"}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ── 13 SEA SERVICE RECORD ─────────────────────────────────────── */}
+{(d.seaExperience?.length ?? 0) > 0 && (
+  <div className="p-4">
+    <Sec n="10" title="Sea Service Record" />
+
+    <div className="overflow-x-auto">
+      <div className="min-w-[1100px]">
+
+        {/* header row */}
+        <div className="grid grid-cols-11 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {[
+            "Vessel",
+            "Flag",
+            "Type",
+            "GRT",
+            "Engine",
+            "KW",
+            "Company",
+            "Rank",
+            "From",
+            "To",
+            "Remarks",
+          ].map((h) => (
+            <div
+              key={h}
+              className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+            >
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* rows */}
+        {d.seaExperience!.map((s, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-11 border-l border-r border-b border-gray-300 dark:border-white/15"
+          >
+            <F label="" value={s.vesselName} />
+            <F label="" value={s.flag} />
+            <F label="" value={s.vesselType} />
+            <F label="" value={s.grt ?? "—"} />
+            <F label="" value={s.engineType} />
+            <F label="" value={s.engineKW ?? "—"} />
+            <F label="" value={s.company} />
+            <F label="" value={s.rank} />
+            <F label="" value={formatDate(s.periodFrom)} />
+            <F
+              label=""
+              value={
+                s.periodTo ? (
+                  formatDate(s.periodTo)
+                ) : (
+                  <span className="text-green-600 dark:text-green-400 font-semibold">
+                    Present
+                  </span>
+                )
+              }
+            />
+            <F label="" value={s.jobDescription} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
         {/* ── 14 DOCUMENTS ──────────────────────────────────────────────── */}
-        <div className="p-5">
-          <Sec n="14" title="Uploaded Documents" />
-          <div className="space-y-3">
-            {d.resume?.fileUrl && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 w-24 shrink-0">
-                  Resume / CV
-                </span>
-                <a
-                  href={d.resume.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
-                >
-                  <Download className="h-3 w-3" />
-                  {d.resume.fileName ?? "View Resume"}
-                </a>
-              </div>
-            )}
-            {(d.extraDocs?.length ?? 0) > 0 &&
-              d.extraDocs!.map((doc, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 w-24 shrink-0 truncate">
-                    {doc.name || `Doc ${i + 1}`}
-                  </span>
-                  {doc.fileUrl ? (
-                    <a
-                      href={doc.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
-                    >
-                      <Download className="h-3 w-3" />
-                      {doc.fileName ?? "View File"}
-                    </a>
-                  ) : (
-                    <span className="text-sm text-gray-300 dark:text-gray-600 italic">
-                      Not uploaded
-                    </span>
-                  )}
-                </div>
-              ))}
-            {!d.resume?.fileUrl && (d.extraDocs?.length ?? 0) === 0 && (
-              <p className="text-sm text-gray-400 dark:text-gray-500 italic">
-                No documents uploaded.
-              </p>
-            )}
-          </div>
-        </div>
+<div className="p-4">
+  <Sec n="11" title="Uploaded Documents" />
+
+  <G2>
+    {/* Resume */}
+    <F
+      label="Resume / CV"
+      value={
+        d.resume?.fileUrl ? (
+          <a
+            href={d.resume.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
+          >
+            <Download className="h-3 w-3" />
+            {d.resume.fileName ?? "View Resume"}
+          </a>
+        ) : "—"
+      }
+    />
+
+    {/* Extra Documents */}
+    {(d.extraDocs?.length ?? 0) > 0 ? (
+      d.extraDocs!.map((doc, i) => (
+        <F
+          key={i}
+          label={doc.name || `Document ${i + 1}`}
+          value={
+            doc.fileUrl ? (
+              <a
+                href={doc.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
+              >
+                <Download className="h-3 w-3" />
+                {doc.fileName ?? "View File"}
+              </a>
+            ) : "Not uploaded"
+          }
+        />
+      ))
+    ) : !d.resume?.fileUrl ? (
+      <F label="Documents" value="No documents uploaded." />
+    ) : null}
+  </G2>
+</div>
       </div>
     );
   }
@@ -1855,13 +2037,7 @@ export default function CrewApplicationForm({
                     error={!!validationErrors.cellPhone}
                     hint={validationErrors.cellPhone}
                   />
-                  <Input
-                    label="Home Phone"
-                    type="number"
-                    placeholder="91112345678"
-                    value={scalar.homePhone}
-                    onChange={txt("homePhone")}
-                  />
+                 
                   <Input
                     label="Languages Spoken"
                     value={scalar.languages}
@@ -2849,6 +3025,8 @@ export default function CrewApplicationForm({
               visas={visas}
               seaExp={seaExp}
               extraDocs={extraDocs}
+              existingProfilePhoto={initialData?.profilePhoto}
+              existingResume={initialData?.resume}
             />
           </div>
         )}

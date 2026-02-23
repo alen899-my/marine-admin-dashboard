@@ -74,11 +74,11 @@ function StepSidebar({
                 ].join(" ")}>
                   Step {step.id}
                 </span>
-                {isCompleted && !isActive && (
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    <Check size={10} strokeWidth={4} />
-                  </div>
-                )}
+               {isCompleted && !isActive && (
+  <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-600 shadow-sm ring-1 ring-emerald-700/20">
+    <Check size={14} strokeWidth={3.5} className="text-white" />
+  </div>
+)}
               </div>
 
               <span className={[
@@ -118,13 +118,15 @@ function MobileProgress({
   completedSteps?: number[];
   onStepClick?: (id: number) => void;
 }) {
+  const maxCompletedStep = completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
+
   return (
-    <div className="lg:hidden w-full bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-      <nav className="flex w-full overflow-x-auto hide-scrollbar scroll-smooth">
+    <div className="lg:hidden w-full bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+      {/* ── STEP PILLS ROW ── */}
+      <nav className="flex w-full overflow-x-auto hide-scrollbar scroll-smooth px-3 py-2.5 gap-1.5">
         {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.includes(step.id);
-          const maxCompletedStep = completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
           const isUnlocked = step.id <= maxCompletedStep + 1;
           const isClickable = isUnlocked && !isActive;
 
@@ -135,34 +137,52 @@ function MobileProgress({
               disabled={!isClickable && !isActive}
               onClick={() => isClickable && onStepClick?.(step.id)}
               className={[
-                "relative flex flex-1 min-w-[130px] flex-col items-center justify-center px-3 py-4 transition-all duration-200 min-h-[80px] border-r border-gray-100 dark:border-gray-800 last:border-r-0",
+                "relative flex items-center gap-1.5 shrink-0 rounded px-2.5 py-1.5 transition-all duration-200 border",
                 isActive
-                  ? "bg-brand-500 text-white dark:bg-brand-600"
+                  ? "bg-brand-500 dark:bg-brand-600 border-brand-600 dark:border-brand-500 shadow-sm shadow-brand-500/20"
+                  : isCompleted
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
                   : isClickable
-                    ? "bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50"
-                    : "bg-gray-50 text-gray-400 opacity-60 cursor-not-allowed dark:bg-transparent"
+                  ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
+                  : "bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800/50 cursor-not-allowed opacity-40",
               ].join(" ")}
             >
-              <div className="flex w-full items-center justify-between px-1 mb-1">
-                <span className={[
-                  "text-[9px] font-bold uppercase tracking-wider",
-                  isActive ? "text-brand-100" : "text-gray-500 dark:text-gray-400"
-                ].join(" ")}>
-                  Step {step.id}
-                </span>
-              </div>
-
+              {/* Step number / check icon */}
               <span className={[
-                "w-full text-center text-[11px] font-bold uppercase tracking-tight leading-tight whitespace-normal break-words",
-                isActive ? "text-white" : "text-gray-700 dark:text-gray-200"
+                "flex items-center justify-center w-4 h-4 rounded-sm text-[9px] font-black shrink-0",
+                isActive
+                  ? "bg-white/20 text-white"
+                  : isCompleted
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : isClickable
+                  ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                  : "bg-gray-100 dark:bg-gray-800/50 text-gray-400",
+              ].join(" ")}>
+                {isCompleted && !isActive ? (
+                  <Check size={9} strokeWidth={4} />
+                ) : (
+                  step.id
+                )}
+              </span>
+
+              {/* Step title */}
+              <span className={[
+                "text-[10px] font-bold uppercase tracking-tight whitespace-nowrap",
+                isActive
+                  ? "text-white"
+                  : isCompleted
+                  ? "text-emerald-700 dark:text-emerald-400"
+                  : isClickable
+                  ? "text-gray-600 dark:text-gray-300"
+                  : "text-gray-400 dark:text-gray-600",
               ].join(" ")}>
                 {step.title}
               </span>
 
-              <div className={[
-                "absolute bottom-0 left-0 h-1 w-full transition-all",
-                isActive ? "bg-white/30" : isCompleted ? "bg-emerald-500" : "bg-transparent"
-              ].join(" ")} />
+              {/* Active: subtle bottom accent */}
+              {isActive && (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-white/40" />
+              )}
             </button>
           );
         })}
@@ -170,7 +190,6 @@ function MobileProgress({
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────
 // MAIN LAYOUT
 // ─────────────────────────────────────────────────────────────────
