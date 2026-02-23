@@ -657,6 +657,46 @@ export default function CrewApplicationForm({
   const isEdit = mode === "edit";
   const isCreate = mode === "create";
 
+  // ── Draft cache helpers (create mode only, 1-hour expiry)
+  const CACHE_KEY = `crew_draft_${companyId}`;
+  const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+
+
+  const clearDraftCache = useCallback(() => {
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+  }, [CACHE_KEY]);
+
+  const handleReset = useCallback(() => {
+    if (!window.confirm("Are you sure you want to reset the form? All unsaved data will be lost.")) return;
+    clearDraftCache();
+    setScalar(initialScalar);
+    setCurrentStep(1);
+    setCompletedSteps([]);
+    setValidationErrors({});
+    setSubmitError(null);
+    // Array resets happen after state declarations below
+    // We use setTimeout to ensure state is set before resetting arrays
+    setTimeout(() => {
+      coc.reset([emptyLicence()]);
+      coe.reset([emptyLicence()]);
+      passports.reset([emptyPassport()]);
+      seamans.reset([emptySeaman()]);
+      visas.reset([emptyVisa()]);
+      endorsements.reset([emptyEndorse()]);
+      stcw.reset([emptyCert()]);
+      otherCerts.reset([]);
+      seaExp.reset([emptySeaExp()]);
+      extraDocs.reset([
+        { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
+        { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
+      ]);
+    }, 0);
+    toast.success("Form has been reset.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearDraftCache]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>(() =>
@@ -700,6 +740,38 @@ export default function CrewApplicationForm({
     { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
     { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
   ]);
+
+  // ── Restore cached draft on mount (create mode only)
+  useEffect(() => {
+    if (!isCreate) return;
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return;
+      const cached = JSON.parse(raw);
+      if (Date.now() - cached.timestamp > CACHE_TTL) {
+        localStorage.removeItem(CACHE_KEY);
+        return;
+      }
+      // Restore state
+      if (cached.scalar) {
+        setScalar((prev) => ({ ...prev, ...cached.scalar, profilePhoto: null, resume: null }));
+      }
+      if (cached.coc?.length) coc.reset(cached.coc);
+      if (cached.coe?.length) coe.reset(cached.coe);
+      if (cached.passports?.length) passports.reset(cached.passports);
+      if (cached.seamans?.length) seamans.reset(cached.seamans);
+      if (cached.visas?.length) visas.reset(cached.visas);
+      if (cached.endorsements?.length) endorsements.reset(cached.endorsements);
+      if (cached.stcw?.length) stcw.reset(cached.stcw);
+      if (cached.otherCerts?.length) otherCerts.reset(cached.otherCerts);
+      if (cached.seaExp?.length) seaExp.reset(cached.seaExp);
+      if (cached.extraDocs?.length) extraDocs.reset(cached.extraDocs.map((d: any) => ({ ...d, file: null })));
+      if (cached.currentStep) setCurrentStep(cached.currentStep);
+      if (cached.completedSteps?.length) setCompletedSteps(cached.completedSteps);
+      toast.info("Draft restored from your last session.");
+    } catch { /* ignore parse errors */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Prefill arrays when initialData is provided (edit or view mode)
   useEffect(() => {
@@ -940,6 +1012,33 @@ export default function CrewApplicationForm({
     if (!completedSteps.includes(currentStep)) {
       setCompletedSteps((prev) => [...prev, currentStep]);
     }
+
+    // ── Save draft to cache on each successful "Save & Continue" (create mode)
+    if (isCreate) {
+      try {
+        const nextCompleted = completedSteps.includes(currentStep)
+          ? completedSteps
+          : [...completedSteps, currentStep];
+        const draft = {
+          timestamp: Date.now(),
+          currentStep: Math.min(currentStep + 1, STEPS.length),
+          completedSteps: nextCompleted,
+          scalar: { ...scalar, profilePhoto: null, resume: null },
+          coc: coc.items,
+          coe: coe.items,
+          passports: passports.items,
+          seamans: seamans.items,
+          visas: visas.items,
+          endorsements: endorsements.items,
+          stcw: stcw.items,
+          otherCerts: otherCerts.items,
+          seaExp: seaExp.items,
+          extraDocs: extraDocs.items.map(({ file, ...rest }) => rest),
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(draft));
+      } catch { /* localStorage may be unavailable */ }
+    }
+
     setCurrentStep((p) => Math.min(p + 1, STEPS.length));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1089,10 +1188,12 @@ export default function CrewApplicationForm({
         router.push(`/jobs/view/${applicationId}`);
       } else if (companyId) {
         // Admin-created application — redirect to view page
+        clearDraftCache();
         router.refresh();
         router.push(`/jobs/view/${result.data.id}`);
       } else {
         // Public form submission — redirect to success page
+        clearDraftCache();
         router.push(`/apply/success?token=${result.data.submissionToken}`);
       }
     } catch {
@@ -1896,6 +1997,7 @@ export default function CrewApplicationForm({
       onStepClick={handleStepClick}
       onSubmit={handleSubmit}
       isSubmitting={isSubmitting}
+      onReset={isCreate ? handleReset : undefined}
     >
       <div className="space-y-8">
         {/* ═══════════════════════════════════════════════════════

@@ -20,6 +20,7 @@ interface MultiStepFormLayoutProps {
   onBack: () => void;
   onNext: () => void;
   onSubmit: () => void;
+  onReset?: () => void;
   isSubmitting?: boolean;
   isNextDisabled?: boolean;
   submitLabel?: string;
@@ -74,11 +75,11 @@ function StepSidebar({
                 ].join(" ")}>
                   Step {step.id}
                 </span>
-               {isCompleted && !isActive && (
-  <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-600 shadow-sm ring-1 ring-emerald-700/20">
-    <Check size={14} strokeWidth={3.5} className="text-white" />
-  </div>
-)}
+                {isCompleted && !isActive && (
+                  <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-600 shadow-sm ring-1 ring-emerald-700/20">
+                    <Check size={14} strokeWidth={3.5} className="text-white" />
+                  </div>
+                )}
               </div>
 
               <span className={[
@@ -141,10 +142,10 @@ function MobileProgress({
                 isActive
                   ? "bg-brand-500 dark:bg-brand-600 border-brand-600 dark:border-brand-500 shadow-sm shadow-brand-500/20"
                   : isCompleted
-                  ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
-                  : isClickable
-                  ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
-                  : "bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800/50 cursor-not-allowed opacity-40",
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
+                    : isClickable
+                      ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
+                      : "bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800/50 cursor-not-allowed opacity-40",
               ].join(" ")}
             >
               {/* Step number / check icon */}
@@ -153,10 +154,10 @@ function MobileProgress({
                 isActive
                   ? "bg-white/20 text-white"
                   : isCompleted
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : isClickable
-                  ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                  : "bg-gray-100 dark:bg-gray-800/50 text-gray-400",
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : isClickable
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                      : "bg-gray-100 dark:bg-gray-800/50 text-gray-400",
               ].join(" ")}>
                 {isCompleted && !isActive ? (
                   <Check size={9} strokeWidth={4} />
@@ -171,10 +172,10 @@ function MobileProgress({
                 isActive
                   ? "text-white"
                   : isCompleted
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : isClickable
-                  ? "text-gray-600 dark:text-gray-300"
-                  : "text-gray-400 dark:text-gray-600",
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : isClickable
+                      ? "text-gray-600 dark:text-gray-300"
+                      : "text-gray-400 dark:text-gray-600",
               ].join(" ")}>
                 {step.title}
               </span>
@@ -201,6 +202,7 @@ export default function MultiStepFormLayout({
   onBack,
   onNext,
   onSubmit,
+  onReset,
   isSubmitting = false,
   isNextDisabled = false,
   submitLabel = "Submit Application",
@@ -249,7 +251,7 @@ export default function MultiStepFormLayout({
                 onStepClick={onStepClick}
               />
 
-         <div className="flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar">
+              <div className="flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar">
 
                 {/* CURRENT STEP HEADER */}
                 <div className="mb-8 pt-6">
@@ -267,14 +269,25 @@ export default function MultiStepFormLayout({
 
               {/* Nav footer */}
               <div className="flex flex-col-reverse gap-4 border-t border-gray-100 bg-gray-50/50 px-6 py-5 dark:border-gray-800 dark:bg-white/[0.01] sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-10">
-                <Button
-                  variant="outline"
-                  onClick={onBack}
-                  disabled={isFirst}
-                  className="w-full sm:w-auto"
-                >
-                  ← Back
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={onBack}
+                    disabled={isFirst}
+                    className="w-full sm:w-auto"
+                  >
+                    ← Back
+                  </Button>
+                  {onReset && (
+                    <Button
+                      variant="outline"
+                      onClick={onReset}
+                      className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:border-red-300 dark:text-red-400 dark:hover:text-red-300 dark:hover:border-red-500/40"
+                    >
+                      Reset Form
+                    </Button>
+                  )}
+                </div>
 
                 <div className="flex flex-col items-center gap-3 sm:flex-row">
                   <span className="text-xs font-bold tabular-nums text-gray-400 uppercase tracking-widest sm:block">
