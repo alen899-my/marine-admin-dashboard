@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
 import Crew from "@/models/Application";
+import Company from "@/models/Company";
 import CrewApplicationForm from "@/components/Jobs/Application";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
@@ -40,6 +41,10 @@ export default async function EditApplicationPage({ params }: PageProps) {
       ? application.company
       : application.company?.$oid ?? String(application.company);
 
+  // Fetch company details for logo
+  const company = await Company.findById(companyId).select("name logo").lean();
+  const companyData = company ? JSON.parse(JSON.stringify(company)) : null;
+
   return (
     <div className="">
       <PageBreadcrumb
@@ -49,6 +54,8 @@ export default async function EditApplicationPage({ params }: PageProps) {
       <CrewApplicationForm
         mode="edit"
         companyId={companyId}
+        companyName={companyData?.name}
+        companyLogo={companyData?.logo}
         initialData={application}
         applicationId={id}
       />

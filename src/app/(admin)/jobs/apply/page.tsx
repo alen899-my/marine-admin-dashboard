@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import CrewApplicationForm from "@/components/Jobs/Application";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { dbConnect } from "@/lib/db";
+import Company from "@/models/Company";
 
 export default async function NewApplicationPage() {
   const session = await auth();
@@ -24,6 +26,11 @@ export default async function NewApplicationPage() {
     );
   }
 
+  // Fetch company details for logo
+  await dbConnect();
+  const company = await Company.findById(companyId).select("name logo").lean();
+  const companyData = company ? JSON.parse(JSON.stringify(company)) : null;
+
   return (
     <div className=" mx-auto">
       <PageBreadcrumb
@@ -33,7 +40,8 @@ export default async function NewApplicationPage() {
 
       <CrewApplicationForm
         companyId={companyId}
-        companyName={user.company?.name}
+        companyName={companyData?.name || user.company?.name}
+        companyLogo={companyData?.logo}
         mode="create"
       />
     </div>

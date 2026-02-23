@@ -640,7 +640,9 @@ function sanitizeSeaExp(
 interface CrewApplicationFormProps {
   companyId: string;
   companyName?: string;
+  companyLogo?: string;
   mode?: FormMode;
+  isPublic?: boolean;
   initialData?: CrewApplicationData;
   applicationId?: string;
 }
@@ -648,7 +650,9 @@ interface CrewApplicationFormProps {
 export default function CrewApplicationForm({
   companyId,
   companyName,
+  companyLogo,
   mode = "create",
+  isPublic = false,
   initialData,
   applicationId,
 }: CrewApplicationFormProps) {
@@ -1155,13 +1159,11 @@ export default function CrewApplicationForm({
 
       fd.append("companyId", companyId);
 
-      // ── Route differs between create and edit
-      // Use /api/applications/admin when companyId is provided (admin panel)
-      // Use /api/applications/public for public users (when no companyId)
+      // ── Route differs based on public vs admin
       let res: Response;
-      const apiEndpoint = companyId
-        ? "/api/applications/admin"
-        : "/api/applications/public";
+      const apiEndpoint = isPublic
+        ? "/api/applications/public"
+        : "/api/applications/admin";
 
       if (isEdit && applicationId) {
         res = await fetch(`/api/applications/${applicationId}`, {
@@ -1186,15 +1188,15 @@ export default function CrewApplicationForm({
       if (isEdit) {
         router.refresh();
         router.push(`/jobs/view/${applicationId}`);
-      } else if (companyId) {
+      } else if (isPublic) {
+        // Public form submission — redirect to success page
+        clearDraftCache();
+        router.push(`/apply/success?token=${result.data.submissionToken}`);
+      } else {
         // Admin-created application — redirect to view page
         clearDraftCache();
         router.refresh();
         router.push(`/jobs/view/${result.data.id}`);
-      } else {
-        // Public form submission — redirect to success page
-        clearDraftCache();
-        router.push(`/apply/success?token=${result.data.submissionToken}`);
       }
     } catch {
       setSubmitError("An unexpected error occurred. Please try again.");
@@ -1982,15 +1984,16 @@ export default function CrewApplicationForm({
       pageTitle={
         isEdit
           ? "Edit Crew Application"
-          : companyName
-            ? `${companyName} Crew Application Form`
-            : "Crew Application Form"
+          : "Crew Application Form"
       }
       pageSubtitle={
         isEdit
           ? "Update the application details below."
           : "Complete all steps to submit your professional profile."
       }
+      companyName={companyName}
+      companyLogo={companyLogo}
+      isPublic={isPublic}
       onNext={handleNext}
       onBack={handleBack}
       completedSteps={completedSteps}

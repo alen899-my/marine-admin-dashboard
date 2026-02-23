@@ -26,6 +26,9 @@ interface MultiStepFormLayoutProps {
   submitLabel?: string;
   pageTitle?: string;
   pageSubtitle?: string;
+  companyName?: string;
+  companyLogo?: string;
+  isPublic?: boolean;
   children: React.ReactNode;
 }
 
@@ -208,6 +211,9 @@ export default function MultiStepFormLayout({
   submitLabel = "Submit Application",
   pageTitle = "Application Form",
   pageSubtitle,
+  companyName,
+  companyLogo,
+  isPublic = false,
   children,
 }: MultiStepFormLayoutProps) {
   const isFirst = currentStep === 1;
@@ -215,21 +221,49 @@ export default function MultiStepFormLayout({
   const current = steps.find((s) => s.id === currentStep);
 
   return (
-    <div className="min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4">
-      <div className="">
+    <div
+      className={
+        isPublic
+          ? "h-screen bg-white dark:bg-gray-950 w-full overflow-hidden"
+          : "min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4"
+      }
+    >
+      <div className={isPublic ? "w-full h-full" : ""}>
         {/* MAIN CONTAINER */}
-        <div className="flex flex-col overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]">
+        <div
+          className={
+            isPublic
+              ? "flex flex-col h-full bg-white dark:bg-gray-900 w-full"
+              : "flex flex-col overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
+          }
+        >
 
-          {/* ── UNIFIED TOP HEADER (spans full width above sidebar + content) ── */}
-          <div className="w-full bg-white dark:bg-gray-900 px-6 sm:px-10 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800/50 shrink-0">
-            <h1 className="text-2xl font-medium text-gray-900 dark:text-white leading-tight">
-              {pageTitle}
-            </h1>
-            {pageSubtitle && (
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                {pageSubtitle}
-              </p>
-            )}
+          {/* ── PROFESSIONAL FORM HEADER ── */}
+          <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800/50 shrink-0">
+            <div className="flex items-center gap-4 px-6 sm:px-10 py-4">
+              {companyLogo && (
+                <img
+                  src={companyLogo}
+                  alt={companyName || "Company"}
+                  className="h-12 w-12 object-contain rounded-lg shrink-0"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                {companyName && (
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                    {companyName}
+                  </p>
+                )}
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
+                  {pageTitle}
+                </h1>
+                {pageSubtitle && (
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {pageSubtitle}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* ── BODY ROW: Sidebar + Content ── */}

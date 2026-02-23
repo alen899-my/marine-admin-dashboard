@@ -7,9 +7,10 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode } from "react";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Copy } from "lucide-react";
 import JobFilterWrapper from "./JobFilterWrapper";
 import Button from "@/components/ui/button/Button";
+import { toast } from "react-toastify";
 
 interface JobPageClientProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ interface JobPageClientProps {
   companies: { id: string; name: string }[];
   isSuperAdmin: boolean;
   canAdd: boolean;
+  currentCompanyId: string;
 }
 
 export default function JobPageClient({
@@ -25,6 +27,7 @@ export default function JobPageClient({
   companies,
   isSuperAdmin,
   canAdd,
+  currentCompanyId,
 }: JobPageClientProps) {
   const router = useRouter();
   const { can, isReady } = useAuthorization();
@@ -61,17 +64,34 @@ export default function JobPageClient({
             />
           </div>
           {canCreate && (
-            <div className="w-full sm:w-auto">
-              <Button
-                onClick={() => router.push("/jobs/apply")}
-                variant="primary"
-                size="sm"
-                className="w-full sm:w-auto justify-center"
-                startIcon={<Plus size={18} />}
-              >
-                New Crew Application
-              </Button>
-            </div>
+            <>
+              <div className="w-full sm:w-auto">
+                <Button
+                  onClick={() => {
+                    const link = `${window.location.origin}/apply/${currentCompanyId}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Public link copied to clipboard!");
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto justify-center"
+                  startIcon={<Copy size={18} />}
+                >
+                  Copy Public Link
+                </Button>
+              </div>
+              <div className="w-full sm:w-auto">
+                <Button
+                  onClick={() => router.push("/jobs/apply")}
+                  variant="primary"
+                  size="sm"
+                  className="w-full sm:w-auto justify-center"
+                  startIcon={<Plus size={18} />}
+                >
+                  New Crew Application
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </div>

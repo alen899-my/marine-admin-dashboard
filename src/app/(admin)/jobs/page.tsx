@@ -131,6 +131,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
         companies={companyOptions}
         isSuperAdmin={isSuperAdmin}
         canAdd={true}
+        currentCompanyId={targetCompanyId}
       >
         <JobTable
           data={applications}
