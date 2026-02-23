@@ -27,13 +27,14 @@ export default async function NewApplicationPage() {
   return (
     <div className=" mx-auto">
       <PageBreadcrumb
-        pageTitle="New Application"
+        pageTitle=""
         items={[{ label: "Crew Applications", href: "/jobs" }]}
       />
 
       <CrewApplicationForm
         companyId={companyId}
         companyName={user.company?.name}
+        mode="create"
       />
     </div>
   );

@@ -11,6 +11,7 @@ import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import Select from "@/components/form/Select";
+import SimpleDatePicker from "@/components/form/new-datepicker";
 import DatePicker from "@/components/form/date-picker"; // Kept original import
 import FileInput from "@/components/form/input/FileInput"; // Kept original import
 import CommonReportTable from "@/components/tables/CommonReportTable";
@@ -968,14 +969,14 @@ export default function CargoReportTable({
                 </div>
                 <div>
                   <Label>Document Date</Label>
-                  <DatePicker
-                    id="edit-doc-date"
-                    placeholder="Select Date"
-                    defaultDate={editData.documentDate}
-                    onChange={(date, dateStr) =>
-                      setEditData({ ...editData, documentDate: dateStr })
-                    }
-                  />
+                   <SimpleDatePicker
+    id="edit-doc-date"
+    placeholder="Select Date"
+    value={editData.documentDate}         // "YYYY-MM-DD" - already in correct format
+    onChange={(dateStr) =>
+      setEditData((prev) => prev ? { ...prev, documentDate: dateStr } : null)
+    }
+  />
                 </div>
               </div>
             </ComponentCard>

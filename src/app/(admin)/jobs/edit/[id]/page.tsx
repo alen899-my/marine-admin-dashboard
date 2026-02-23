@@ -43,7 +43,7 @@ export default async function EditApplicationPage({ params }: PageProps) {
   return (
     <div className="">
       <PageBreadcrumb
-        pageTitle="Edit Application"
+        pageTitle=""
         items={[{ label: "Crew Applications", href: "/jobs" }]}
       />
       <CrewApplicationForm

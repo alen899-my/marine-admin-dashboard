@@ -1,10 +1,10 @@
 "use client";
 
-import Filters, { FilterData } from "@/components/common/Filters";
+import CrewFilters, { CrewFilterData } from "@/components/Jobs/Crewfilters";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-export default function JobFilterWrapper({
+export default function CrewFilterWrapper({
   companies,
   isSuperAdmin,
 }: {
@@ -15,17 +15,17 @@ export default function JobFilterWrapper({
   const searchParams = useSearchParams();
 
   const handleApply = useCallback(
-    (data: FilterData) => {
+    (data: CrewFilterData) => {
       const params = new URLSearchParams(searchParams.toString());
+
       Object.entries(data).forEach(([key, value]) => {
-        // Remove "all" or empty values to keep the URL clean
         if (value && value !== "all") {
           params.set(key, value);
         } else {
           params.delete(key);
         }
       });
-      // Always reset to page 1 on new filter application
+
       params.set("page", "1");
       router.push(`?${params.toString()}`);
     },
@@ -33,21 +33,13 @@ export default function JobFilterWrapper({
   );
 
   return (
-    <Filters
+    <CrewFilters
       search={searchParams.get("search") || ""}
       status={searchParams.get("status") || "all"}
-      companyId={searchParams.get("companyId") || "all"}
-      startDate={searchParams.get("startDate") || ""}
-      endDate={searchParams.get("endDate") || ""}
-      onApply={handleApply}
-      setSearch={() => { }}
-      setStatus={() => { }}
-      setStartDate={() => { }}
-      setEndDate={() => { }}
-      setCompanyId={() => { }}
+      companyId={searchParams.get("companyId") || ""}
       companies={companies}
       isSuperAdmin={isSuperAdmin}
-      searchJob={true}
+      onApply={handleApply}
     />
   );
 }

@@ -67,18 +67,51 @@ export const applicationSchema = Joi.object({
   })).optional(),
 
   // Sea Experience
-  seaExperience: Joi.array().items(Joi.object({
-    vesselName: Joi.string().required().label("Vessel Name").messages({ "string.empty": "{#label} is required" }),
-    vesselType: Joi.string().required().label("Vessel Type").messages({ "string.empty": "{#label} is required" }),
-    flag: Joi.string().allow(""),
-    grt: Joi.number().allow(null),
-    engineType: Joi.string().allow(""),
-    engineKW: Joi.number().allow(null),
-    company: Joi.string().required().label("Shipping Company").messages({ "string.empty": "{#label} is required" }),
-    rank: Joi.string().required().label("Rank").messages({ "string.empty": "{#label} is required" }),
-    periodFrom: Joi.date().iso().required().label("Period From").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
-    periodTo: Joi.date().iso().allow(null),
-  })).min(1).messages({ "array.min": "At least one Sea Experience entry is required" }),
+seaExperience: Joi.array().items(Joi.object({
+  vesselName: Joi.string().required().label("Vessel Name").messages({
+    "string.empty": "{#label} is required",
+    "any.required": "{#label} is required",
+  }),
+  vesselType: Joi.string().required().label("Vessel Type").messages({
+    "string.empty": "{#label} is required",
+    "any.required": "{#label} is required",
+  }),
+  flag: Joi.string().allow("").optional().label("Flag").messages({
+    "string.base": "Flag must be a text value",
+  }),
+  grt: Joi.alternatives().try(Joi.number(), Joi.string().allow("")).optional().label("GRT").messages({
+    "alternatives.match": "GRT must be a valid number",
+  }),
+  engineType: Joi.string().allow("").optional().label("Engine Type").messages({
+    "string.base": "Engine Type must be a text value",
+  }),
+  engineKW: Joi.alternatives().try(Joi.number(), Joi.string().allow("")).optional().label("Engine KW").messages({
+    "alternatives.match": "Engine KW must be a valid number",
+  }),
+  company: Joi.string().required().label("Shipping Company").messages({
+    "string.empty": "{#label} is required",
+    "any.required": "{#label} is required",
+  }),
+  rank: Joi.string().required().label("Rank").messages({
+    "string.empty": "{#label} is required",
+    "any.required": "{#label} is required",
+  }),
+  periodFrom: Joi.string().required().label("Period From").messages({
+    "string.empty": "{#label} is required",
+    "any.required": "{#label} is required",
+  }),
+  periodTo: Joi.string().allow("", null).optional().label("Period To").messages({
+    "string.base": "Period To must be a valid date",
+  }),
+  areaOfOperation: Joi.string().allow("").optional().label("Area of Operation").messages({
+    "string.base": "Area of Operation must be a text value",
+  }),
+  jobDescription: Joi.string().allow("").optional().label("Job Description").messages({
+    "string.base": "Job Description must be a text value",
+  }),
+})).min(1).messages({
+  "array.min": "At least one Sea Experience entry is required",
+}),
 
   // System Fields (Required for Action)
   company: Joi.string().required(),

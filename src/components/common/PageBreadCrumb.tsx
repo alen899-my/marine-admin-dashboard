@@ -14,7 +14,7 @@ interface BreadcrumbProps {
 
 const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle, items = [], children }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="flex flex-wrap items-center justify-between gap-3 ">
       <div className="flex flex-col gap-1">
         <nav>
           <ol className="flex items-center gap-1.5">

@@ -9,6 +9,18 @@ import Voyage from "@/models/Voyage";
 import { auth } from "@/auth"; 
 import { authorizeRequest } from "@/lib/authorizeRequest";
 // --- HELPER: DELETE FILE ---
+
+// --- HELPER: PARSE DD/MM/YYYY or YYYY-MM-DD → Date ---
+function parseDMY(str: string): Date {
+  if (!str) throw new Error("Document date is required");
+  if (str.includes("/")) {
+    const [day, month, year] = str.split("/");
+    return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`);
+  }
+  const d = new Date(str);
+  if (isNaN(d.getTime())) throw new Error("Invalid document date");
+  return d;
+}
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
 
@@ -102,7 +114,7 @@ export async function PATCH(
       portType,
       reportDate: reportDate ? new Date(reportDate) : undefined,
       documentType,
-      documentDate: new Date(documentDate),
+      documentDate: parseDMY(documentDate),
       status,
       remarks,
     };
