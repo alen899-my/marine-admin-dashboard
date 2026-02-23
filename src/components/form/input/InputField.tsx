@@ -46,6 +46,8 @@ const Input: FC<InputProps> = ({
 
   if (disabled) {
     inputClasses += ` text-gray-500 border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700`;
+  } else if (error) {
+    inputClasses += ` bg-transparent text-gray-800 border-error-500 focus:ring-error-500/10 dark:text-white/90 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800`;
   } else if (success) {
     inputClasses += ` text-success-500 border-success-400 focus:ring-success-500/10 dark:text-success-400 dark:border-success-500`;
   } else {

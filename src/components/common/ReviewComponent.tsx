@@ -1,14 +1,8 @@
 import React from "react";
 import {
-  User,
-  Ship,
-  Globe,
-  CreditCard,
-  Award,
   CheckCircle2,
   XCircle,
-  FileText,
-  Anchor,
+  Download,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────
@@ -24,13 +18,6 @@ function fmtDate(val: any): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function fmtLabel(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
 }
 
 function isDateStr(v: any): boolean {
@@ -50,45 +37,41 @@ function displayVal(v: any): string {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PRIMITIVES
+// PRIMITIVES — matching the view-mode government-form style
 // ─────────────────────────────────────────────────────────────────
 
-// Section with icon header + numbered badge
-const Sec = ({
-  n,
-  title,
-  icon: Icon,
-  children,
-}: {
-  n: string;
-  title: string;
-  icon: any;
-  children: React.ReactNode;
-}) => (
-  <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden">
-    <div className="flex items-center gap-2.5 border-b border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 px-4 py-2.5">
-      <Icon size={14} className="text-brand-500 shrink-0" />
-      <span className="text-xs font-semibold text-gray-700 dark:text-white/80">
-        {title}
-      </span>
-      <span className="ml-auto text-[10px] font-bold text-brand-500 tabular-nums">
-        {n}
-      </span>
-    </div>
-    <div className="p-4">{children}</div>
+// Section heading with numbered badge
+const Sec = ({ n, title }: { n: string; title: string }) => (
+  <div className="flex items-center gap-2 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-3 py-2 mb-0">
+    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
+      {n}
+    </span>
+    <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-white/80">
+      {title}
+    </span>
   </div>
 );
 
-// Field: label above value
-const F = ({ label, value }: { label: string; value?: any }) => {
+// Bordered field cell
+const F = ({
+  label,
+  value,
+  span,
+}: {
+  label: string;
+  value?: any;
+  span?: boolean;
+}) => {
   const v = displayVal(value);
   return (
-    <div className="space-y-0.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+    <div
+      className={`border border-gray-300 dark:border-white/15 px-2.5 py-1.5 min-w-0 ${span ? "col-span-full" : ""}`}
+    >
+      <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
         {label}
       </p>
       <p
-        className={`text-sm break-words ${v === "—" ? "text-gray-300 dark:text-gray-600 italic" : "text-gray-800 dark:text-white/90"}`}
+        className={`text-sm break-words leading-snug ${v === "—" ? "text-gray-300 dark:text-gray-600 italic" : "text-gray-800 dark:text-white/90"}`}
       >
         {v}
       </p>
@@ -96,27 +79,47 @@ const F = ({ label, value }: { label: string; value?: any }) => {
   );
 };
 
-// Simple responsive grid
-const Grid = ({
+// Bordered grid (cells share borders)
+const G = ({
   cols = 3,
   children,
 }: {
   cols?: number;
   children: React.ReactNode;
-}) => (
-  <div className={`grid gap-x-6 gap-y-4 grid-cols-2 sm:grid-cols-${cols}`}>
-    {children}
+}) => {
+  const colMap: Record<number, string> = {
+    2: "grid-cols-1 sm:grid-cols-2",
+    3: "grid-cols-2 sm:grid-cols-3",
+    4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+    5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
+    6: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6",
+  };
+  return (
+    <div
+      className={`grid ${colMap[cols] ?? colMap[3]} -mt-px -ml-px [&>*]:-mb-px [&>*]:-mr-px`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Sub-section label
+const SubTitle = ({ title }: { title: string }) => (
+  <div className="col-span-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-2.5 py-1.5">
+    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+      {title}
+    </p>
   </div>
 );
 
-// Hairline divider
-const Hr = () => <hr className="border-gray-100 dark:border-white/5 my-4" />;
+// Thin spacer
+const Spacer = () => <div className="h-2" />;
 
-// Inline record separator for repeated items
-const RecordBadge = ({ i, total }: { i: number; total: number }) =>
+// Record separator for repeated items
+const RecLabel = ({ i, total }: { i: number; total: number }) =>
   total <= 1 ? null : (
     <div
-      className={`${i > 0 ? "mt-5 pt-4 border-t border-gray-100 dark:border-white/5" : ""} mb-3`}
+      className={`${i > 0 ? "mt-3 pt-3 border-t border-gray-200 dark:border-white/10" : ""} mb-1`}
     >
       <span className="inline-block rounded bg-gray-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
         Record {i + 1}
@@ -124,12 +127,45 @@ const RecordBadge = ({ i, total }: { i: number; total: number }) =>
     </div>
   );
 
-// ─────────────────────────────────────────────────────────────────
-// SCALAR FIELD GROUPS
-// The personal section has a lot of fields — we group them cleanly.
-// ─────────────────────────────────────────────────────────────────
+// Table header row for document-style sections
+const TH = ({
+  headers,
+  cols,
+}: {
+  headers: string[];
+  cols: number;
+}) => (
+  <div
+    className={`grid grid-cols-${cols} border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400`}
+  >
+    {headers.map((h) => (
+      <div
+        key={h}
+        className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
+      >
+        {h}
+      </div>
+    ))}
+  </div>
+);
 
-const SCALAR_SKIP = ["profilePhoto", "resume"]; // shown separately in documents
+// Table cell (no label, just value)
+const TC = ({ value }: { value?: any }) => {
+  const v = displayVal(value);
+  return (
+    <div className="border-r border-gray-300 dark:border-white/15 last:border-r-0 px-2 py-1.5">
+      <p
+        className={`text-sm break-words leading-snug ${v === "—" ? "text-gray-300 dark:text-gray-600 italic" : "text-gray-800 dark:text-white/90"}`}
+      >
+        {v}
+      </p>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
+// SCALAR STATE TYPE
+// ─────────────────────────────────────────────────────────────────
 
 interface ScalarState {
   firstName?: string;
@@ -189,9 +225,7 @@ interface DynamicReviewProps {
       _fileName?: string;
     }[];
   };
-  /** Existing profile photo URL (edit mode) */
   existingProfilePhoto?: string;
-  /** Existing resume info (edit mode) */
   existingResume?: { fileUrl?: string; fileName?: string };
 }
 
@@ -208,210 +242,291 @@ export default function DynamicReview({
   existingResume,
 }: DynamicReviewProps) {
   return (
-    <div className="space-y-4">
-      {/* ── 01 PERSONAL INFORMATION ───────────────────────────────── */}
-      <Sec n="01" title="Personal Information" icon={User}>
-        <div className="space-y-5">
-          <Grid cols={3}>
-            <F label="First Name" value={scalar.firstName} />
-            <F label="Last Name" value={scalar.lastName} />
-            <F label="Nationality" value={scalar.nationality} />
-            <F label="Date of Birth" value={scalar.dateOfBirth} />
-            <F label="Place of Birth" value={scalar.placeOfBirth} />
-            <F label="Marital Status" value={scalar.maritalStatus} />
-            <F label="Father's Name" value={scalar.fatherName} />
-            <F label="Mother's Name" value={scalar.motherName} />
-          </Grid>
+    <div className="space-y-0 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden">
+      {/* ── 01 PERSONAL INFORMATION ─────────────────────────────── */}
+      <div className="p-4">
+        <Sec n="01" title="Personal Information" />
 
-          <Hr />
+        <G cols={3}>
+          <F label="First Name" value={scalar.firstName} />
+          <F label="Last Name" value={scalar.lastName} />
+          <F label="Nationality" value={scalar.nationality} />
+          <F label="Date of Birth" value={scalar.dateOfBirth} />
+          <F label="Place of Birth" value={scalar.placeOfBirth} />
+          <F label="Marital Status" value={scalar.maritalStatus} />
+          <F label="Father's Name" value={scalar.fatherName} />
+          <F label="Mother's Name" value={scalar.motherName} />
+        </G>
 
-          <Grid cols={2}>
-            <F label="Position Applied" value={scalar.positionApplied} />
-            <F label="Rank" value={scalar.rank} />
-            <F label="Date of Availability" value={scalar.dateOfAvailability} />
-            <F label="Availability Note" value={scalar.availabilityNote} />
-          </Grid>
+        <Spacer />
 
-          <Hr />
+        <G cols={3}>
+          <F label="Email" value={scalar.email} />
+          <F label="Cell Phone" value={scalar.cellPhone} />
+          <F label="Languages" value={scalar.languages} />
+        </G>
+        <G cols={1}>
+          <F label="Present Address" value={scalar.presentAddress} span />
+        </G>
 
-          <Grid cols={2}>
-            <F label="Email" value={scalar.email} />
-            <F label="Cell Phone" value={scalar.cellPhone} />
-            <F label="Home Phone" value={scalar.homePhone} />
-            <F label="Languages" value={scalar.languages} />
-          </Grid>
-          <F label="Present Address" value={scalar.presentAddress} />
+        <Spacer />
 
-          <Hr />
+        <G cols={3}>
+          <F label="Nearest Airport" value={scalar.nearestAirport} />
+          <F label="Km from Airport" value={scalar.kmFromAirport} />
+          <F label="Weight (kg)" value={scalar.weightKg} />
+          <F label="Height (cm)" value={scalar.heightCm} />
+          <F label="Coverall Size" value={scalar.coverallSize} />
+          <F label="Shoe Size" value={scalar.shoeSize} />
+          <F label="Hair Color" value={scalar.hairColor} />
+          <F label="Eye Color" value={scalar.eyeColor} />
+          <F label="Medical Cert. Issued" value={scalar.medicalCertIssuedDate} />
+          <F
+            label="Medical Cert. Expired"
+            value={scalar.medicalCertExpiredDate}
+          />
+        </G>
 
-          <Grid cols={3}>
-            <F label="Nearest Airport" value={scalar.nearestAirport} />
-            <F label="Km from Airport" value={scalar.kmFromAirport} />
-            <F label="Weight (kg)" value={scalar.weightKg} />
-            <F label="Height (cm)" value={scalar.heightCm} />
-            <F label="Coverall Size" value={scalar.coverallSize} />
-            <F label="Shoe Size" value={scalar.shoeSize} />
-            <F label="Hair Color" value={scalar.hairColor} />
-            <F label="Eye Color" value={scalar.eyeColor} />
-            <F
-              label="Medical Cert. Issued"
-              value={scalar.medicalCertIssuedDate}
-            />
-            <F
-              label="Medical Cert. Expired"
-              value={scalar.medicalCertExpiredDate}
-            />
-          </Grid>
+        {scalar.nextOfKinName && (
+          <>
+            <Spacer />
+            <G cols={2}>
+              <SubTitle title="Next of Kin" />
+              <F label="Name" value={scalar.nextOfKinName} />
+              <F label="Relationship" value={scalar.nextOfKinRelationship} />
+              <F label="Phone" value={scalar.nextOfKinPhone} />
+              <F label="Address" value={scalar.nextOfKinAddress} />
+            </G>
+          </>
+        )}
+      </div>
 
-          {scalar.nextOfKinName && (
-            <>
-              <Hr />
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                Next of Kin
-              </p>
-              <Grid cols={2}>
-                <F label="Name" value={scalar.nextOfKinName} />
-                <F label="Relationship" value={scalar.nextOfKinRelationship} />
-                <F label="Phone" value={scalar.nextOfKinPhone} />
-                <F label="Address" value={scalar.nextOfKinAddress} />
-              </Grid>
-            </>
-          )}
-        </div>
-      </Sec>
+      {/* ── 02 POSITION & AVAILABILITY ──────────────────────────── */}
+      <div className="p-4 border-t border-gray-100 dark:border-white/5">
+        <Sec n="02" title="Position & Availability" />
 
-      {/* ── 06 CoC ────────────────────────────────────────────────── */}
+        <G cols={4}>
+          <F label="Position Applied" value={scalar.positionApplied} />
+          <F label="Rank" value={scalar.rank} />
+          <F label="Date of Availability" value={scalar.dateOfAvailability} />
+          <F label="Availability Note" value={scalar.availabilityNote} />
+        </G>
+      </div>
+
+      {/* ── 03 CoC ──────────────────────────────────────────────── */}
       {coc.items.filter((i) => i.number || i.grade).length > 0 && (
-        <Sec n="06" title="Certificates of Competency (CoC)" icon={CreditCard}>
-          {coc.items.map((l, i) => (
-            <div key={i}>
-              <RecordBadge i={i} total={coc.items.length} />
-              <Grid cols={3}>
-                <F label="Country" value={l.country} />
-                <F label="Grade" value={l.grade} />
-                <F label="Licence No." value={l.number} />
-                <F label="Place Issued" value={l.placeIssued} />
-                <F label="Date Issued" value={l.dateIssued} />
-                <F label="Date Expired" value={l.dateExpired || "Unlimited"} />
-              </Grid>
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="03" title="Certificates of Competency (CoC)" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[800px]">
+              <TH
+                headers={[
+                  "Country",
+                  "Grade",
+                  "Licence No.",
+                  "Place Issued",
+                  "Date Issued",
+                  "Date Expired",
+                ]}
+                cols={6}
+              />
+              {coc.items.map((l, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+                >
+                  <TC value={l.country} />
+                  <TC value={l.grade} />
+                  <TC value={l.number} />
+                  <TC value={l.placeIssued} />
+                  <TC value={l.dateIssued} />
+                  <TC value={l.dateExpired || "Unlimited"} />
+                </div>
+              ))}
             </div>
-          ))}
-        </Sec>
+          </div>
+        </div>
       )}
 
-      {/* ── 07 CoE ────────────────────────────────────────────────── */}
+      {/* ── 04 CoE ──────────────────────────────────────────────── */}
       {coe.items.filter((i) => i.number || i.grade).length > 0 && (
-        <Sec n="07" title="Certificates of Equivalency (CoE)" icon={CreditCard}>
-          {coe.items.map((l, i) => (
-            <div key={i}>
-              <RecordBadge i={i} total={coe.items.length} />
-              <Grid cols={3}>
-                <F label="Country" value={l.country} />
-                <F label="Grade" value={l.grade} />
-                <F label="Licence No." value={l.number} />
-                <F label="Place Issued" value={l.placeIssued} />
-                <F label="Date Issued" value={l.dateIssued} />
-                <F label="Date Expired" value={l.dateExpired || "Unlimited"} />
-              </Grid>
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="04" title="Certificates of Equivalency (CoE)" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[800px]">
+              <TH
+                headers={[
+                  "Country",
+                  "Grade",
+                  "Licence No.",
+                  "Place Issued",
+                  "Date Issued",
+                  "Date Expired",
+                ]}
+                cols={6}
+              />
+              {coe.items.map((l, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+                >
+                  <TC value={l.country} />
+                  <TC value={l.grade} />
+                  <TC value={l.number} />
+                  <TC value={l.placeIssued} />
+                  <TC value={l.dateIssued} />
+                  <TC value={l.dateExpired || "Unlimited"} />
+                </div>
+              ))}
             </div>
-          ))}
-        </Sec>
+          </div>
+        </div>
       )}
 
-      {/* ── 08 PASSPORTS ──────────────────────────────────────────── */}
+      {/* ── 05 PASSPORTS ────────────────────────────────────────── */}
       {passports.items.filter((i) => i.number).length > 0 && (
-        <Sec n="08" title="Passports" icon={Globe}>
-          {passports.items.map((p, i) => (
-            <div key={i}>
-              <RecordBadge i={i} total={passports.items.length} />
-              <Grid cols={3}>
-                <F label="Passport No." value={p.number} />
-                <F label="Country" value={p.country} />
-                <F label="Place Issued" value={p.placeIssued} />
-                <F label="Date Issued" value={p.dateIssued} />
-                <F label="Date Expired" value={p.dateExpired} />
-              </Grid>
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="05" title="Passports" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[700px]">
+              <TH
+                headers={[
+                  "Passport No.",
+                  "Country",
+                  "Place Issued",
+                  "Date Issued",
+                  "Date Expired",
+                ]}
+                cols={5}
+              />
+              {passports.items.map((p, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+                >
+                  <TC value={p.number} />
+                  <TC value={p.country} />
+                  <TC value={p.placeIssued} />
+                  <TC value={p.dateIssued} />
+                  <TC value={p.dateExpired} />
+                </div>
+              ))}
             </div>
-          ))}
-        </Sec>
+          </div>
+        </div>
       )}
 
-      {/* ── 09 SEAMAN'S BOOKS ─────────────────────────────────────── */}
+      {/* ── 06 SEAMAN'S BOOKS ───────────────────────────────────── */}
       {seamans.items.filter((i) => i.number).length > 0 && (
-        <Sec n="09" title="Seaman's Books" icon={Anchor}>
-          {seamans.items.map((s, i) => (
-            <div key={i}>
-              <RecordBadge i={i} total={seamans.items.length} />
-              <Grid cols={3}>
-                <F label="Book No." value={s.number} />
-                <F label="Country" value={s.country} />
-                <F label="Place Issued" value={s.placeIssued} />
-                <F label="Date Issued" value={s.dateIssued} />
-                <F label="Date Expired" value={s.dateExpired || "Unlimited"} />
-              </Grid>
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="06" title="Seaman's Books" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[700px]">
+              <TH
+                headers={[
+                  "Book No.",
+                  "Country",
+                  "Place Issued",
+                  "Date Issued",
+                  "Date Expired",
+                ]}
+                cols={5}
+              />
+              {seamans.items.map((s, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
+                >
+                  <TC value={s.number} />
+                  <TC value={s.country} />
+                  <TC value={s.placeIssued} />
+                  <TC value={s.dateIssued} />
+                  <TC value={s.dateExpired || "Unlimited"} />
+                </div>
+              ))}
             </div>
-          ))}
-        </Sec>
+          </div>
+        </div>
       )}
 
-      {/* ── 10 VISAS ──────────────────────────────────────────────── */}
-      {visas.items.filter((i) => i.number).length > 0 && (
-        <Sec n="10" title="Visas" icon={Globe}>
-          {visas.items.map((v, i) => (
-            <div key={i}>
-              <RecordBadge i={i} total={visas.items.length} />
-              <Grid cols={3}>
-                <F label="Country" value={v.country} />
-                <F label="Visa Type" value={v.visaType} />
-                <F label="Visa No." value={v.number} />
-                <F label="Place Issued" value={v.placeIssued} />
-                <F label="Date Issued" value={v.dateIssued} />
-                <F label="Date Expired" value={v.dateExpired} />
-              </Grid>
+      {/* ── 07 VISAS ────────────────────────────────────────────── */}
+      {visas.items.filter((i) => i.number || i.visaType).length > 0 && (
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="07" title="Visas" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[900px]">
+              <TH
+                headers={[
+                  "Country",
+                  "Visa Type",
+                  "Visa No.",
+                  "Place Issued",
+                  "Date Issued",
+                  "Date Expired",
+                ]}
+                cols={6}
+              />
+              {visas.items.map((v, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
+                >
+                  <TC value={v.country} />
+                  <TC value={v.visaType} />
+                  <TC value={v.number} />
+                  <TC value={v.placeIssued} />
+                  <TC value={v.dateIssued} />
+                  <TC value={v.dateExpired} />
+                </div>
+              ))}
             </div>
-          ))}
-        </Sec>
+          </div>
+        </div>
       )}
 
-      {/* ── 13 SEA EXPERIENCE ─────────────────────────────────────── */}
+      {/* ── 08 SEA EXPERIENCE ───────────────────────────────────── */}
       {seaExp.items.filter((i) => i.vesselName).length > 0 && (
-        <Sec n="13" title="Sea Service Record" icon={Ship}>
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
+          <Sec n="08" title="Sea Service Record" />
           {seaExp.items.map((s, i) => (
             <div key={i}>
-              <RecordBadge i={i} total={seaExp.items.length} />
-              <div className="space-y-4">
-                <Grid cols={3}>
-                  <F label="Vessel Name" value={s.vesselName} />
-                  <F label="Flag" value={s.flag} />
-                  <F label="Vessel Type" value={s.vesselType} />
-                  <F label="GRT" value={s.grt} />
-                  <F label="Engine Type" value={s.engineType} />
-                  <F label="Engine KW" value={s.engineKW} />
-                </Grid>
-                <Grid cols={2}>
-                  <F label="Shipping Company" value={s.company} />
-                  <F label="Rank" value={s.rank} />
-                  <F label="Period From" value={s.periodFrom} />
-                  <F
-                    label="Period To"
-                    value={s.periodTo || "Present (On Board)"}
-                  />
-                </Grid>
-                {s.jobDescription && (
+              <RecLabel i={i} total={seaExp.items.length} />
+              <G cols={3}>
+                <F label="Vessel Name" value={s.vesselName} />
+                <F label="Flag" value={s.flag} />
+                <F label="Vessel Type" value={s.vesselType} />
+                <F label="GRT" value={s.grt} />
+                <F label="Engine Type" value={s.engineType} />
+                <F label="Engine KW" value={s.engineKW} />
+              </G>
+              <G cols={4}>
+                <F label="Shipping Company" value={s.company} />
+                <F label="Rank" value={s.rank} />
+                <F label="Period From" value={s.periodFrom} />
+                <F
+                  label="Period To"
+                  value={s.periodTo || "Present"}
+                />
+              </G>
+              {s.jobDescription && (
+                <G cols={1}>
                   <F
                     label="Job Description / Remarks"
                     value={s.jobDescription}
+                    span
                   />
-                )}
-              </div>
+                </G>
+              )}
             </div>
           ))}
-        </Sec>
+        </div>
       )}
 
-      {/* ── DOCUMENTS ─────────────────────────────────────────────── */}
-      <Sec n="14" title="Uploaded Documents" icon={FileText}>
-        <div className="space-y-2">
+      {/* ── 09 DOCUMENTS ────────────────────────────────────────── */}
+      <div className="p-4 border-t border-gray-100 dark:border-white/5">
+        <Sec n="09" title="Uploaded Documents" />
+
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden mt-1">
           <DocRow
             label="Profile Photo"
             file={scalar.profilePhoto}
@@ -424,17 +539,19 @@ export default function DynamicReview({
             existingUrl={existingResume?.fileUrl}
             existingName={existingResume?.fileName}
           />
-          {extraDocs.items.map((doc, i) => (
-            <DocRow
-              key={i}
-              label={doc.name || `Document ${i + 1}`}
-              file={doc.file}
-              existingUrl={doc._fileUrl}
-              existingName={doc._fileName}
-            />
-          ))}
+          {extraDocs.items
+            .filter((doc) => doc.name || doc.file || doc._fileUrl)
+            .map((doc, i) => (
+              <DocRow
+                key={i}
+                label={doc.name || `Document ${i + 1}`}
+                file={doc.file}
+                existingUrl={doc._fileUrl}
+                existingName={doc._fileName}
+              />
+            ))}
         </div>
-      </Sec>
+      </div>
     </div>
   );
 }
@@ -455,32 +572,34 @@ function DocRow({
   const hasExisting = !!existingUrl;
 
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-white/5 last:border-0">
-      <span className="text-sm text-gray-700 dark:text-white/80">{label}</span>
+    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/5 last:border-0 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+      <span className="text-sm font-medium text-gray-700 dark:text-white/80">
+        {label}
+      </span>
       {hasNewFile ? (
-        // New file selected — show its name in green
         <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 size={13} />
-          <span className="text-[11px] font-semibold">{file!.name} (new)</span>
+          <CheckCircle2 size={14} />
+          <span className="text-xs font-semibold">{file!.name}</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            (new)
+          </span>
         </div>
       ) : hasExisting ? (
-        // No new file but existing file present — show existing in blue
         <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400">
-          <CheckCircle2 size={13} />
+          <Download size={14} />
           <a
             href={existingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] font-semibold hover:underline"
+            className="text-xs font-semibold hover:underline"
           >
             {existingName || "Existing file"}
           </a>
         </div>
       ) : (
-        // No file at all
         <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
-          <XCircle size={13} />
-          <span className="text-[11px]">Not attached</span>
+          <XCircle size={14} />
+          <span className="text-xs">Not attached</span>
         </div>
       )}
     </div>

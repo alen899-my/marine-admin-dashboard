@@ -47,9 +47,26 @@ export default function SimpleDatePicker({
     onChange?.(iso);
   };
 
+  const labelStr = typeof label === 'string' ? label : '';
+  const hasAsterisk = labelStr.includes('*');
+
+  const borderClasses = error
+    ? 'border-error-500 focus:ring-error-500/10 dark:border-gray-700 dark:focus:border-brand-800'
+    : 'border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-800';
+
   return (
     <div>
-      {label && <Label htmlFor={id}>{label}</Label>}
+      {label && (
+        <Label htmlFor={id}>
+          {hasAsterisk ? (
+            <>
+              {labelStr.replace('*', '').trim()} <span className="text-error-500">*</span>
+            </>
+          ) : (
+            label
+          )}
+        </Label>
+      )}
       <div className="relative">
         <input
           id={id}
@@ -60,16 +77,15 @@ export default function SimpleDatePicker({
           className={`h-11 w-full rounded-lg appearance-none px-4 py-2.5 text-sm shadow-theme-xs
             placeholder:text-gray-400 focus:outline-hidden focus:ring-3
             dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30
-            bg-transparent border border-gray-300 focus:border-brand-300
-            focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-800
-            text-gray-800 dark:[color-scheme:dark] ${className || ""}`}
+            bg-transparent border ${borderClasses}
+            text-gray-800 dark:[color-scheme:dark] ${className || ''}`}
         />
         <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
           <Calendar className="size-4" />
         </span>
       </div>
       {hint && (
-        <p className={`mt-1.5 text-xs ${error ? "text-error-500" : "text-gray-500"}`}>
+        <p className={`mt-1.5 text-xs ${error ? 'text-error-500' : 'text-gray-500'}`}>
           {hint}
         </p>
       )}

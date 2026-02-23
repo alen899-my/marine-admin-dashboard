@@ -5,50 +5,125 @@ const documentBase = {
   country: Joi.string().required().label("Country").messages({ "string.empty": "{#label} is required" }),
   number: Joi.string().required().label("Licence Number").messages({ "string.empty": "{#label} is required" }),
   placeIssued: Joi.string().allow(""),
-  dateIssued: Joi.date().iso().required().label("Date Issued").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
+  dateIssued: Joi.date().iso().required().label("Date Issued").messages({ "date.format": "{#label} must be a valid date", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
   dateExpired: Joi.date().iso().allow(null, ""),
 };
 
+// Phone number pattern: digits only, optional leading +, 7-15 digits
+const phonePattern = /^[+]?[0-9]{7,15}$/;
+
 export const applicationSchema = Joi.object({
   // Identity & Contact
-  firstName: Joi.string().trim().required().label("First Name").messages({ "string.empty": "{#label} is required" }),
-  lastName: Joi.string().trim().required().label("Last Name").messages({ "string.empty": "{#label} is required" }),
-  rank: Joi.string().required().label("Rank").messages({ "string.empty": "{#label} is required" }),
-  positionApplied: Joi.string().required().label("Position Applied").messages({ "string.empty": "{#label} is required" }),
-  nationality: Joi.string().required().label("Nationality").messages({ "string.empty": "{#label} is required" }),
-  email: Joi.string().email({ tlds: { allow: false } }).lowercase().required().label("Email").messages({ "string.empty": "{#label} is required", "string.email": "Please enter a valid email address" }),
-  cellPhone: Joi.string().required().label("Cell Phone").messages({ "string.empty": "{#label} is required" }),
+  firstName: Joi.string().trim().min(2).max(50).required().label("First Name").messages({
+    "string.empty": "{#label} is required",
+    "string.min": "{#label} must be at least {#limit} characters",
+    "string.max": "{#label} must not exceed {#limit} characters",
+  }),
+  lastName: Joi.string().trim().min(1).max(50).required().label("Last Name").messages({
+    "string.empty": "{#label} is required",
+    "string.min": "{#label} must be at least {#limit} characters",
+    "string.max": "{#label} must not exceed {#limit} characters",
+  }),
+  rank: Joi.string().trim().required().label("Rank").messages({
+    "string.empty": "{#label} is required",
+  }),
+  positionApplied: Joi.string().trim().required().label("Position Applied").messages({
+    "string.empty": "{#label} is required",
+  }),
+  nationality: Joi.string().trim().required().label("Nationality").messages({
+    "string.empty": "{#label} is required",
+  }),
+  email: Joi.string().email({ tlds: { allow: false } }).lowercase().required().label("Email").messages({
+    "string.empty": "{#label} is required",
+    "string.email": "Please enter a valid email address (e.g. name@example.com)",
+  }),
+  cellPhone: Joi.string().trim().pattern(phonePattern).required().label("Cell Phone").messages({
+    "string.empty": "{#label} is required",
+    "string.pattern.base": "{#label} must contain only digits (7-15 digits), optionally starting with +",
+  }),
   
   // Personal Details
-  dateOfBirth: Joi.date().iso().required().label("Date of Birth").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
-  dateOfAvailability: Joi.date().iso().required().label("Date of Availability").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
-  presentAddress: Joi.string().required().label("Present Address").messages({ "string.empty": "{#label} is required" }),
+  dateOfBirth: Joi.date().iso().required().label("Date of Birth").messages({
+    "date.format": "{#label} must be a valid date",
+    "date.base": "{#label} is required",
+    "any.required": "{#label} is required",
+    "date.empty": "{#label} is required",
+  }),
+  dateOfAvailability: Joi.date().iso().required().label("Date of Availability").messages({
+    "date.format": "{#label} must be a valid date",
+    "date.base": "{#label} is required",
+    "any.required": "{#label} is required",
+    "date.empty": "{#label} is required",
+  }),
+  presentAddress: Joi.string().trim().min(5).required().label("Present Address").messages({
+    "string.empty": "{#label} is required",
+    "string.min": "{#label} must be at least {#limit} characters",
+  }),
   
   // Physicals
-  weightKg: Joi.number().min(20).max(250).required().label("Weight").messages({ "number.base": "{#label} is required" }),
-  heightCm: Joi.number().min(50).max(250).required().label("Height").messages({ "number.base": "{#label} is required" }),
-  coverallSize: Joi.string().required().label("Coverall Size").messages({ "string.empty": "{#label} is required" }),
-  shoeSize: Joi.string().required().label("Shoe Size").messages({ "string.empty": "{#label} is required" }),
-  hairColor: Joi.string().required().label("Hair Color").messages({ "string.empty": "{#label} is required" }),
-  eyeColor: Joi.string().required().label("Eye Color").messages({ "string.empty": "{#label} is required" }),
+  weightKg: Joi.number().min(20).max(250).required().label("Weight").messages({
+    "number.base": "{#label} must be a valid number",
+    "number.min": "{#label} must be at least {#limit} kg",
+    "number.max": "{#label} must not exceed {#limit} kg",
+    "any.required": "{#label} is required",
+  }),
+  heightCm: Joi.number().min(50).max(250).required().label("Height").messages({
+    "number.base": "{#label} must be a valid number",
+    "number.min": "{#label} must be at least {#limit} cm",
+    "number.max": "{#label} must not exceed {#limit} cm",
+    "any.required": "{#label} is required",
+  }),
+  coverallSize: Joi.string().trim().required().label("Coverall Size").messages({
+    "string.empty": "{#label} is required",
+  }),
+  shoeSize: Joi.string().trim().required().label("Shoe Size").messages({
+    "string.empty": "{#label} is required",
+  }),
+  hairColor: Joi.string().trim().required().label("Hair Color").messages({
+    "string.empty": "{#label} is required",
+  }),
+  eyeColor: Joi.string().trim().required().label("Eye Color").messages({
+    "string.empty": "{#label} is required",
+  }),
   
   // Medicals
-  medicalCertIssuedDate: Joi.date().iso().required().label("Medical Certificate Issued Date").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
-  medicalCertExpiredDate: Joi.date().iso().required().label("Medical Certificate Expiration Date").messages({ "date.format": "{#label} is required", "date.base": "{#label} is required", "any.required": "{#label} is required", "date.empty": "{#label} is required" }),
+  medicalCertIssuedDate: Joi.date().iso().required().label("Medical Certificate Issued Date").messages({
+    "date.format": "{#label} must be a valid date",
+    "date.base": "{#label} is required",
+    "any.required": "{#label} is required",
+    "date.empty": "{#label} is required",
+  }),
+  medicalCertExpiredDate: Joi.date().iso().required().label("Medical Certificate Expiration Date").messages({
+    "date.format": "{#label} must be a valid date",
+    "date.base": "{#label} is required",
+    "any.required": "{#label} is required",
+    "date.empty": "{#label} is required",
+  }),
 
   // Next of Kin
   nextOfKin: Joi.object({
-    name: Joi.string().required().label("Next of Kin Name").messages({ "string.empty": "{#label} is required" }),
-    relationship: Joi.string().required().label("Relationship").messages({ "string.empty": "{#label} is required" }),
-    phone: Joi.string().required().label("NOK Phone").messages({ "string.empty": "{#label} is required" }),
-    address: Joi.string().required().label("NOK Address").messages({ "string.empty": "{#label} is required" }),
+    name: Joi.string().trim().min(2).required().label("Next of Kin Name").messages({
+      "string.empty": "{#label} is required",
+      "string.min": "{#label} must be at least {#limit} characters",
+    }),
+    relationship: Joi.string().trim().required().label("Relationship").messages({
+      "string.empty": "{#label} is required",
+    }),
+    phone: Joi.string().trim().pattern(phonePattern).required().label("NOK Phone").messages({
+      "string.empty": "{#label} is required",
+      "string.pattern.base": "{#label} must contain only digits (7-15 digits), optionally starting with +",
+    }),
+    address: Joi.string().trim().min(5).required().label("NOK Address").messages({
+      "string.empty": "{#label} is required",
+      "string.min": "{#label} must be at least {#limit} characters",
+    }),
   }).required(),
 
   // Sub-Documents (Arrays)
   licences: Joi.array().items(Joi.object({
     ...documentBase,
     licenceType: Joi.string().valid("coc", "coe").required(),
-    grade: Joi.string().required().label("Grade of Licence").messages({ "string.empty": "{#label} is required" }),
+    grade: Joi.string().trim().required().label("Grade of Licence").messages({ "string.empty": "{#label} is required" }),
   })).min(1).messages({ "array.min": "At least one CoC/CoE Licence is required" }),
 
   passports: Joi.array().items(Joi.object({
@@ -68,7 +143,7 @@ export const applicationSchema = Joi.object({
 
   // Sea Experience
 seaExperience: Joi.array().items(Joi.object({
-  vesselName: Joi.string().required().label("Vessel Name").messages({
+  vesselName: Joi.string().trim().required().label("Vessel Name").messages({
     "string.empty": "{#label} is required",
     "any.required": "{#label} is required",
   }),
@@ -88,11 +163,11 @@ seaExperience: Joi.array().items(Joi.object({
   engineKW: Joi.alternatives().try(Joi.number(), Joi.string().allow("")).optional().label("Engine KW").messages({
     "alternatives.match": "Engine KW must be a valid number",
   }),
-  company: Joi.string().required().label("Shipping Company").messages({
+  company: Joi.string().trim().required().label("Shipping Company").messages({
     "string.empty": "{#label} is required",
     "any.required": "{#label} is required",
   }),
-  rank: Joi.string().required().label("Rank").messages({
+  rank: Joi.string().trim().required().label("Rank").messages({
     "string.empty": "{#label} is required",
     "any.required": "{#label} is required",
   }),
@@ -109,9 +184,7 @@ seaExperience: Joi.array().items(Joi.object({
   jobDescription: Joi.string().allow("").optional().label("Job Description").messages({
     "string.base": "Job Description must be a text value",
   }),
-})).min(1).messages({
-  "array.min": "At least one Sea Experience entry is required",
-}),
+})).optional(),
 
   // System Fields (Required for Action)
   company: Joi.string().required(),
