@@ -2862,16 +2862,17 @@ export default function CrewApplicationForm({
                     </FormGrid>
                     <FormGrid cols={3}>
                       <Input
-                        label="GRT"
-                        placeholder="e.g. 5103"
-                        type="number"
-                        value={item.grt}
-                        onChange={(e) =>
-                          seaExp.update(idx, "grt", e.target.value)
-                        }
-                        error={!!validationErrors[`seaExperience.${idx}.grt`]}
-                        hint={validationErrors[`seaExperience.${idx}.grt`]}
-                      />
+  label="GRT"
+  placeholder="e.g. 5103"
+  type="text"
+  value={item.grt}
+  onChange={(e) => {
+    const cleaned = e.target.value.replace(/[^\d.]/g, "");
+    seaExp.update(idx, "grt", cleaned);
+  }}
+  error={!!validationErrors[`seaExperience.${idx}.grt`]}
+  hint={validationErrors[`seaExperience.${idx}.grt`] || ""}
+/>
                       <Input
                         label="Engine Type"
                         placeholder="e.g. MAK 6M 552C"
@@ -2887,18 +2888,17 @@ export default function CrewApplicationForm({
                         }
                       />
                       <Input
-                        label="Engine KW"
-                        placeholder="e.g. 4563"
-                        type="number"
-                        value={item.engineKW}
-                        onChange={(e) =>
-                          seaExp.update(idx, "engineKW", e.target.value)
-                        }
-                        error={
-                          !!validationErrors[`seaExperience.${idx}.engineKW`]
-                        }
-                        hint={validationErrors[`seaExperience.${idx}.engineKW`]}
-                      />
+  label="Engine KW"
+  placeholder="e.g. 4563"
+  type="text"
+  value={item.engineKW}
+  onChange={(e) => {
+    const cleaned = e.target.value.replace(/[^\d.]/g, "");
+    seaExp.update(idx, "engineKW", cleaned);
+  }}
+  error={!!validationErrors[`seaExperience.${idx}.engineKW`]}
+  hint={validationErrors[`seaExperience.${idx}.engineKW`] || ""}
+/>
                     </FormGrid>
                     <FormGrid cols={2}>
                       <Input

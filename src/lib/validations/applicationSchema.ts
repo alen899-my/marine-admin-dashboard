@@ -39,7 +39,7 @@ export const applicationSchema = Joi.object({
   }),
   cellPhone: Joi.string().trim().pattern(phonePattern).required().label("Cell Phone").messages({
     "string.empty": "{#label} is required",
-    "string.pattern.base": "{#label} must contain only digits (7-15 digits), optionally starting with +",
+    "string.pattern.base": "{#label} must contain only digits (7-15 digits)",
   }),
   
   // Personal Details
@@ -111,7 +111,7 @@ export const applicationSchema = Joi.object({
     }),
     phone: Joi.string().trim().pattern(phonePattern).required().label("NOK Phone").messages({
       "string.empty": "{#label} is required",
-      "string.pattern.base": "{#label} must contain only digits (7-15 digits), optionally starting with +",
+      "string.pattern.base": "{#label} must contain only digits (7-15 digits)",
     }),
     address: Joi.string().trim().min(5).required().label("NOK Address").messages({
       "string.empty": "{#label} is required",

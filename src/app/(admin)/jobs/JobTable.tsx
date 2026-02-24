@@ -85,7 +85,7 @@ export default function JobTable({ data, pagination }: JobTableProps) {
       render: (a: Application) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {a.lastName}, {a.firstName}
+          {a.firstName} {a.lastName}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
             <span>{a.email}</span>
