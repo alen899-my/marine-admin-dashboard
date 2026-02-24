@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import SimpleDatePicker from "@/components/form/new-datepicker";
 import { Download } from "lucide-react";
 import Badge from "../ui/badge/Badge";
+import ConfirmModal from "@/components/modal/ConfirmModal";
 
 // ─────────────────────────────────────────────────────────────────
 // MODE TYPE
@@ -427,58 +428,6 @@ const VESSEL_TYPE_OPTIONS = [
 // VIEW-MODE FIELD COMPONENT
 // ─────────────────────────────────────────────────────────────────
 
-function ViewField({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {label}
-      </span>
-      <span className="text-sm text-gray-900 dark:text-gray-100 break-words">
-        {value || (
-          <span className="text-gray-400 dark:text-gray-600 italic">—</span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function ViewGrid({
-  children,
-  cols = 2,
-}: {
-  children: React.ReactNode;
-  cols?: number;
-}) {
-  const colMap: Record<number, string> = {
-    1: "grid-cols-1",
-    2: "grid-cols-1 sm:grid-cols-2",
-    3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-  };
-  return (
-    <div className={`grid ${colMap[cols] ?? colMap[2]} gap-x-6 gap-y-4`}>
-      {children}
-    </div>
-  );
-}
-
-function ViewCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
-        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          {title}
-        </h4>
-      </div>
-      <div className="px-5 py-4">{children}</div>
-    </div>
-  );
-}
 
 function formatDate(val?: string | null) {
   if (!val) return undefined;
@@ -665,14 +614,66 @@ export default function CrewApplicationForm({
   const CACHE_KEY = `crew_draft_${companyId}`;
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-
-
   const clearDraftCache = useCallback(() => {
-    try { localStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(CACHE_KEY);
+    } catch {
+      /* ignore */
+    }
   }, [CACHE_KEY]);
 
   const handleReset = useCallback(() => {
-    if (!window.confirm("Are you sure you want to reset the form? All unsaved data will be lost.")) return;
+    setIsResetModalOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<number[]>(() =>
+    isEdit ? STEPS.map((s) => s.id) : [],
+  );
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+
+  // ── Scalar state
+  const [scalar, setScalar] = useState<ScalarState>(() =>
+    initialData ? dataToScalar(initialData) : initialScalar,
+  );
+  const setField = <K extends keyof ScalarState>(
+    key: K,
+    value: ScalarState[K],
+  ) => setScalar((prev) => ({ ...prev, [key]: value }));
+  const txt =
+    (key: keyof ScalarState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setField(key, e.target.value as ScalarState[typeof key]);
+
+  // ── Array states
+  const coc = useArray<LicenceItem>([emptyLicence()]);
+  const coe = useArray<LicenceItem>([emptyLicence()]);
+  const passports = useArray<PassportItem>([emptyPassport()]);
+  const seamans = useArray<SeamansBookItem>([emptySeaman()]);
+  const visas = useArray<VisaItem>([emptyVisa()]);
+  const endorsements = useArray<EndorsementItem>([emptyEndorse()]);
+  const stcw = useArray<CertificateItem>([emptyCert()]);
+  const otherCerts = useArray<CertificateItem>([]);
+  const seaExp = useArray<SeaExperienceItem>([emptySeaExp()]);
+  // Extra docs type with support for storing existing file info
+  const extraDocs = useArray<{
+    name: string;
+    file: File | null;
+    _fileUrl?: string;
+    _fileName?: string;
+  }>([
+    { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
+    { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
+  ]);
+
+  // ── Confirm reset handler (must be after array hooks)
+  const confirmReset = useCallback(() => {
     clearDraftCache();
     setScalar(initialScalar);
     setCurrentStep(1);
@@ -698,52 +699,9 @@ export default function CrewApplicationForm({
     }, 0);
     toast.success("Form has been reset.");
     window.scrollTo({ top: 0, behavior: "smooth" });
+    setIsResetModalOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearDraftCache]);
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState<number[]>(() =>
-    isEdit ? STEPS.map((s) => s.id) : [],
-  );
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
-
-  // ── Scalar state
-  const [scalar, setScalar] = useState<ScalarState>(() =>
-    initialData ? dataToScalar(initialData) : initialScalar,
-  );
-  const setField = <K extends keyof ScalarState>(
-    key: K,
-    value: ScalarState[K],
-  ) => setScalar((prev) => ({ ...prev, [key]: value }));
-  const txt =
-    (key: keyof ScalarState) =>
-      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        setField(key, e.target.value as ScalarState[typeof key]);
-
-  // ── Array states
-  const coc = useArray<LicenceItem>([emptyLicence()]);
-  const coe = useArray<LicenceItem>([emptyLicence()]);
-  const passports = useArray<PassportItem>([emptyPassport()]);
-  const seamans = useArray<SeamansBookItem>([emptySeaman()]);
-  const visas = useArray<VisaItem>([emptyVisa()]);
-  const endorsements = useArray<EndorsementItem>([emptyEndorse()]);
-  const stcw = useArray<CertificateItem>([emptyCert()]);
-  const otherCerts = useArray<CertificateItem>([]);
-  const seaExp = useArray<SeaExperienceItem>([emptySeaExp()]);
-  // Extra docs type with support for storing existing file info
-  const extraDocs = useArray<{
-    name: string;
-    file: File | null;
-    _fileUrl?: string;
-    _fileName?: string;
-  }>([
-    { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
-    { name: "", file: null, _fileUrl: undefined, _fileName: undefined },
-  ]);
 
   // ── Restore cached draft on mount (create mode only)
   useEffect(() => {
@@ -758,7 +716,12 @@ export default function CrewApplicationForm({
       }
       // Restore state
       if (cached.scalar) {
-        setScalar((prev) => ({ ...prev, ...cached.scalar, profilePhoto: null, resume: null }));
+        setScalar((prev) => ({
+          ...prev,
+          ...cached.scalar,
+          profilePhoto: null,
+          resume: null,
+        }));
       }
       if (cached.coc?.length) coc.reset(cached.coc);
       if (cached.coe?.length) coe.reset(cached.coe);
@@ -769,11 +732,17 @@ export default function CrewApplicationForm({
       if (cached.stcw?.length) stcw.reset(cached.stcw);
       if (cached.otherCerts?.length) otherCerts.reset(cached.otherCerts);
       if (cached.seaExp?.length) seaExp.reset(cached.seaExp);
-      if (cached.extraDocs?.length) extraDocs.reset(cached.extraDocs.map((d: any) => ({ ...d, file: null })));
+      if (cached.extraDocs?.length)
+        extraDocs.reset(
+          cached.extraDocs.map((d: any) => ({ ...d, file: null })),
+        );
       if (cached.currentStep) setCurrentStep(cached.currentStep);
-      if (cached.completedSteps?.length) setCompletedSteps(cached.completedSteps);
+      if (cached.completedSteps?.length)
+        setCompletedSteps(cached.completedSteps);
       toast.info("Draft restored from your last session.");
-    } catch { /* ignore parse errors */ }
+    } catch {
+      /* ignore parse errors */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -974,7 +943,13 @@ export default function CrewApplicationForm({
     } else if (currentStep === 9) {
       // Sea Experience - optional, only validate filled entries
       seaExp.items.forEach((item, idx) => {
-        if (item.vesselName || item.vesselType || item.company || item.rank || item.periodFrom) {
+        if (
+          item.vesselName ||
+          item.vesselType ||
+          item.company ||
+          item.rank ||
+          item.periodFrom
+        ) {
           validateJoi(
             applicationSchema.extract("seaExperience").$_terms.items[0],
             item,
@@ -984,25 +959,30 @@ export default function CrewApplicationForm({
       });
     } else if (currentStep === 10) {
       const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-      const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
-      const ALLOWED_DOC_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg"];
+      const ALLOWED_DOC_TYPES = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
 
       if (scalar.profilePhoto && scalar.profilePhoto instanceof File) {
         if (scalar.profilePhoto.size > MAX_FILE_SIZE) {
           isValid = false;
-          errors['profilePhoto'] = 'Profile photo must be less than 2MB';
+          errors["profilePhoto"] = "Profile photo must be less than 2MB";
         } else if (!ALLOWED_IMAGE_TYPES.includes(scalar.profilePhoto.type)) {
           isValid = false;
-          errors['profilePhoto'] = 'Profile photo must be JPG or PNG format';
+          errors["profilePhoto"] = "Profile photo must be JPG or PNG format";
         }
       }
       if (scalar.resume && scalar.resume instanceof File) {
         if (scalar.resume.size > MAX_FILE_SIZE) {
           isValid = false;
-          errors['resume'] = 'Resume must be less than 2MB';
+          errors["resume"] = "Resume must be less than 2MB";
         } else if (!ALLOWED_DOC_TYPES.includes(scalar.resume.type)) {
           isValid = false;
-          errors['resume'] = 'Resume must be PDF or Word document (.doc, .docx)';
+          errors["resume"] =
+            "Resume must be PDF or Word document (.doc, .docx)";
         }
       }
     }
@@ -1040,7 +1020,9 @@ export default function CrewApplicationForm({
           extraDocs: extraDocs.items.map(({ file, ...rest }) => rest),
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(draft));
-      } catch { /* localStorage may be unavailable */ }
+      } catch {
+        /* localStorage may be unavailable */
+      }
     }
 
     setCurrentStep((p) => Math.min(p + 1, STEPS.length));
@@ -1054,7 +1036,9 @@ export default function CrewApplicationForm({
     if (stepId <= maxCompleted + 1) setCurrentStep(stepId);
   };
 
-  // ── Submit (create or edit)
+ 
+  
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -1250,16 +1234,15 @@ export default function CrewApplicationForm({
           {label}
         </p>
         <p className="text-sm text-gray-800 dark:text-white/90 break-words leading-snug">
-          {value ?? (
-            <span className="text-gray-300 dark:text-gray-600">—</span>
-          )}
+          {value ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
         </p>
       </div>
     );
 
     // Bordered grid — cells share borders (no gap, borders collapse)
     const G2 = ({ children }: { children: React.ReactNode }) => (
-      <div className="
+      <div
+        className="
     grid 
     grid-cols-1
     sm:grid-cols-2
@@ -1267,7 +1250,8 @@ export default function CrewApplicationForm({
     border-l border-t border-gray-300 dark:border-white/15
     [&>*]:border-r [&>*]:border-b
     [&>*]:border-gray-300 dark:[&>*]:border-white/15
-  ">
+  "
+      >
         {children}
       </div>
     );
@@ -1296,12 +1280,7 @@ export default function CrewApplicationForm({
           Record {i + 1}
         </div>
       );
-    type StatusColor =
-      | "default"
-      | "info"
-      | "warning"
-      | "success"
-      | "error";
+    type StatusColor = "default" | "info" | "warning" | "success" | "error";
 
     const statusMap: Record<string, { color: StatusColor; label: string }> = {
       draft: { color: "default", label: "Draft" },
@@ -1320,7 +1299,6 @@ export default function CrewApplicationForm({
         {/* ── PROFILE HEADER ─────────────────────────────────────────────── */}
         <div className="p-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-
             {/* Photo */}
             <div className="shrink-0">
               {d.profilePhoto ? (
@@ -1340,7 +1318,6 @@ export default function CrewApplicationForm({
 
             {/* Info */}
             <div className="flex flex-1 flex-col gap-2">
-
               {/* Name */}
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                 {d.firstName} {d.lastName}
@@ -1348,20 +1325,18 @@ export default function CrewApplicationForm({
 
               {/* Meta line */}
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {[d.rank, d.positionApplied, d.nationality].filter(Boolean).join(" · ")}
+                {[d.rank, d.positionApplied, d.nationality]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
 
               {/* Tags */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
-
-                {d.status && (() => {
-                  const config = statusMap[d.status] ?? statusMap.draft;
-                  return (
-                    <Badge color={config.color}>
-                      {config.label}
-                    </Badge>
-                  );
-                })()}
+                {d.status &&
+                  (() => {
+                    const config = statusMap[d.status] ?? statusMap.draft;
+                    return <Badge color={config.color}>{config.label}</Badge>;
+                  })()}
                 {/* Email */}
                 {d.email && (
                   <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -1444,7 +1419,10 @@ export default function CrewApplicationForm({
               <G3>
                 <SubTitle title="Next of Kin" />
                 <F label="Name" value={d.nextOfKin.name || "—"} />
-                <F label="Relationship" value={d.nextOfKin.relationship || "—"} />
+                <F
+                  label="Relationship"
+                  value={d.nextOfKin.relationship || "—"}
+                />
                 <F label="Phone" value={d.nextOfKin.phone || "—"} />
                 <F label="Address" value={d.nextOfKin.address || "—"} />
               </G3>
@@ -1458,7 +1436,6 @@ export default function CrewApplicationForm({
 
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
-
               {/* header */}
               <div className="grid grid-cols-4 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {[
@@ -1483,7 +1460,6 @@ export default function CrewApplicationForm({
                 <F label="" value={formatDate(d.dateOfAvailability) || "—"} />
                 <F label="" value={d.availabilityNote || "—"} />
               </div>
-
             </div>
           </div>
         </div>
@@ -1495,7 +1471,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[1000px]">
-
                 {/* header */}
                 <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1526,7 +1501,10 @@ export default function CrewApplicationForm({
                     <F label="" value={l.number || "—"} />
                     <F label="" value={l.placeIssued || "—"} />
                     <F label="" value={formatDate(l.dateIssued) || "—"} />
-                    <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
+                    <F
+                      label=""
+                      value={formatDate(l.dateExpired) || "Unlimited"}
+                    />
                   </div>
                 ))}
               </div>
@@ -1540,7 +1518,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[1000px]">
-
                 {/* header */}
                 <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1571,7 +1548,10 @@ export default function CrewApplicationForm({
                     <F label="" value={l.number || "—"} />
                     <F label="" value={l.placeIssued || "—"} />
                     <F label="" value={formatDate(l.dateIssued) || "—"} />
-                    <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
+                    <F
+                      label=""
+                      value={formatDate(l.dateExpired) || "Unlimited"}
+                    />
                   </div>
                 ))}
               </div>
@@ -1585,7 +1565,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-
                 {/* header */}
                 <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1628,7 +1607,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-
                 {/* header */}
                 <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1657,7 +1635,10 @@ export default function CrewApplicationForm({
                     <F label="" value={s.country || "—"} />
                     <F label="" value={s.placeIssued || "—"} />
                     <F label="" value={formatDate(s.dateIssued) || "—"} />
-                    <F label="" value={formatDate(s.dateExpired) || "Unlimited"} />
+                    <F
+                      label=""
+                      value={formatDate(s.dateExpired) || "Unlimited"}
+                    />
                   </div>
                 ))}
               </div>
@@ -1672,7 +1653,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[1000px]">
-
                 {/* header */}
                 <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1718,7 +1698,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-
                 {/* header */}
                 <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1765,7 +1744,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-
                 {/* header */}
                 <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1805,7 +1783,6 @@ export default function CrewApplicationForm({
           </div>
         )}
 
-
         {/* ── 12b OTHER CERTIFICATES ────────────────────────────────────── */}
         {(d.otherCertificates?.length ?? 0) > 0 && (
           <div className="p-4">
@@ -1813,7 +1790,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-
                 {/* header */}
                 <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1860,7 +1836,6 @@ export default function CrewApplicationForm({
 
             <div className="overflow-x-auto">
               <div className="min-w-[1100px]">
-
                 {/* header row */}
                 <div className="grid grid-cols-11 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {[
@@ -1939,7 +1914,9 @@ export default function CrewApplicationForm({
                     <Download className="h-3 w-3" />
                     {d.resume.fileName ?? "View Resume"}
                   </a>
-                ) : "—"
+                ) : (
+                  "—"
+                )
               }
             />
 
@@ -1960,7 +1937,9 @@ export default function CrewApplicationForm({
                         <Download className="h-3 w-3" />
                         {doc.fileName ?? "View File"}
                       </a>
-                    ) : "Not uploaded"
+                    ) : (
+                      "Not uploaded"
+                    )
                   }
                 />
               ))
@@ -1981,11 +1960,7 @@ export default function CrewApplicationForm({
     <MultiStepFormLayout
       steps={STEPS}
       currentStep={currentStep}
-      pageTitle={
-        isEdit
-          ? "Edit Crew Application"
-          : "Crew Application Form"
-      }
+      pageTitle={isEdit ? "Edit Crew Application" : "Crew Application Form"}
       pageSubtitle={
         isEdit
           ? "Update the application details below."
@@ -2589,7 +2564,8 @@ export default function CrewApplicationForm({
         {currentStep === 6 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              If you hold any valid visas, please enter them below. This step is optional — you can skip it if you don&apos;t have any visas.
+              If you hold any valid visas, please enter them below. This step is
+              optional — you can skip it if you don&apos;t have any visas.
             </p>
             {visas.items.map((item, idx) => (
               <RepeatCard
@@ -2737,7 +2713,9 @@ export default function CrewApplicationForm({
         {currentStep === 8 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              If you have any training certificates (STCW or other), please add them below. This step is optional — you can skip it if you don&apos;t have any.
+              If you have any training certificates (STCW or other), please add
+              them below. This step is optional — you can skip it if you
+              don&apos;t have any.
             </p>
             <FormSection>
               <div className="space-y-4">
@@ -2809,7 +2787,8 @@ export default function CrewApplicationForm({
         {currentStep === 9 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              If you have sea experience, please add all your records below. You can add multiple entries. This step is optional.
+              If you have sea experience, please add all your records below. You
+              can add multiple entries. This step is optional.
             </p>
             <div className="space-y-4">
               {seaExp.items.map((item, idx) => (
@@ -2862,17 +2841,19 @@ export default function CrewApplicationForm({
                     </FormGrid>
                     <FormGrid cols={3}>
                       <Input
-  label="GRT"
-  placeholder="e.g. 5103"
-  type="text"
-  value={item.grt}
-  onChange={(e) => {
-    const cleaned = e.target.value.replace(/[^\d.]/g, "");
-    seaExp.update(idx, "grt", cleaned);
-  }}
-  error={!!validationErrors[`seaExperience.${idx}.grt`]}
-  hint={validationErrors[`seaExperience.${idx}.grt`] || ""}
-/>
+                        label="GRT"
+                        placeholder="e.g. 5103"
+                        type="text"
+                        value={item.grt}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.replace(/[^\d.]/g, "");
+                          seaExp.update(idx, "grt", cleaned);
+                        }}
+                        error={!!validationErrors[`seaExperience.${idx}.grt`]}
+                        hint={
+                          validationErrors[`seaExperience.${idx}.grt`] || ""
+                        }
+                      />
                       <Input
                         label="Engine Type"
                         placeholder="e.g. MAK 6M 552C"
@@ -2888,17 +2869,22 @@ export default function CrewApplicationForm({
                         }
                       />
                       <Input
-  label="Engine KW"
-  placeholder="e.g. 4563"
-  type="text"
-  value={item.engineKW}
-  onChange={(e) => {
-    const cleaned = e.target.value.replace(/[^\d.]/g, "");
-    seaExp.update(idx, "engineKW", cleaned);
-  }}
-  error={!!validationErrors[`seaExperience.${idx}.engineKW`]}
-  hint={validationErrors[`seaExperience.${idx}.engineKW`] || ""}
-/>
+                        label="Engine KW"
+                        placeholder="e.g. 4563"
+                        type="text"
+                        value={item.engineKW}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.replace(/[^\d.]/g, "");
+                          seaExp.update(idx, "engineKW", cleaned);
+                        }}
+                        error={
+                          !!validationErrors[`seaExperience.${idx}.engineKW`]
+                        }
+                        hint={
+                          validationErrors[`seaExperience.${idx}.engineKW`] ||
+                          ""
+                        }
+                      />
                     </FormGrid>
                     <FormGrid cols={2}>
                       <Input
@@ -2959,12 +2945,12 @@ export default function CrewApplicationForm({
                         }
                         error={
                           !!validationErrors[
-                          `seaExperience.${idx}.jobDescription`
+                            `seaExperience.${idx}.jobDescription`
                           ]
                         }
                         hint={
                           validationErrors[
-                          `seaExperience.${idx}.jobDescription`
+                            `seaExperience.${idx}.jobDescription`
                           ]
                         }
                       />
@@ -2995,7 +2981,8 @@ export default function CrewApplicationForm({
         {currentStep === 10 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Upload your profile photo and resume if available. Additional documents can also be added below. Max file size: 2MB.
+              Upload your profile photo and resume if available. Additional
+              documents can also be added below. Max file size: 2MB.
             </p>
             <FormSection>
               <FormGrid cols={2}>
@@ -3027,9 +3014,7 @@ export default function CrewApplicationForm({
                       {validationErrors.profilePhoto}
                     </p>
                   ) : (
-                    <p className="text-xs text-gray-500">
-                      JPG or PNG, max 2MB
-                    </p>
+                    <p className="text-xs text-gray-500">JPG or PNG, max 2MB</p>
                   )}
                 </div>
 
@@ -3058,9 +3043,13 @@ export default function CrewApplicationForm({
                     </div>
                   )}
                   {validationErrors.resume ? (
-                    <p className="text-xs text-error-500">{validationErrors.resume}</p>
+                    <p className="text-xs text-error-500">
+                      {validationErrors.resume}
+                    </p>
                   ) : (
-                    <p className="text-xs text-gray-500">PDF or Word document, max 2MB</p>
+                    <p className="text-xs text-gray-500">
+                      PDF or Word document, max 2MB
+                    </p>
                   )}
                 </div>
               </FormGrid>
@@ -3184,6 +3173,17 @@ export default function CrewApplicationForm({
           </div>
         )}
       </div>
+
+      {/* Reset Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={confirmReset}
+        title="Reset Form"
+        description="Are you sure you want to reset the form? All unsaved data will be lost."
+        confirmLabel="Reset"
+        variant="warning"
+      />
     </MultiStepFormLayout>
   );
 }
