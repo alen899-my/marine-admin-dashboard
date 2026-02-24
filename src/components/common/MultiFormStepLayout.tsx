@@ -78,7 +78,7 @@ function StepSidebar({
                 ].join(" ")}>
                   Step {step.id}
                 </span>
-                {isCompleted && !isActive && (
+                {isCompleted && (
                   <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-600 shadow-sm ring-1 ring-emerald-700/20">
                     <Check size={14} strokeWidth={3.5} className="text-white" />
                   </div>
@@ -221,19 +221,19 @@ export default function MultiStepFormLayout({
   const current = steps.find((s) => s.id === currentStep);
 
   return (
-    <div
+   <div
       className={
         isPublic
-          ? "h-screen bg-white dark:bg-gray-950 w-full overflow-hidden"
+          ? "min-h-screen bg-gray-100 dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start py-10 sm:py-16 px-4 sm:px-8"
           : "min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4"
       }
     >
-      <div className={isPublic ? "w-full h-full" : ""}>
+      <div className={isPublic ? "w-full max-w-7xl" : ""}>
         {/* MAIN CONTAINER */}
         <div
           className={
             isPublic
-              ? "flex flex-col h-full bg-white dark:bg-gray-900 w-full"
+              ? "flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-md h-[85vh] min-h-[600px]"
               : "flex flex-col overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
           }
         >

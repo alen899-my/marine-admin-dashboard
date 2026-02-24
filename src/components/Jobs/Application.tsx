@@ -2807,7 +2807,7 @@ export default function CrewApplicationForm({
             STEP 9 — SEA EXPERIENCE
         ═══════════════════════════════════════════════════════ */}
         {currentStep === 9 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               If you have sea experience, please add all your records below. You can add multiple entries. This step is optional.
             </p>

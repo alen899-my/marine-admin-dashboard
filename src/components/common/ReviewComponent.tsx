@@ -37,10 +37,9 @@ function displayVal(v: any): string {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PRIMITIVES — matching the view-mode government-form style
+// PRIMITIVES
 // ─────────────────────────────────────────────────────────────────
 
-// Section heading with numbered badge
 const Sec = ({ n, title }: { n: string; title: string }) => (
   <div className="flex items-center gap-2 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-3 py-2 mb-0">
     <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
@@ -52,7 +51,6 @@ const Sec = ({ n, title }: { n: string; title: string }) => (
   </div>
 );
 
-// Bordered field cell
 const F = ({
   label,
   value,
@@ -67,9 +65,11 @@ const F = ({
     <div
       className={`border border-gray-300 dark:border-white/15 px-2.5 py-1.5 min-w-0 ${span ? "col-span-full" : ""}`}
     >
-      <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
-        {label}
-      </p>
+      {label && (
+        <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
+          {label}
+        </p>
+      )}
       <p
         className={`text-sm break-words leading-snug ${v === "—" ? "text-gray-300 dark:text-gray-600 italic" : "text-gray-800 dark:text-white/90"}`}
       >
@@ -79,7 +79,6 @@ const F = ({
   );
 };
 
-// Bordered grid (cells share borders)
 const G = ({
   cols = 3,
   children,
@@ -88,22 +87,18 @@ const G = ({
   children: React.ReactNode;
 }) => {
   const colMap: Record<number, string> = {
+    1: "grid-cols-1",
     2: "grid-cols-1 sm:grid-cols-2",
     3: "grid-cols-2 sm:grid-cols-3",
     4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
-    5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
-    6: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6",
   };
   return (
-    <div
-      className={`grid ${colMap[cols] ?? colMap[3]} -mt-px -ml-px [&>*]:-mb-px [&>*]:-mr-px`}
-    >
+    <div className={`grid ${colMap[cols] ?? colMap[3]} -mt-px -ml-px [&>*]:-mb-px [&>*]:-mr-px`}>
       {children}
     </div>
   );
 };
 
-// Sub-section label
 const SubTitle = ({ title }: { title: string }) => (
   <div className="col-span-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-2.5 py-1.5">
     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
@@ -112,31 +107,21 @@ const SubTitle = ({ title }: { title: string }) => (
   </div>
 );
 
-// Thin spacer
 const Spacer = () => <div className="h-2" />;
 
-// Record separator for repeated items
 const RecLabel = ({ i, total }: { i: number; total: number }) =>
   total <= 1 ? null : (
-    <div
-      className={`${i > 0 ? "mt-3 pt-3 border-t border-gray-200 dark:border-white/10" : ""} mb-1`}
-    >
+    <div className={`${i > 0 ? "mt-3 pt-3 border-t border-gray-200 dark:border-white/10" : ""} mb-1`}>
       <span className="inline-block rounded bg-gray-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
         Record {i + 1}
       </span>
     </div>
   );
 
-// Table header row for document-style sections
-const TH = ({
-  headers,
-  cols,
-}: {
-  headers: string[];
-  cols: number;
-}) => (
+const TableHeader = ({ headers }: { headers: string[] }) => (
   <div
-    className={`grid grid-cols-${cols} border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400`}
+    style={{ gridTemplateColumns: `repeat(${headers.length}, minmax(0, 1fr))` }}
+    className="grid border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400"
   >
     {headers.map((h) => (
       <div
@@ -149,19 +134,32 @@ const TH = ({
   </div>
 );
 
-// Table cell (no label, just value)
-const TC = ({ value }: { value?: any }) => {
-  const v = displayVal(value);
-  return (
-    <div className="border-r border-gray-300 dark:border-white/15 last:border-r-0 px-2 py-1.5">
-      <p
-        className={`text-sm break-words leading-snug ${v === "—" ? "text-gray-300 dark:text-gray-600 italic" : "text-gray-800 dark:text-white/90"}`}
-      >
-        {v}
-      </p>
-    </div>
-  );
-};
+const TableRow = ({ values }: { values: any[] }) => (
+  <div
+    style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}
+    className="grid border-l border-r border-b border-gray-300 dark:border-white/15"
+  >
+    {values.map((v, i) => {
+      const display = displayVal(v);
+      return (
+        <div
+          key={i}
+          className="border-r border-gray-300 dark:border-white/15 last:border-r-0 px-2 py-1.5"
+        >
+          <p
+            className={`text-sm break-words leading-snug ${
+              display === "—"
+                ? "text-gray-300 dark:text-gray-600 italic"
+                : "text-gray-800 dark:text-white/90"
+            }`}
+          >
+            {display}
+          </p>
+        </div>
+      );
+    })}
+  </div>
+);
 
 // ─────────────────────────────────────────────────────────────────
 // SCALAR STATE TYPE
@@ -243,6 +241,7 @@ export default function DynamicReview({
 }: DynamicReviewProps) {
   return (
     <div className="space-y-0 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden">
+
       {/* ── 01 PERSONAL INFORMATION ─────────────────────────────── */}
       <div className="p-4">
         <Sec n="01" title="Personal Information" />
@@ -281,10 +280,7 @@ export default function DynamicReview({
           <F label="Hair Color" value={scalar.hairColor} />
           <F label="Eye Color" value={scalar.eyeColor} />
           <F label="Medical Cert. Issued" value={scalar.medicalCertIssuedDate} />
-          <F
-            label="Medical Cert. Expired"
-            value={scalar.medicalCertExpiredDate}
-          />
+          <F label="Medical Cert. Expired" value={scalar.medicalCertExpiredDate} />
         </G>
 
         {scalar.nextOfKinName && (
@@ -305,12 +301,19 @@ export default function DynamicReview({
       <div className="p-4 border-t border-gray-100 dark:border-white/5">
         <Sec n="02" title="Position & Availability" />
 
-        <G cols={4}>
-          <F label="Position Applied" value={scalar.positionApplied} />
-          <F label="Rank" value={scalar.rank} />
-          <F label="Date of Availability" value={scalar.dateOfAvailability} />
-          <F label="Availability Note" value={scalar.availabilityNote} />
-        </G>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <TableHeader headers={["Position Applied", "Rank", "Date of Availability", "Availability Note"]} />
+            <TableRow
+              values={[
+                scalar.positionApplied,
+                scalar.rank,
+                scalar.dateOfAvailability,
+                scalar.availabilityNote,
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── 03 CoC ──────────────────────────────────────────────── */}
@@ -319,29 +322,21 @@ export default function DynamicReview({
           <Sec n="03" title="Certificates of Competency (CoC)" />
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
-              <TH
-                headers={[
-                  "Country",
-                  "Grade",
-                  "Licence No.",
-                  "Place Issued",
-                  "Date Issued",
-                  "Date Expired",
-                ]}
-                cols={6}
+              <TableHeader
+                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"]}
               />
               {coc.items.map((l, i) => (
-                <div
+                <TableRow
                   key={i}
-                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                >
-                  <TC value={l.country} />
-                  <TC value={l.grade} />
-                  <TC value={l.number} />
-                  <TC value={l.placeIssued} />
-                  <TC value={l.dateIssued} />
-                  <TC value={l.dateExpired || "Unlimited"} />
-                </div>
+                  values={[
+                    l.country,
+                    l.grade,
+                    l.number,
+                    l.placeIssued,
+                    l.dateIssued,
+                    l.dateExpired || "Unlimited",
+                  ]}
+                />
               ))}
             </div>
           </div>
@@ -354,29 +349,21 @@ export default function DynamicReview({
           <Sec n="04" title="Certificates of Equivalency (CoE)" />
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
-              <TH
-                headers={[
-                  "Country",
-                  "Grade",
-                  "Licence No.",
-                  "Place Issued",
-                  "Date Issued",
-                  "Date Expired",
-                ]}
-                cols={6}
+              <TableHeader
+                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"]}
               />
               {coe.items.map((l, i) => (
-                <div
+                <TableRow
                   key={i}
-                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                >
-                  <TC value={l.country} />
-                  <TC value={l.grade} />
-                  <TC value={l.number} />
-                  <TC value={l.placeIssued} />
-                  <TC value={l.dateIssued} />
-                  <TC value={l.dateExpired || "Unlimited"} />
-                </div>
+                  values={[
+                    l.country,
+                    l.grade,
+                    l.number,
+                    l.placeIssued,
+                    l.dateIssued,
+                    l.dateExpired || "Unlimited",
+                  ]}
+                />
               ))}
             </div>
           </div>
@@ -389,27 +376,14 @@ export default function DynamicReview({
           <Sec n="05" title="Passports" />
           <div className="overflow-x-auto">
             <div className="min-w-[700px]">
-              <TH
-                headers={[
-                  "Passport No.",
-                  "Country",
-                  "Place Issued",
-                  "Date Issued",
-                  "Date Expired",
-                ]}
-                cols={5}
+              <TableHeader
+                headers={["Passport No.", "Country", "Place Issued", "Date Issued", "Date Expired"]}
               />
               {passports.items.map((p, i) => (
-                <div
+                <TableRow
                   key={i}
-                  className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                >
-                  <TC value={p.number} />
-                  <TC value={p.country} />
-                  <TC value={p.placeIssued} />
-                  <TC value={p.dateIssued} />
-                  <TC value={p.dateExpired} />
-                </div>
+                  values={[p.number, p.country, p.placeIssued, p.dateIssued, p.dateExpired]}
+                />
               ))}
             </div>
           </div>
@@ -422,27 +396,14 @@ export default function DynamicReview({
           <Sec n="06" title="Seaman's Books" />
           <div className="overflow-x-auto">
             <div className="min-w-[700px]">
-              <TH
-                headers={[
-                  "Book No.",
-                  "Country",
-                  "Place Issued",
-                  "Date Issued",
-                  "Date Expired",
-                ]}
-                cols={5}
+              <TableHeader
+                headers={["Book No.", "Country", "Place Issued", "Date Issued", "Date Expired"]}
               />
               {seamans.items.map((s, i) => (
-                <div
+                <TableRow
                   key={i}
-                  className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                >
-                  <TC value={s.number} />
-                  <TC value={s.country} />
-                  <TC value={s.placeIssued} />
-                  <TC value={s.dateIssued} />
-                  <TC value={s.dateExpired || "Unlimited"} />
-                </div>
+                  values={[s.number, s.country, s.placeIssued, s.dateIssued, s.dateExpired || "Unlimited"]}
+                />
               ))}
             </div>
           </div>
@@ -455,29 +416,14 @@ export default function DynamicReview({
           <Sec n="07" title="Visas" />
           <div className="overflow-x-auto">
             <div className="min-w-[900px]">
-              <TH
-                headers={[
-                  "Country",
-                  "Visa Type",
-                  "Visa No.",
-                  "Place Issued",
-                  "Date Issued",
-                  "Date Expired",
-                ]}
-                cols={6}
+              <TableHeader
+                headers={["Country", "Visa Type", "Visa No.", "Place Issued", "Date Issued", "Date Expired"]}
               />
               {visas.items.map((v, i) => (
-                <div
+                <TableRow
                   key={i}
-                  className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                >
-                  <TC value={v.country} />
-                  <TC value={v.visaType} />
-                  <TC value={v.number} />
-                  <TC value={v.placeIssued} />
-                  <TC value={v.dateIssued} />
-                  <TC value={v.dateExpired} />
-                </div>
+                  values={[v.country, v.visaType, v.number, v.placeIssued, v.dateIssued, v.dateExpired]}
+                />
               ))}
             </div>
           </div>
@@ -488,37 +434,31 @@ export default function DynamicReview({
       {seaExp.items.filter((i) => i.vesselName).length > 0 && (
         <div className="p-4 border-t border-gray-100 dark:border-white/5">
           <Sec n="08" title="Sea Service Record" />
-          {seaExp.items.map((s, i) => (
-            <div key={i}>
-              <RecLabel i={i} total={seaExp.items.length} />
-              <G cols={3}>
-                <F label="Vessel Name" value={s.vesselName} />
-                <F label="Flag" value={s.flag} />
-                <F label="Vessel Type" value={s.vesselType} />
-                <F label="GRT" value={s.grt} />
-                <F label="Engine Type" value={s.engineType} />
-                <F label="Engine KW" value={s.engineKW} />
-              </G>
-              <G cols={4}>
-                <F label="Shipping Company" value={s.company} />
-                <F label="Rank" value={s.rank} />
-                <F label="Period From" value={s.periodFrom} />
-                <F
-                  label="Period To"
-                  value={s.periodTo || "Present"}
+          <div className="overflow-x-auto">
+            <div className="min-w-[1100px]">
+              <TableHeader
+                headers={["Vessel", "Flag", "Type", "GRT", "Engine", "KW", "Company", "Rank", "From", "To", "Remarks"]}
+              />
+              {seaExp.items.map((s, i) => (
+                <TableRow
+                  key={i}
+                  values={[
+                    s.vesselName,
+                    s.flag,
+                    s.vesselType,
+                    s.grt,
+                    s.engineType,
+                    s.engineKW,
+                    s.company,
+                    s.rank,
+                    s.periodFrom,
+                    s.periodTo || "Present",
+                    s.jobDescription,
+                  ]}
                 />
-              </G>
-              {s.jobDescription && (
-                <G cols={1}>
-                  <F
-                    label="Job Description / Remarks"
-                    value={s.jobDescription}
-                    span
-                  />
-                </G>
-              )}
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       )}
 
@@ -526,31 +466,36 @@ export default function DynamicReview({
       <div className="p-4 border-t border-gray-100 dark:border-white/5">
         <Sec n="09" title="Uploaded Documents" />
 
-        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden mt-1">
-          <DocRow
-            label="Profile Photo"
-            file={scalar.profilePhoto}
-            existingUrl={existingProfilePhoto}
-            existingName={existingProfilePhoto ? "Current photo" : undefined}
-          />
-          <DocRow
-            label="Resume / CV"
-            file={scalar.resume}
-            existingUrl={existingResume?.fileUrl}
-            existingName={existingResume?.fileName}
-          />
-          {extraDocs.items
-            .filter((doc) => doc.name || doc.file || doc._fileUrl)
-            .map((doc, i) => (
-              <DocRow
-                key={i}
-                label={doc.name || `Document ${i + 1}`}
-                file={doc.file}
-                existingUrl={doc._fileUrl}
-                existingName={doc._fileName}
-              />
-            ))}
+        {/* Header row */}
+        <div className="grid grid-cols-2 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-0">
+          <div className="px-2.5 py-2 border-r border-gray-300 dark:border-white/15">Document</div>
+          <div className="px-2.5 py-2">Status / File</div>
         </div>
+
+        {/* Rows */}
+        <DocRow
+          label="Profile Photo"
+          file={scalar.profilePhoto}
+          existingUrl={existingProfilePhoto}
+          existingName={existingProfilePhoto ? "Current photo" : undefined}
+        />
+        <DocRow
+          label="Resume / CV"
+          file={scalar.resume}
+          existingUrl={existingResume?.fileUrl}
+          existingName={existingResume?.fileName}
+        />
+        {extraDocs.items
+          .filter((doc) => doc.name || doc.file || doc._fileUrl)
+          .map((doc, i) => (
+            <DocRow
+              key={i}
+              label={doc.name || `Document ${i + 1}`}
+              file={doc.file}
+              existingUrl={doc._fileUrl}
+              existingName={doc._fileName}
+            />
+          ))}
       </div>
     </div>
   );
@@ -572,36 +517,36 @@ function DocRow({
   const hasExisting = !!existingUrl;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/5 last:border-0 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-      <span className="text-sm font-medium text-gray-700 dark:text-white/80">
-        {label}
-      </span>
-      {hasNewFile ? (
-        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 size={14} />
-          <span className="text-xs font-semibold">{file!.name}</span>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500">
-            (new)
-          </span>
-        </div>
-      ) : hasExisting ? (
-        <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400">
-          <Download size={14} />
-          <a
-            href={existingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-semibold hover:underline"
-          >
-            {existingName || "Existing file"}
-          </a>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
-          <XCircle size={14} />
-          <span className="text-xs">Not attached</span>
-        </div>
-      )}
+    <div className="grid grid-cols-2 border-l border-r border-b border-gray-300 dark:border-white/15">
+      <div className="px-2.5 py-2 border-r border-gray-300 dark:border-white/15">
+        <p className="text-sm text-gray-700 dark:text-white/80">{label}</p>
+      </div>
+      <div className="px-2.5 py-2">
+        {hasNewFile ? (
+          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={14} />
+            <span className="text-xs font-semibold">{file!.name}</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">(new)</span>
+          </div>
+        ) : hasExisting ? (
+          <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400">
+            <Download size={14} />
+            <a
+              href={existingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold hover:underline"
+            >
+              {existingName || "Existing file"}
+            </a>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+            <XCircle size={14} />
+            <span className="text-xs">Not attached</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
