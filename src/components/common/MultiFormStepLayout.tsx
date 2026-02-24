@@ -47,7 +47,7 @@ function StepSidebar({
   onStepClick?: (id: number) => void;
 }) {
   return (
-    <aside className="hidden lg:flex w-72 shrink-0 flex-col  dark:border-brand-400/20 bg-gray-50/50 dark:bg-white/[0.02]">
+    <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r  dark:border-brand-400/10 bg-gray-50/50 dark:bg-white/[0.02]">
       <nav className="flex-1 overflow-y-auto hide-scrollbar">
         {steps.map((step) => {
           const isActive = step.id === currentStep;
@@ -109,7 +109,7 @@ function StepSidebar({
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MOBILE PROGRESS
+// MOBILE PROGRESS (Rounded Brand Theme)
 // ─────────────────────────────────────────────────────────────────
 function MobileProgress({
   steps,
@@ -125,9 +125,9 @@ function MobileProgress({
   const maxCompletedStep = completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
 
   return (
-    <div className="lg:hidden w-full bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+    <div className="lg:hidden w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800/50">
       {/* ── STEP PILLS ROW ── */}
-      <nav className="flex w-full overflow-x-auto hide-scrollbar scroll-smooth px-3 py-2.5 gap-1.5">
+      <nav className="flex w-full overflow-x-auto hide-scrollbar scroll-smooth px-4 py-4 gap-3">
         {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.includes(step.id);
@@ -141,51 +141,51 @@ function MobileProgress({
               disabled={!isClickable && !isActive}
               onClick={() => isClickable && onStepClick?.(step.id)}
               className={[
-                "relative flex items-center gap-1.5 shrink-0 rounded px-2.5 py-1.5 transition-all duration-200 border",
-                isActive
-                  ? "bg-brand-500 dark:bg-brand-600 border-brand-600 dark:border-brand-500 shadow-sm shadow-brand-500/20"
-                  : isCompleted
-                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
-                    : isClickable
-                      ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
-                      : "bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800/50 cursor-not-allowed opacity-40",
+                "flex items-center gap-2 shrink-0 transition-all duration-200",
+                isActive ? "opacity-100" : "opacity-70"
               ].join(" ")}
             >
-              {/* Step number / check icon */}
-              <span className={[
-                "flex items-center justify-center w-4 h-4 rounded-sm text-[9px] font-black shrink-0",
+              {/* Step circle indicator */}
+              <div className={[
+                "flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold transition-all border-2",
                 isActive
-                  ? "bg-white/20 text-white"
+                  ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30 ring-2 ring-brand-500/10"
                   : isCompleted
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : isClickable
-                      ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                      : "bg-gray-100 dark:bg-gray-800/50 text-gray-400",
+                    ? "bg-emerald-500 border-emerald-500 text-white"
+                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400",
               ].join(" ")}>
                 {isCompleted && !isActive ? (
-                  <Check size={9} strokeWidth={4} />
+                  <Check size={12} strokeWidth={3} />
                 ) : (
                   step.id
                 )}
-              </span>
+              </div>
 
               {/* Step title */}
-              <span className={[
-                "text-[10px] font-bold uppercase tracking-tight whitespace-nowrap",
-                isActive
-                  ? "text-white"
-                  : isCompleted
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : isClickable
-                      ? "text-gray-600 dark:text-gray-300"
+              <div className="flex flex-col items-start mr-2">
+                <span className={[
+                  "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                  isActive
+                    ? "text-brand-600 dark:text-brand-400"
+                    : isCompleted
+                      ? "text-emerald-600 dark:text-emerald-500"
                       : "text-gray-400 dark:text-gray-600",
-              ].join(" ")}>
-                {step.title}
-              </span>
+                ].join(" ")}>
+                  {isActive ? "Current" : isCompleted ? "Done" : `Step ${step.id}`}
+                </span>
+                <span className={[
+                  "text-[11px] font-medium whitespace-nowrap leading-none",
+                  isActive
+                    ? "text-gray-900 dark:text-white"
+                    : "text-gray-500 dark:text-gray-400",
+                ].join(" ")}>
+                  {step.title}
+                </span>
+              </div>
 
-              {/* Active: subtle bottom accent */}
-              {isActive && (
-                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-white/40" />
+              {/* Connector line between steps (except last) */}
+              {step.id !== steps.length && (
+                <div className="h-[2px] w-4 bg-gray-100 dark:bg-gray-800 rounded-full mx-1" />
               )}
             </button>
           );
@@ -221,54 +221,76 @@ export default function MultiStepFormLayout({
   const current = steps.find((s) => s.id === currentStep);
 
   return (
-   <div
+    <div
       className={
         isPublic
-          ? "min-h-screen bg-gray-100 dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start py-10 sm:py-16 px-4 sm:px-8"
+          ? "min-h-screen bg-gray-50 dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start py-8 sm:py-12 px-4"
           : "min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4"
       }
     >
-      <div className={isPublic ? "w-full max-w-7xl" : ""}>
+      <div className={isPublic ? "w-full max-w-6xl" : "w-full"}>
+        
         {/* MAIN CONTAINER */}
         <div
           className={
             isPublic
-              ? "flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-md min-h-[600px] lg:h-[85vh]"
-              : "flex flex-col overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
+              ? "flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl min-h-[700px] lg:h-[88vh]"
+              : "flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
           }
         >
-
-          {/* ── PROFESSIONAL FORM HEADER ── */}
-          <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800/50 shrink-0">
-            <div className="flex items-center gap-4 px-6 sm:px-10 py-4">
-              {companyLogo && (
-                <img
-                  src={companyLogo}
-                  alt={companyName || "Company"}
-                  className="h-12 w-12 object-contain rounded-lg shrink-0"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                {companyName && (
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                    {companyName}
-                  </p>
-                )}
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
-                  {pageTitle}
-                </h1>
-                {pageSubtitle && (
-                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {pageSubtitle}
-                  </p>
-                )}
+          {/* ── HEADER LOGIC ── */}
+          {isPublic ? (
+            /* PUBLIC BRANDED HERO HEADER */
+            <div className="relative w-full bg-brand-500 bg-gradient-to-r from-brand-600 to-brand-400 px-6 py-8 sm:px-10 sm:py-10 text-white shrink-0">
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-100 opacity-90">
+                      Careers {companyName ? `at ${companyName}` : ""}
+                    </span>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    {pageTitle}
+                  </h1>
+                  {pageSubtitle && (
+                    <p className="mt-2 text-sm text-brand-50/80 max-w-2xl font-medium">
+                      {pageSubtitle}
+                    </p>
+                  )}
+                </div>
+                
+           
+              </div>
+              <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
+                 <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white" />
+                 <div className="absolute -bottom-12 left-1/4 w-32 h-32 rounded-full bg-white" />
               </div>
             </div>
-          </div>
+          ) : (
+            /* ADMIN/INTERNAL HEADER */
+            <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800/50 shrink-0">
+              <div className="flex items-center gap-4 px-6 sm:px-10 py-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                      Careers {companyName ? `at ${companyName}` : ""}
+                    </span>
+                  </div>
+                  <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
+                    {pageTitle}
+                  </h1>
+                  {pageSubtitle && (
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {pageSubtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── BODY ROW: Sidebar + Content ── */}
           <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-
             <StepSidebar
               steps={steps}
               currentStep={currentStep}
@@ -277,7 +299,6 @@ export default function MultiStepFormLayout({
             />
 
             <div className="flex flex-1 flex-col min-w-0">
-
               <MobileProgress
                 steps={steps}
                 currentStep={currentStep}
@@ -286,7 +307,6 @@ export default function MultiStepFormLayout({
               />
 
               <div className="flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar">
-
                 {/* CURRENT STEP HEADER */}
                 <div className="mb-8 pt-6">
                   <h2 className="text-l font-medium text-gray-800 dark:text-white">{current?.title}</h2>
@@ -349,7 +369,6 @@ export default function MultiStepFormLayout({
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         </div>

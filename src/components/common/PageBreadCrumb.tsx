@@ -12,9 +12,13 @@ interface BreadcrumbProps {
   children?: React.ReactNode;
 }
 
-const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle, items = [], children }) => {
+const PageBreadcrumb: React.FC<BreadcrumbProps> = ({
+  pageTitle,
+  items = [],
+  children,
+}) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 ">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-2 ">
       <div className="flex flex-col gap-1">
         <nav>
           <ol className="flex items-center gap-1.5">
@@ -50,22 +54,15 @@ const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle, items = [], chil
             </li>
           </ol>
         </nav>
-        <h2
-          className="text-xl font-semibold text-gray-800 dark:text-white/90"
-        >
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           {pageTitle}
         </h2>
       </div>
 
-      {children && (
-        <div className="flex items-center gap-3">
-          {children}
-        </div>
-      )}
+      {children && <div className="flex items-center gap-3">{children}</div>}
     </div>
   );
 };
-
 
 const ChevronRightIcon = () => (
   <svg
@@ -87,4 +84,3 @@ const ChevronRightIcon = () => (
 );
 
 export default PageBreadcrumb;
-
