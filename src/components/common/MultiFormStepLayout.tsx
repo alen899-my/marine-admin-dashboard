@@ -233,7 +233,7 @@ export default function MultiStepFormLayout({
         <div
           className={
             isPublic
-              ? "flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-md h-[85vh] min-h-[600px]"
+              ? "flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-md min-h-[600px] lg:h-[85vh]"
               : "flex flex-col overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
           }
         >
