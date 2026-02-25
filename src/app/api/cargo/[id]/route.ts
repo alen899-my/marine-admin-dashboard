@@ -25,7 +25,7 @@ async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
 
   try {
-    if (process.env.NODE_ENV === "local") {
+    if (process.env.UPLOAD_PROVIDER === "local") {
       // --- LOCAL DELETE ---
       if (fileUrl.startsWith("/uploads")) {
         const filePath = path.join(process.cwd(), "public", fileUrl);
@@ -155,7 +155,7 @@ export async function PATCH(
       const filename = `${timestamp}-${safeName}`;
       let fileUrl = "";
 
-      if (process.env.NODE_ENV === "local") {
+      if (process.env.UPLOAD_PROVIDER === "local") {
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/cargo");
 
