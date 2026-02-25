@@ -44,12 +44,12 @@ export default function ForgotPasswordPage() {
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
           {/* LOGO */}
           <div className="flex justify-center mb-6">
-            {/* Fixed: Use Next.js Image component. 
+            {/* Fixed: Use Next.js Image component.
                Added width/height/priority for LCP optimization. */}
             <Image
-              src="/images/logo/logo-icon.svg"
+              src="/images/logo/p.png"
               alt="Logo"
-              width={48} 
+              width={100}
               height={48}
               className="h-12 w-auto"
               priority
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
 
               {/* SUBMIT */}
               <div>
-                <Button className="w-full" size="sm" disabled={loading}>
+                <Button type="submit" className="w-full" size="sm" disabled={loading}>
                   {loading ? "Sending..." : "Send Reset Link"}
                 </Button>
               </div>

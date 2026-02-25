@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
 import Vessel from "@/models/Vessel";
-import { uploadFile } from "@/lib/upload-provider";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import path from "path";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { put } from "@vercel/blob";
 
 const OFFICE_LIBRARY_DOCS = [
   "registry_cert", "tonnage_cert", "isps_ship", "isps_officer", 
@@ -47,12 +50,35 @@ export async function PATCH(
     if (file && file.size > 0) {
       // Library docs (Office) -> Vessel folder. Onboard docs (Ship) -> Pre-Arrival folder.
       const folder = isLibraryDoc ? `vessels/${preArrival.vesselId}` : `pre-arrival/${id}`;
-      const uploadResult = await uploadFile(file, folder);
-      
+
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
+      const filename = `${timestamp}-${safeName}`;
+
+      let fileUrl = "";
+      let fileName = "";
+
+      if (process.env.UPLOAD_PROVIDER === "local") {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const uploadDir = path.join(process.cwd(), "public/uploads", folder);
+        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
+        const filePath = path.join(uploadDir, filename);
+        await writeFile(filePath, buffer);
+        fileUrl = `/uploads/${folder}/${filename}`;
+        fileName = filename;
+      } else {
+        const blob = await put(`${folder}/${filename}`, file, {
+          access: "public",
+          addRandomSuffix: true,
+        });
+        fileUrl = blob.url;
+        fileName = filename;
+      }
+
       fileInfo = {
-        name: uploadResult.name,
-        url: uploadResult.url,
-        size: uploadResult.size
+        name: fileName,
+        url: fileUrl,
+        size: file.size,
       };
       
       // ✅ LOGIC: Only save physical file info to PreArrival if it's NOT a library doc

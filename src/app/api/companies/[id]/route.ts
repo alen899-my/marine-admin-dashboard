@@ -83,7 +83,7 @@ export async function PATCH(
 
       const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "local") {
         // Local storage for Dev
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/companies");

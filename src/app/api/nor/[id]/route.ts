@@ -13,7 +13,7 @@ import path from "path";
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
   try {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === "local") {
       if (fileUrl.startsWith("/uploads")) {
         const filePath = path.join(process.cwd(), "public", fileUrl);
         if (existsSync(filePath)) {

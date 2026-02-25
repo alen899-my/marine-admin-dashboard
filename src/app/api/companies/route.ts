@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
 
       const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.UPLOAD_PROVIDER === "local") {
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/companies");
         if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });

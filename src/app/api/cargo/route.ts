@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
     const filename = `${timestamp}-${safeName}`;
 
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.UPLOAD_PROVIDER === "local") {
       const buffer = Buffer.from(await file.arrayBuffer());
       const uploadDir = path.join(process.cwd(), "public/uploads/cargo");
       if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });

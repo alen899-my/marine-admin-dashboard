@@ -57,7 +57,7 @@ function ResetPasswordForm() {
 
       setSuccess("Password updated successfully. Redirecting...");
       setTimeout(() => router.push("/signin"), 1500);
-      
+     
     } catch (err: unknown) { // FIX 1: Changed 'any' to 'unknown'
       if (err instanceof Error) {
         setError(err.message);
@@ -116,7 +116,7 @@ function ResetPasswordForm() {
 
         {/* SUBMIT */}
         <div>
-          <Button className="w-full" size="sm" disabled={loading}>
+          <Button type="submit" className="w-full" size="sm" disabled={loading}>
             {loading ? "Updating..." : "Reset Password"}
           </Button>
         </div>
@@ -129,19 +129,19 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full">
-      <div className="w-full max-w-md pt-10 mx-auto mb-5"></div> 
+      <div className="w-full max-w-md pt-10 mx-auto mb-5"></div>
 
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-          
+         
           {/* LOGO */}
           <div className="flex justify-center mb-6">
             {/* FIX 2: Replaced img with Next.js Image component */}
-            <Image 
-              src="/images/logo/logo-icon.svg" 
-              alt="Logo" 
-              width={0}
-              height={0}
+            <Image
+              src="/images/logo/p.png"
+              alt="Logo"
+              width={100}
+              height={48}
               className="h-12 w-auto"
               priority
             />

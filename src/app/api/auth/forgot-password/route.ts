@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`;
 
     const emailHtml = `
   <div style="background-color:#ffffff;padding:40px;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial;">
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
       <div style="text-align:center;margin-top:30px;margin-bottom:30px;">
         <a href="${resetUrl}" style="
-          background-color:#3C50E0;
+          background-color:#00A6B8;
           color:#ffffff;
           padding:12px 28px;
           font-size:16px;
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
           border-radius:8px;
           text-decoration:none;
           display:inline-block;
-          box-shadow:0 3px 8px rgba(60,80,224,0.35);
+          box-shadow:0 3px 8px rgba(0,166,184,0.35);
         ">
           Reset Password
         </a>

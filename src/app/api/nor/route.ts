@@ -357,7 +357,7 @@ export async function POST(req: Request) {
       }
       const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
 
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.UPLOAD_PROVIDER === "local") {
         const buffer = Buffer.from(await file.arrayBuffer());
         const uploadDir = path.join(process.cwd(), "public/uploads/nor");
         if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });

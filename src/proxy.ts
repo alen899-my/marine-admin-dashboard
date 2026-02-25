@@ -5,7 +5,7 @@ import { routePermissions } from "@/lib/routePermissions";
 
 const { auth } = NextAuth(authConfig);
 
-const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password", "/careers"];
+const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password", "/careers","/reset-password"];
 const authOnlyRoutes = ["/signin", "/signup", "/register", "/forgot-password"];
 
 export default auth((req) => {
