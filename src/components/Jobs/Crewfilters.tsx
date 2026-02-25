@@ -43,9 +43,15 @@ export default function CrewFilters({
   const [localStatus, setLocalStatus] = useState(status);
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
 
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalCompanyId(companyId); }, [companyId]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalCompanyId(companyId);
+  }, [companyId]);
 
   const handleApply = () => {
     onApply({
@@ -68,11 +74,10 @@ export default function CrewFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-4 p-4 w-full">
-
       {/* SEARCH */}
       <div className="w-full sm:w-auto min-w-[280px]">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1.5 block">
-          Search Crew
+          Search Candidate
         </label>
         <Input
           placeholder="Search by name, email, rank or nationality..."
@@ -102,7 +107,10 @@ export default function CrewFilters({
             Company
           </label>
           <SearchableSelect
-            options={companies.map((c: any) => ({ value: c._id, label: c.name }))}
+            options={companies.map((c: any) => ({
+              value: c.id || c._id,
+              label: c.name,
+            }))}
             placeholder="All Companies"
             value={localCompanyId}
             onChange={(val) => setLocalCompanyId(val || "")}
@@ -125,7 +133,6 @@ export default function CrewFilters({
           Reset
         </button>
       </div>
-
     </div>
   );
 }

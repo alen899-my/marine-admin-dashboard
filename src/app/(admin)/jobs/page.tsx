@@ -22,7 +22,9 @@ export default async function JobManagement({ searchParams }: PageProps) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
   const session = await auth();
   if (!session?.user) {
-    return <div className="p-8 text-center font-medium">Unauthorized Access</div>;
+    return (
+      <div className="p-8 text-center font-medium">Unauthorized Access</div>
+    );
   }
 
   const user = session.user;
@@ -32,21 +34,25 @@ export default async function JobManagement({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const sessionCompanyId = user.company?.id;
 
+  // For super admin: if no companyId in params, show ALL applications
+  // For regular users: always filter by their company
+  const isSuperAdminNoCompany = isSuperAdmin && !resolvedParams.companyId;
+
   const targetCompanyId =
     isSuperAdmin && resolvedParams.companyId
       ? resolvedParams.companyId
       : sessionCompanyId;
 
-  if (!targetCompanyId) {
+  if (!isSuperAdminNoCompany && !targetCompanyId) {
     return (
       <div className="p-8 text-center text-amber-600 bg-amber-50 rounded-lg border border-amber-200">
-        Account Error: Your user profile is not linked to a company. Please contact system
-        administration.
+        Account Error: Your user profile is not linked to a company. Please
+        contact system administration.
       </div>
     );
   }
 
-  if (!mongoose.isValidObjectId(targetCompanyId)) {
+  if (targetCompanyId && !mongoose.isValidObjectId(targetCompanyId)) {
     return (
       <div className="p-8 text-center text-red-500 font-medium">
         Invalid company ID.
@@ -59,13 +65,18 @@ export default async function JobManagement({ searchParams }: PageProps) {
   const limit = 10;
   const skip = (currentPage - 1) * limit;
 
-  const companyObjId = new mongoose.Types.ObjectId(targetCompanyId);
-
   // Build filter
   const filter: Record<string, unknown> = {
-    company: companyObjId,
     deletedAt: null,
   };
+
+  // Only filter by company if:
+  // - User is not super admin viewing all, OR
+  // - Super admin explicitly selected a company
+  if (!isSuperAdminNoCompany && targetCompanyId) {
+    const companyObjId = new mongoose.Types.ObjectId(targetCompanyId);
+    filter.company = companyObjId;
+  }
 
   if (resolvedParams.status && resolvedParams.status !== "all") {
     filter.status = resolvedParams.status;
@@ -110,9 +121,9 @@ export default async function JobManagement({ searchParams }: PageProps) {
 
       isSuperAdmin
         ? Company.find({ deletedAt: null })
-          .select("_id name")
-          .sort({ name: 1 })
-          .lean()
+            .select("_id name")
+            .sort({ name: 1 })
+            .lean()
         : Promise.resolve([]),
     ]);
 
@@ -121,7 +132,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
     const companies = JSON.parse(JSON.stringify(companiesRaw));
 
     const companyOptions = (companies as { _id: string; name: string }[]).map(
-      (c) => ({ id: c._id, name: c.name })
+      (c) => ({ id: c._id, name: c.name }),
     );
 
     // ── 4. Render ──────────────────────────────────────────────────────────
@@ -131,7 +142,9 @@ export default async function JobManagement({ searchParams }: PageProps) {
         companies={companyOptions}
         isSuperAdmin={isSuperAdmin}
         canAdd={true}
-        currentCompanyId={targetCompanyId}
+        currentCompanyId={
+          isSuperAdminNoCompany ? "all" : (targetCompanyId ?? "")
+        }
       >
         <JobTable
           data={applications}

@@ -42,8 +42,9 @@ export async function POST(req: Request) {
 
     const roleName = user.role?.name?.toLowerCase();
     const isSuperAdmin = roleName === "super-admin";
+    const isCandidate = roleName === "candidate";
 
-    if (!isSuperAdmin) {
+    if (!isSuperAdmin && !isCandidate) {
       if (!user.company) {
         return NextResponse.json(
           { error: "COMPANY_REQUIRED" },
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "USER_INACTIVE" }, { status: 403 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, role: roleName });
   } catch (error: any) {
     console.error("PRE-AUTH CHECK ERROR:", error);
     return NextResponse.json(

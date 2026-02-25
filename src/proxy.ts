@@ -5,17 +5,29 @@ import { routePermissions } from "@/lib/routePermissions";
 
 const { auth } = NextAuth(authConfig);
 
-const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password"];
+const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password", "/careers"];
+const authOnlyRoutes = ["/signin", "/signup", "/register", "/forgot-password"];
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { nextUrl } = req;
   const user = req.auth?.user;
-
-  // 1. Redirect if logged in and accessing auth pages
-  if (isLoggedIn && publicRoutes.includes(nextUrl.pathname)) {
-    return NextResponse.redirect(new URL("/", nextUrl));
+  const userRole = (user as any)?.role?.toLowerCase();
+   if (isLoggedIn && authOnlyRoutes.includes(nextUrl.pathname)) {
+    const redirectUrl = userRole === "candidate" ? "/careers" : "/";
+    return NextResponse.redirect(new URL(redirectUrl, nextUrl));
   }
+
+
+ if (isLoggedIn && userRole === "candidate") {
+  const allowedForCandidates = ["/careers", "/403", "/signin"];
+  const isAllowed = allowedForCandidates.some(route => 
+    nextUrl.pathname === route || nextUrl.pathname.startsWith(route)
+  );
+  if (!isAllowed) {
+    return NextResponse.redirect(new URL("/careers", nextUrl));
+  }
+}
 
   // 2. Redirect if not logged in and accessing protected pages
   if (!isLoggedIn && !publicRoutes.includes(nextUrl.pathname)) {

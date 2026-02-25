@@ -5,29 +5,28 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { registerValidation } from "@/lib/validations/userValidation";
 import { EyeIcon, EyeOff } from "lucide-react";
-import { signIn } from "next-auth/react"; // <--- Import NextAuth
+import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // <--- Import Router
+import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useState } from "react";
-import Select from "../form/Select";
 import Alert from "../ui/alert/Alert";
 
 // 1. Define Types
 interface FormState {
   fullName: string;
   email: string;
+  phone: string;
   password: string;
-  role: string;
-  assignedVesselId: string;
+  confirmPassword: string;
 }
 
 interface FieldErrors {
   fullName?: string;
   email?: string;
+  phone?: string;
   password?: string;
-  role?: string;
-  assignedVesselId?: string;
+  confirmPassword?: string;
   general?: string;
   [key: string]: string | undefined;
 }
@@ -43,21 +42,12 @@ export default function SignUpForm() {
   const [form, setForm] = useState<FormState>({
     fullName: "",
     email: "",
+    phone: "",
     password: "",
-    role: "", // This will be sent as a string (e.g., "superintendent")
-    assignedVesselId: "",
+    confirmPassword: "",
   });
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-
-  // 3. Role Options
-  const roleOptions = [
-    { value: "superintendent", label: "Superintendent" },
-    { value: "ops_manager", label: "OPS Manager" },
-    { value: "crew_manager", label: "Crew Manager" },
-    { value: "vessel_user", label: "Vessel User" },
-    { value: "admin", label: "Admin" },
-  ];
 
   // 4. Handle Input Changes
   const handleChange = (
@@ -81,13 +71,25 @@ export default function SignUpForm() {
       return;
     }
 
+    // Phone required check for candidate signup
+    if (!form.phone.trim()) {
+      setFieldErrors({ phone: "Phone is required" });
+      return;
+    }
+
+    // Confirm password check
+    if (form.password !== form.confirmPassword) {
+      setFieldErrors({ confirmPassword: "Passwords must match" });
+      return;
+    }
+
     //  RUN JOI VALIDATION (CLIENT SIDE)
     const { error } = registerValidation.validate(
       {
         ...form,
-        assignedVesselId: form.assignedVesselId || null,
+        role: "candidate",
       },
-      { abortEarly: false }, // 🔥 collect all errors
+      { abortEarly: false },
     );
 
     if (error) {
@@ -104,38 +106,35 @@ export default function SignUpForm() {
 
     setLoading(true);
 
-    try {
-      //  CALL REGISTER API ONLY AFTER VALIDATION
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          assignedVesselId: form.assignedVesselId || null,
-        }),
-      });
+   try {
+  const res = await fetch("/api/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fullName: form.fullName,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      role: "candidate",
+    }),
+  });
 
-      const data = await res.json();
+  const data = await res.json();
 
-      //  SUCCESS
-      setSuccessMessage("Account created! Logging you in...");
+  if (!res.ok) {
+    setFieldErrors({ general: data.message || "Registration failed" });
+    setLoading(false);
+    return;
+  }
 
-      const loginResult = await signIn("credentials", {
-        redirect: false,
-        email: form.email,
-        password: form.password,
-      });
+  // SUCCESS — show message then redirect to signin
+  setSuccessMessage("Account created! Please sign in to continue.");
+  setTimeout(() => router.push("/signin"), 1500);
 
-      if (loginResult?.error) {
-        setTimeout(() => router.push("/signin"), 1500);
-      } else {
-        router.push("/");
-        router.refresh();
-      }
-    } catch (err) {
-      setFieldErrors({ general: "Network error or server unavailable" });
-      setLoading(false);
-    }
+} catch (err) {
+  setFieldErrors({ general: "Network error or server unavailable" });
+  setLoading(false);
+}
   };
 
   return (
@@ -144,14 +143,14 @@ export default function SignUpForm() {
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
           {/* LOGO */}
           <div className="flex justify-center mb-6">
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={48}
-              height={48}
-              className="h-12 w-auto"
-              priority
-            />
+          <Image
+                        src="/images/logo/p.png"
+                        alt="Logo"
+                        width={100}
+                        height={48}
+                        className="h-12 w-auto"
+                        priority
+                      />
           </div>
 
           <div className="mb-5 text-center">
@@ -220,6 +219,26 @@ export default function SignUpForm() {
                 )}
               </div>
 
+              {/* Phone */}
+              <div>
+                <Label>
+                  Phone<span className="text-error-500"> *</span>
+                </Label>
+                <Input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="Enter your phone number"
+                  className={fieldErrors.phone ? "border-red-500" : ""}
+                />
+                {fieldErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {fieldErrors.phone}
+                  </p>
+                )}
+              </div>
+
               {/* Password */}
               <div>
                 <Label>
@@ -253,45 +272,24 @@ export default function SignUpForm() {
                 )}
               </div>
 
-              {/* Role Select */}
+              {/* Confirm Password */}
               <div>
                 <Label>
-                  Role<span className="text-error-500"> *</span>
+                  Confirm Password<span className="text-error-500"> *</span>
                 </Label>
-                <Select
-                  options={roleOptions}
-                  placeholder="Select role"
-                  defaultValue={form.role}
-                  onChange={(value) =>
-                    handleChange({ target: { name: "role", value } })
-                  }
-                  className={
-                    fieldErrors.role ? "border-red-500" : "border-gray-300"
-                  }
-                />
-                {fieldErrors.role && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {fieldErrors.role}
-                  </p>
-                )}
-              </div>
-
-              {/* Assigned Vessel (Optional) */}
-              <div>
-                <Label>Assigned Vessel ID (optional)</Label>
                 <Input
-                  type="text"
-                  name="assignedVesselId"
-                  value={form.assignedVesselId}
+                  type={showPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={form.confirmPassword}
                   onChange={handleChange}
-                  placeholder="Enter vessel ID or leave empty"
+                  placeholder="Re-enter your password"
                   className={
-                    fieldErrors.assignedVesselId ? "border-red-500" : ""
+                    fieldErrors.confirmPassword ? "border-red-500" : ""
                   }
                 />
-                {fieldErrors.assignedVesselId && (
+                {fieldErrors.confirmPassword && (
                   <p className="text-red-500 text-sm mt-1">
-                    {fieldErrors.assignedVesselId}
+                    {fieldErrors.confirmPassword}
                   </p>
                 )}
               </div>

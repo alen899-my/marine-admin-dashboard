@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { fullName, email, password, role, assignedVesselId } = body;
+    const { fullName, email, phone, password, role, assignedVesselId } = body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -31,16 +31,17 @@ export async function POST(req: Request) {
 
     const roleDoc = await Role.findOne({ name: role }); // Adjust logic if you store slugs instead of names
     // Fallback: If no role found, you might default to 'viewer' or return error
-    if (!roleDoc && role !== 'admin') { 
-        // Handle case where role doesn't exist yet
+    if (!roleDoc && role !== 'admin') {
+      // Handle case where role doesn't exist yet
     }
 
     // 4. Create User
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     await User.create({
       fullName,
       email,
+      phone: phone || undefined,
       password: hashedPassword,
       role: roleDoc?._id, // Save the ObjectId, not the string
       assignedVesselId: assignedVesselId || null,

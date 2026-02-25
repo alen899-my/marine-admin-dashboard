@@ -54,7 +54,7 @@ export default function JobPageClient({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Crew Applications
+          Candidate Applications
         </h2>
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
@@ -88,7 +88,7 @@ export default function JobPageClient({
                   className="w-full sm:w-auto justify-center"
                   startIcon={<Plus size={18} />}
                 >
-                  New Crew Application
+                  New Candidate 
                 </Button>
               </div>
             </>

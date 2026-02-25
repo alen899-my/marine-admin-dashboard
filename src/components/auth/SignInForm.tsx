@@ -9,7 +9,7 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import Alert from "../ui/alert/Alert";
 import { EyeIcon, EyeOff } from "lucide-react";
 // 1. Import NextAuth Client
-import { signIn } from "next-auth/react"; 
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signinValidation } from "@/lib/validations/signinValidation";
 interface FieldErrors {
@@ -38,24 +38,24 @@ export default function SignInForm() {
     setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
   };
 
-const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  setFieldErrors({});
-  setLoading(true);
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setFieldErrors({});
+    setLoading(true);
 
-  // 🔹 1. PRE-AUTH CHECK
-  const res = await fetch("/api/pre-auth-check", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: form.email,
-      password: form.password,
-    }),
-  });
+    // 🔹 1. PRE-AUTH CHECK
+    const res = await fetch("/api/pre-auth-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+      }),
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
- if (!res.ok) {
+    if (!res.ok) {
       if (data.error === "USER_INACTIVE") {
         setFieldErrors({
           general:
@@ -81,30 +81,30 @@ const handleSubmit = async (e: FormEvent) => {
       return;
     }
 
-  // 🔹 2. REAL SIGN-IN (NextAuth)
-  await signIn("credentials", {
-    email: form.email,
-    password: form.password,
-    callbackUrl: "/",
-  });
-};
-
-
+    // 🔹 2. REAL SIGN-IN (NextAuth)
+    // Redirect candidates to /careers, others to /
+    const callbackUrl = data.role === "candidate" ? "/careers" : "/";
+    await signIn("credentials", {
+      email: form.email,
+      password: form.password,
+      callbackUrl,
+    });
+  };
 
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full">
       {/* ... (Rest of your UI/JSX remains exactly the same) ... */}
-       <div className="w-full max-w- sm:pt-10 mx-auto mb-5"></div>
+      <div className="w-full max-w- sm:pt-10 mx-auto mb-5"></div>
 
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div className="bg-white dark:bg-gray-900 shadow-lg rounded-xl p-8 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-center mb-6">
-            <Image 
-              src="/images/logo/p.png" 
-              alt="Logo" 
-              width={100} 
-              height={48} 
-              className="h-12 w-auto" 
+            <Image
+              src="/images/logo/p.png"
+              alt="Logo"
+              width={100}
+              height={48}
+              className="h-12 w-auto"
               priority
             />
           </div>
@@ -168,18 +168,17 @@ const handleSubmit = async (e: FormEvent) => {
                     onChange={handleChange}
                     className={fieldErrors.password ? "border-red-500" : ""}
                   />
-               <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full text-gray-500 dark:text-gray-400"
-                >
-                  {showPassword ? (
-                    <EyeIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeOff className="h-5 w-5" />
-                  )}
-                </button>
-
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full text-gray-500 dark:text-gray-400"
+                  >
+                    {showPassword ? (
+                      <EyeIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeOff className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
                 {fieldErrors.password && (
                   <p className="text-red-500 text-sm mt-1">
@@ -205,14 +204,19 @@ const handleSubmit = async (e: FormEvent) => {
               </div> */}
 
               <div>
-                <Button type="submit" className="w-full" size="sm" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="sm"
+                  disabled={loading}
+                >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
             </div>
           </form>
 
-          {/* <div className="mt-5 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}
               <Link
@@ -222,7 +226,7 @@ const handleSubmit = async (e: FormEvent) => {
                 Sign Up
               </Link>
             </p>
-          </div> */}
+          </div>
         </div>
       </div>
     </div>

@@ -23,6 +23,14 @@ export const registerValidation = Joi.object({
       "any.required": "Email is required",
     }),
 
+  phone: Joi.string()
+    .pattern(/^[0-9+\-()\s]{7,20}$/)
+    .optional()
+    .allow("", null)
+    .messages({
+      "string.pattern.base": "Phone must be 7-20 characters and contain only numbers and phone symbols",
+    }),
+
   password: Joi.string()
     .max(50)
     .required()
@@ -34,17 +42,23 @@ export const registerValidation = Joi.object({
 
   role: Joi.string()
     .valid(
+      "candidate",
       "superintendent",
       "ops_manager",
       "crew_manager",
       "vessel_user",
       "admin"
     )
-    .required()
+    .default("candidate")
     .messages({
       "any.only": "Invalid role selected",
       "string.empty": "Role is required",
-      "any.required": "Role is required",
+    }),
+
+  confirmPassword: Joi.string()
+    .valid(Joi.ref("password"))
+    .messages({
+      "any.only": "Passwords must match",
     }),
 
   assignedVesselId: Joi.string()

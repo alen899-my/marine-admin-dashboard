@@ -7,7 +7,7 @@ import { dbConnect } from "@/lib/db";
 import { getDashboardMetrics } from "@/lib/services/dashboard";
 import Company from "@/models/Company";
 import { Metadata } from "next";
-
+import { redirect, notFound } from "next/navigation";
 export const metadata: Metadata = {
   title: "Dashboard | Parkora Falcon",
   description: "Professional Dashboard for Parkora Falcon Maritime Operations.",
@@ -34,8 +34,15 @@ interface PageProps {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   // 1. Get Session FAST (Do not block long for this)
-  const session = await auth();
+   const session = await auth();
   if (!session?.user) return <div>Unauthorized</div>;
+
+  const userRole = session.user.role?.toLowerCase();
+
+  // Candidates should not access the admin dashboard
+  if (userRole === "candidate") {
+    redirect("/careers"); // or use notFound() if you prefer a 404
+  }
 
   const isSuperAdmin = session.user.role?.toLowerCase() === "super-admin";
   
