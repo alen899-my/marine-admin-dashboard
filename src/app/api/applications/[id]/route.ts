@@ -465,7 +465,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     await dbConnect();
 
     // ── 4. Find document ─────────────────────────────────────────────────
-    const existing = await Crew.findOne({ _id: id, deletedAt: null });
+    const existing = await Crew.findById(id);
     if (!existing) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
@@ -476,15 +476,10 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    // ── 6. Soft-delete ───────────────────────────────────────────────────
-    await Crew.findByIdAndUpdate(id, {
-      $set: {
-        deletedAt: new Date(),
-        lastEditedBy: session.user.id,
-      },
-    });
+    // ── 6. Hard delete ────────────────────────────────────────────────────
+    await Crew.deleteOne({ _id: id });
 
-    return NextResponse.json({ success: true, message: "Application deleted." });
+    return NextResponse.json({ success: true, message: "Application permanently deleted." });
 
   } catch (error: any) {
     console.error("DELETE CREW (ADMIN) ERROR →", error);

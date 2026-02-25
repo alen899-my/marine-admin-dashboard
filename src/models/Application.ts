@@ -247,7 +247,7 @@ const LicenceSchema = new Schema(
 const PassportSchema = new Schema(
   {
     number:      { type: String, required: true },
-    // FIX: not required — passport step has no country field in the form
+
     country:     { type: String, default: "" },
     placeIssued: String,
     dateIssued:  Date,

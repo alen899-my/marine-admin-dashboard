@@ -258,13 +258,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 6. Duplicate check ─────────────────────────────────────────────────
-    const exists = await Crew.exists({ company: companyId, email });
-    if (exists) {
-      return NextResponse.json(
-        { error: "A crew member with this email already exists in this company." },
-        { status: 409 }
-      );
+    // ── 6. Duplicate check & Upsert logic ──────────────────────────────────
+    const requestedStatus = (str(body.status) as ICrew["status"]) || "draft";
+
+    let existingCrew = await Crew.findOne({ company: companyId, email });
+
+    if (existingCrew) {
+      if (existingCrew.status !== "draft") {
+        return NextResponse.json(
+          { error: "A crew member with this email already exists in this company." },
+          { status: 409 }
+        );
+      }
     }
 
     // ── 7. Parse document arrays ───────────────────────────────────────────
@@ -383,13 +388,12 @@ export async function POST(req: NextRequest) {
         ? (body.languages as string).split(",").map((l) => l.trim()).filter(Boolean)
         : [];
 
-    // ── 10. Create document ────────────────────────────────────────────────
-    const crew = await Crew.create({
+    // ── 10. Create or Update document ──────────────────────────────────────
+    const crewData: any = {
       company: companyId,
-      submissionToken: generateToken(),
       formSource: "admin_created",
       lastEditedBy: session.user.id,
-      status: (str(body.status) as ICrew["status"]) || "draft",
+      status: requestedStatus,
 
       firstName,
       lastName,
@@ -397,8 +401,6 @@ export async function POST(req: NextRequest) {
       positionApplied: str(body.positionApplied) || undefined,
       dateOfAvailability: validDate(str(body.dateOfAvailability)),
       availabilityNote: str(body.availabilityNote) || undefined,
-      profilePhoto: str(body.profilePhoto) || undefined,
-      resume: body.resume ?? { uploadStatus: "not_uploaded" },
 
       nationality,
       dateOfBirth,
@@ -442,9 +444,20 @@ export async function POST(req: NextRequest) {
 
       additionalInfo: str(body.additionalInfo) || undefined,
       seaExperienceDetail: str(body.seaExperienceDetail) || undefined,
+    };
 
-      adminNotes: [],
-    });
+    if (body.profilePhoto) crewData.profilePhoto = body.profilePhoto;
+    if (body.resume) crewData.resume = body.resume;
+
+    let crew;
+    if (existingCrew) {
+      crew = await Crew.findByIdAndUpdate(existingCrew._id, { $set: crewData }, { new: true });
+    } else {
+      crewData.submissionToken = generateToken();
+      crewData.adminNotes = [];
+      if (!crewData.resume) crewData.resume = { uploadStatus: "not_uploaded" };
+      crew = await Crew.create(crewData);
+    }
 
     return NextResponse.json(
       {

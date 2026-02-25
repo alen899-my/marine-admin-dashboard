@@ -428,7 +428,6 @@ const VESSEL_TYPE_OPTIONS = [
 // VIEW-MODE FIELD COMPONENT
 // ─────────────────────────────────────────────────────────────────
 
-
 function formatDate(val?: string | null) {
   if (!val) return undefined;
   try {
@@ -630,9 +629,7 @@ export default function CrewApplicationForm({
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState<number[]>(() =>
-    isEdit ? STEPS.map((s) => s.id) : [],
-  );
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -703,9 +700,59 @@ export default function CrewApplicationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearDraftCache]);
 
+  // ── Derive completed steps from current in-memory data (used for edit flows)
+  const deriveCompletedSteps = useCallback(() => {
+    const completed: number[] = [];
+
+    const hasPersonalInfo =
+      scalar.firstName ||
+      scalar.lastName ||
+      scalar.nationality ||
+      scalar.email ||
+      scalar.cellPhone ||
+      scalar.presentAddress;
+    if (hasPersonalInfo) completed.push(1);
+
+    if (coc.items.some((l) => l.country || l.grade || l.number)) completed.push(2);
+    if (coe.items.some((l) => l.country || l.grade || l.number)) completed.push(3);
+    if (passports.items.some((p) => p.number || p.country)) completed.push(4);
+    if (seamans.items.some((s) => s.number || s.country)) completed.push(5);
+    if (visas.items.some((v) => v.country || v.number || v.visaType)) completed.push(6);
+    if (endorsements.items.some((e) => e.name)) completed.push(7);
+    if (stcw.items.some((c) => c.name) || otherCerts.items.some((c) => c.name)) completed.push(8);
+    if (seaExp.items.some((s) => s.vesselName || s.company || s.rank)) completed.push(9);
+
+    const hasDocs =
+      scalar.profilePhoto ||
+      scalar.resume ||
+      extraDocs.items.some((d) => d.name || d._fileUrl || d._fileName);
+    if (hasDocs) completed.push(10);
+
+    return completed;
+  }, [
+    coc.items,
+    coe.items,
+    endorsements.items,
+    extraDocs.items,
+    passports.items,
+    scalar.cellPhone,
+    scalar.email,
+    scalar.firstName,
+    scalar.lastName,
+    scalar.nationality,
+    scalar.presentAddress,
+    scalar.profilePhoto,
+    scalar.resume,
+    seaExp.items,
+    seamans.items,
+    stcw.items,
+    otherCerts.items,
+    visas.items,
+  ]);
+
   // ── Restore cached draft on mount (create mode only)
   useEffect(() => {
-    if (!isCreate) return;
+    if (!isCreate || !isPublic) return;
     try {
       const raw = localStorage.getItem(CACHE_KEY);
       if (!raw) return;
@@ -792,7 +839,15 @@ export default function CrewApplicationForm({
       // initialData exists but extraDocs is empty - reset to empty array
       extraDocs.reset([]);
     }
+
   }, [initialData]);
+
+  // ── Keep completed steps in sync in edit mode so sidebar/mobile reflect saved data after navigation
+  useEffect(() => {
+    if (isEdit) {
+      setCompletedSteps(deriveCompletedSteps());
+    }
+  }, [isEdit, deriveCompletedSteps]);
 
   // ── Navigation
   const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
@@ -993,16 +1048,21 @@ export default function CrewApplicationForm({
       return;
     }
 
-    if (!completedSteps.includes(currentStep)) {
-      setCompletedSteps((prev) => [...prev, currentStep]);
+    // ── Persist to database on every step (create + edit)
+    // Only mark the step as completed after a successful save so the sidebar check icon reflects a saved state.
+    if (isCreate || isEdit) {
+      const success = await handleSubmit(true);
+      if (!success) return;
     }
 
-    // ── Save draft to cache on each successful "Save & Continue" (create mode)
-    if (isCreate) {
+    const nextCompleted = completedSteps.includes(currentStep)
+      ? completedSteps
+      : [...completedSteps, currentStep];
+    setCompletedSteps(nextCompleted);
+
+    // ── Save draft to cache only after a successful save (public create)
+    if (isCreate && isPublic) {
       try {
-        const nextCompleted = completedSteps.includes(currentStep)
-          ? completedSteps
-          : [...completedSteps, currentStep];
         const draft = {
           timestamp: Date.now(),
           currentStep: Math.min(currentStep + 1, STEPS.length),
@@ -1033,13 +1093,13 @@ export default function CrewApplicationForm({
     // Only allow clicking steps you have already completed or the direct next allowed step
     const maxCompleted =
       completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
-    if (stepId <= maxCompleted + 1) setCurrentStep(stepId);
+    if (isEdit || isView || stepId <= maxCompleted + 1) setCurrentStep(stepId);
   };
 
- 
-  
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (
+    isDraftArg: boolean | React.MouseEvent = false,
+  ) => {
+    const isDraft = typeof isDraftArg === "boolean" ? isDraftArg : false;
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -1076,12 +1136,17 @@ export default function CrewApplicationForm({
         "medicalCertExpiredDate",
         "seaExperienceDetail",
         "additionalInfo",
-        "status",
       ];
       scalarKeys.forEach((k) => {
         const v = scalar[k];
         if (v && typeof v === "string") fd.append(k, v);
       });
+
+      let finalStatus = scalar.status;
+      if (isPublic) {
+        finalStatus = isDraft ? "draft" : "submitted";
+      }
+      fd.append("status", finalStatus);
 
       if (scalar.nextOfKinName) {
         fd.append("nextOfKin.name", scalar.nextOfKinName);
@@ -1166,7 +1231,12 @@ export default function CrewApplicationForm({
       if (!result.success) {
         setSubmitError(result.error || "Submission failed. Please try again.");
         toast.error(result.error || "Submission failed. Please try again.");
-        return;
+        return false;
+      }
+
+      if (isDraft) {
+        // Just return success, don't redirect
+        return true;
       }
 
       if (isEdit) {
@@ -1182,9 +1252,11 @@ export default function CrewApplicationForm({
         router.refresh();
         router.push(`/jobs/view/${result.data.id}`);
       }
+      return true;
     } catch {
       setSubmitError("An unexpected error occurred. Please try again.");
       toast.error("An unexpected error occurred. Please try again.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -1973,6 +2045,7 @@ export default function CrewApplicationForm({
       onBack={handleBack}
       completedSteps={completedSteps}
       onStepClick={handleStepClick}
+      allowAllStepsClickable={isEdit || isView}
       onSubmit={handleSubmit}
       isSubmitting={isSubmitting}
       onReset={isCreate ? handleReset : undefined}
@@ -2564,8 +2637,7 @@ export default function CrewApplicationForm({
         {currentStep === 6 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              If you hold any valid visas, please enter them below. This step is
-              optional — you can skip it if you don&apos;t have any visas.
+              If you hold any valid visas, please enter them below.  you can skip it if you don&apos;t have any visas.
             </p>
             {visas.items.map((item, idx) => (
               <RepeatCard
@@ -2714,7 +2786,7 @@ export default function CrewApplicationForm({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               If you have any training certificates (STCW or other), please add
-              them below. This step is optional — you can skip it if you
+              them below. you can skip it if you
               don&apos;t have any.
             </p>
             <FormSection>
@@ -2788,7 +2860,7 @@ export default function CrewApplicationForm({
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               If you have sea experience, please add all your records below. You
-              can add multiple entries. This step is optional.
+              can add multiple entries. 
             </p>
             <div className="space-y-4">
               {seaExp.items.map((item, idx) => (

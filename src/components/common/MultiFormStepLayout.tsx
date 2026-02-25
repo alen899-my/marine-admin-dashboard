@@ -23,6 +23,7 @@ interface MultiStepFormLayoutProps {
   onReset?: () => void;
   isSubmitting?: boolean;
   isNextDisabled?: boolean;
+  allowAllStepsClickable?: boolean;
   submitLabel?: string;
   pageTitle?: string;
   pageSubtitle?: string;
@@ -40,11 +41,13 @@ function StepSidebar({
   currentStep,
   completedSteps = [],
   onStepClick,
+  allowAllStepsClickable = false,
 }: {
   steps: StepConfig[];
   currentStep: number;
   completedSteps?: number[];
   onStepClick?: (id: number) => void;
+  allowAllStepsClickable?: boolean;
 }) {
   return (
     <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r  dark:border-brand-400/10 bg-gray-50/50 dark:bg-white/[0.02]">
@@ -52,8 +55,10 @@ function StepSidebar({
         {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.includes(step.id);
-          const maxCompletedStep = completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
-          const isUnlocked = step.id <= maxCompletedStep + 1;
+          const maxCompletedStep =
+            completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
+          const isUnlocked =
+            allowAllStepsClickable || step.id <= maxCompletedStep + 1;
           const isClickable = isUnlocked && !isActive;
 
           return (
@@ -68,14 +73,18 @@ function StepSidebar({
                   ? "bg-brand-500 text-white dark:bg-brand-600"
                   : isClickable
                     ? "bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50 cursor-pointer"
-                    : "bg-gray-100/30 text-gray-400 cursor-not-allowed opacity-60 dark:bg-transparent"
+                    : "bg-gray-100/30 text-gray-400 cursor-not-allowed opacity-60 dark:bg-transparent",
               ].join(" ")}
             >
               <div className="flex w-full items-center justify-between gap-2">
-                <span className={[
-                  "text-[10px] font-bold uppercase tracking-wider",
-                  isActive ? "text-brand-100" : "text-gray-500 dark:text-gray-400 opacity-100"
-                ].join(" ")}>
+                <span
+                  className={[
+                    "text-[10px] font-bold uppercase tracking-wider",
+                    isActive
+                      ? "text-brand-100"
+                      : "text-gray-500 dark:text-gray-400 opacity-100",
+                  ].join(" ")}
+                >
                   Step {step.id}
                 </span>
                 {isCompleted && (
@@ -85,18 +94,22 @@ function StepSidebar({
                 )}
               </div>
 
-              <span className={[
-                "mt-1 text-[13px] font-bold uppercase tracking-tight",
-                isActive ? "text-white" : "text-gray-700 dark:text-gray-200"
-              ].join(" ")}>
+              <span
+                className={[
+                  "mt-1 text-[13px] font-bold uppercase tracking-tight",
+                  isActive ? "text-white" : "text-gray-700 dark:text-gray-200",
+                ].join(" ")}
+              >
                 {step.title}
               </span>
 
               {step.description && (
-                <p className={[
-                  "mt-1 text-[11px] leading-tight font-medium",
-                  isActive ? "text-brand-50/80" : "text-gray-400"
-                ].join(" ")}>
+                <p
+                  className={[
+                    "mt-1 text-[11px] leading-tight font-medium",
+                    isActive ? "text-brand-50/80" : "text-gray-400",
+                  ].join(" ")}
+                >
                   {step.description}
                 </p>
               )}
@@ -116,13 +129,16 @@ function MobileProgress({
   currentStep,
   completedSteps = [],
   onStepClick,
+  allowAllStepsClickable = false,
 }: {
   steps: StepConfig[];
   currentStep: number;
   completedSteps?: number[];
   onStepClick?: (id: number) => void;
+  allowAllStepsClickable?: boolean;
 }) {
-  const maxCompletedStep = completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
+  const maxCompletedStep =
+    completedSteps.length > 0 ? Math.max(...completedSteps) : 0;
 
   return (
     <div className="lg:hidden w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800/50">
@@ -131,7 +147,8 @@ function MobileProgress({
         {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.includes(step.id);
-          const isUnlocked = step.id <= maxCompletedStep + 1;
+          const isUnlocked =
+            allowAllStepsClickable || step.id <= maxCompletedStep + 1;
           const isClickable = isUnlocked && !isActive;
 
           return (
@@ -142,18 +159,20 @@ function MobileProgress({
               onClick={() => isClickable && onStepClick?.(step.id)}
               className={[
                 "flex items-center gap-2 shrink-0 transition-all duration-200",
-                isActive ? "opacity-100" : "opacity-70"
+                isActive ? "opacity-100" : "opacity-70",
               ].join(" ")}
             >
               {/* Step circle indicator */}
-              <div className={[
-                "flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold transition-all border-2",
-                isActive
-                  ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30 ring-2 ring-brand-500/10"
-                  : isCompleted
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400",
-              ].join(" ")}>
+              <div
+                className={[
+                  "flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold transition-all border-2",
+                  isActive
+                    ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30 ring-2 ring-brand-500/10"
+                    : isCompleted
+                      ? "bg-emerald-500 border-emerald-500 text-white"
+                      : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400",
+                ].join(" ")}
+              >
                 {isCompleted && !isActive ? (
                   <Check size={12} strokeWidth={3} />
                 ) : (
@@ -163,22 +182,30 @@ function MobileProgress({
 
               {/* Step title */}
               <div className="flex flex-col items-start mr-2">
-                <span className={[
-                  "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                  isActive
-                    ? "text-brand-600 dark:text-brand-400"
+                <span
+                  className={[
+                    "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                    isActive
+                      ? "text-brand-600 dark:text-brand-400"
+                      : isCompleted
+                        ? "text-emerald-600 dark:text-emerald-500"
+                        : "text-gray-400 dark:text-gray-600",
+                  ].join(" ")}
+                >
+                  {isActive
+                    ? "Current"
                     : isCompleted
-                      ? "text-emerald-600 dark:text-emerald-500"
-                      : "text-gray-400 dark:text-gray-600",
-                ].join(" ")}>
-                  {isActive ? "Current" : isCompleted ? "Done" : `Step ${step.id}`}
+                      ? "Done"
+                      : `Step ${step.id}`}
                 </span>
-                <span className={[
-                  "text-[11px] font-medium whitespace-nowrap leading-none",
-                  isActive
-                    ? "text-gray-900 dark:text-white"
-                    : "text-gray-500 dark:text-gray-400",
-                ].join(" ")}>
+                <span
+                  className={[
+                    "text-[11px] font-medium whitespace-nowrap leading-none",
+                    isActive
+                      ? "text-gray-900 dark:text-white"
+                      : "text-gray-500 dark:text-gray-400",
+                  ].join(" ")}
+                >
                   {step.title}
                 </span>
               </div>
@@ -208,6 +235,7 @@ export default function MultiStepFormLayout({
   onReset,
   isSubmitting = false,
   isNextDisabled = false,
+  allowAllStepsClickable = false,
   submitLabel = "Submit Application",
   pageTitle = "Application Form",
   pageSubtitle,
@@ -229,7 +257,6 @@ export default function MultiStepFormLayout({
       }
     >
       <div className={isPublic ? "w-full max-w-6xl" : "w-full"}>
-        
         {/* MAIN CONTAINER */}
         <div
           className={
@@ -258,12 +285,10 @@ export default function MultiStepFormLayout({
                     </p>
                   )}
                 </div>
-                
-           
               </div>
               <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
-                 <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white" />
-                 <div className="absolute -bottom-12 left-1/4 w-32 h-32 rounded-full bg-white" />
+                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white" />
+                <div className="absolute -bottom-12 left-1/4 w-32 h-32 rounded-full bg-white" />
               </div>
             </div>
           ) : (
@@ -296,6 +321,7 @@ export default function MultiStepFormLayout({
               currentStep={currentStep}
               completedSteps={completedSteps}
               onStepClick={onStepClick}
+              allowAllStepsClickable={allowAllStepsClickable}
             />
 
             <div className="flex flex-1 flex-col min-w-0">
@@ -304,21 +330,24 @@ export default function MultiStepFormLayout({
                 currentStep={currentStep}
                 completedSteps={completedSteps}
                 onStepClick={onStepClick}
+                allowAllStepsClickable={allowAllStepsClickable}
               />
 
               <div className="flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar">
                 {/* CURRENT STEP HEADER */}
                 <div className="mb-8 pt-6">
-                  <h2 className="text-l font-medium text-gray-800 dark:text-white">{current?.title}</h2>
+                  <h2 className="text-l font-medium text-gray-800 dark:text-white">
+                    {current?.title}
+                  </h2>
                   {current?.description && (
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{current.description}</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {current.description}
+                    </p>
                   )}
                 </div>
 
                 {/* FORM CONTENT */}
-                <div className="pb-20">
-                  {children}
-                </div>
+                <div className="pb-20">{children}</div>
               </div>
 
               {/* Nav footer */}
@@ -408,16 +437,22 @@ export function FormSection({
           )}
         </div>
       )}
-      <div className="pt-1">
-        {children}
-      </div>
+      <div className="pt-1">{children}</div>
     </div>
   );
 }
 
-export function FormGrid({ cols = 2, children }: { cols?: 1 | 2 | 3; children: React.ReactNode }) {
+export function FormGrid({
+  cols = 2,
+  children,
+}: {
+  cols?: 1 | 2 | 3;
+  children: React.ReactNode;
+}) {
   return (
-    <div className={`grid grid-cols-1 gap-5 ${cols === 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"}`}>
+    <div
+      className={`grid grid-cols-1 gap-5 ${cols === 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"}`}
+    >
       {children}
     </div>
   );
@@ -455,9 +490,7 @@ export function RepeatCard({
           </button>
         )}
       </div>
-      <div className="relative">
-        {children}
-      </div>
+      <div className="relative">{children}</div>
     </div>
   );
 }
