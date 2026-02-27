@@ -202,9 +202,13 @@ export async function GET(req: NextRequest) {
     }
 
     if (!canSeeHistory) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      // Use the client's local timezone offset (minutes east of UTC) so
+      // "start of today" is computed in the user's local time, not server UTC.
+      const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
       const now = new Date();
+      const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
+      const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
+      const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
 
       query.reportDate = {
         $gte: startOfDay,

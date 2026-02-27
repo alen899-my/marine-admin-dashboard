@@ -39,7 +39,8 @@ interface GetNoonReportsParams {
   vesselId?: string;
   voyageId?: string;
   companyId?: string;
-  user: any; 
+  tzOffset?: string | number; // minutes east of UTC, e.g. 330 for IST (+05:30)
+  user: any;
 }
 
 export async function getNoonReports({
@@ -52,6 +53,7 @@ export async function getNoonReports({
   vesselId,
   voyageId,
   companyId,
+  tzOffset,
   user,
 }: GetNoonReportsParams) {
   await dbConnect();
@@ -64,9 +66,9 @@ export async function getNoonReports({
   const skip = (page - 1) * limit;
   const query: any = { deletedAt: null };
 
-  const emptyResult = { 
-    data: [], 
-    pagination: { total: 0, page, limit, totalPages: 0 } 
+  const emptyResult = {
+    data: [],
+    pagination: { total: 0, page, limit, totalPages: 0 }
   };
 
   // --- 1. Multi-Tenancy Logic ---
@@ -80,12 +82,12 @@ export async function getNoonReports({
     const companyVesselIds = companyVessels.map((v) => v._id);
 
     if (selectedVessel) {
-        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) {
-            return emptyResult;
-        }
-        query.vesselId = selectedVessel;
+      if (!companyVesselIds.some(id => id.toString() === selectedVessel)) {
+        return emptyResult;
+      }
+      query.vesselId = selectedVessel;
     } else {
-        query.vesselId = { $in: companyVesselIds };
+      query.vesselId = { $in: companyVesselIds };
     }
 
     if (!isAdmin) {
@@ -94,19 +96,19 @@ export async function getNoonReports({
   } else {
     // Super Admin Logic
     if (selectedCompany && selectedCompany !== "all") {
-       const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
-       const companyVesselIds = companyVessels.map((v) => v._id);
-       
-       if (selectedVessel) {
-          if (!companyVesselIds.some(id => id.toString() === selectedVessel)) {
-             return emptyResult;
-          }
-          query.vesselId = selectedVessel;
-       } else {
-          query.vesselId = { $in: companyVesselIds };
-       }
+      const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      if (selectedVessel) {
+        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) {
+          return emptyResult;
+        }
+        query.vesselId = selectedVessel;
+      } else {
+        query.vesselId = { $in: companyVesselIds };
+      }
     } else if (selectedVessel) {
-       query.vesselId = selectedVessel;
+      query.vesselId = selectedVessel;
     }
   }
 
@@ -117,7 +119,7 @@ export async function getNoonReports({
   // Logic: Check if Date Filters exist OR if user is restricted from seeing history
   if (startDate || endDate) {
     const dateQuery: any = {};
-    
+
     // Parse using the robust helper
     const startD = parseDateString(startDate);
     const endD = parseDateString(endDate);
@@ -137,10 +139,17 @@ export async function getNoonReports({
       query.reportDate = dateQuery;
     }
   } else if (!canSeeHistory) {
-    // Default view for users without history permission
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    query.reportDate = { $gte: startOfDay, $lte: new Date() };
+    // Default view for users without history permission.
+    // Use the client's local timezone offset (minutes east of UTC) so that
+    // "start of today" is computed in the user's local time, not server UTC.
+    const offsetMinutes = Number(tzOffset) || 0;
+    const now = new Date();
+    // Compute UTC midnight for the user's local date:
+    // local midnight = UTC now, floored to local date's 00:00, then shifted back to UTC
+    const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
+    const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
+    const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
+    query.reportDate = { $gte: startOfDay, $lte: now };
   }
 
   // Search
@@ -189,34 +198,34 @@ export async function getNoonReports({
 }
 
 export async function getFilterOptions(user: any) {
-    await dbConnect();
-    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    const userCompanyId = user.company?.id || user.company;
+  await dbConnect();
+  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+  const userCompanyId = user.company?.id || user.company;
 
-    const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
-    const vesselFilter: any = { status: "active", deletedAt: null };
-    
-    if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+  const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+  const vesselFilter: any = { status: "active", deletedAt: null };
 
-    const [companies, vessels] = await Promise.all([
-        Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
-        Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
-    ]);
+  if (!isSuperAdmin) vesselFilter.company = userCompanyId;
 
-    const allowedVesselIds = vessels.map((v: any) => v._id.toString());
+  const [companies, vessels] = await Promise.all([
+    Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
+    Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
+  ]);
 
-    // 3. Fetch Active Voyages for these vessels
-    const voyages = await Voyage.find({
-        vesselId: { $in: allowedVesselIds },
-        status: "active",
-        deletedAt: null
-    })
+  const allowedVesselIds = vessels.map((v: any) => v._id.toString());
+
+  // 3. Fetch Active Voyages for these vessels
+  const voyages = await Voyage.find({
+    vesselId: { $in: allowedVesselIds },
+    status: "active",
+    deletedAt: null
+  })
     .select("_id vesselId voyageNo")
     .lean();
 
-    return {
-        companies: JSON.parse(JSON.stringify(companies)),
-        vessels: JSON.parse(JSON.stringify(vessels)),
-        voyages: JSON.parse(JSON.stringify(voyages))
-    };
+  return {
+    companies: JSON.parse(JSON.stringify(companies)),
+    vessels: JSON.parse(JSON.stringify(vessels)),
+    voyages: JSON.parse(JSON.stringify(voyages))
+  };
 }

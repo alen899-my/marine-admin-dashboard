@@ -28,6 +28,7 @@ export default async function DailyNoonReportPage({ searchParams }: PageProps) {
     getNoonReports({
       ...resolvedParams,
       page,
+      tzOffset: resolvedParams.tzOffset,
       user,
     }),
     getFilterOptions(user),
