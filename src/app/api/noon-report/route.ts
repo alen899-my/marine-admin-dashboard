@@ -192,13 +192,13 @@ export async function GET(req: NextRequest) {
 
     if (startDate || endDate) {
       manualDateQuery = {};
+      const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
+      const offsetMs = offsetMinutes * 60 * 1000;
       const startD = parseDateString(startDate);
       const endD = parseDateString(endDate);
-      if (startD) manualDateQuery.$gte = startD;
-      if (endD) {
-        endD.setHours(23, 59, 59, 999);
-        manualDateQuery.$lte = endD;
-      }
+      // Shift parsed UTC midnight to user's local midnight in UTC
+      if (startD) manualDateQuery.$gte = new Date(startD.getTime() - offsetMs);
+      if (endD) manualDateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
     }
 
     if (!canSeeHistory) {

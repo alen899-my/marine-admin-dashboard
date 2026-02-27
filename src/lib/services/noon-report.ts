@@ -119,19 +119,22 @@ export async function getNoonReports({
   // Logic: Check if Date Filters exist OR if user is restricted from seeing history
   if (startDate || endDate) {
     const dateQuery: any = {};
+    const offsetMinutes = Number(tzOffset) || 0;
+    const offsetMs = offsetMinutes * 60 * 1000;
 
-    // Parse using the robust helper
+    // parseDateString returns UTC midnight (server runs in UTC).
+    // Shift by offsetMs so we get the user's LOCAL midnight in UTC.
+    // e.g. IST (+5:30 = +330 min): Feb 27 00:00 UTC - 330 min = Feb 26 18:30 UTC = Feb 27 00:00 IST ✓
     const startD = parseDateString(startDate);
     const endD = parseDateString(endDate);
 
     if (startD) {
-      dateQuery.$gte = startD;
+      dateQuery.$gte = new Date(startD.getTime() - offsetMs);
     }
 
     if (endD) {
-      // Set end date to end of that day
-      endD.setHours(23, 59, 59, 999);
-      dateQuery.$lte = endD;
+      // End of the user's local day = local midnight + 24h - 1ms
+      dateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
     }
 
     // Only apply if we successfully parsed at least one date
