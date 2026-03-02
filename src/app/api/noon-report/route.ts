@@ -57,293 +57,293 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 // GET ALL NOON REPORTS
 
-export async function GET(req: NextRequest) {
-  try {
-    const [authz, _] = await Promise.all([
-      authorizeRequest("noon.view"),
-      dbConnect(),
-    ]);
+// export async function GET(req: NextRequest) {
+//   try {
+//     const [authz, _] = await Promise.all([
+//       authorizeRequest("noon.view"),
+//       dbConnect(),
+//     ]);
 
-    if (!authz.ok) {
-      return sendResponse(
-        403,
-        "Forbidden: Insufficient permissions",
-        null,
-        false,
-      );
-    }
+//     if (!authz.ok) {
+//       return sendResponse(
+//         403,
+//         "Forbidden: Insufficient permissions",
+//         null,
+//         false,
+//       );
+//     }
 
-    const session = await auth();
-    if (!session?.user) {
-      return sendResponse(401, "Unauthorized access", null, false);
-    }
+//     const session = await auth();
+//     if (!session?.user) {
+//       return sendResponse(401, "Unauthorized access", null, false);
+//     }
 
-    const { user } = session;
-    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    const userCompanyId = user.company?.id;
-    const isAdmin = user.role?.toLowerCase() === "admin";
-    const canSeeHistory =
-      user.permissions?.includes("reports.history.views") || isSuperAdmin;
-    // Ensure models are registered for population
-    const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
+//     const { user } = session;
+//     const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+//     const userCompanyId = user.company?.id;
+//     const isAdmin = user.role?.toLowerCase() === "admin";
+//     const canSeeHistory =
+//       user.permissions?.includes("reports.history.views") || isSuperAdmin;
+//     // Ensure models are registered for population
+//     const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
 
-    const { searchParams } = new URL(req.url);
-    const fetchAll = searchParams.get("all") === "true"; // Flag for Dropdowns
-    const page = Math.max(1, Number(searchParams.get("page")) || 1);
-    const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
-    const skip = (page - 1) * limit;
+//     const { searchParams } = new URL(req.url);
+//     const fetchAll = searchParams.get("all") === "true"; // Flag for Dropdowns
+//     const page = Math.max(1, Number(searchParams.get("page")) || 1);
+//     const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
+//     const skip = (page - 1) * limit;
 
-    //  Initialize query with soft-delete filter
-    const query: Record<string, any> = { deletedAt: null };
+//     //  Initialize query with soft-delete filter
+//     const query: Record<string, any> = { deletedAt: null };
 
-    // 1. Multi-Tenancy Logic
-    const selectedVessel = searchParams.get("vesselId");
-    const selectedCompany = searchParams.get("companyId");
+//     // 1. Multi-Tenancy Logic
+//     const selectedVessel = searchParams.get("vesselId");
+//     const selectedCompany = searchParams.get("companyId");
 
-    if (!isSuperAdmin) {
-      if (!userCompanyId)
-        return sendResponse(403, "No company assigned to profile", null, false);
+//     if (!isSuperAdmin) {
+//       if (!userCompanyId)
+//         return sendResponse(403, "No company assigned to profile", null, false);
 
-      //  Filter Vessels by soft-delete status
-      const companyVessels = await Vessel.find({
-        company: userCompanyId,
-        deletedAt: null,
-      })
-        .select("_id")
-        .lean();
-      const companyVesselIds = companyVessels.map((v) => v._id);
-      if (isAdmin) {
-        // ADMIN LOGIC: Can see all company vessels
-        if (selectedVessel) {
-          if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
-            query.vesselId = selectedVessel;
-          } else {
-            return sendResponse(200, "Unauthorized vessel access", {
-              data: [],
-              pagination: { total: 0, page, totalPages: 0 },
-            });
-          }
-        } else {
-          query.vesselId = { $in: companyVesselIds };
-        }
-      } else {
-        // NON-ADMIN LOGIC: Show ONLY their own reports
-        query.createdBy = user.id;
+//       //  Filter Vessels by soft-delete status
+//       const companyVessels = await Vessel.find({
+//         company: userCompanyId,
+//         deletedAt: null,
+//       })
+//         .select("_id")
+//         .lean();
+//       const companyVesselIds = companyVessels.map((v) => v._id);
+//       if (isAdmin) {
+//         // ADMIN LOGIC: Can see all company vessels
+//         if (selectedVessel) {
+//           if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+//             query.vesselId = selectedVessel;
+//           } else {
+//             return sendResponse(200, "Unauthorized vessel access", {
+//               data: [],
+//               pagination: { total: 0, page, totalPages: 0 },
+//             });
+//           }
+//         } else {
+//           query.vesselId = { $in: companyVesselIds };
+//         }
+//       } else {
+//         // NON-ADMIN LOGIC: Show ONLY their own reports
+//         query.createdBy = user.id;
 
-        // Still apply vessel filter to ensure they don't see their reports from unauthorized vessels
-        if (selectedVessel) {
-          query.vesselId = selectedVessel;
-        } else {
-          query.vesselId = { $in: companyVesselIds };
-        }
-      }
+//         // Still apply vessel filter to ensure they don't see their reports from unauthorized vessels
+//         if (selectedVessel) {
+//           query.vesselId = selectedVessel;
+//         } else {
+//           query.vesselId = { $in: companyVesselIds };
+//         }
+//       }
 
-      if (selectedVessel) {
-        if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
-          query.vesselId = selectedVessel;
-        } else {
-          return sendResponse(200, "Unauthorized vessel access", {
-            data: [],
-            pagination: { total: 0, page, totalPages: 0 },
-          });
-        }
-      } else {
-        query.vesselId = { $in: companyVesselIds };
-      }
-    } else {
-      // Super Admin Logic
-      if (selectedCompany && selectedCompany !== "all") {
-        //  Filter Vessels by soft-delete status
-        const companyVessels = await Vessel.find({
-          company: selectedCompany,
-          deletedAt: null,
-        })
-          .select("_id")
-          .lean();
-        const companyVesselIds = companyVessels.map((v) => v._id);
+//       if (selectedVessel) {
+//         if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+//           query.vesselId = selectedVessel;
+//         } else {
+//           return sendResponse(200, "Unauthorized vessel access", {
+//             data: [],
+//             pagination: { total: 0, page, totalPages: 0 },
+//           });
+//         }
+//       } else {
+//         query.vesselId = { $in: companyVesselIds };
+//       }
+//     } else {
+//       // Super Admin Logic
+//       if (selectedCompany && selectedCompany !== "all") {
+//         //  Filter Vessels by soft-delete status
+//         const companyVessels = await Vessel.find({
+//           company: selectedCompany,
+//           deletedAt: null,
+//         })
+//           .select("_id")
+//           .lean();
+//         const companyVesselIds = companyVessels.map((v) => v._id);
 
-        if (selectedVessel) {
-          if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
-            query.vesselId = selectedVessel;
-          } else {
-            return sendResponse(200, "Vessel mismatch for company", {
-              data: [],
-              pagination: { total: 0, page, totalPages: 0 },
-            });
-          }
-        } else {
-          query.vesselId = { $in: companyVesselIds };
-        }
-      } else if (selectedVessel) {
-        query.vesselId = selectedVessel;
-      }
-    }
+//         if (selectedVessel) {
+//           if (companyVesselIds.some((id) => id.toString() === selectedVessel)) {
+//             query.vesselId = selectedVessel;
+//           } else {
+//             return sendResponse(200, "Vessel mismatch for company", {
+//               data: [],
+//               pagination: { total: 0, page, totalPages: 0 },
+//             });
+//           }
+//         } else {
+//           query.vesselId = { $in: companyVesselIds };
+//         }
+//       } else if (selectedVessel) {
+//         query.vesselId = selectedVessel;
+//       }
+//     }
 
-    // 2. Build Report Filters
-    const status = searchParams.get("status");
-    if (status && status !== "all") query.status = status;
+//     // 2. Build Report Filters
+//     const status = searchParams.get("status");
+//     if (status && status !== "all") query.status = status;
 
-    const selectedVoyage = searchParams.get("voyageId");
-    if (selectedVoyage) query.voyageId = selectedVoyage;
+//     const selectedVoyage = searchParams.get("voyageId");
+//     if (selectedVoyage) query.voyageId = selectedVoyage;
 
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    let manualDateQuery: any = null;
+//     const startDate = searchParams.get("startDate");
+//     const endDate = searchParams.get("endDate");
+//     let manualDateQuery: any = null;
 
-    if (startDate || endDate) {
-      manualDateQuery = {};
-      const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
-      const offsetMs = offsetMinutes * 60 * 1000;
-      const startD = parseDateString(startDate);
-      const endD = parseDateString(endDate);
-      // Shift parsed UTC midnight to user's local midnight in UTC
-      if (startD) manualDateQuery.$gte = new Date(startD.getTime() - offsetMs);
-      if (endD) manualDateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
-    }
+//     if (startDate || endDate) {
+//       manualDateQuery = {};
+//       const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
+//       const offsetMs = offsetMinutes * 60 * 1000;
+//       const startD = parseDateString(startDate);
+//       const endD = parseDateString(endDate);
+//       // Shift parsed UTC midnight to user's local midnight in UTC
+//       if (startD) manualDateQuery.$gte = new Date(startD.getTime() - offsetMs);
+//       if (endD) manualDateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
+//     }
 
-    if (!canSeeHistory) {
-      // Use the client's local timezone offset (minutes east of UTC) so
-      // "start of today" is computed in the user's local time, not server UTC.
-      const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
-      const now = new Date();
-      const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
-      const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
-      const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
+//     if (!canSeeHistory) {
+//       // Use the client's local timezone offset (minutes east of UTC) so
+//       // "start of today" is computed in the user's local time, not server UTC.
+//       const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
+//       const now = new Date();
+//       const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
+//       const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
+//       const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
 
-      query.reportDate = {
-        $gte: startOfDay,
-        $lte: now,
-      };
-    } else if (manualDateQuery) {
-      query.reportDate = manualDateQuery;
-    }
+//       query.reportDate = {
+//         $gte: startOfDay,
+//         $lte: now,
+//       };
+//     } else if (manualDateQuery) {
+//       query.reportDate = manualDateQuery;
+//     }
 
-    const search = searchParams.get("search")?.trim();
-    if (search) {
-      //  Wrap search in $and to ensure deletedAt filter is not bypassed
-      query.$and = [
-        { deletedAt: null },
-        {
-          $or: [
-            { vesselName: { $regex: search, $options: "i" } },
-            { voyageNo: { $regex: search, $options: "i" } },
-            { "navigation.nextPort": { $regex: search, $options: "i" } },
-          ],
-        },
-      ];
-    }
+//     const search = searchParams.get("search")?.trim();
+//     if (search) {
+//       //  Wrap search in $and to ensure deletedAt filter is not bypassed
+//       query.$and = [
+//         { deletedAt: null },
+//         {
+//           $or: [
+//             { vesselName: { $regex: search, $options: "i" } },
+//             { voyageNo: { $regex: search, $options: "i" } },
+//             { "navigation.nextPort": { $regex: search, $options: "i" } },
+//           ],
+//         },
+//       ];
+//     }
 
-    // 3. Parallel Execution (Main Data + Filter Data)
-    const promises: any[] = [
-      ReportDaily.countDocuments(query),
-      ReportDaily.find(query)
-        .populate({
-          path: "vesselId",
-          select: "name company", // Select name and company ID from Vessel
-          populate: {
-            path: "company", // Nested populate the Company model
-            select: "name", // Only fetch the company name
-          },
-        })
-        .populate("voyageId", "voyageNo")
-        .populate("createdBy", "fullName")
-        .populate("updatedBy", "fullName")
-        .sort({ reportDate: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ];
+//     // 3. Parallel Execution (Main Data + Filter Data)
+//     const promises: any[] = [
+//       ReportDaily.countDocuments(query),
+//       ReportDaily.find(query)
+//         .populate({
+//           path: "vesselId",
+//           select: "name company", // Select name and company ID from Vessel
+//           populate: {
+//             path: "company", // Nested populate the Company model
+//             select: "name", // Only fetch the company name
+//           },
+//         })
+//         .populate("voyageId", "voyageNo")
+//         .populate("createdBy", "fullName")
+//         .populate("updatedBy", "fullName")
+//         .sort({ reportDate: -1 })
+//         .skip(skip)
+//         .limit(limit)
+//         .lean(),
+//     ];
 
-    if (fetchAll) {
-      // Add Company lookup ( Include soft-delete check)
-      const companyFilter: any = isSuperAdmin
-        ? { deletedAt: null }
-        : { _id: userCompanyId, deletedAt: null };
-      promises.push(
-        Company.find(companyFilter)
-          .select("_id name status")
-          .sort({ name: 1 })
-          .lean(),
-      );
+//     if (fetchAll) {
+//       // Add Company lookup ( Include soft-delete check)
+//       const companyFilter: any = isSuperAdmin
+//         ? { deletedAt: null }
+//         : { _id: userCompanyId, deletedAt: null };
+//       promises.push(
+//         Company.find(companyFilter)
+//           .select("_id name status")
+//           .sort({ name: 1 })
+//           .lean(),
+//       );
 
-      // Add Vessel lookup ( Include soft-delete check)
-      const vesselFilter: any = { status: "active", deletedAt: null };
-      if (!isSuperAdmin) vesselFilter.company = userCompanyId;
-      else if (selectedCompany && selectedCompany !== "all")
-        vesselFilter.company = selectedCompany;
-      promises.push(
-        Vessel.find(vesselFilter)
-          .select("_id name company status")
-          .sort({ name: 1 })
-          .lean(),
-      );
-    }
+//       // Add Vessel lookup ( Include soft-delete check)
+//       const vesselFilter: any = { status: "active", deletedAt: null };
+//       if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+//       else if (selectedCompany && selectedCompany !== "all")
+//         vesselFilter.company = selectedCompany;
+//       promises.push(
+//         Vessel.find(vesselFilter)
+//           .select("_id name company status")
+//           .sort({ name: 1 })
+//           .lean(),
+//       );
+//     }
 
-    const results = await Promise.all(promises);
-    const total = results[0];
-    const reports = results[1];
+//     const results = await Promise.all(promises);
+//     const total = results[0];
+//     const reports = results[1];
 
-    let companies: any[] = [];
-    let vessels: any[] = [];
-    let voyages: any[] = [];
+//     let companies: any[] = [];
+//     let vessels: any[] = [];
+//     let voyages: any[] = [];
 
-    // 4. Process Extra Filter Data (Voyage Mapping)
-    if (fetchAll) {
-      companies = results[2] || [];
-      const rawVessels = (results[3] || []) as any[];
-      const vesselIds = rawVessels.map((v) => v._id);
+//     // 4. Process Extra Filter Data (Voyage Mapping)
+//     if (fetchAll) {
+//       companies = results[2] || [];
+//       const rawVessels = (results[3] || []) as any[];
+//       const vesselIds = rawVessels.map((v) => v._id);
 
-      //  Fetch only non-deleted voyages
-      const activeVoyages = await Voyage.find({
-        vesselId: { $in: vesselIds },
-        status: "active",
-        deletedAt: null,
-      })
-        .select("vesselId voyageNo schedule.startDate")
-        .lean();
+//       //  Fetch only non-deleted voyages
+//       const activeVoyages = await Voyage.find({
+//         vesselId: { $in: vesselIds },
+//         status: "active",
+//         deletedAt: null,
+//       })
+//         .select("vesselId voyageNo schedule.startDate")
+//         .lean();
 
-      const voyageMap = new Map<string, string>();
-      activeVoyages.forEach((voy) => {
-        if (voy.vesselId) voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
-      });
+//       const voyageMap = new Map<string, string>();
+//       activeVoyages.forEach((voy) => {
+//         if (voy.vesselId) voyageMap.set(voy.vesselId.toString(), voy.voyageNo);
+//       });
 
-      // Map Vessels with activeVoyageNo
-      vessels = rawVessels.map((v) => ({
-        ...v,
-        activeVoyageNo: voyageMap.get(v._id.toString()) || "",
-      }));
+//       // Map Vessels with activeVoyageNo
+//       vessels = rawVessels.map((v) => ({
+//         ...v,
+//         activeVoyageNo: voyageMap.get(v._id.toString()) || "",
+//       }));
 
-      // Flatten Voyages for dropdown
-      voyages = activeVoyages.map((v) => ({
-        _id: v._id,
-        vesselId: v.vesselId,
-        voyageNo: v.voyageNo,
-      }));
-    }
+//       // Flatten Voyages for dropdown
+//       voyages = activeVoyages.map((v) => ({
+//         _id: v._id,
+//         vesselId: v.vesselId,
+//         voyageNo: v.voyageNo,
+//       }));
+//     }
 
-    // 5. Standardized Return
-    return sendResponse(200, "Noon reports retrieved successfully", {
-      data: reports,
-      companies,
-      vessels,
-      voyages,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    console.error("GET NOON REPORTS ERROR:", error);
-    return sendResponse(
-      500,
-      error.message || "Internal Server Error",
-      null,
-      false,
-    );
-  }
-}
+//     // 5. Standardized Return
+//     return sendResponse(200, "Noon reports retrieved successfully", {
+//       data: reports,
+//       companies,
+//       vessels,
+//       voyages,
+//       pagination: {
+//         total,
+//         page,
+//         limit,
+//         totalPages: Math.ceil(total / limit),
+//       },
+//     });
+//   } catch (error: any) {
+//     console.error("GET NOON REPORTS ERROR:", error);
+//     return sendResponse(
+//       500,
+//       error.message || "Internal Server Error",
+//       null,
+//       false,
+//     );
+//   }
+// }
 
 // CREATE NOON REPORT
 export async function POST(req: NextRequest) {

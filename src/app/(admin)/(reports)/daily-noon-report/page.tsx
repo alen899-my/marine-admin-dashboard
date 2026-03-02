@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { getFilterOptions, getNoonReports } from "@/lib/services/noon-report";
-import DailyNoonReportClient from "./DailyNoonPageClient"; //  Import the new wrapper
+import DailyNoonReportClient from "./DailyNoonPageClient";
 import DailyNoonReportTable from "./DailyNoonReportTable";
 import { Metadata } from "next";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Daily Noon Report | Parkora Falcon",
@@ -24,11 +25,16 @@ export default async function DailyNoonReportPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
 
+  // Read tzOffset from the cookie set by the client component.
+  // Cookie-based approach avoids the router.replace re-render flicker.
+  const cookieStore = await cookies();
+  const tzOffset = cookieStore.get("tzOffset")?.value ?? resolvedParams.tzOffset ?? "0";
+
   const [reportData, filterOptions] = await Promise.all([
     getNoonReports({
       ...resolvedParams,
       page,
-      tzOffset: resolvedParams.tzOffset,
+      tzOffset,
       user,
     }),
     getFilterOptions(user),

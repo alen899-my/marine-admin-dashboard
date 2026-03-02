@@ -5,8 +5,7 @@ import ExportToExcel from "@/components/common/ExportToExcel";
 import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
-import { ReactNode, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { ReactNode, useEffect } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonFilterWrapper from "./DailyNoonFilterWrapper";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -58,18 +57,12 @@ export default function DailyNoonReportClient({
   const canView = can("noon.view");
   const canCreate = can("noon.create");
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
-  // Inject the browser's local timezone offset so the server can compute
-  // the correct start-of-day in the user's local time (not server UTC).
+  // Set the browser's timezone offset as a cookie so the server can use it
+  // for date filtering on every SSR render — no URL change needed.
   useEffect(() => {
     const tzOffset = -new Date().getTimezoneOffset(); // minutes east of UTC, e.g. 330 for IST
-    const current = new URLSearchParams(searchParams.toString());
-    if (current.get("tzOffset") !== String(tzOffset)) {
-      current.set("tzOffset", String(tzOffset));
-      router.replace(`?${current.toString()}`);
-    }
+    document.cookie = `tzOffset=${tzOffset}; path=/; max-age=31536000; SameSite=Lax`;
   }, []);
 
   if (!isReady) return null;
