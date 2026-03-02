@@ -5,7 +5,7 @@ import ExportToExcel from "@/components/common/ExportToExcel";
 import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import AddDailyNoonReportButton from "./AddDailyNoonReportButton";
 import DailyNoonFilterWrapper from "./DailyNoonFilterWrapper";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -57,13 +57,6 @@ export default function DailyNoonReportClient({
   const canView = can("noon.view");
   const canCreate = can("noon.create");
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("noon");
-
-  // Set the browser's timezone offset as a cookie so the server can use it
-  // for date filtering on every SSR render — no URL change needed.
-  useEffect(() => {
-    const tzOffset = -new Date().getTimezoneOffset(); // minutes east of UTC, e.g. 330 for IST
-    document.cookie = `tzOffset=${tzOffset}; path=/; max-age=31536000; SameSite=Lax`;
-  }, []);
 
   if (!isReady) return null;
 

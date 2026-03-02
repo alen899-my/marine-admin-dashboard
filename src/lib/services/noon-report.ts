@@ -4,30 +4,10 @@ import Company from "@/models/Company";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import User from "@/models/User";
+import { localStartOfDay, parseDateInTz, parseEndDateInTz } from "@/lib/timezone";
 
 // Ensure models are registered
 const _ensureModels = [Vessel, Voyage, User, Company, ReportDaily];
-
-function parseDateString(dateStr: string | undefined): Date | undefined {
-  if (!dateStr) return undefined;
-
-  // Handle DD/MM/YYYY format explicitly
-  if (dateStr.includes("/")) {
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
-      const year = parseInt(parts[2], 10);
-
-      const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) return date;
-    }
-  }
-
-  // Fallback to standard parsing (ISO strings, YYYY-MM-DD)
-  const date = new Date(dateStr);
-  return isNaN(date.getTime()) ? undefined : date;
-}
 
 interface GetNoonReportsParams {
   page?: number;
@@ -39,7 +19,7 @@ interface GetNoonReportsParams {
   vesselId?: string;
   voyageId?: string;
   companyId?: string;
-  tzOffset?: string | number; // minutes east of UTC, e.g. 330 for IST (+05:30)
+  tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
   user: any;
 }
 
@@ -53,7 +33,7 @@ export async function getNoonReports({
   vesselId,
   voyageId,
   companyId,
-  tzOffset,
+  tz = "UTC",
   user,
 }: GetNoonReportsParams) {
   await dbConnect();
@@ -119,40 +99,12 @@ export async function getNoonReports({
   // Logic: Check if Date Filters exist OR if user is restricted from seeing history
   if (startDate || endDate) {
     const dateQuery: any = {};
-    const offsetMinutes = Number(tzOffset) || 0;
-    const offsetMs = offsetMinutes * 60 * 1000;
-
-    // parseDateString returns UTC midnight (server runs in UTC).
-    // Shift by offsetMs so we get the user's LOCAL midnight in UTC.
-    // e.g. IST (+5:30 = +330 min): Feb 27 00:00 UTC - 330 min = Feb 26 18:30 UTC = Feb 27 00:00 IST ✓
-    const startD = parseDateString(startDate);
-    const endD = parseDateString(endDate);
-
-    if (startD) {
-      dateQuery.$gte = new Date(startD.getTime() - offsetMs);
-    }
-
-    if (endD) {
-      // End of the user's local day = local midnight + 24h - 1ms
-      dateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
-    }
-
-    // Only apply if we successfully parsed at least one date
-    if (Object.keys(dateQuery).length > 0) {
-      query.reportDate = dateQuery;
-    }
+    if (startDate) dateQuery.$gte = parseDateInTz(startDate, tz);
+    if (endDate) dateQuery.$lte = parseEndDateInTz(endDate, tz);
+    if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
   } else if (!canSeeHistory) {
-    // Default view for users without history permission.
-    // Use the client's local timezone offset (minutes east of UTC) so that
-    // "start of today" is computed in the user's local time, not server UTC.
-    const offsetMinutes = Number(tzOffset) || 0;
-    const now = new Date();
-    // Compute UTC midnight for the user's local date:
-    // local midnight = UTC now, floored to local date's 00:00, then shifted back to UTC
-    const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
-    const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
-    const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
-    query.reportDate = { $gte: startOfDay, $lte: now };
+    // Show only today's reports, computed in the user's local timezone
+    query.reportDate = { $gte: localStartOfDay(tz), $lte: new Date() };
   }
 
   // Search

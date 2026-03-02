@@ -25,16 +25,16 @@ export default async function DailyNoonReportPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
 
-  // Read tzOffset from the cookie set by the client component.
-  // Cookie-based approach avoids the router.replace re-render flicker.
+  // Read IANA timezone set by <TimezoneProvider> in the admin layout.
+  // Falls back to "UTC" on the very first visit before the cookie is set.
   const cookieStore = await cookies();
-  const tzOffset = cookieStore.get("tzOffset")?.value ?? resolvedParams.tzOffset ?? "0";
+  const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
 
   const [reportData, filterOptions] = await Promise.all([
     getNoonReports({
       ...resolvedParams,
       page,
-      tzOffset,
+      tz,
       user,
     }),
     getFilterOptions(user),

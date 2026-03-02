@@ -3,6 +3,7 @@ import { getNorReports, getFilterOptions } from "@/lib/services/nor-report";
 import NorReportTable from "./NorReportTable";
 import NorPageClient from "./NorPageClient";
 import { Metadata } from "next";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Notice of Readiness Report | Parkora Falcon",
@@ -24,10 +25,14 @@ export default async function NoticeOfReadiness({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
 
+  const cookieStore = await cookies();
+  const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
+
   const [reportData, filterOptions] = await Promise.all([
     getNorReports({
       ...resolvedParams,
       page,
+      tz,
       user,
     }),
     getFilterOptions(user),

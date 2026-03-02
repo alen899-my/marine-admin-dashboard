@@ -3,6 +3,7 @@ import { getCargoReports, getFilterOptions } from "@/lib/services/cargo-report";
 import CargoReportTable from "./CargoReportTable";
 import CargoPageClient from "./CargoPageClient";
 import { Metadata } from "next";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Cargo Stowage & Cargo Documents Report | Parkora Falcon",
@@ -24,10 +25,14 @@ export default async function CargoReportPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
 
+  const cookieStore = await cookies();
+  const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
+
   const [reportData, filterOptions] = await Promise.all([
     getCargoReports({
       ...resolvedParams,
       page,
+      tz,
       user,
     }),
     getFilterOptions(user),

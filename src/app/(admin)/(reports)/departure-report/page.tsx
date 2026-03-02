@@ -3,6 +3,7 @@ import { getDepartureReports, getFilterOptions } from "@/lib/services/departure-
 import DepartureReportTable from "./DepartureReportTable";
 import DeparturePageClient from "./DeparturePageClient";
 import { Metadata } from "next";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Departure Report | Parkora Falcon",
@@ -24,10 +25,14 @@ export default async function DepartureReportPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
 
+  const cookieStore = await cookies();
+  const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
+
   const [reportData, filterOptions] = await Promise.all([
     getDepartureReports({
       ...resolvedParams,
       page,
+      tz,
       user,
     }),
     getFilterOptions(user),

@@ -4,23 +4,8 @@ import Company from "@/models/Company";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import User from "@/models/User";
+import { localStartOfDay, parseDateInTz, parseEndDateInTz } from "@/lib/timezone";
 
-// Helper: Parse Date
-function parseDateString(dateStr: string | undefined): Date | undefined {
-  if (!dateStr) return undefined;
-  if (dateStr.includes("/")) {
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const year = parseInt(parts[2], 10);
-      const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) return date;
-    }
-  }
-  const date = new Date(dateStr);
-  return isNaN(date.getTime()) ? undefined : date;
-}
 
 interface GetNorReportsParams {
   page?: number;
@@ -32,6 +17,7 @@ interface GetNorReportsParams {
   vesselId?: string;
   voyageId?: string;
   companyId?: string;
+  tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
   user: any;
 }
 
@@ -45,6 +31,7 @@ export async function getNorReports({
   vesselId,
   voyageId,
   companyId,
+  tz = "UTC",
   user,
 }: GetNorReportsParams) {
   await dbConnect();
@@ -57,9 +44,9 @@ export async function getNorReports({
   const skip = (page - 1) * limit;
   const query: any = { eventType: "nor", deletedAt: null };
 
-  const emptyResult = { 
-    data: [], 
-    pagination: { total: 0, page, limit, totalPages: 0 } 
+  const emptyResult = {
+    data: [],
+    pagination: { total: 0, page, limit, totalPages: 0 }
   };
 
   // --- 1. Multi-Tenancy Logic ---
@@ -72,27 +59,27 @@ export async function getNorReports({
     const companyVesselIds = companyVessels.map((v) => v._id);
 
     if (selectedVessel) {
-        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-        query.vesselId = selectedVessel;
+      if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+      query.vesselId = selectedVessel;
     } else {
-        query.vesselId = { $in: companyVesselIds };
+      query.vesselId = { $in: companyVesselIds };
     }
 
     if (!isAdmin) query.createdBy = user.id;
   } else {
     // Super Admin
     if (selectedCompany && selectedCompany !== "all") {
-       const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
-       const companyVesselIds = companyVessels.map((v) => v._id);
-       
-       if (selectedVessel) {
-          if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-          query.vesselId = selectedVessel;
-       } else {
-          query.vesselId = { $in: companyVesselIds };
-       }
+      const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
+      const companyVesselIds = companyVessels.map((v) => v._id);
+
+      if (selectedVessel) {
+        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+        query.vesselId = selectedVessel;
+      } else {
+        query.vesselId = { $in: companyVesselIds };
+      }
     } else if (selectedVessel) {
-       query.vesselId = selectedVessel;
+      query.vesselId = selectedVessel;
     }
   }
 
@@ -102,18 +89,11 @@ export async function getNorReports({
 
   if (startDate || endDate) {
     const dateQuery: any = {};
-    const startD = parseDateString(startDate);
-    const endD = parseDateString(endDate);
-    if (startD) dateQuery.$gte = startD;
-    if (endD) {
-      endD.setHours(23, 59, 59, 999);
-      dateQuery.$lte = endD;
-    }
+    if (startDate) dateQuery.$gte = parseDateInTz(startDate, tz);
+    if (endDate) dateQuery.$lte = parseEndDateInTz(endDate, tz);
     if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
   } else if (!canSeeHistory) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    query.reportDate = { $gte: startOfDay, $lte: new Date() };
+    query.reportDate = { $gte: localStartOfDay(tz), $lte: new Date() };
   }
 
   if (search) {
@@ -161,32 +141,32 @@ export async function getNorReports({
 }
 
 export async function getFilterOptions(user: any) {
-    await dbConnect();
-    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-    const userCompanyId = user.company?.id || user.company;
+  await dbConnect();
+  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+  const userCompanyId = user.company?.id || user.company;
 
-    const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
-    const vesselFilter: any = { status: "active", deletedAt: null };
-    
-    if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+  const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+  const vesselFilter: any = { status: "active", deletedAt: null };
 
-    const [companies, vessels] = await Promise.all([
-        Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
-        Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
-    ]);
+  if (!isSuperAdmin) vesselFilter.company = userCompanyId;
 
-    const allowedVesselIds = vessels.map((v: any) => v._id.toString());
-    const voyages = await Voyage.find({
-        vesselId: { $in: allowedVesselIds },
-        status: "active",
-        deletedAt: null
-    })
+  const [companies, vessels] = await Promise.all([
+    Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
+    Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
+  ]);
+
+  const allowedVesselIds = vessels.map((v: any) => v._id.toString());
+  const voyages = await Voyage.find({
+    vesselId: { $in: allowedVesselIds },
+    status: "active",
+    deletedAt: null
+  })
     .select("_id vesselId voyageNo")
     .lean();
 
-    return {
-        companies: JSON.parse(JSON.stringify(companies)),
-        vessels: JSON.parse(JSON.stringify(vessels)),
-        voyages: JSON.parse(JSON.stringify(voyages))
-    };
+  return {
+    companies: JSON.parse(JSON.stringify(companies)),
+    vessels: JSON.parse(JSON.stringify(vessels)),
+    voyages: JSON.parse(JSON.stringify(voyages))
+  };
 }
