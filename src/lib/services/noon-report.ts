@@ -101,6 +101,12 @@ export async function getNoonReports({
     const dateQuery: any = {};
     if (startDate) dateQuery.$gte = parseDateInTz(startDate, tz);
     if (endDate) dateQuery.$lte = parseEndDateInTz(endDate, tz);
+    // If the user cannot see history, clamp the lower bound to today
+    if (!canSeeHistory) {
+      const todayStart = localStartOfDay(tz);
+      if (!dateQuery.$gte || dateQuery.$gte < todayStart) dateQuery.$gte = todayStart;
+      if (!dateQuery.$lte || dateQuery.$lte > new Date()) dateQuery.$lte = new Date();
+    }
     if (Object.keys(dateQuery).length > 0) query.reportDate = dateQuery;
   } else if (!canSeeHistory) {
     // Show only today's reports, computed in the user's local timezone
