@@ -24,15 +24,15 @@ export default async function DepartureReportPage({ searchParams }: PageProps) {
   // 2. Data Fetching
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
-
-  const cookieStore = await cookies();
+   const cookieStore = await cookies();
   const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
+
 
   const [reportData, filterOptions] = await Promise.all([
     getDepartureReports({
       ...resolvedParams,
       page,
-      tz,
+        tz,
       user,
     }),
     getFilterOptions(user),

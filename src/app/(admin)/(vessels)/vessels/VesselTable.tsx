@@ -302,7 +302,6 @@ export default function VesselTable({ data, pagination }: VesselTableProps) {
           | "warning"
           | "error"
           | "default"
-          | "info"
           | "purple" = "default";
         let label: string = v.status;
 
@@ -320,7 +319,7 @@ export default function VesselTable({ data, pagination }: VesselTableProps) {
             label = "Laid Up";
             break;
           case "sold":
-            color = "info";
+            color = "error";
             label = "Sold";
             break;
           case "dry_dock":
@@ -470,7 +469,7 @@ export default function VesselTable({ data, pagination }: VesselTableProps) {
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1300px]">
+          <div className="min-w-[1500px]">
             <CommonReportTable
               data={vessels} // ✅ Prop Data
               columns={columns}

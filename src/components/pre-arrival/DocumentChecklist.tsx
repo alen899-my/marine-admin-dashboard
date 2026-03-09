@@ -21,6 +21,8 @@ import {
   RefreshCw,
   Download,
   MessageSquare,
+  Replace,UploadCloud,
+  Upload
 } from "lucide-react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -420,19 +422,27 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                 !!fileInfo?.vesselCertId ||
                 !!tempFiles[row.id];
 
-              let fileName = tempFiles[row.id] || fileInfo?.fileName;
+              // Raw stored filename (may include timestamp/id prefix)
+              const rawFileName = tempFiles[row.id] || fileInfo?.fileName;
 
-              if (!fileName && fileInfo?.fileUrl) {
+              // Derive a display-friendly filename
+              let displayFileName = rawFileName || row.name;
+
+              if (!rawFileName && fileInfo?.fileUrl) {
                 try {
                   const urlParts = fileInfo.fileUrl.split("/");
                   const rawName = urlParts[urlParts.length - 1];
-                  fileName =
-                    decodeURIComponent(rawName)
-                      .split("-")
-                      .slice(0, -1)
-                      .join("-") || rawName;
+                  displayFileName = decodeURIComponent(rawName);
                 } catch {
-                  fileName = row.name;
+                  displayFileName = row.name;
+                }
+              }
+
+              // Strip leading numeric timestamp + separator (e.g. "1772166630123-file.pdf" -> "file.pdf")
+              if (displayFileName) {
+                const match = displayFileName.match(/^\d{10,}[-_](.+)$/);
+                if (match) {
+                  displayFileName = match[1];
                 }
               }
 
@@ -537,11 +547,11 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                           {isUploaded ? (
                             <div className="flex items-center gap-3 w-full animate-in fade-in slide-in-from-left-2">
                               <div className="p-2 bg-gray-100 dark:bg-white/5 rounded-md shrink-0">
-                                {getFileIcon(fileName || "")}
+                                {getFileIcon(displayFileName || "")}
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
-                                  {fileName || "Document Uploaded"}
+                                  {displayFileName || "Document Uploaded"}
                                 </span>
 
                                 {(isSuperAdmin ||
@@ -550,31 +560,26 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                                     !hasVerifyPerm &&
                                     row.owner === "ship")) && (
                                   <div className="flex items-center gap-3 mt-1">
-                                    <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-tight text-gray-500 hover:text-accent cursor-pointer transition-colors">
-                                      <RefreshCw className="h-4 w-4" />
-                                      <span>Replace</span>
-                                      <input
-                                        type="file"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            if (file.size > 512000) {
-                                              toast.error(
-                                                "File is too large. Max limit is 500KB",
-                                              );
-                                              e.target.value = "";
-                                              return;
-                                            }
-                                            setTempFiles((prev) => ({
-                                              ...prev,
-                                              [row.id]: file.name,
-                                            }));
-                                            onUpload(row, file);
-                                          }
-                                        }}
-                                      />
-                                    </label>
+<label className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-600 bg-brand-50/50 dark:bg-brand-500/10 dark:text-brand-400 rounded-lg cursor-pointer transition-all active:scale-95">
+  <Upload className="h-3.5 w-3.5" />
+  <span>Replace</span>
+  <input
+    type="file"
+    className="hidden"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        if (file.size > 512000) {
+          toast.error("File is too large. Max limit is 500KB");
+          e.target.value = "";
+          return;
+        }
+        setTempFiles((prev) => ({ ...prev, [row.id]: file.name }));
+        onUpload(row, file);
+      }
+    }}
+  />
+</label>
                                   </div>
                                 )}
                               </div>
@@ -614,10 +619,10 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                         </>
                       ) : (
                         <div className="flex items-center gap-2 text-gray-400">
-                          {isUploaded && getFileIcon(fileName || "")}{" "}
+                          {isUploaded && getFileIcon(displayFileName || "")}{" "}
                           {/* ✅ Show icon if file exists */}
                           <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
-                            {fileName ? fileName : "No document uploaded"}
+                            {displayFileName ? displayFileName : "No document uploaded"}
                           </span>
                         </div>
                       )}
@@ -647,7 +652,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                         {isUploaded ? (
                           <div className="flex items-center gap-3">
                            <button
-          onClick={() => handleDownloadFile(fileInfo?.fileUrl, fileName)}
+          onClick={() => handleDownloadFile(fileInfo?.fileUrl, displayFileName || row.name)}
           className="flex items-center justify-center h-[45px] w-[45px] bg-blue-50 dark:bg-transparent text-blue-600 rounded-lg border border-blue-100 dark:border-gray-100/10 transition-colors hover:bg-blue-100"
           title="Download File"
         >

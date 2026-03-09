@@ -24,21 +24,25 @@ const Alert: React.FC<AlertProps> = ({
       container:
         "border-success-500 bg-success-50 dark:border-success-500/30 dark:bg-success-500/15",
       icon: "text-success-500",
+      text: "text-green-700 dark:text-green-400",
     },
     error: {
       container:
         "border-error-500 bg-error-50 dark:border-error-500/30 dark:bg-error-500/15",
       icon: "text-error-500",
+      text: "text-red-700 dark:text-red-400",
     },
     warning: {
       container:
         "border-warning-500 bg-warning-50 dark:border-warning-500/30 dark:bg-warning-500/15",
       icon: "text-warning-500",
+      text: "text-warning-700 dark:text-warning-400",
     },
     info: {
       container:
         "border-blue-light-500 bg-blue-light-50 dark:border-blue-light-500/30 dark:bg-blue-light-500/15",
       icon: "text-blue-light-500",
+      text: "text-blue-700 dark:text-blue-400",
     },
   };
 
@@ -122,11 +126,19 @@ const Alert: React.FC<AlertProps> = ({
         </div>
 
         <div>
-          <h4 className="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <h4
+            className={`mb-1 text-sm font-semibold ${variantClasses[variant].text
+              }`}
+          >
             {title}
           </h4>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+          <p
+            className={`text-sm ${variantClasses[variant].text || "text-gray-500 dark:text-gray-400"
+              }`}
+          >
+            {message}
+          </p>
 
           {showLink && (
             <Link

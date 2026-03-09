@@ -32,6 +32,7 @@ interface INorDetails {
   etaPort?: string;
   pilotStation?: string;
   documentUrl?: string;
+  documentName?: string;
 }
 interface UserRef {
   _id: string;
@@ -269,12 +270,29 @@ export default function NorReportTable({
   };
 
   /* ================= HELPER: FILE META EXTRACTION ================= */
-  const getFileMeta = (url?: string) => {
-    if (!url) return { name: "", isPdf: false, isImage: false };
-    const name = url.split("/").pop() || "Document";
-    const isPdf = name.toLowerCase().endsWith(".pdf");
-    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name);
-    return { name, isPdf, isImage };
+  const getFileMeta = (details?: INorDetails) => {
+    if (!details?.documentUrl) {
+      return { name: "", isPdf: false, isImage: false };
+    }
+
+    // 1) Prefer explicitly stored friendly name (new records)
+    let displayName =
+      details.documentName ||
+      details.documentUrl.split("/").pop() ||
+      "Document";
+
+    // 2) For older records where filename looks like "1234567890-original_name.pdf",
+    //    strip the leading numeric timestamp + dash for display only.
+    const withPrefixMatch = displayName.match(/^\d{10,}-(.+)$/);
+    if (withPrefixMatch) {
+      displayName = withPrefixMatch[1];
+    }
+
+    const lower = displayName.toLowerCase();
+    const isPdf = lower.endsWith(".pdf");
+    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(lower);
+
+    return { name: displayName, isPdf, isImage };
   };
 
   /* ================= 1. TABLE COLUMNS ================= */
@@ -346,7 +364,7 @@ export default function NorReportTable({
     {
       header: "ETA & Document",
       render: (r: INorReport) => {
-        const meta = getFileMeta(r?.norDetails?.documentUrl);
+        const meta = getFileMeta(r?.norDetails);
 
         return (
           <div className="flex flex-col text-xs gap-1">
@@ -410,13 +428,13 @@ export default function NorReportTable({
     : previewUrl?.toLowerCase().endsWith(".pdf");
 
   /* ================= RENDER ================= */
-  const fileMeta = selectedReport?.norDetails?.documentUrl
-    ? getFileMeta(selectedReport.norDetails.documentUrl)
+  const fileMeta = selectedReport?.norDetails
+    ? getFileMeta(selectedReport.norDetails)
     : null;
 
   // Get current file meta for Edit modal (using selectedReport directly as it holds the saved URL)
-  const currentFileMeta = selectedReport?.norDetails?.documentUrl
-    ? getFileMeta(selectedReport.norDetails.documentUrl)
+  const currentFileMeta = selectedReport?.norDetails
+    ? getFileMeta(selectedReport.norDetails)
     : null;
 
   function handleEdit(report: INorReport) {
@@ -538,7 +556,7 @@ async function handleDelete() {
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1500px]">
             <CommonReportTable
               data={reports} // ✅ Prop Data
               columns={columns}

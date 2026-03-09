@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import Role from "@/models/Role";
 import User from "@/models/User";
-import Company from "@/models/Company"; 
+import Company from "@/models/Company";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -9,6 +9,7 @@ import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -20,14 +21,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .populate({ path: "company", model: Company })
           .lean();
 
-          if (!user || !user.password) return null;
+        if (!user || !user.password) return null;
 
-  const isValid = await bcrypt.compare(
-    credentials!.password as string,
-    user.password as string
-  );
+        const isValid = await bcrypt.compare(
+          credentials!.password as string,
+          user.password as string
+        );
 
-  if (!isValid) return null;
+        if (!isValid) return null;
 
         // Calculate Permissions
         const basePerms = user.role?.permissions || [];
@@ -46,9 +47,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           permissions,
           company: user.company
             ? {
-                id: user.company._id.toString(),
-                name: user.company.name,
-              }
+              id: user.company._id.toString(),
+              name: user.company.name,
+            }
             : null,
         };
       },
@@ -82,31 +83,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .populate({ path: "company", model: Company })
             .lean();
           if (!dbUser || dbUser.status !== "active") {
-        return null; // This effectively logs the user out
-      }
+            return null; // This effectively logs the user out
+          }
 
           // Only sync if user exists and is active
           if (dbUser && dbUser.status === "active") {
             const basePerms = dbUser.role?.permissions || [];
             const additional = dbUser.additionalPermissions || [];
             const excluded = dbUser.excludedPermissions || [];
-            
+
             token.permissions = Array.from(new Set([...basePerms, ...additional]))
               .filter((p) => !excluded.includes(p));
-            
+
             token.role = dbUser.role?.name || "user";
             token.fullName = dbUser.fullName;
             token.profilePicture = dbUser.profilePicture;
             token.email = dbUser.email;
-            token.company = dbUser.company 
+            token.company = dbUser.company
               ? {
-                  id: dbUser.company._id.toString(),
-                  name: dbUser.company.name,
-                }
+                id: dbUser.company._id.toString(),
+                name: dbUser.company.name,
+              }
               : null;
           } else if (dbUser && dbUser.status !== "active") {
             // Optional: Force logout if user is deactivated
-            return null; 
+            return null;
           }
         } catch (error) {
           console.error("Auth Sync Error:", error);
@@ -116,22 +117,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     // Ensure session callback passes token data to the client
-  async session({ session, token }) {
+    async session({ session, token }) {
 
-  if (!token || !token.id) {
-    return session; 
-  }
+      if (!token || !token.id) {
+        return session;
+      }
 
-  if (session.user) {
-    session.user.id = token.id as string;
-    session.user.fullName = token.fullName as string;
-    session.user.role = token.role as string;
-    session.user.permissions = token.permissions as string[];
-    session.user.profilePicture = token.profilePicture as string;
-    session.user.company = token.company as any;
-  }
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.fullName = token.fullName as string;
+        session.user.role = token.role as string;
+        session.user.permissions = token.permissions as string[];
+        session.user.profilePicture = token.profilePicture as string;
+        session.user.company = token.company as any;
+      }
 
-  return session;
-},
+      return session;
+    },
   },
 });

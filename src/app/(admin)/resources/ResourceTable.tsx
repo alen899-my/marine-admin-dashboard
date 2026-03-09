@@ -146,7 +146,7 @@ export default function ResourceTable({ data, pagination }: ResourceTableProps) 
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden">
         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1500px]">
             <CommonReportTable
               data={data}
               columns={columns}

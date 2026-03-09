@@ -9,7 +9,7 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-
+import { handleUpload } from "@/lib/handleUpload";
 
 
 // --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
@@ -28,15 +28,11 @@ export async function GET(req: NextRequest) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
 
-    // =========================================================
-    // 🔒 MULTI-TENANCY & AUTHORIZATION LOGIC
-    // =========================================================
-    // Initializing query with soft-delete filter
+    
     const query: any = { deletedAt: null };
 
     if (!isSuperAdmin) {
-      // Regular users don't need 'company.view' permission to see their OWN company
-      // (Required for dropdowns in User/Vessel forms)
+      
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Forbidden: No company assigned to your profile." },
@@ -120,7 +116,6 @@ export async function POST(req: NextRequest) {
     const authz = await authorizeRequest("company.create");
     if (!authz.ok) return authz.response;
 
-    // Get current user session
     const session = await auth();
     const currentUserId = session?.user?.id;
 
@@ -128,7 +123,6 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse FormData
     const formData = await req.formData();
-
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
@@ -137,13 +131,10 @@ export async function POST(req: NextRequest) {
     const contactEmail = formData.get("contactEmail") as string;
     const status = (formData.get("status") as string) || "active";
 
-    // Extract Linked IDs
     const userIdsRaw = formData.get("userIds") as string;
     const vesselIdsRaw = formData.get("vesselIds") as string;
-
     let userIds: string[] = [];
     let vesselIds: string[] = [];
-
     try {
       if (userIdsRaw) userIds = JSON.parse(userIdsRaw);
       if (vesselIdsRaw) vesselIds = JSON.parse(vesselIdsRaw);
@@ -159,24 +150,18 @@ export async function POST(req: NextRequest) {
       if (file.size > 2 * 1024 * 1024) {
         return NextResponse.json(
           { error: "Logo exceeds 2MB limit." },
-          { status: 400 },
+          { status: 400 }
         );
       }
-
-      const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/companies");
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
-        logoUrl = `/uploads/companies/${filename}`;
-      } else {
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        logoUrl = blob.url;
+      try {
+        const uploaded = await handleUpload(file, "companies");
+        logoUrl = uploaded.url;
+      } catch (err) {
+        console.error("Company logo upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload logo." },
+          { status: 500 }
+        );
       }
     }
 
@@ -184,7 +169,7 @@ export async function POST(req: NextRequest) {
     if (!name || !email) {
       return NextResponse.json(
         { error: "Missing Name or Email" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -192,11 +177,11 @@ export async function POST(req: NextRequest) {
     if (existingCompany) {
       return NextResponse.json(
         { error: "A company with this email already exists" },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
-    // 5. Save Company with Audit Fields
+    // 5. Save Company
     const newCompany = await Company.create({
       name,
       email,
@@ -206,28 +191,28 @@ export async function POST(req: NextRequest) {
       contactEmail,
       logo: logoUrl || null,
       status,
-      createdBy: currentUserId, // Capturing creator
-      updatedBy: currentUserId, // Capturing updater
+      createdBy: currentUserId,
+      updatedBy: currentUserId,
     });
 
-    // 6. RELATIONSHIP LINKING
+    // 6. Relationship Linking
     if (userIds.length > 0) {
       await User.updateMany(
         { _id: { $in: userIds } },
-        { $set: { companyId: newCompany._id } },
+        { $set: { companyId: newCompany._id } }
       );
     }
 
     if (vesselIds.length > 0) {
       await Vessel.updateMany(
         { _id: { $in: vesselIds } },
-        { $set: { companyId: newCompany._id } },
+        { $set: { companyId: newCompany._id } }
       );
     }
 
     return NextResponse.json(
       { success: true, companyId: newCompany._id },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error: any) {
     console.error("CREATE COMPANY ERROR →", error);

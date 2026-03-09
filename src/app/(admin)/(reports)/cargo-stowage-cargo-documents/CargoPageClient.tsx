@@ -62,7 +62,7 @@ export default function CargoPageClient({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Cargo Stowage & Cargo Documents
+          Cargo Stowage &  Documents
         </h2>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">

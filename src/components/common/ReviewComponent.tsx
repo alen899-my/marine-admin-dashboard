@@ -201,6 +201,9 @@ interface ScalarState {
   additionalInfo?: string;
   profilePhoto?: File | null;
   resume?: File | null;
+  profilePhotoUrl?: string;
+  resumeUrl?: string;
+  resumeFileName?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────

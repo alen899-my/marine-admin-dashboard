@@ -100,7 +100,7 @@ export async function getAnalysisOptions(vesselId?: string, user?: any) {
   if (vesselId) {
     voyages = await Voyage.find({ 
         vesselId, 
-        status: "active", 
+        status: { $in: ["active", "completed"] },
         deletedAt: null 
     })
       .select("_id voyageNo")

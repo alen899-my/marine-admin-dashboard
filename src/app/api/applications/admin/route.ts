@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { randomBytes } from "crypto";
 import type { ICrew } from "@/models/Application";
+import { handleUpload } from "@/lib/handleUpload";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -87,7 +88,8 @@ export async function POST(req: NextRequest) {
           );
         }
         try {
-          const uploaded = await uploadFile(profilePhotoFile, `${uploadPath}/photos`);
+          const uploaded = await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
+
           body.profilePhoto = uploaded.url;
         } catch (err) {
           console.error("Profile photo upload failed:", err);
@@ -104,7 +106,7 @@ export async function POST(req: NextRequest) {
           );
         }
         try {
-          const uploaded = await uploadFile(resumeFile, `${uploadPath}/resumes`);
+          const uploaded = await handleUpload(resumeFile, `${uploadPath}/resumes`);
           body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
         } catch (err) {
           console.error("Resume upload failed:", err);
@@ -146,7 +148,7 @@ export async function POST(req: NextRequest) {
               );
             }
             try {
-              const uploaded = await uploadFile(file, `${uploadPath}/extra`);
+              const uploaded =await handleUpload(file, `${uploadPath}/extra`);
               extraDocsMeta[i] = {
                 name: docName,
                 fileUrl: uploaded.url,
@@ -437,13 +439,27 @@ export async function POST(req: NextRequest) {
       stcwCertificates,
       otherCertificates,
       extraDocs: Array.isArray(body.extraDocs)
-        ? (body.extraDocs as Array<{ name?: string }>).filter((d) => d.name?.trim())
-        : [],
-
+  ? (body.extraDocs as Array<{
+      name?: string;
+      fileUrl?: string;
+      fileName?: string;
+      uploadStatus?: string;
+    }>)
+      .filter((d) => d.name?.trim())
+      .map((d) => ({
+        name: d.name,
+        fileUrl: d.fileUrl,
+        fileName: d.fileName,
+        uploadStatus: d.uploadStatus ?? "not_uploaded",
+      }))
+  : [],
       seaExperience,
 
       additionalInfo: str(body.additionalInfo) || undefined,
       seaExperienceDetail: str(body.seaExperienceDetail) || undefined,
+      userId: session.user.id
+        ? new mongoose.Types.ObjectId(session.user.id)
+        : null,
     };
 
     if (body.profilePhoto) crewData.profilePhoto = body.profilePhoto;
@@ -459,17 +475,20 @@ export async function POST(req: NextRequest) {
       crew = await Crew.create(crewData);
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          id: crew._id,
-          submissionToken: crew.submissionToken,
-          status: crew.status,
-        },
-      },
-      { status: 201 }
-    );
+   return NextResponse.json(
+  {
+    success: true,
+    data: {
+      id: crew._id,
+      submissionToken: crew.submissionToken,
+      status: crew.status,
+      profilePhoto: crew.profilePhoto ?? null,
+      resume: crew.resume ?? null,
+      extraDocs: crew.extraDocs,
+    },
+  },
+  { status: 201 }
+);
 
   } catch (error: any) {
     if (error?.code === 11000) {
@@ -483,97 +502,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET — admin lists applications for a company
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function GET(req: NextRequest) {
-  try {
-    // ── 1. Auth ────────────────────────────────────────────────────────────
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // ── 2. Permission check ────────────────────────────────────────────────
-    const authz = await authorizeRequest("jobs.view");
-    if (!authz.ok) return authz.response;
-
-    await dbConnect();
-
-    const { searchParams } = new URL(req.url);
-    const isSuperAdmin = session.user.role?.toLowerCase() === "super-admin";
-
-    // ── 3. Resolve companyId ───────────────────────────────────────────────
-    // Super-admin can pass ?companyId=...; regular admin always uses their own
-    const rawCompanyId = isSuperAdmin
-      ? (searchParams.get("companyId") || "")
-      : (session.user.company?.id || "");
-
-    if (!rawCompanyId || !mongoose.isValidObjectId(rawCompanyId)) {
-      return NextResponse.json(
-        { error: "Valid companyId is required." },
-        { status: 400 }
-      );
-    }
-
-    const companyId = new mongoose.Types.ObjectId(rawCompanyId);
-
-    // ── 4. Build filter ────────────────────────────────────────────────────
-    const query: Record<string, unknown> = {
-      company: companyId,
-      deletedAt: null,
-    };
-
-    const status = searchParams.get("status");
-    const rank = searchParams.get("rank");
-    const nationality = searchParams.get("nationality");
-    const search = searchParams.get("search")?.trim();
-
-    if (status) query.status = status;
-    if (rank) query.rank = { $regex: rank, $options: "i" };
-    if (nationality) query.nationality = { $regex: nationality, $options: "i" };
-
-    if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { rank: { $regex: search, $options: "i" } },
-        { nationality: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    // ── 5. Pagination ──────────────────────────────────────────────────────
-    const page = Math.max(1, Number(searchParams.get("page")) || 1);
-    const limit = Math.min(100, Number(searchParams.get("limit")) || 20);
-    const skip = (page - 1) * limit;
-
-    const [total, applications] = await Promise.all([
-      Crew.countDocuments(query),
-      Crew.find(query)
-        .select("-adminNotes -__v")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ]);
-
-    return NextResponse.json({
-      data: applications,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-
-  } catch (error: any) {
-    console.error("GET CREW (ADMIN) ERROR →", error);
-    return NextResponse.json(
-      { error: "Failed to fetch crew applications" },
-      { status: 500 }
-    );
-  }
-}

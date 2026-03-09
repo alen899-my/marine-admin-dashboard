@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
 import Crew from "@/models/Application";
+import Job from "@/models/Job";
 import CrewApplicationForm from "@/components/Jobs/Application";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
@@ -40,6 +41,16 @@ export default async function ViewApplicationPage({ params }: PageProps) {
       ? application.company
       : application.company?.$oid ?? String(application.company);
 
+  const activeJobsRes = await Job.find({ companyId, status: "active", isAccepting: true })
+    .select("title")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const availablePositions = activeJobsRes.map((j: any) => ({
+    value: j.title,
+    label: j.title,
+  }));
+
   return (
     <div className="">
       <PageBreadcrumb
@@ -50,6 +61,7 @@ export default async function ViewApplicationPage({ params }: PageProps) {
         mode="view"
         companyId={companyId}
         initialData={application}
+        availablePositions={availablePositions}
       />
     </div>
   );

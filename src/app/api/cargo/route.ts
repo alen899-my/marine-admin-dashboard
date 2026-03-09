@@ -11,6 +11,7 @@ import { mkdir, writeFile } from "fs/promises";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import path from "path";
+import { handleUpload } from "@/lib/handleUpload";
 const sendResponse = (
   status: number,
   message: string,
@@ -62,89 +63,72 @@ export async function POST(req: Request) {
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("cargo.create");
     if (!authz.ok) return authz.response;
-    await dbConnect();
 
+    await dbConnect();
     const formData = await req.formData();
 
     // Extract fields
     const vesselIdString = formData.get("vesselId") as string;
     const voyageNoString = formData.get("voyageNo") as string;
     const vesselName = formData.get("vesselName") as string;
-
     const portName = formData.get("portName") as string;
     const portType = formData.get("portType") as string;
     const reportDate = formData.get("reportDate") as string;
     const documentType = formData.get("documentType") as string;
     const documentDate = formData.get("documentDate") as string;
     const remarks = formData.get("remarks") as string;
-    const file = formData.get("file") as File | null;
 
+    // ── File Upload ────────────────────────────────────────────────────────
+    const file = formData.get("file") as File | null;
     if (!file)
       return NextResponse.json({ error: "File required" }, { status: 400 });
     if (file.size > 500 * 1024)
       return NextResponse.json({ error: "File size > 500KB" }, { status: 400 });
 
-    // --- File Handling ---
     let fileUrl = "";
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
-    const filename = `${timestamp}-${safeName}`;
-
-    if (process.env.UPLOAD_PROVIDER === "local") {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const uploadDir = path.join(process.cwd(), "public/uploads/cargo");
-      if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-      const filePath = path.join(uploadDir, filename);
-      await writeFile(filePath, buffer);
-      fileUrl = `/uploads/cargo/${filename}`;
-    } else {
-      const blob = await put(filename, file, {
-        access: "public",
-        addRandomSuffix: true,
-      });
-      fileUrl = blob.url;
-    }
-
-    // Dates
-    let finalReportDate = parseDateString(reportDate) || new Date();
-    let finalDocumentDate = parseDateString(documentDate) || new Date();
-
-    // ==========================================
-    //  VOYAGE ID LOOKUP LOGIC
-    // ==========================================
-    let voyageObjectId = null;
-
-    if (vesselIdString && voyageNoString) {
-      const vId = new mongoose.Types.ObjectId(vesselIdString);
-
-      const foundVoyage = await Voyage.findOne({
-        vesselId: vId,
-        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
-      }).select("_id");
-
-      if (foundVoyage) {
-        voyageObjectId = foundVoyage._id;
-      } else {
-        return NextResponse.json(
-          { error: `Voyage ${voyageNoString} not found.` },
-          { status: 404 },
-        );
-      }
-    } else {
+    try {
+      const uploaded = await handleUpload(file, "cargo");
+      fileUrl = uploaded.url;
+    } catch (err) {
+      console.error("Cargo document upload failed:", err);
       return NextResponse.json(
-        { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 },
+        { error: "Failed to upload document." },
+        { status: 500 }
       );
     }
 
-    // Save to Database
+    // ── Dates ──────────────────────────────────────────────────────────────
+    const finalReportDate = parseDateString(reportDate) || new Date();
+    const finalDocumentDate = parseDateString(documentDate) || new Date();
+
+    // ── Voyage ID Lookup ───────────────────────────────────────────────────
+    if (!vesselIdString || !voyageNoString) {
+      return NextResponse.json(
+        { error: "Missing Vessel ID or Voyage Number" },
+        { status: 400 }
+      );
+    }
+
+    const vId = new mongoose.Types.ObjectId(vesselIdString);
+    const foundVoyage = await Voyage.findOne({
+      vesselId: vId,
+      voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+    }).select("_id");
+
+    if (!foundVoyage) {
+      return NextResponse.json(
+        { error: `Voyage ${voyageNoString} not found.` },
+        { status: 404 }
+      );
+    }
+
+    // ── Save to Database ───────────────────────────────────────────────────
     const newDoc = await Document.create({
-      //  Save Mapped IDs Only (No Strings)
       vesselId: new mongoose.Types.ObjectId(vesselIdString),
       vesselName,
-      voyageId: voyageObjectId,
-      createdBy: currentUserId,
+      voyageId: foundVoyage._id,
       voyageNo: voyageNoString,
+      createdBy: currentUserId,
       updatedBy: currentUserId,
       portName,
       portType,
@@ -163,13 +147,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "Uploaded successfully", data: newDoc },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error: any) {
     console.error("Upload Error:", error);
     return NextResponse.json(
       { error: error.message || "Error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

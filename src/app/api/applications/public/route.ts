@@ -1,11 +1,11 @@
 import { dbConnect } from "@/lib/db";
-import { uploadFile } from "@/lib/upload-provider";
+import { handleUpload } from "@/lib/handleUpload";
 import Crew from "@/models/Application";
 import Company from "@/models/Company";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { randomBytes } from "crypto";
-
+import { auth } from "@/auth";
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +36,10 @@ function arr<T>(body: Record<string, unknown>, key: string): T[] {
 export async function POST(req: NextRequest) {
   try {
     // ── 1. Parse body — support both JSON and FormData ───────────────────────
+    const session = await auth();
+const userId = session?.user?.id
+  ? new mongoose.Types.ObjectId(session.user.id)
+  : null;
     let body: Record<string, unknown>;
     const contentType = req.headers.get("content-type") || "";
 
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Profile photo exceeds maximum size of 2MB" }, { status: 400 });
         }
         try {
-          const uploaded = await uploadFile(profilePhotoFile, `${uploadPath}/photos`);
+          const uploaded =   await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
           body.profilePhoto = uploaded.url;
         } catch (err) {
           console.error("Profile photo upload failed:", err);
@@ -72,7 +76,8 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Resume exceeds maximum size of 2MB" }, { status: 400 });
         }
         try {
-          const uploaded = await uploadFile(resumeFile, `${uploadPath}/resumes`);
+          const uploaded =await handleUpload(resumeFile, `${uploadPath}/resumes`);
+
           body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
         } catch (err) {
           console.error("Resume upload failed:", err);
@@ -95,7 +100,7 @@ export async function POST(req: NextRequest) {
               return NextResponse.json({ error: `Extra document "${docName || i + 1}" exceeds maximum size of 2MB` }, { status: 400 });
             }
             try {
-              const uploaded = await uploadFile(file, `${uploadPath}/extra`);
+              const uploaded =  await handleUpload(file, `${uploadPath}/extra`);
               extraDocsMeta[i] = { name: docName, fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
             } catch (err) {
               console.error("Extra document upload failed:", err);
@@ -319,6 +324,7 @@ export async function POST(req: NextRequest) {
       seaExperience,
       additionalInfo: str(body.additionalInfo) || undefined,
       seaExperienceDetail: str(body.seaExperienceDetail) || undefined,
+      userId,
     };
 
     if (body.profilePhoto) crewData.profilePhoto = body.profilePhoto;
@@ -334,8 +340,17 @@ export async function POST(req: NextRequest) {
       crew = await Crew.create(crewData);
     }
 
-    return NextResponse.json({ success: true, data: { id: crew._id, submissionToken: crew.submissionToken, status: crew.status } }, { status: 201 });
-
+return NextResponse.json({
+  success: true,
+  data: {
+    id: crew._id,
+    submissionToken: crew.submissionToken,
+    status: crew.status,
+    profilePhoto: crew.profilePhoto ?? null,
+    resume: crew.resume ?? null,
+    extraDocs: crew.extraDocs,
+  },
+}, { status: 201 });
   } catch (error: any) {
     if (error?.code === 11000) {
       return NextResponse.json({ error: "A crew member with this email already exists." }, { status: 409 });

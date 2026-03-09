@@ -3,14 +3,15 @@ import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
 import Vessel from "@/models/Vessel";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import path from "path";
+import { del } from "@vercel/blob";
+import { unlink } from "fs/promises";
 import { existsSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
-import { put } from "@vercel/blob";
+import path from "path";
+import { handleUpload } from "@/lib/handleUpload";
 
 const OFFICE_LIBRARY_DOCS = [
-  "registry_cert", "tonnage_cert", "isps_ship", "isps_officer", 
-  "pi_cert", "sanitation_cert", "msm_cert", "hull_machinery", 
+  "registry_cert", "tonnage_cert", "isps_ship", "isps_officer",
+  "pi_cert", "sanitation_cert", "msm_cert", "hull_machinery",
   "safety_equipment", "medical_chest", "ships_particulars", "security_report"
 ];
 
@@ -30,14 +31,16 @@ export async function PATCH(
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const docId = formData.get("docId") as string; 
-    const docName = formData.get("name") as string; 
-    const owner = formData.get("owner") as string; 
+    const docId = formData.get("docId") as string;
+    const docName = formData.get("name") as string;
+    const owner = formData.get("owner") as string;
     const note = formData.get("note") as string;
 
     await dbConnect();
-    
-    const preArrival = await PreArrival.findById(id).select("vesselId");
+
+    const preArrival = await PreArrival.findById(id)
+      .select("vesselId documents")
+      .lean({ flattenMaps: true }) as any;
     if (!preArrival) return NextResponse.json({ error: "Request not found" }, { status: 404 });
 
     const isLibraryDoc = OFFICE_LIBRARY_DOCS.includes(docId);
@@ -51,37 +54,38 @@ export async function PATCH(
       // Library docs (Office) -> Vessel folder. Onboard docs (Ship) -> Pre-Arrival folder.
       const folder = isLibraryDoc ? `vessels/${preArrival.vesselId}` : `pre-arrival/${id}`;
 
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
-      const filename = `${timestamp}-${safeName}`;
-
-      let fileUrl = "";
-      let fileName = "";
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads", folder);
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        const filePath = path.join(uploadDir, filename);
-        await writeFile(filePath, buffer);
-        fileUrl = `/uploads/${folder}/${filename}`;
-        fileName = filename;
-      } else {
-        const blob = await put(`${folder}/${filename}`, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        fileUrl = blob.url;
-        fileName = filename;
+      // ── Delete old non-library file if replacing ──
+      if (!isLibraryDoc) {
+        try {
+          // Place 1 - replacing non-library doc
+const oldFileUrl = preArrival.documents?.[docId]?.fileUrl;
+if (oldFileUrl) {
+  if (process.env.UPLOAD_PROVIDER === "local") {
+    let urlPath = oldFileUrl;
+    if (oldFileUrl.startsWith("http")) urlPath = new URL(oldFileUrl).pathname;
+    const uploadsPrefix = "/uploads/";
+    if (urlPath.startsWith(uploadsPrefix)) {
+      const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
+      if (existsSync(filePath)) await unlink(filePath);
+    }
+  } else {
+    await del(oldFileUrl);
+  }
+}
+        } catch (err) {
+          console.warn("Could not delete old file:", err);
+        }
       }
 
+      // ── Upload new file via handleUpload ──
+      const uploaded = await handleUpload(file, folder);
       fileInfo = {
-        name: fileName,
-        url: fileUrl,
+        name: uploaded.name,
+        url: uploaded.url,
         size: file.size,
       };
-      
-      // ✅ LOGIC: Only save physical file info to PreArrival if it's NOT a library doc
+
+      // Only save physical file info to PreArrival if it's NOT a library doc
       if (!isLibraryDoc) {
         updateData[`documents.${docId}.fileName`] = fileInfo.name;
         updateData[`documents.${docId}.fileUrl`] = fileInfo.url;
@@ -90,43 +94,69 @@ export async function PATCH(
     }
 
     // 2. Prepare Metadata for PreArrival
-    // For library docs, we omit 'name' and 'owner' from PreArrival DB 
-    // to prevent duplication, as they exist in Vessel Library.
     if (!isLibraryDoc && docName) updateData[`documents.${docId}.name`] = docName;
     if (!isLibraryDoc && owner) updateData[`documents.${docId}.owner`] = owner;
-    
+
     updateData[`documents.${docId}.docSource`] = isLibraryDoc ? "vessel_library" : "onboard_upload";
     updateData[`documents.${docId}.note`] = note || "";
+
     const pushData: any = {};
     if (note) {
       pushData[`documents.${docId}.rejectionHistory`] = {
         message: note,
-        role: "ship", // Ship users are sending this note
+        role: "ship",
         createdAt: new Date(),
       };
     } else if (file) {
-      // Log that a new file was uploaded
       pushData[`documents.${docId}.rejectionHistory`] = {
         message: `New file uploaded: ${file.name}`,
         role: "ship",
         createdAt: new Date(),
       };
     }
+
     const shouldAutoApprove = isLibraryDoc || owner === "office";
-   updateData[`documents.${docId}.status`] = shouldAutoApprove ? "approved" : "pending_review";
+    updateData[`documents.${docId}.status`] = shouldAutoApprove ? "approved" : "pending_review";
     updateData[`documents.${docId}.uploadedBy`] = userId;
     updateData[`documents.${docId}.uploadedAt`] = new Date();
     updateData[`updatedBy`] = userId;
 
     // 3. Handle Vessel Library Sync (Admin Only)
     if (isLibraryDoc && isAdmin) {
+
+      // ── Delete old vessel library file before uploading new one ──
+      if (file && file.size > 0) {
+        try {
+          const vessel = await Vessel.findOne(
+            { _id: preArrival.vesselId, "certificates.docType": docId },
+            { "certificates.$": 1 }
+          ).lean() as any;
+         const oldFileUrl = vessel?.certificates?.[0]?.fileUrl;
+if (oldFileUrl) {
+  if (process.env.UPLOAD_PROVIDER === "local") {
+    let urlPath = oldFileUrl;
+    if (oldFileUrl.startsWith("http")) urlPath = new URL(oldFileUrl).pathname;
+    const uploadsPrefix = "/uploads/";
+    if (urlPath.startsWith(uploadsPrefix)) {
+      const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
+      if (existsSync(filePath)) await unlink(filePath);
+    }
+  } else {
+    await del(oldFileUrl);
+  }
+}
+        } catch (err) {
+          console.warn("Could not delete old vessel library file:", err);
+        }
+      }
+
       const certUpdate: any = {
         docType: docId,
-        name: docName, 
+        name: docName,
         owner: owner || "office",
-        note: note || "", 
+        note: note || "",
         updatedAt: new Date(),
-        uploadedBy: userId
+        uploadedBy: userId,
       };
 
       if (fileInfo) {
@@ -153,32 +183,31 @@ export async function PATCH(
         finalCertId = vesselUpdate.certificates.find((c: any) => c.docType === docId)?._id;
       }
 
-      // ✅ REFERENCE LOGIC: Save ONLY the pointer in PreArrival
+      // REFERENCE LOGIC: Save ONLY the pointer in PreArrival
       updateData[`documents.${docId}.vesselCertId`] = finalCertId;
       updateData[`documents.${docId}.fileName`] = null;
       updateData[`documents.${docId}.fileUrl`] = null;
     }
 
     // 4. Update the Pre-Arrival record
-   const updatedRequest = await PreArrival.findByIdAndUpdate(
+    const updatedRequest = await PreArrival.findByIdAndUpdate(
       id,
-      { 
+      {
         $set: updateData,
-        ...(Object.keys(pushData).length > 0 ? { $push: pushData } : {}) // ✅ ADD THIS
+        ...(Object.keys(pushData).length > 0 ? { $push: pushData } : {}),
       },
       { new: true, lean: true }
     );
 
     // 5. HYDRATION: Return live strings to the frontend for UI icons/links
-    // This prevents the "File Synced" placeholder by giving the real name back.
     const responseDoc = (updatedRequest.documents as any)[docId];
 
     if (isLibraryDoc && responseDoc.vesselCertId) {
       const vessel = await Vessel.findById(preArrival.vesselId).select("certificates").lean();
-      const liveCert = vessel?.certificates?.find((c: any) => 
+      const liveCert = vessel?.certificates?.find((c: any) =>
         c._id.toString() === responseDoc.vesselCertId.toString() || c.docType === docId
       );
-      
+
       if (liveCert) {
         responseDoc.name = liveCert.name;
         responseDoc.owner = liveCert.owner;
@@ -187,9 +216,9 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      document: responseDoc 
+    return NextResponse.json({
+      success: true,
+      document: responseDoc,
     });
 
   } catch (error: any) {

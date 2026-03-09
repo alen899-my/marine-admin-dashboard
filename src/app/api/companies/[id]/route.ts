@@ -5,16 +5,16 @@ import User from "@/models/User";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import ReportDaily from "@/models/ReportDaily";
-import { put } from "@vercel/blob";
 import { existsSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
 import ReportOperational from "@/models/ReportOperational";
 import Document from "@/models/Document";
 import { auth } from "@/auth";
 import mongoose from "mongoose";
-
+import { handleUpload } from "@/lib/handleUpload";
+import { del } from "@vercel/blob";
+import { unlink } from "fs/promises";
+import path from "path";
 // --- UPDATE COMPANY (PATCH) ---
 export async function PATCH(
   req: NextRequest,
@@ -25,7 +25,7 @@ export async function PATCH(
     const authz = await authorizeRequest("company.edit");
     if (!authz.ok) return authz.response;
 
-    // 2. Authentication (To get the current user ID for updatedBy)
+    // 2. Authentication
     const session = await auth();
     if (!session || !session.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -49,29 +49,19 @@ export async function PATCH(
     }
 
     // 5. Build Update Object
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {
-      updatedBy: currentUserId, // Ensure updatedBy is always updated
+      updatedBy: currentUserId,
     };
 
     if (formData.has("name")) updateData.name = formData.get("name") as string;
-    if (formData.has("email"))
-      updateData.email = formData.get("email") as string;
-    if (formData.has("phone"))
-      updateData.phone = formData.get("phone") as string;
-    if (formData.has("address"))
-      updateData.address = formData.get("address") as string;
-    if (formData.has("status"))
-      updateData.status = formData.get("status") as string;
+    if (formData.has("email")) updateData.email = formData.get("email") as string;
+    if (formData.has("phone")) updateData.phone = formData.get("phone") as string;
+    if (formData.has("address")) updateData.address = formData.get("address") as string;
+    if (formData.has("status")) updateData.status = formData.get("status") as string;
+    if (formData.has("contactName")) updateData.contactName = formData.get("contactName") as string;
+    if (formData.has("contactEmail")) updateData.contactEmail = formData.get("contactEmail") as string;
 
-    if (formData.has("contactName")) {
-      updateData.contactName = formData.get("contactName") as string;
-    }
-    if (formData.has("contactEmail")) {
-      updateData.contactEmail = formData.get("contactEmail") as string;
-    }
-
-    // 6. Handle Logo Update (If a new file is provided)
+    // 6. Handle Logo Update
     const file = formData.get("logo") as File | null;
     if (file && file.size > 0) {
       if (file.size > 2 * 1024 * 1024) {
@@ -80,37 +70,31 @@ export async function PATCH(
           { status: 400 }
         );
       }
-
-      const filename = `company_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        // Local storage for Dev
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/companies");
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
-        updateData.logo = `/uploads/companies/${filename}`;
-      } else {
-        // Vercel Blob for Prod
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        updateData.logo = blob.url;
+      const oldLogo = company.logo;
+  if (oldLogo) {
+    await deleteFile(oldLogo); // ← add this
+  }
+      try {
+        const uploaded = await handleUpload(file, "companies");
+        updateData.logo = uploaded.url;
+      } catch (err) {
+        console.error("Company logo upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload logo." },
+          { status: 500 }
+        );
       }
     }
+
 
     // 7. Update Database
     const updatedCompany = await Company.findByIdAndUpdate(
       id,
-      { $set: updateData }, // Using $set for safety
-      {
-        new: true,
-        runValidators: true,
-      }
+      { $set: updateData },
+      { new: true, runValidators: true }
     )
-    .populate("createdBy", "fullName")
-    .populate("updatedBy", "fullName");
+      .populate("createdBy", "fullName")
+      .populate("updatedBy", "fullName");
 
     return NextResponse.json({
       success: true,
@@ -119,7 +103,6 @@ export async function PATCH(
     });
   } catch (error: any) {
     console.error("UPDATE COMPANY ERROR →", error);
-    // Handle Duplicate Email Error
     if (error.code === 11000) {
       return NextResponse.json(
         { error: "A company with this email already exists" },
@@ -217,5 +200,30 @@ export async function DELETE(
       { error: "Failed to delete company" },
       { status: 500 }
     );
+  }
+}
+async function deleteFile(fileUrl: string) {
+  if (!fileUrl) return;
+  try {
+    if (process.env.UPLOAD_PROVIDER === "local") {
+      let urlPath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        urlPath = new URL(fileUrl).pathname;
+      }
+      const uploadsPrefix = "/uploads/";
+      if (urlPath.startsWith(uploadsPrefix)) {
+        const relativePath = urlPath.slice(uploadsPrefix.length);
+        const filePath = path.join(process.cwd(), "public", "uploads", relativePath);
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+        }
+      }
+    } else {
+      if (fileUrl.startsWith("http")) {
+        await del(fileUrl);
+      }
+    }
+  } catch (error) {
+    console.error("Error deleting file:", error);
   }
 }

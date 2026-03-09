@@ -6,7 +6,7 @@ export const formatDate = (date: string | Date | undefined) => {
   if (!date) return "N/A";
 
   const d = new Date(date);
-  
+
   // Check if date is valid
   if (isNaN(d.getTime())) return "Invalid Date";
 
@@ -16,7 +16,8 @@ export const formatDate = (date: string | Date | undefined) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false, // Change to true if you prefer 12-hour format
+    hour12: true, // Change to true if you prefer 12-hour format
+    timeZone: "Asia/Kolkata", // Always display in IST
   }).format(d);
 };
 

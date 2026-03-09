@@ -1,4 +1,5 @@
 "use client";
+// src/app/(admin)/jobs/JobPageClient.tsx
 
 import ComponentCard from "@/components/common/ComponentCard";
 import FilterToggleButton from "@/components/common/FilterToggleButton";
@@ -7,10 +8,9 @@ import { useFilterPersistence } from "@/hooks/useFilterPersistence";
 import { ReactNode } from "react";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter } from "next/navigation";
-import { Plus, Copy } from "lucide-react";
+import { Plus } from "lucide-react";
 import JobFilterWrapper from "./JobFilterWrapper";
 import Button from "@/components/ui/button/Button";
-import { toast } from "react-toastify";
 
 interface JobPageClientProps {
   children: ReactNode;
@@ -19,6 +19,8 @@ interface JobPageClientProps {
   isSuperAdmin: boolean;
   canAdd: boolean;
   currentCompanyId: string;
+  // portal settings from SSR
+  portalCompanyId: string;
 }
 
 export default function JobPageClient({
@@ -28,14 +30,12 @@ export default function JobPageClient({
   isSuperAdmin,
   canAdd,
   currentCompanyId,
+  portalCompanyId,
 }: JobPageClientProps) {
   const router = useRouter();
   const { can, isReady } = useAuthorization();
-
-  // Aligned to the same permission namespace used in the API routes
   const canView = can("jobs.view");
   const canCreate = can("jobs.create") || canAdd;
-
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("jobs");
 
   if (!isReady) return null;
@@ -56,6 +56,7 @@ export default function JobPageClient({
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Candidate Applications
         </h2>
+
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
             <FilterToggleButton
@@ -63,23 +64,11 @@ export default function JobPageClient({
               onToggle={setIsFilterVisible}
             />
           </div>
+
           {canCreate && (
             <>
-              <div className="w-full sm:w-auto">
-                <Button
-                  onClick={() => {
-                    const link = `${window.location.origin}/apply/${currentCompanyId}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Public link copied to clipboard!");
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto justify-center"
-                  startIcon={<Copy size={18} />}
-                >
-                  Copy Public Link
-                </Button>
-              </div>
+
+
               <div className="w-full sm:w-auto">
                 <Button
                   onClick={() => router.push("/jobs/apply")}
@@ -88,7 +77,7 @@ export default function JobPageClient({
                   className="w-full sm:w-auto justify-center"
                   startIcon={<Plus size={18} />}
                 >
-                  New Candidate 
+                  New Candidate
                 </Button>
               </div>
             </>

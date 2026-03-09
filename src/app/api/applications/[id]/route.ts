@@ -1,16 +1,72 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH — admin updates an existing crew application
-// app/api/applications/admin/[id]/route.ts  (or merge into admin/route.ts)
+// app/api/applications/admin/[id]/route.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
-import { uploadFile } from "@/lib/upload-provider";
 import Crew from "@/models/Application";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import type { ICrew } from "@/models/Application";
+import { handleUpload } from "@/lib/handleUpload";
+import { del } from "@vercel/blob";
+import { unlink } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File deletion utility
+// Handles both local and blob storage conditionally.
+// Never throws — logs a warning on failure so the main operation isn't blocked.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function deleteFile(fileUrl: string | null | undefined): Promise<void> {
+  if (!fileUrl) return;
+  try {
+    const isLocal = process.env.UPLOAD_PROVIDER === "local";
+    if (isLocal) {
+      let urlPath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        urlPath = new URL(fileUrl).pathname;
+      }
+      const uploadsPrefix = "/uploads/";
+      if (urlPath.startsWith(uploadsPrefix)) {
+        const relativePath = urlPath.slice(uploadsPrefix.length);
+        const filePath = path.join(process.cwd(), "public", "uploads", relativePath);
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+          console.log("Deleted:", filePath);
+        } else {
+          console.warn("File not found on disk:", filePath);
+        }
+      } else {
+        console.warn("URL does not match /uploads/ prefix:", urlPath);
+      }
+    } else {
+      await del(fileUrl);
+    }
+  } catch (err) {
+    console.warn("Could not delete file:", fileUrl, err);
+  }
+}
+/**
+ * Collect every fileUrl stored on a crew document so they can be bulk-deleted.
+ * Extend this if future schema fields gain fileUrl properties.
+ */
+function collectAllFileUrls(doc: any): string[] {
+  const urls: string[] = [];
+  if (doc.profilePhoto) urls.push(doc.profilePhoto);
+  if (doc.resume?.fileUrl) urls.push(doc.resume.fileUrl);
+  for (const item of doc.extraDocs ?? []) {
+    if (item.fileUrl) urls.push(item.fileUrl);
+  }
+  return urls;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function validDate(s?: string | null): Date | undefined {
   if (!s || typeof s !== "string" || !s.trim()) return undefined;
@@ -30,6 +86,10 @@ function arr<T>(body: Record<string, unknown>, key: string): T[] {
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH — admin updates an existing crew application
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   try {
@@ -51,21 +111,26 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     // ── 4. Parse body ────────────────────────────────────────────────────
     let body: Record<string, unknown> = {};
+
+    // Collect old file URLs that must be deleted after successful new uploads.
+    // We only populate this list once a new file has been successfully uploaded,
+    // so we never delete an old file unless its replacement is already stored.
+    const urlsToDelete: string[] = [];
+
     try {
       const contentType = req.headers.get("content-type") || "";
+
       if (contentType.includes("application/json")) {
         body = await req.json();
+
       } else if (contentType.includes("multipart/form-data")) {
         const formData = await req.formData();
 
-        // Get companyId for upload path
         const companyId = (formData.get("companyId") as string) || "";
         const uploadPath = `applications/${companyId || "temp"}`;
+        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
-        // Validate file size (max 2MB = 2 * 1024 * 1024 bytes)
-        const MAX_FILE_SIZE = 2 * 1024 * 1024;
-
-        // Handle file uploads
+        // ── Profile photo ──────────────────────────────────────────────
         const profilePhotoFile = formData.get("profilePhoto") as File | null;
         if (profilePhotoFile && profilePhotoFile.size > 0) {
           if (profilePhotoFile.size > MAX_FILE_SIZE) {
@@ -75,13 +140,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await uploadFile(profilePhotoFile, `${uploadPath}/photos`);
+            const uploaded = await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
             body.profilePhoto = uploaded.url;
+            // Queue old photo for deletion only after upload succeeds
+            const oldUrl = formData.get("oldProfilePhoto") as string | null;
+            if (oldUrl) urlsToDelete.push(oldUrl);
           } catch (err) {
             console.error("Profile photo upload failed:", err);
           }
         }
 
+        // ── Resume ─────────────────────────────────────────────────────
         const resumeFile = formData.get("resume") as File | null;
         if (resumeFile && resumeFile.size > 0) {
           if (resumeFile.size > MAX_FILE_SIZE) {
@@ -91,15 +160,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await uploadFile(resumeFile, `${uploadPath}/resumes`);
+            const uploaded = await handleUpload(resumeFile, `${uploadPath}/resumes`);
             body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
+            // Queue old resume for deletion only after upload succeeds
+            const oldUrl = formData.get("oldResumeUrl") as string | null;
+            if (oldUrl) urlsToDelete.push(oldUrl);
           } catch (err) {
             console.error("Resume upload failed:", err);
           }
         }
 
-        // Handle extraDocs file uploads
-        // Parse extraDocs metadata JSON sent from the form
+        // ── Extra docs ─────────────────────────────────────────────────
         const extraDocsStr = formData.get("extraDocs") as string | null;
         let extraDocsMeta: Array<{
           name: string;
@@ -108,22 +179,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           uploadStatus: string;
           _hasNewFile?: boolean;
           _fileIdx?: number;
+          // Frontend passes the existing fileUrl here so we can delete it on replacement
+          _oldFileUrl?: string;
         }> = [];
 
         if (extraDocsStr) {
-          try {
-            extraDocsMeta = JSON.parse(extraDocsStr);
-          } catch {
-            extraDocsMeta = [];
-          }
+          try { extraDocsMeta = JSON.parse(extraDocsStr); } catch { extraDocsMeta = []; }
         }
 
-        // Process new file uploads using sequential indices stored in metadata
         for (let i = 0; i < extraDocsMeta.length; i++) {
           const meta = extraDocsMeta[i];
           if (meta._hasNewFile && meta._fileIdx !== undefined) {
             const file = formData.get(`extraDocs[${meta._fileIdx}][file]`) as File | null;
-            const docName = formData.get(`extraDocs[${meta._fileIdx}][name]`) as string || meta.name || "";
+            const docName =
+              (formData.get(`extraDocs[${meta._fileIdx}][name]`) as string) || meta.name || "";
 
             if (file && file.size > 0) {
               if (file.size > MAX_FILE_SIZE) {
@@ -133,7 +202,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
                 );
               }
               try {
-                const uploaded = await uploadFile(file, `${uploadPath}/extra`);
+                const uploaded = await handleUpload(file, `${uploadPath}/extra`);
+                // Queue old extra-doc file for deletion only after upload succeeds
+                if (meta._oldFileUrl) urlsToDelete.push(meta._oldFileUrl);
                 extraDocsMeta[i] = {
                   name: docName,
                   fileUrl: uploaded.url,
@@ -150,50 +221,48 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           }
         }
 
-        // Remove internal tracking fields before saving
-        const cleanedExtraDocs = extraDocsMeta.map(({ _hasNewFile, _fileIdx, ...rest }) => rest);
+        // Strip internal tracking fields before saving
+        const cleanedExtraDocs = extraDocsMeta.map(
+          ({ _hasNewFile, _fileIdx, _oldFileUrl, ...rest }) => rest
+        );
+        if (cleanedExtraDocs.length > 0) body.extraDocs = cleanedExtraDocs;
 
-        if (cleanedExtraDocs.length > 0) {
-          body.extraDocs = cleanedExtraDocs;
-        }
-
-        // Handle other form fields
+        // ── Remaining form fields ──────────────────────────────────────
         formData.forEach((value, key) => {
+          // Already handled above
           if (key === "profilePhoto" || key === "resume") return;
-
-          // Skip extraDocs (already processed above — both the JSON metadata and file entries)
           if (key === "extraDocs" || key.startsWith("extraDocs[")) return;
+          // Internal hint fields — not persisted
+          if (key === "oldProfilePhoto" || key === "oldResumeUrl") return;
 
-          // Handle nested keys like "nextOfKin.name", "nextOfKin.relationship"
           if (key.includes(".")) {
             const [parent, child] = key.split(".");
-            if (!body[parent]) {
-              body[parent] = {};
-            }
+            if (!body[parent]) body[parent] = {};
             (body[parent] as Record<string, unknown>)[child] = value;
             return;
           }
-
           body[key] = value;
         });
 
         const jsonFields = [
           "licences", "passports", "seamansBooks", "visas",
-          "endorsements", "stcwCertificates", "otherCertificates", "seaExperience", "extraDocs", "nextOfKin"
+          "endorsements", "stcwCertificates", "otherCertificates",
+          "seaExperience", "extraDocs", "nextOfKin",
         ];
         for (const field of jsonFields) {
           if (typeof body[field] === "string") {
             try { body[field] = JSON.parse(body[field] as string); } catch { }
           }
         }
+
       } else {
+        // Fallback: plain form
         const formData = await req.formData();
-        formData.forEach((value, key) => {
-          body[key] = value;
-        });
+        formData.forEach((value, key) => { body[key] = value; });
         const jsonFields = [
           "licences", "passports", "seamansBooks", "visas",
-          "endorsements", "stcwCertificates", "otherCertificates", "seaExperience", "extraDocs", "nextOfKin"
+          "endorsements", "stcwCertificates", "otherCertificates",
+          "seaExperience", "extraDocs", "nextOfKin",
         ];
         for (const field of jsonFields) {
           if (typeof body[field] === "string") {
@@ -219,13 +288,15 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    // ── 7. Build update payload (only include fields present in body) ────
+    // ── 7. Delete old files (new replacements already uploaded at this point) ─
+    await Promise.all(urlsToDelete.map(deleteFile));
+
+    // ── 8. Build update payload ──────────────────────────────────────────
     const update: Record<string, unknown> = {
       lastEditedBy: session.user.id,
       updatedAt: new Date(),
     };
 
-    // Scalar string fields
     const scalarFields: Array<keyof ICrew> = [
       "firstName", "lastName", "rank", "positionApplied", "availabilityNote",
       "nationality", "placeOfBirth", "maritalStatus", "fatherName", "motherName",
@@ -237,11 +308,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (f in body) update[f] = str(body[f]) || undefined;
     });
 
-    // Email (lowercase)
     if ("email" in body) {
       const newEmail = str(body.email).toLowerCase();
       if (newEmail && newEmail !== existing.email) {
-        // Check duplicate for same company
         const conflict = await Crew.exists({
           company: existing.company,
           email: newEmail,
@@ -257,10 +326,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // Status
     if ("status" in body) update.status = str(body.status) as ICrew["status"];
 
-    // Date fields
     const dateFields: Array<keyof ICrew> = [
       "dateOfBirth", "dateOfAvailability",
       "medicalCertIssuedDate", "medicalCertExpiredDate",
@@ -269,12 +336,10 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (f in body) update[f] = validDate(str(body[f]));
     });
 
-    // Numeric fields
     if ("weightKg" in body) update.weightKg = Number(body.weightKg) || undefined;
     if ("heightCm" in body) update.heightCm = Number(body.heightCm) || undefined;
     if ("kmFromAirport" in body) update.kmFromAirport = Number(body.kmFromAirport) || undefined;
 
-    // Languages
     if ("languages" in body) {
       update.languages = Array.isArray(body.languages)
         ? (body.languages as string[]).filter(Boolean)
@@ -283,7 +348,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           : [];
     }
 
-    // Next of kin
     if ("nextOfKin" in body) {
       const nok = body.nextOfKin as Record<string, string> | undefined;
       update.nextOfKin = nok?.name
@@ -296,15 +360,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         : undefined;
     }
 
-    // Resume (only update if a new file was uploaded)
     if ("resume" in body && body.resume) {
       update.resume = body.resume as { fileUrl: string; fileName: string; uploadStatus: string };
     }
 
-    // ── 8. Document arrays (replace entire array if key present in body) ──
+    // ── 9. Document arrays ───────────────────────────────────────────────
     if ("licences" in body) {
-      const raw = arr<Record<string, string>>(body, "licences");
-      update.licences = raw
+      update.licences = arr<Record<string, string>>(body, "licences")
         .filter((l) => l.country && l.grade && l.number)
         .map((l) => ({
           licenceType: l.licenceType === "coe" ? "coe" : "coc",
@@ -392,9 +454,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     if ("extraDocs" in body) {
-      // Form now sends full extraDocs metadata including existing fileUrl/fileName
-      // New file uploads have been merged in the parsing step above.
-      // Filter out entries without a name (required by schema).
       update.extraDocs = Array.isArray(body.extraDocs)
         ? (body.extraDocs as Array<{ name?: string }>).filter((d) => d.name?.trim())
         : [];
@@ -419,7 +478,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         }));
     }
 
-    // ── 9. Apply update ──────────────────────────────────────────────────
+    // ── 10. Apply update ─────────────────────────────────────────────────
     const updated = await Crew.findByIdAndUpdate(
       id,
       { $set: update },
@@ -441,7 +500,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DELETE — soft-delete (sets deletedAt timestamp)
+// DELETE — hard delete with full file cleanup
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function DELETE(req: NextRequest, { params }: RouteContext) {
@@ -465,7 +524,8 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     await dbConnect();
 
     // ── 4. Find document ─────────────────────────────────────────────────
-    const existing = await Crew.findById(id);
+    // Use .lean() so we get a plain object for collectAllFileUrls
+    const existing = await Crew.findById(id).lean();
     if (!existing) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
@@ -476,7 +536,11 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    // ── 6. Hard delete ────────────────────────────────────────────────────
+    // ── 6. Delete all stored files before removing the DB record ────────
+    const fileUrls = collectAllFileUrls(existing);
+    await Promise.all(fileUrls.map(deleteFile));
+
+    // ── 7. Hard delete ───────────────────────────────────────────────────
     await Crew.deleteOne({ _id: id });
 
     return NextResponse.json({ success: true, message: "Application permanently deleted." });

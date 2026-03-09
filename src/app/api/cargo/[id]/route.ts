@@ -8,7 +8,7 @@ import { existsSync } from "fs";
 import Voyage from "@/models/Voyage";
 import { auth } from "@/auth"; 
 import { authorizeRequest } from "@/lib/authorizeRequest";
-// --- HELPER: DELETE FILE ---
+import { handleUpload } from "@/lib/handleUpload";
 
 // --- HELPER: PARSE DD/MM/YYYY or YYYY-MM-DD → Date ---
 function parseDMY(str: string): Date {
@@ -24,28 +24,43 @@ function parseDMY(str: string): Date {
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
 
+
+
   try {
     if (process.env.UPLOAD_PROVIDER === "local") {
-      // --- LOCAL DELETE ---
-      if (fileUrl.startsWith("/uploads")) {
-        const filePath = path.join(process.cwd(), "public", fileUrl);
+      let urlPath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        urlPath = new URL(fileUrl).pathname;
+      }
+
+      console.log("urlPath:", urlPath);
+
+      const uploadsPrefix = "/uploads/";
+      if (urlPath.startsWith(uploadsPrefix)) {
+        const relativePath = urlPath.slice(uploadsPrefix.length);
+        const filePath = path.join(process.cwd(), "public", "uploads", relativePath);
+
+      
+
         if (existsSync(filePath)) {
           await unlink(filePath);
-          console.log(`Deleted local file: ${filePath}`);
+          console.log("Deleted successfully");
+        } else {
+          console.warn("File not found at path:", filePath);
         }
+      } else {
+        console.warn("URL does not match expected prefix:", urlPath);
       }
     } else {
-      // --- BLOB DELETE ---
       if (fileUrl.startsWith("http")) {
         await del(fileUrl);
-        console.log(`Deleted blob file: ${fileUrl}`);
+        console.log("Blob deleted");
       }
     }
   } catch (error) {
     console.error("Error deleting file:", error);
   }
 }
-
 // Define interface for update data
 interface IUpdateData {
   vesselName: string;
@@ -78,21 +93,19 @@ export async function PATCH(
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("cargo.edit");
     if (!authz.ok) return authz.response;
+
     await dbConnect();
     const { id } = await params;
-
     const formData = await req.formData();
 
     // 1. Fetch Existing Record
     const existingDoc = await Document.findById(id);
     if (!existingDoc) {
-      return NextResponse.json(
-        { error: "Document not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
+
+    // 2. Extract Text Fields
     const vesselId = formData.get("vesselId") as string;
-    // Extract Text Fields
     const reportDate = formData.get("reportDate") as string;
     const vesselName = formData.get("vesselName") as string;
     const voyageNo = formData.get("voyageNo") as string;
@@ -102,8 +115,6 @@ export async function PATCH(
     const documentDate = formData.get("documentDate") as string;
     const status = formData.get("status") as string;
     const remarks = formData.get("remarks") as string;
-  
-
     const file = formData.get("file") as File | null;
 
     const updateData: IUpdateData = {
@@ -118,25 +129,21 @@ export async function PATCH(
       status,
       remarks,
     };
+
     if (vesselId) {
       updateData.vesselId = vesselId;
     }
 
-    // 🔥 CRITICAL: Re-resolve voyageId based on vessel + voyageNo
+    // Re-resolve voyageId based on vessel + voyageNo
     if (vesselId && voyageNo) {
-      const voyage = await Voyage.findOne({
-        vesselId,
-        voyageNo,
-      });
-
+      const voyage = await Voyage.findOne({ vesselId, voyageNo });
       if (voyage) {
         updateData.voyageId = voyage._id;
       }
     }
 
-    // If new file uploaded, process it
-    if (file) {
-      // 500 KB Validation Server Side
+    // ── File Update ────────────────────────────────────────────────────────
+    if (file && file.size > 0) {
       if (file.size > 500 * 1024) {
         return NextResponse.json(
           { error: "File size exceeds the 500 KB limit." },
@@ -144,55 +151,41 @@ export async function PATCH(
         );
       }
 
-      // A. Delete Old File
+      // Delete old file first (never throws — safe even if file is missing)
       if (existingDoc.file?.url) {
         await deleteFile(existingDoc.file.url);
       }
 
-      // B. Upload New File
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
-      const filename = `${timestamp}-${safeName}`;
-      let fileUrl = "";
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/cargo");
-
-        if (!existsSync(uploadDir)) {
-          await mkdir(uploadDir, { recursive: true });
-        }
-        await writeFile(path.join(uploadDir, filename), buffer);
-        fileUrl = `/uploads/cargo/${filename}`;
-      } else {
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        fileUrl = blob.url;
+      // Upload new file
+      try {
+        const uploaded = await handleUpload(file, "cargo");
+        updateData.file = {
+          url: uploaded.url,
+          originalName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+        };
+      } catch (err) {
+        console.error("Cargo document upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload document." },
+          { status: 500 }
+        );
       }
-
-      updateData.file = {
-        url: fileUrl,
-        originalName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-      };
     }
 
+    // 3. Perform Update
     const updatedDoc = await Document.findByIdAndUpdate(id, updateData, {
       new: true,
     });
 
     return NextResponse.json({ message: "Updated", data: updatedDoc });
   } catch (error: unknown) {
-    // Fixed: Use 'unknown' type and narrow safely
     const errorMessage =
       error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
 // --- DELETE: Remove Record ---
 export async function DELETE(
   req: Request,

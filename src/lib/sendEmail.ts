@@ -8,7 +8,9 @@ interface EmailParams {
 
 export async function sendEmail({ to, subject, html }: EmailParams) {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "server.yalla-web.com",
+    port: 465,
+    secure: true, // SSL
     auth: {
       user: process.env.EMAIL_FROM,
       pass: process.env.EMAIL_PASS,

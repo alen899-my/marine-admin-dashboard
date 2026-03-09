@@ -7,6 +7,7 @@ import User from "@/models/User";
 import { localStartOfDay, parseDateInTz, parseEndDateInTz } from "@/lib/timezone";
 
 
+
 interface GetNorReportsParams {
   page?: number;
   limit?: number;
@@ -17,8 +18,8 @@ interface GetNorReportsParams {
   vesselId?: string;
   voyageId?: string;
   companyId?: string;
-  tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
   user: any;
+  tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
 }
 
 export async function getNorReports({
@@ -31,8 +32,8 @@ export async function getNorReports({
   vesselId,
   voyageId,
   companyId,
-  tz = "UTC",
   user,
+    tz = "UTC",
 }: GetNorReportsParams) {
   await dbConnect();
 
@@ -44,9 +45,9 @@ export async function getNorReports({
   const skip = (page - 1) * limit;
   const query: any = { eventType: "nor", deletedAt: null };
 
-  const emptyResult = {
-    data: [],
-    pagination: { total: 0, page, limit, totalPages: 0 }
+  const emptyResult = { 
+    data: [], 
+    pagination: { total: 0, page, limit, totalPages: 0 } 
   };
 
   // --- 1. Multi-Tenancy Logic ---
@@ -59,31 +60,31 @@ export async function getNorReports({
     const companyVesselIds = companyVessels.map((v) => v._id);
 
     if (selectedVessel) {
-      if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-      query.vesselId = selectedVessel;
+        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+        query.vesselId = selectedVessel;
     } else {
-      query.vesselId = { $in: companyVesselIds };
+        query.vesselId = { $in: companyVesselIds };
     }
 
     if (!isAdmin) query.createdBy = user.id;
   } else {
     // Super Admin
     if (selectedCompany && selectedCompany !== "all") {
-      const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-
-      if (selectedVessel) {
-        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-        query.vesselId = selectedVessel;
-      } else {
-        query.vesselId = { $in: companyVesselIds };
-      }
+       const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
+       const companyVesselIds = companyVessels.map((v) => v._id);
+       
+       if (selectedVessel) {
+          if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+          query.vesselId = selectedVessel;
+       } else {
+          query.vesselId = { $in: companyVesselIds };
+       }
     } else if (selectedVessel) {
-      query.vesselId = selectedVessel;
+       query.vesselId = selectedVessel;
     }
   }
 
-  // --- 2. Filters ---
+   // --- 2. Filters ---
   if (status && status !== "all") query.status = status;
   if (voyageId) query.voyageId = voyageId;
 
@@ -91,8 +92,7 @@ export async function getNorReports({
     const dateQuery: any = {};
     if (startDate) dateQuery.$gte = parseDateInTz(startDate, tz);
     if (endDate) dateQuery.$lte = parseEndDateInTz(endDate, tz);
-    // If the user cannot see history, clamp the lower bound to today
-    if (!canSeeHistory) {
+     if (!canSeeHistory) {
       const todayStart = localStartOfDay(tz);
       if (!dateQuery.$gte || dateQuery.$gte < todayStart) dateQuery.$gte = todayStart;
       if (!dateQuery.$lte || dateQuery.$lte > new Date()) dateQuery.$lte = new Date();
@@ -147,32 +147,32 @@ export async function getNorReports({
 }
 
 export async function getFilterOptions(user: any) {
-  await dbConnect();
-  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-  const userCompanyId = user.company?.id || user.company;
+    await dbConnect();
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id || user.company;
 
-  const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
-  const vesselFilter: any = { status: "active", deletedAt: null };
+    const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+    const vesselFilter: any = { status: "active", deletedAt: null };
+    
+    if (!isSuperAdmin) vesselFilter.company = userCompanyId;
 
-  if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+    const [companies, vessels] = await Promise.all([
+        Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
+        Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
+    ]);
 
-  const [companies, vessels] = await Promise.all([
-    Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
-    Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
-  ]);
-
-  const allowedVesselIds = vessels.map((v: any) => v._id.toString());
-  const voyages = await Voyage.find({
-    vesselId: { $in: allowedVesselIds },
-    status: "active",
-    deletedAt: null
-  })
+    const allowedVesselIds = vessels.map((v: any) => v._id.toString());
+    const voyages = await Voyage.find({
+        vesselId: { $in: allowedVesselIds },
+        status: "active",
+        deletedAt: null
+    })
     .select("_id vesselId voyageNo")
     .lean();
 
-  return {
-    companies: JSON.parse(JSON.stringify(companies)),
-    vessels: JSON.parse(JSON.stringify(vessels)),
-    voyages: JSON.parse(JSON.stringify(voyages))
-  };
+    return {
+        companies: JSON.parse(JSON.stringify(companies)),
+        vessels: JSON.parse(JSON.stringify(vessels)),
+        voyages: JSON.parse(JSON.stringify(voyages))
+    };
 }

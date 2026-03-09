@@ -7,7 +7,8 @@ import { useModal } from "../../hooks/useModal";
 import Badge from "../ui/badge/Badge";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
-
+import Link from "next/link";
+import { UserCog, Info, LogOut } from "lucide-react"; 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [dbUser, setDbUser] = useState<any>(null);
@@ -50,132 +51,161 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-  return (
+return (
     <div className="relative">
+      {/* Trigger — minimal avatar-only pill */}
       <button
         onClick={toggleDropdown}
-        className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
+        className={`
+          relative flex items-center gap-0 p-0.5 rounded-full
+          border-2 transition-all duration-300 dropdown-toggle
+          ${isOpen
+            ? "border-brand-500 dark:border-brand-400"
+            : "border-transparent hover:border-brand-200 dark:hover:border-brand-800"
+          }
+        `}
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 border border-gray-200 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-brand-100 dark:bg-brand-500/20">
           {profilePicture ? (
             <Image
-              width={44}
-              height={44}
+              width={40}
+              height={40}
               src={profilePicture}
               alt="User"
               className="object-cover h-full w-full"
               unoptimized
             />
           ) : (
-            <svg
-              className="w-7 h-7 text-gray-400"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5 text-brand-600 dark:text-brand-400" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
           )}
         </span>
-
-        <span className="block mr-1 font-medium text-theme-sm">{fullName}</span>
-
-        <svg
-          className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-          width="18"
-          height="20"
-          viewBox="0 0 18 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M4.3125 8.65625L9 13.3437L13.6875 8.65625"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+      
       </button>
 
+      {/* Dropdown Panel */}
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+        className="absolute right-0 mt-3 w-[300px] z-50"
       >
-        <div className="flex justify-between pb-3 border-b border-gray-200 dark:border-gray-800">
-          <div className="mt-0.5">
-            <span className="font-medium text-gray-700 text-md dark:text-gray-200">
-              {fullName}
-            </span>
-            <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-              {email}
-            </span>
-            <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-              {companyName}
-            </span>
-          </div>
-          <div>
-            <span className="uppercase">
-              <Badge size="sm">{roleName}</Badge>
-            </span>
+        {/* Outer glow wrapper */}
+        <div className="relative">
+          {/* Subtle glow behind panel */}
+          <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-brand-400/30 via-transparent to-brand-600/20 dark:from-brand-500/20 dark:to-brand-700/10 blur-sm" />
+
+          <div className="relative rounded-2xl border border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-theme-xl overflow-hidden">
+
+            {/* Hero header — full bleed brand bg */}
+            <div className="relative px-5 pt-5 pb-14 bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden">
+              {/* Decorative circles */}
+              <div className="absolute -top-6 -right-6 h-28 w-28 rounded-full bg-white/10" />
+              <div className="absolute -bottom-4 -left-4 h-20 w-20 rounded-full bg-white/5" />
+              <div className="absolute top-2 right-16 h-10 w-10 rounded-full bg-white/5" />
+
+              <div className="relative flex items-start justify-between">
+                <div className="min-w-0 flex-1 pr-3">
+                  <p className="font-semibold text-white text-base leading-tight truncate mb-1">
+                    {fullName}
+                  </p>
+                  <p className="text-brand-100 text-theme-xs truncate mb-3">
+                    {email}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span className="text-[11px] font-semibold text-white uppercase tracking-wider">
+                        {roleName}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Avatar — floats over the fold */}
+                <div className="flex-shrink-0 h-14 w-14 rounded-2xl overflow-hidden border-2 border-white/40 shadow-theme-md bg-brand-400">
+                  {profilePicture ? (
+                    <Image
+                      width={56}
+                      height={56}
+                      src={profilePicture}
+                      alt="User"
+                      className="object-cover h-full w-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Company chip — overlaps the fold */}
+            <div className="relative -mt-5 mx-5 mb-3">
+              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-theme-sm">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/10">
+                  <svg className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                  {companyName}
+                </span>
+             
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="mx-5 border-t border-gray-100 dark:border-gray-800 mb-2" />
+
+            {/* Menu Items */}
+            <div className="px-3 pb-2 space-y-0.5">
+              <DropdownItem
+                onItemClick={() => { closeDropdown(); openModal(); }}
+                tag="button"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-theme-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-all duration-150 group"
+              >
+                <UserCog className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition-colors" />
+                <span>Edit Profile</span>
+                <svg className="ml-auto w-3.5 h-3.5 text-gray-300 dark:text-gray-600 group-hover:text-brand-400 dark:group-hover:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </DropdownItem>
+
+              <DropdownItem
+                tag="a"
+                href="/settings/about"
+                onItemClick={closeDropdown}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-theme-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-all duration-150 group"
+              >
+                <Info className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition-colors" />
+                <span>System Info</span>
+                <svg className="ml-auto w-3.5 h-3.5 text-gray-300 dark:text-gray-600 group-hover:text-brand-400 dark:group-hover:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </DropdownItem>
+            </div>
+
+            {/* Sign Out — full-width bottom bar */}
+            <div className="mx-3 mb-3 mt-1">
+              <button
+                onClick={() => { closeDropdown(); signOut({ callbackUrl: "/signin" }); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-theme-sm font-medium text-error-600 dark:text-error-400 border border-error-100 dark:border-error-500/20 bg-error-50 dark:bg-error-500/10 hover:bg-error-100 dark:hover:bg-error-500/20 hover:border-error-200 dark:hover:border-error-500/30 transition-all duration-150 group"
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+
           </div>
         </div>
-
-        <ul className="flex flex-col gap-1 py-3 border-b border-gray-200 dark:border-gray-800">
-          <li>
-            <DropdownItem
-              onItemClick={() => {
-                closeDropdown();
-                openModal();
-              }}
-              tag="button"
-              className="flex w-full items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-            >
-              <svg
-                className="fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-400 dark:group-hover:fill-gray-300"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 14.1526 4.3002 16.1184 5.61936 17.616C6.17279 15.3096 8.24852 13.5955 10.7246 13.5955H13.2746C15.7509 13.5955 17.8268 15.31 18.38 17.6167C19.6996 16.119 20.5 14.153 20.5 12C20.5 7.30558 16.6944 3.5 12 3.5ZM17.0246 18.8566V18.8455C17.0246 16.7744 15.3457 15.0955 13.2746 15.0955H10.7246C8.65354 15.0955 6.97461 16.7744 6.97461 18.8455V18.856C8.38223 19.8895 10.1198 20.5 12 20.5C13.8798 20.5 15.6171 19.8898 17.0246 18.8566ZM2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12ZM11.9991 7.25C10.8847 7.25 9.98126 8.15342 9.98126 9.26784C9.98126 10.3823 10.8847 11.2857 11.9991 11.2857C13.1135 11.2857 14.0169 10.3823 14.0169 9.26784C14.0169 8.15342 13.1135 7.25 11.9991 7.25ZM8.48126 9.26784C8.48126 7.32499 10.0563 5.75 11.9991 5.75C13.9419 5.75 15.5169 7.32499 15.5169 9.26784C15.5169 11.2107 13.9419 12.7857 11.9991 12.7857C10.0563 12.7857 8.48126 11.2107 8.48126 9.26784Z"
-                />
-              </svg>
-              Edit profile
-            </DropdownItem>
-          </li>
-        </ul>
-
-        <button
-          onClick={() => {
-            closeDropdown();
-            signOut({ callbackUrl: "/signin" });
-          }}
-          className="flex w-full items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-left text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-        >
-          <svg
-            className="fill-gray-500 group-hover:fill-gray-700 dark:group-hover:fill-gray-300"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M15.1007 19.247C14.6865 19.247 14.3507 18.9112 14.3507 18.497L14.3507 14.245H12.8507V18.497C12.8507 19.7396 13.8581 20.747 15.1007 20.747H18.5007C19.7434 20.747 20.7507 19.7396 20.7507 18.497L20.7507 5.49609C20.7507 4.25345 19.7433 3.24609 18.5007 3.24609H15.1007C13.8581 3.24609 12.8507 4.25345 12.8507 5.49609V9.74501L14.3507 9.74501V5.49609C14.3507 5.08188 14.6865 4.74609 15.1007 4.74609L18.5007 4.74609C18.9149 4.74609 19.2507 5.08188 19.2507 5.49609L19.2507 18.497C19.2507 18.9112 18.9149 19.247 18.5007 19.247H15.1007ZM3.25073 11.9984C3.25073 12.2144 3.34204 12.4091 3.48817 12.546L8.09483 17.1556C8.38763 17.4485 8.86251 17.4487 9.15549 17.1559C9.44848 16.8631 9.44863 16.3882 9.15583 16.0952L5.81116 12.7484L16.0007 12.7484C16.4149 12.7484 16.7507 12.4127 16.7507 11.9984C16.7507 11.5842 16.4149 11.2484 16.0007 11.2484L5.81528 11.2484L9.15585 7.90554C9.44864 7.61255 9.44847 7.13767 9.15547 6.84488C8.86248 6.55209 8.3876 6.55226 8.09481 6.84525L3.52309 11.4202C3.35673 11.5577 3.25073 11.7657 3.25073 11.9984Z"
-            />
-          </svg>
-          Sign out
-        </button>
       </Dropdown>
 
-      {/* Separate Modal */}
+      {/* Modal */}
       <EditProfileModal
         isOpen={isModalOpen}
         onClose={closeModal}

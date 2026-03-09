@@ -35,12 +35,14 @@ export default function SearchableSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 1. Sync Input Display with Selected Value
-  // When the parent passes a new value (e.g. "AN16"), we find the label ("AN16") to show in the text box.
   useEffect(() => {
     const selectedOption = options.find((opt) => opt.value === value);
     if (selectedOption) {
       setInputValue(selectedOption.label);
-    } else if (!value) {
+    } else if (value) {
+      // If a value exists but is not in options (e.g. legacy data), show the value itself
+      setInputValue(value);
+    } else {
       setInputValue("");
     }
   }, [value, options]);
@@ -98,13 +100,12 @@ export default function SearchableSelect({
   placeholder:text-gray-400 
   ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800" : "bg-white text-gray-800 dark:bg-gray-900 dark:text-white/90"}
   
-  ${
-    error
-      ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" //  Red in light, gray in dark
-      : isOpen
-        ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
-        : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
-  }
+  ${error
+              ? "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-gray-700" //  Red in light, gray in dark
+              : isOpen
+                ? "border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800"
+                : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
+            }
 `}
         />
 
@@ -137,10 +138,9 @@ export default function SearchableSelect({
                 onClick={() => handleSelect(option.value)}
                 className={`
                   cursor-pointer rounded-md px-3 py-2 text-sm transition-colors
-                  ${
-                    value === option.value
-                      ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50"
+                  ${value === option.value
+                    ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
+                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50"
                   }
                 `}
               >

@@ -13,6 +13,7 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import mongoose from "mongoose"; //  Import Mongoose
 import path from "path";
+import { handleUpload } from "@/lib/handleUpload";
 const sendResponse = (
   status: number,
   message: string,
@@ -319,7 +320,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await auth(); //  Get session
+    const session = await auth();
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.create");
     if (!authz.ok) return authz.response;
@@ -328,13 +329,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
 
     // Extract Fields
-    //  1. Get vesselId from form data
     const vesselIdString = formData.get("vesselId") as string;
     const vesselName = formData.get("vesselName") as string;
-
-    // This is the string (e.g. "OP-1225") from the frontend dropdown
     const voyageNoString = formData.get("voyageNo") as string;
-
     const portName = formData.get("portName") as string;
     const remarks = formData.get("remarks") as string;
     const reportDate = formData.get("reportDate") as string;
@@ -344,7 +341,9 @@ export async function POST(req: Request) {
     const norTenderTime = formData.get("norTenderTime") as string;
     const etaPort = formData.get("etaPort") as string;
 
-    // Handle File (Keep your existing file upload logic)
+    // ── File Upload ────────────────────────────────────────────────────────
+    // Uses handleUpload which conditionally saves to local disk or blob,
+    // and returns a URL that works on both local and deployed environments.
     const file = formData.get("norDocument") as File | null;
     let finalDocumentUrl = "";
 
@@ -352,83 +351,70 @@ export async function POST(req: Request) {
       if (file.size > 500 * 1024) {
         return NextResponse.json(
           { error: "File size exceeds the 500 KB limit." },
-          { status: 400 },
+          { status: 400 }
         );
       }
-      const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/nor");
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
-        finalDocumentUrl = `/uploads/nor/${filename}`;
-      } else {
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        finalDocumentUrl = blob.url;
+      try {
+        const uploaded = await handleUpload(file, "nor");
+        finalDocumentUrl = uploaded.url;
+      } catch (err) {
+        console.error("NOR document upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload NOR document." },
+          { status: 500 }
+        );
       }
     }
 
+    // ── Date Validation ────────────────────────────────────────────────────
     const parsedReportDate = parseDateString(reportDate);
     if (!parsedReportDate) {
       return NextResponse.json(
         { error: "Invalid Date Format." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    // ==========================================
-    //  2. VOYAGE ID LOOKUP LOGIC
-    // ==========================================
-    let voyageObjectId = null;
-
-    if (vesselIdString && voyageNoString) {
-      const vId = new mongoose.Types.ObjectId(vesselIdString);
-
-      // Find the Voyage Document to get its _id
-      const foundVoyage = await Voyage.findOne({
-        vesselId: vId,
-        voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
-      }).select("_id");
-
-      if (foundVoyage) {
-        voyageObjectId = foundVoyage._id;
-      } else {
-        return NextResponse.json(
-          { error: `Voyage ${voyageNoString} not found for this vessel.` },
-          { status: 404 },
-        );
-      }
-    } else {
+    // ── Voyage ID Lookup ───────────────────────────────────────────────────
+    if (!vesselIdString || !voyageNoString) {
       return NextResponse.json(
         { error: "Missing Vessel ID or Voyage Number" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    // Create Record
+    const vId = new mongoose.Types.ObjectId(vesselIdString);
+    const foundVoyage = await Voyage.findOne({
+      vesselId: vId,
+      voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
+    }).select("_id");
+
+    if (!foundVoyage) {
+      return NextResponse.json(
+        { error: `Voyage ${voyageNoString} not found for this vessel.` },
+        { status: 404 }
+      );
+    }
+
+    // ── Create Record ──────────────────────────────────────────────────────
     const newRecord = await ReportOperational.create({
       eventType: "nor",
       status: "active",
       createdBy: currentUserId,
       updatedBy: currentUserId,
-      //  IDs
-      vesselId: vesselIdString,
-      voyageId: voyageObjectId,
 
-      //  Snapshots
+      vesselId: vesselIdString,
+      voyageId: foundVoyage._id,
+
       vesselName,
-      voyageNo: voyageNoString, // Save string for snapshot
+      voyageNo: voyageNoString,
 
       portName,
       eventTime: norTenderTime ? new Date(norTenderTime) : new Date(),
       reportDate: parsedReportDate,
 
       norDetails: {
-        pilotStation: pilotStation,
+        pilotStation,
         documentUrl: finalDocumentUrl,
         etaPort: etaPort ? new Date(etaPort) : undefined,
         tenderTime: norTenderTime ? new Date(norTenderTime) : undefined,
@@ -442,7 +428,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "NOR saved successfully", data: newRecord },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error: unknown) {
     console.error("Error saving NOR:", error);
@@ -450,7 +436,7 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json(
       { error: "Failed to save record", details: errorMessage },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

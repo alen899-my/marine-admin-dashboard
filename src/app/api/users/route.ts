@@ -12,6 +12,7 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
+import { handleUpload } from "@/lib/handleUpload";
 export async function POST(req: NextRequest) {
   try {
     // 1. Authorization
@@ -56,38 +57,19 @@ export async function POST(req: NextRequest) {
     let profilePictureUrl = ""; // Default to empty/null
 
     if (file && file.size > 0) {
-      // Validation: 2MB Limit (Adjust as needed)
-      if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json(
-          { error: "Profile picture exceeds the 2MB limit." },
-          { status: 400 },
-        );
-      }
-
-      const filename = `user_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      // --- CONDITIONAL UPLOAD LOGIC ---
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        // --- LOCAL STORAGE (Development) ---
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/users");
-
-        if (!existsSync(uploadDir)) {
-          await mkdir(uploadDir, { recursive: true });
-        }
-
-        await writeFile(path.join(uploadDir, filename), buffer);
-        profilePictureUrl = `/uploads/users/${filename}`;
-      } else {
-        // --- VERCEL BLOB (Production) ---
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        profilePictureUrl = blob.url;
-      }
-    }
-
+  if (file.size > 2 * 1024 * 1024) {
+    return NextResponse.json(
+      { error: "Profile picture exceeds the 2MB limit." },
+      { status: 400 },
+    );
+  }
+  try {
+    const uploaded = await handleUpload(file, "users");
+    profilePictureUrl = uploaded.url;
+  } catch (err) {
+    console.error("Profile picture upload failed:", err);
+  }
+}
     // 4. Role Fallback Logic
     if (!role) {
       const defaultRole = await Role.findOne({

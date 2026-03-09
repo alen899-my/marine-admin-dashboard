@@ -217,7 +217,7 @@ export default function SignInForm() {
           </form>
 
           <div className="mt-5 flex justify-center">
-            <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
+            {/* <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
@@ -225,7 +225,7 @@ export default function SignInForm() {
               >
                 Sign Up
               </Link>
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

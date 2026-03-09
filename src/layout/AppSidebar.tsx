@@ -21,7 +21,8 @@ import {
   Database,
   ShieldCheck,
   ClipboardList,
-   Briefcase,
+  Briefcase,
+  BookOpen,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -90,11 +91,11 @@ const navItems: NavItem[] = [
         path: "/voyage-analysis-performance",
         requiredPermission: "voyageanalysis.view",
       },
-     
+
     ],
   },
- 
-  
+
+
   {
     icon: <Database size={25} />,
     name: "Masters",
@@ -121,8 +122,8 @@ const navItems: NavItem[] = [
       },
     ],
   },
-   {
-    icon: <FileCheck size={25} />, 
+  {
+    icon: <FileCheck size={25} />,
     name: "Pre-Arrival Management",
     path: "/pre-arrival",
     requiredPermission: "prearrival.view",
@@ -148,13 +149,24 @@ const navItems: NavItem[] = [
       },
     ],
   },
-  //jobs
- {
-    icon: <Briefcase size={25} />, 
-    name: "Candidate Profiles",
-    path: "/jobs",
-    requiredPermission: "jobs.view",
-  },
+
+  // {
+  //   icon: <Briefcase size={25} />,
+  //   name: "Candidate Profiles",
+  //   path: "/jobs",
+  //   requiredPermission: "jobs.view",
+  // },
+  // {
+  //   icon: <Briefcase size={25} />,
+  //   name: "Job Postings",
+  //   path: "/job-postings",
+  //   requiredPermission: "jobs.view", // Temporary; can be updated to job-postings.view if such permission exists
+  // },
+  // {
+  //   icon: <BookOpen size={25} />,
+  //   name: "User Guide",
+  //   path: "/user-guide",
+  // },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -250,20 +262,17 @@ const AppSidebar: React.FC = () => {
           {nav.subItems ? (
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group w-full ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
-              }`}
+              className={`menu-item group w-full ${openSubmenu?.type === menuType && openSubmenu?.index === index
+                ? "menu-item-active"
+                : "menu-item-inactive"
+                } cursor-pointer ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
+                }`}
             >
               <span
-                className={`${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
+                className={`${openSubmenu?.type === menuType && openSubmenu?.index === index
+                  ? "menu-item-icon-active"
+                  : "menu-item-icon-inactive"
+                  }`}
               >
                 {nav.icon}
               </span>
@@ -272,11 +281,10 @@ const AppSidebar: React.FC = () => {
               )}
               {(isExpanded || isHovered || isMobileOpen) && (
                 <ChevronDown
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                    openSubmenu?.type === menuType && openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }`}
+                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${openSubmenu?.type === menuType && openSubmenu?.index === index
+                    ? "rotate-180 text-brand-500"
+                    : ""
+                    }`}
                 />
               )}
             </button>
@@ -287,14 +295,12 @@ const AppSidebar: React.FC = () => {
                 onClick={() => {
                   if (isMobileOpen) toggleMobileSidebar();
                 }}
-                className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }`}
+                className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+                  }`}
               >
                 <span
-                  className={`${
-                    isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"
-                  }`}
+                  className={`${isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"
+                    }`}
                 >
                   {nav.icon}
                 </span>
@@ -326,11 +332,10 @@ const AppSidebar: React.FC = () => {
                       onClick={() => {
                         if (isMobileOpen) toggleMobileSidebar();
                       }}
-                      className={`menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
+                      className={`menu-dropdown-item ${isActive(subItem.path)
+                        ? "menu-dropdown-item-active"
+                        : "menu-dropdown-item-inactive"
+                        }`}
                     >
                       {subItem.name}
                     </Link>

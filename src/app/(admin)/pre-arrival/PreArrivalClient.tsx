@@ -33,13 +33,13 @@ export default function PreArrivalClient({
   user: serverUser,
 }: PreArrivalClientProps) {
   const { can, isReady } = useAuthorization();
-  
+
   // State initialized with SSR data
   const [requests, setRequests] = useState(initialRequests);
   const [vessels] = useState(initialVessels);
   const [voyages] = useState(initialVoyages);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
-  
+
   const [refresh, setRefresh] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalLoading, setIsModalLoading] = useState(false);
@@ -55,7 +55,7 @@ export default function PreArrivalClient({
   const modalRef = useRef<any>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   // Re-fetch logic for refresh/pagination
-const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/pre-arrival?init=true&page=${currentPage}`);
@@ -70,9 +70,9 @@ const handleRefresh = useCallback(async () => {
           const updatedVersion = result.data.find(
             (r: any) => r._id === selectedRequest._id
           );
-         if (updatedVersion && JSON.stringify(updatedVersion) !== JSON.stringify(selectedRequest)) {
-    setSelectedRequest(updatedVersion);
-  }
+          if (updatedVersion) {
+            setSelectedRequest(updatedVersion);
+          }
         }
       }
     } catch (err) {
@@ -123,17 +123,17 @@ const handleRefresh = useCallback(async () => {
     }
   };
 
-const handleUpload = (row: any) => {
-  setSelectedRequest(row); // Use existing data immediately
-  setIsViewMode(false);
-  setIsWorkspaceOpen(true);
-};
+  const handleUpload = (row: any) => {
+    setSelectedRequest(row); // Use existing data immediately
+    setIsViewMode(false);
+    setIsWorkspaceOpen(true);
+  };
 
-const handleView = (row: any) => {
-  setSelectedRequest(row); // Use existing data immediately
-  setIsViewMode(true);
-  setIsWorkspaceOpen(true);
-};
+  const handleView = (row: any) => {
+    setSelectedRequest(row); // Use existing data immediately
+    setIsViewMode(true);
+    setIsWorkspaceOpen(true);
+  };
 
   const columns = useMemo(() => [
     {
@@ -147,7 +147,7 @@ const handleView = (row: any) => {
       render: (row: any) => (
         <div className="py-1">
           <p className="text-sm font-medium text-gray-800 dark:text-white/90">{row.vesselId?.name || "N/A"}</p>
-       
+
           <p className="text-[10px] text-gray-400 font-mono uppercase">ID: {row.requestId}</p>
         </div>
       ),
@@ -166,98 +166,97 @@ const handleView = (row: any) => {
       render: (row: any) => (
         <div className="text-xs space-y-0.5">
           <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">ETA:</span> {formatDate(row.eta)}</p>
-       <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">DUE:</span> {formatDate(row.dueDate)}</p>
+          <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">DUE:</span> {formatDate(row.dueDate)}</p>
         </div>
       ),
     },
-{
-  header: "Status",
-  render: (row: any) => {
-    // 1. Use the status exactly as it exists in the Database
-    const dbStatus = row.status || "draft";
+    {
+      header: "Status",
+      render: (row: any) => {
+        // 1. Use the status exactly as it exists in the Database
+        const dbStatus = row.status || "draft";
 
-    // 2. Map the DB strings to your UI Badges
-    const statusConfig: Record<string, { color: "warning" | "primary" | "info" | "success"; label: string }> = {
-      draft: { color: "warning", label: "Draft" },
-      published: { color: "primary", label: "Published" },
-      sent: { color: "info", label: "Sent to Agent" },
-      completed: { color: "success", label: "Completed" },
-    };
+        // 2. Map the DB strings to your UI Badges
+        const statusConfig: Record<string, { color: "warning" | "primary" | "info" | "success"; label: string }> = {
+          draft: { color: "warning", label: "Draft" },
+          published: { color: "primary", label: "Published" },
+          sent: { color: "info", label: "Sent to Agent" },
+          completed: { color: "success", label: "Completed" },
+        };
 
-    const config = statusConfig[dbStatus] || statusConfig.draft;
+        const config = statusConfig[dbStatus] || statusConfig.draft;
 
-    return (
-     <Badge color={config.color} size="sm">
-          {config.label}
-        </Badge>
-    );
-  },
-},
-   // Inside columns useMemo in PreArrivalClient.tsx
+        return (
+          <Badge color={config.color} size="sm">
+            {config.label}
+          </Badge>
+        );
+      },
+    },
+    // Inside columns useMemo in PreArrivalClient.tsx
 
-{
-  header: "Pack Progress",
-  render: (row: any) => {
-    const isSuperAdmin = serverUser?.role?.toLowerCase() === "super-admin";
-    const isAdmin = serverUser?.role?.toLowerCase() === "admin";
-    const canSeeAll = can("prearrival.viewall");
-    
-    // 1. Get the actual data from the DB
-    const uploadedDocs = row.documents || {};
-    const allDocEntries = Object.entries(uploadedDocs);
+    {
+      header: "Pack Progress",
+      render: (row: any) => {
+        const isSuperAdmin = serverUser?.role?.toLowerCase() === "super-admin";
+        const isAdmin = serverUser?.role?.toLowerCase() === "admin";
+        const canSeeAll = can("prearrival.viewall");
 
-    // 2. Define the hard totals based on your Phase-2 requirements
-    const TOTAL_OFFICE_DOCS = 12;
-    const TOTAL_SHIP_DOCS = 13;
-    const TOTAL_PACK_DOCS = 25;
+        // 1. Get the actual data from the DB
+        const uploadedDocs = row.documents || {};
+        const allDocEntries = Object.entries(uploadedDocs);
 
-    let current = 0;
-    let total = 0;
-    let label = "";
+        // 2. Define the hard totals based on your Phase-2 requirements
+        const TOTAL_OFFICE_DOCS = 12;
+        const TOTAL_SHIP_DOCS = 13;
+        const TOTAL_PACK_DOCS = 25;
 
-    if (isSuperAdmin || isAdmin || canSeeAll) {
-      // Admin sees total approved out of 25
-      current = allDocEntries.filter(([_, d]: any) => d.status === "approved").length;
-      total = TOTAL_PACK_DOCS;
-      label = "Total Pack Progress";
-    } else {
-      // SHIP LOGIC: Count approved ship docs out of the 13 they are REQUIRED to handle
-      current = allDocEntries.filter(([_, d]: any) => 
-        d.owner === "ship" && d.status === "approved"
-      ).length;
-      
-      // ✅ FIX: Force the total to be 13 (the requirement) so it doesn't drop to 0/1
-      total = TOTAL_SHIP_DOCS;
-      label = "Submissions";
-    }
+        let current = 0;
+        let total = 0;
+        let label = "";
 
-    const percentage = Math.round((current / total) * 100);
+        if (isSuperAdmin || isAdmin || canSeeAll) {
+          // Admin sees total approved out of 25
+          current = allDocEntries.filter(([_, d]: any) => d.status === "approved").length;
+          total = TOTAL_PACK_DOCS;
+          label = "Total Pack Progress";
+        } else {
+          // SHIP LOGIC: Count approved ship docs out of the 13 they are REQUIRED to handle
+          current = allDocEntries.filter(([_, d]: any) =>
+            d.owner === "ship" && d.status === "approved"
+          ).length;
 
-    return (
-      <div className="w-40">
-        <div className="flex justify-between text-[10px] font-bold mb-1 text-gray-400">
-          <span>{label}</span>
-          <span className="text-brand-500 font-mono">{current}/{total}</span>
-        </div>
-        <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden border border-gray-200/50 dark:border-white/5">
-          <div
-            className={`h-full transition-all duration-1000 ease-out relative ${
-              percentage === 100 
-                ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
-                : "bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
-            }`}
-            style={{ width: `${percentage}%` }}
-          >
-            <div className="absolute inset-0 bg-white/20 w-full h-[1px] top-0" />
-            {percentage > 0 && percentage < 100 && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse -skew-x-12" />
-            )}
+          // ✅ FIX: Force the total to be 13 (the requirement) so it doesn't drop to 0/1
+          total = TOTAL_SHIP_DOCS;
+          label = "Submissions";
+        }
+
+        const percentage = Math.round((current / total) * 100);
+
+        return (
+          <div className="w-40">
+            <div className="flex justify-between text-[10px] font-bold mb-1 text-gray-400">
+              <span>{label}</span>
+              <span className="text-brand-500 font-mono">{current}/{total}</span>
+            </div>
+            <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden border border-gray-200/50 dark:border-white/5">
+              <div
+                className={`h-full transition-all duration-1000 ease-out relative ${percentage === 100
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                    : "bg-gradient-to-r from-brand-600 to-brand-400 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                  }`}
+                style={{ width: `${percentage}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 w-full h-[1px] top-0" />
+                {percentage > 0 && percentage < 100 && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse -skew-x-12" />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    );
-  },
-}
+        );
+      },
+    }
   ], [currentPage]);
 
   const canAdd = isReady && can("prearrival.create");
@@ -269,7 +268,7 @@ const handleView = (row: any) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">Pre‑Arrival Pack Management</h2>
-           <p className="text-sm text-gray-500 mt-0.5">Manage port entry documentation and compliance.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Manage port entry documentation and compliance.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -294,25 +293,25 @@ const handleView = (row: any) => {
           <TableCount count={requests.length} label="Request Packs" />
         </div>
 
-      <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden">
-    <div className="max-w-full overflow-x-auto custom-scrollbar">
-      <div className="min-w-[1200px]"> 
-        <CommonReportTable
-          data={requests}
-          columns={columns}
-          loading={isLoading|| processingId !== null}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          onUpload={handleUpload}
-           onRowClick={handleView}
-          onView={handleView}
-          onEdit={canEdit ? handleEdit : undefined}
-          onDelete={canDelete ? handleDeleteClick : undefined}
-        />
-      </div>
-    </div>
-  </div>
+        <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden">
+          <div className="max-w-full overflow-x-auto custom-scrollbar">
+            <div className="min-w-[1500px]">
+              <CommonReportTable
+                data={requests}
+                columns={columns}
+                loading={isLoading || processingId !== null}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                onUpload={handleUpload}
+                onRowClick={handleView}
+                onView={handleView}
+                onEdit={canEdit ? handleEdit : undefined}
+                onDelete={canDelete ? handleDeleteClick : undefined}
+              />
+            </div>
+          </div>
+        </div>
       </ComponentCard>
 
       {isWorkspaceOpen && selectedRequest && (

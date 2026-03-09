@@ -8,7 +8,9 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-
+import { handleUpload } from "@/lib/handleUpload"
+import { del } from "@vercel/blob";
+import { unlink } from "fs/promises";
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -21,7 +23,6 @@ export async function PATCH(
     const { id } = await context.params;
 
     // 1. Parse FormData
-    // This will now work because we will fix the client to always send FormData
     const formData = await req.formData();
 
     // 2. Find User first
@@ -30,57 +31,41 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 3. Prepare Update Object (Dynamic Construction)
+    // 3. Prepare Update Object
     const updateData: any = {};
 
-    // Only update fields if they are present in the FormData
-    if (formData.has("name"))
-      updateData.fullName = formData.get("name") as string;
-    if (formData.has("email"))
-      updateData.email = formData.get("email") as string;
-    if (formData.has("phone"))
-      updateData.phone = formData.get("phone") as string;
+    if (formData.has("name")) updateData.fullName = formData.get("name") as string;
+    if (formData.has("email")) updateData.email = formData.get("email") as string;
+    if (formData.has("phone")) updateData.phone = formData.get("phone") as string;
     if (formData.has("role")) updateData.role = formData.get("role") as string;
-    if (formData.has("status"))
-      updateData.status = formData.get("status") as string;
+    if (formData.has("status")) updateData.status = formData.get("status") as string;
 
     if (formData.has("company")) {
       const newCompanyId = formData.get("company") as string;
       const oldCompanyId = user.company?.toString();
 
       if (newCompanyId !== oldCompanyId) {
-        // Validate new company exists
         const companyExists = await Company.findById(newCompanyId);
         if (!companyExists) {
-          return NextResponse.json(
-            { error: "Invalid Company ID" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "Invalid Company ID" }, { status: 400 });
         }
 
         updateData.company = newCompanyId;
 
-        // Remove user from old company's user list
         if (oldCompanyId) {
-          await Company.findByIdAndUpdate(oldCompanyId, {
-            $pull: { users: id },
-          });
+          await Company.findByIdAndUpdate(oldCompanyId, { $pull: { users: id } });
         }
-
-        // Add user to new company's user list
-        await Company.findByIdAndUpdate(newCompanyId, {
-          $addToSet: { users: id },
-        });
+        await Company.findByIdAndUpdate(newCompanyId, { $addToSet: { users: id } });
       }
     }
 
-    // Password logic
+    // Password
     const password = formData.get("password") as string;
     if (password && password.trim() !== "") {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
-    // Permission Arrays (Parse JSON strings)
+    // Permission Arrays
     if (formData.has("additionalPermissions")) {
       try {
         updateData.additionalPermissions = JSON.parse(
@@ -110,28 +95,27 @@ export async function PATCH(
           { status: 400 }
         );
       }
+        const oldPicUrl = user.profilePicture;
+  if (oldPicUrl) {
+    await deleteFile(oldPicUrl); // ← add this
+  }
 
-      const filename = `user_${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      if (process.env.UPLOAD_PROVIDER === "local") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/users");
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
-        updateData.profilePicture = `/uploads/users/${filename}`;
-      } else {
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        updateData.profilePicture = blob.url;
+      try {
+        const uploaded = await handleUpload(file, "users");
+        updateData.profilePicture = uploaded.url;
+      } catch (err) {
+        console.error("Profile picture upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload profile picture." },
+          { status: 500 }
+        );
       }
     }
 
     // 5. Update Database
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      updateData, // Use the dynamically built object
+      updateData,
       { new: true, runValidators: true }
     ).select("-password");
 
@@ -146,6 +130,7 @@ export async function PATCH(
     );
   }
 }
+
 
 export async function DELETE(
   req: NextRequest,
@@ -195,5 +180,30 @@ export async function DELETE(
       { error: "Failed to delete user" },
       { status: 500 }
     );
+  }
+}
+async function deleteFile(fileUrl: string) {
+  if (!fileUrl) return;
+  try {
+    if (process.env.UPLOAD_PROVIDER === "local") {
+      let urlPath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        urlPath = new URL(fileUrl).pathname;
+      }
+      const uploadsPrefix = "/uploads/";
+      if (urlPath.startsWith(uploadsPrefix)) {
+        const relativePath = urlPath.slice(uploadsPrefix.length);
+        const filePath = path.join(process.cwd(), "public", "uploads", relativePath);
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+        }
+      }
+    } else {
+      if (fileUrl.startsWith("http")) {
+        await del(fileUrl);
+      }
+    }
+  } catch (error) {
+    console.error("Error deleting file:", error);
   }
 }

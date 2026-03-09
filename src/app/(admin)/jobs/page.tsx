@@ -1,11 +1,11 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import Crew from "@/models/Application";
 import Company from "@/models/Company";
 import JobPageClient from "./JobPageClient";
 import JobTable from "./JobTable";
 import { Metadata } from "next";
 import mongoose from "mongoose";
+import { getCrewApplications, getAllCompaniesForDropdown } from "@/lib/services/applicationService";
 
 export const metadata: Metadata = {
   title: "Crew Management | Parkora Falcon",
@@ -19,23 +19,16 @@ interface PageProps {
 }
 
 export default async function JobManagement({ searchParams }: PageProps) {
-  // ── 1. Auth ──────────────────────────────────────────────────────────────
   const session = await auth();
   if (!session?.user) {
-    return (
-      <div className="p-8 text-center font-medium">Unauthorized Access</div>
-    );
+    return <div className="p-8 text-center font-medium">Unauthorized Access</div>;
   }
 
   const user = session.user;
   const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
 
-  // ── 2. Resolve company ID ────────────────────────────────────────────────
   const resolvedParams = await searchParams;
   const sessionCompanyId = user.company?.id;
-
-  // For super admin: if no companyId in params, show ALL applications
-  // For regular users: always filter by their company
   const isSuperAdminNoCompany = isSuperAdmin && !resolvedParams.companyId;
 
   const targetCompanyId =
@@ -46,113 +39,57 @@ export default async function JobManagement({ searchParams }: PageProps) {
   if (!isSuperAdminNoCompany && !targetCompanyId) {
     return (
       <div className="p-8 text-center text-amber-600 bg-amber-50 rounded-lg border border-amber-200">
-        Account Error: Your user profile is not linked to a company. Please
-        contact system administration.
+        Account Error: Your user profile is not linked to a company. Please contact system administration.
       </div>
     );
   }
 
   if (targetCompanyId && !mongoose.isValidObjectId(targetCompanyId)) {
-    return (
-      <div className="p-8 text-center text-red-500 font-medium">
-        Invalid company ID.
-      </div>
-    );
+    return <div className="p-8 text-center text-red-500 font-medium">Invalid company ID.</div>;
   }
 
-  // ── 3. Fetch data ────────────────────────────────────────────────────────
   const currentPage = Math.max(1, Number(resolvedParams.page) || 1);
   const limit = 10;
-  const skip = (currentPage - 1) * limit;
-
-  // Build filter
-  const filter: Record<string, unknown> = {
-    deletedAt: null,
-  };
-
-  // Only filter by company if:
-  // - User is not super admin viewing all, OR
-  // - Super admin explicitly selected a company
-  if (!isSuperAdminNoCompany && targetCompanyId) {
-    const companyObjId = new mongoose.Types.ObjectId(targetCompanyId);
-    filter.company = companyObjId;
-  }
-
-  if (resolvedParams.status && resolvedParams.status !== "all") {
-    filter.status = resolvedParams.status;
-  }
-
-  if (resolvedParams.search?.trim()) {
-    const s = resolvedParams.search.trim();
-    filter.$or = [
-      { firstName: { $regex: s, $options: "i" } },
-      { lastName: { $regex: s, $options: "i" } },
-      { email: { $regex: s, $options: "i" } },
-      { rank: { $regex: s, $options: "i" } },
-      { nationality: { $regex: s, $options: "i" } },
-    ];
-  }
-
-  if (resolvedParams.startDate || resolvedParams.endDate) {
-    const dateQuery: any = {};
-    if (resolvedParams.startDate) {
-      dateQuery.$gte = new Date(resolvedParams.startDate);
-    }
-    if (resolvedParams.endDate) {
-      const endOfDay = new Date(resolvedParams.endDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-      dateQuery.$lte = endOfDay;
-    }
-    filter.createdAt = dateQuery;
-  }
 
   try {
     await dbConnect();
 
-    const [total, applicationsRaw, companiesRaw] = await Promise.all([
-      Crew.countDocuments(filter),
+    const [{ data: applications, pagination }, companies] =
+      await Promise.all([
+        getCrewApplications({
+          page: currentPage,
+          limit,
+          search: resolvedParams.search,
+          status: resolvedParams.status,
+          startDate: resolvedParams.startDate,
+          endDate: resolvedParams.endDate,
+          companyId: isSuperAdminNoCompany ? undefined : (targetCompanyId ?? undefined),
+          user,
+        }),
 
-      Crew.find(filter)
-        .select("-adminNotes -__v")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+        isSuperAdmin
+          ? getAllCompaniesForDropdown()
+          : Promise.resolve([] as { id: string; name: string }[]),
+      ]);
 
-      isSuperAdmin
-        ? Company.find({ deletedAt: null })
-            .select("_id name")
-            .sort({ name: 1 })
-            .lean()
-        : Promise.resolve([]),
-    ]);
+    const total = pagination.total;
 
-    // Serialize: converts all ObjectIds, Dates, and Buffers to plain JSON-safe values
-    const applications = JSON.parse(JSON.stringify(applicationsRaw));
-    const companies = JSON.parse(JSON.stringify(companiesRaw));
-
-    const companyOptions = (companies as { _id: string; name: string }[]).map(
-      (c) => ({ id: c._id, name: c.name }),
-    );
-
-    // ── 4. Render ──────────────────────────────────────────────────────────
     return (
       <JobPageClient
         totalCount={total}
-        companies={companyOptions}
+        companies={companies}
         isSuperAdmin={isSuperAdmin}
         canAdd={true}
-        currentCompanyId={
-          isSuperAdminNoCompany ? "all" : (targetCompanyId ?? "")
-        }
+        currentCompanyId={isSuperAdminNoCompany ? "all" : (targetCompanyId ?? "")}
+        portalCompanyId={targetCompanyId ?? ""}
       >
         <JobTable
           data={applications}
           pagination={{
             page: currentPage,
-            limit: limit,
-            total: total,
-            totalPages: Math.ceil(total / limit),
+            limit,
+            total,
+            totalPages: pagination.totalPages,
           }}
         />
       </JobPageClient>

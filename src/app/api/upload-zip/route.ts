@@ -1,19 +1,37 @@
-import { put } from '@vercel/blob';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { put } from "@vercel/blob";
 
-export async function POST(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const filename = searchParams.get('filename') || 'pack.zip';
-
+export async function POST(req: NextRequest) {
   try {
-    const blob = await put(filename, request.body as any, {
-      access: 'public',
-      contentType: 'application/zip', // Ensure correct mime type
-       addRandomSuffix: true, // Vercel adds a short ID to prevent overwriting but keeps name clean
-    });
+    const { searchParams } = new URL(req.url);
+    const filename = searchParams.get("filename") || "pack.zip";
+    const cleanName = filename.replace(/[^a-zA-Z0-9.]/g, "-");
+    const useLocal = process.env.UPLOAD_PROVIDER === "local";
 
-    return NextResponse.json(blob);
+    let url = "";
+
+    if (useLocal) {
+      const buffer = Buffer.from(await req.arrayBuffer());
+      const uploadDir = path.join(process.cwd(), "public/uploads/packs");
+      if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, cleanName), buffer);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+     url = `${baseUrl}/uploads/packs/${cleanName}`;
+    } else {
+      const blob = await put(cleanName, req.body!, {
+        access: "public",
+        contentType: "application/zip",
+        addRandomSuffix: true,
+      });
+      url = blob.url;
+    }
+
+    return NextResponse.json({ url });
   } catch (error) {
+    console.error("ZIP Upload Error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

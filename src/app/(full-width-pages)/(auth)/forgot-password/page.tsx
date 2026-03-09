@@ -5,6 +5,7 @@ import Image from "next/image"; // Fixed: Import Next.js Image component
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
+import Alert from "@/components/ui/alert/Alert";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -33,7 +34,7 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    setMessage("If this email exists, a reset link has been sent.");
+    setMessage("If you are a registered user, a reset link has been sent to your email. Please check your inbox or spam folder.");
   };
 
   return (
@@ -69,14 +70,14 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
               {error && (
-                <div className="p-3 rounded-lg bg-red-100 text-red-600 border border-red-300 text-sm">
-                  {error}
+                <div className="mb-4">
+                  <Alert variant="error" title="Error" message={error} />
                 </div>
               )}
 
               {message && (
-                <div className="p-3 rounded-lg bg-green-100 text-green-700 border border-green-300 text-sm">
-                  {message}
+                <div className="mb-4">
+                  <Alert variant="success" title="Success" message={message} />
                 </div>
               )}
 

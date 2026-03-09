@@ -9,13 +9,22 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import path from "path";
-// --- HELPER: DELETE FILE ---
+import { handleUpload } from "@/lib/handleUpload";
+
 async function deleteFile(fileUrl: string) {
   if (!fileUrl) return;
+
   try {
     if (process.env.UPLOAD_PROVIDER === "local") {
-      if (fileUrl.startsWith("/uploads")) {
-        const filePath = path.join(process.cwd(), "public", fileUrl);
+      let urlPath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        urlPath = new URL(fileUrl).pathname;
+      }
+
+      const uploadsPrefix = "/uploads/";
+      if (urlPath.startsWith(uploadsPrefix)) {
+        const relativePath = urlPath.slice(uploadsPrefix.length);
+        const filePath = path.join(process.cwd(), "public", "uploads", relativePath);
         if (existsSync(filePath)) {
           await unlink(filePath);
         }
@@ -41,7 +50,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth(); //  Get session
+    const session = await auth();
     const currentUserId = session?.user?.id;
     const authz = await authorizeRequest("nor.edit");
     if (!authz.ok) return authz.response;
@@ -68,23 +77,19 @@ export async function PATCH(
     const vesselName = formData.get("vesselName") as string;
     if (vesselName) updateData.vesselName = vesselName;
 
-    // --- B. VOYAGE & VESSEL LOOKUP LOGIC ---
+    // --- B. Voyage & Vessel Lookup ---
     const voyageNoString = formData.get("voyageNo") as string;
     const formVesselId = formData.get("vesselId") as string;
 
-    // 🔴 FIX: Explicitly update vesselId if provided in form
     if (formVesselId) {
       updateData.vesselId = new mongoose.Types.ObjectId(formVesselId);
     }
 
-    // Use form vesselId if available, otherwise fallback to existing record's ID for the lookup
     const lookupVesselId = formVesselId || existingRecord.vesselId?.toString();
 
     if (voyageNoString && lookupVesselId) {
-      // 1. Update the Snapshot String
       updateData.voyageNo = voyageNoString;
 
-      // 2. Find and Link the real Voyage ObjectId
       const foundVoyage = await Voyage.findOne({
         vesselId: new mongoose.Types.ObjectId(lookupVesselId),
         voyageNo: { $regex: new RegExp(`^${voyageNoString}$`, "i") },
@@ -105,7 +110,6 @@ export async function PATCH(
     const status = formData.get("status") as string;
     if (status) updateData.status = status;
 
-    // Nested Fields (Dot Notation for Mongoose)
     const pilotStation = formData.get("pilotStation") as string;
     if (pilotStation) updateData["norDetails.pilotStation"] = pilotStation;
 
@@ -115,60 +119,54 @@ export async function PATCH(
     const norTenderTime = formData.get("norTenderTime") as string;
     if (norTenderTime) {
       updateData["norDetails.tenderTime"] = new Date(norTenderTime);
-      updateData["eventTime"] = new Date(norTenderTime); // Sync eventTime
+      updateData["eventTime"] = new Date(norTenderTime);
     }
 
-    // 3. Handle File Update
+    
     const file = formData.get("norDocument") as File | null;
 
     if (file && file.size > 0) {
       if (file.size > 500 * 1024) {
         return NextResponse.json(
           { error: "File size exceeds the 500 KB limit." },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
-      // Delete old file
+      // Delete old file first (never throws — safe even if file is missing)
       const oldUrl = existingRecord.norDetails?.documentUrl;
       if (oldUrl) await deleteFile(oldUrl);
 
-      // Upload New File
-      const filename = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-
-      if (process.env.NODE_ENV === "development") {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploadDir = path.join(process.cwd(), "public/uploads/nor");
-        if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
-        updateData["norDetails.documentUrl"] = `/uploads/nor/${filename}`;
-      } else {
-        const blob = await put(filename, file, {
-          access: "public",
-          addRandomSuffix: true,
-        });
-        updateData["norDetails.documentUrl"] = blob.url;
+      // Upload new file
+      try {
+        const uploaded = await handleUpload(file, "nor");
+        updateData["norDetails.documentUrl"] = uploaded.url;
+      } catch (err) {
+        console.error("NOR document upload failed:", err);
+        return NextResponse.json(
+          { error: "Failed to upload NOR document." },
+          { status: 500 }
+        );
       }
     }
 
-    // 4. Perform Update
+    // 3. Perform Update
     const report = await ReportOperational.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true },
     )
-      //  POPULATE VOYAGE ID (Crucial for frontend display)
       .populate("voyageId", "voyageNo")
       .populate({
         path: "vesselId",
-        select: "name company", // Include name and company reference
+        select: "name company",
         populate: {
-          path: "company", // Populate the company document
-          select: "name", // Only fetch the company name
+          path: "company",
+          select: "name",
         },
       })
       .populate("createdBy", "fullName")
-      .populate("updatedBy", "fullName"); //
+      .populate("updatedBy", "fullName");
 
     return NextResponse.json({ report });
   } catch (error: unknown) {
@@ -182,7 +180,7 @@ export async function PATCH(
   }
 }
 
-// --- DELETE: REMOVE NOR (Unchanged) ---
+// --- DELETE: REMOVE NOR ---
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -194,17 +192,17 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    //  Perform Hard Delete
-    // We use findByIdAndDelete to permanently remove the record from the collection.
     const deletedRecord = await ReportOperational.findByIdAndDelete(id);
 
     if (!deletedRecord) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    //  Optional: Physical File Cleanup
-    // Since this is a hard delete, you might want to delete the associated file
-    // from your storage (S3/Cloudinary/etc) here if record.fileUrl exists.
+    // Delete associated file
+    const fileUrl = deletedRecord.norDetails?.documentUrl;
+    if (fileUrl) {
+      await deleteFile(fileUrl);
+    }
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error) {

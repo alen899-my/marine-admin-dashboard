@@ -4,9 +4,8 @@ import { useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
-import TimezoneProvider from "@/components/TimezoneProvider";
 import React from "react";
-
+import TimezoneProvider from "@/components/TimezoneProvider";
 export default function AdminLayout({
   children,
 }: {

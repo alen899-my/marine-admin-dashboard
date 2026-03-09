@@ -56,7 +56,7 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 }
 
 // GET ALL NOON REPORTS
-
+//not using now ! using server actions now
 // export async function GET(req: NextRequest) {
 //   try {
 //     const [authz, _] = await Promise.all([
@@ -192,23 +192,19 @@ function parseDateString(dateStr: string | null | undefined): Date | undefined {
 
 //     if (startDate || endDate) {
 //       manualDateQuery = {};
-//       const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
-//       const offsetMs = offsetMinutes * 60 * 1000;
 //       const startD = parseDateString(startDate);
 //       const endD = parseDateString(endDate);
-//       // Shift parsed UTC midnight to user's local midnight in UTC
-//       if (startD) manualDateQuery.$gte = new Date(startD.getTime() - offsetMs);
-//       if (endD) manualDateQuery.$lte = new Date(endD.getTime() - offsetMs + 24 * 60 * 60 * 1000 - 1);
+//       if (startD) manualDateQuery.$gte = startD;
+//       if (endD) {
+//         endD.setHours(23, 59, 59, 999);
+//         manualDateQuery.$lte = endD;
+//       }
 //     }
 
 //     if (!canSeeHistory) {
-//       // Use the client's local timezone offset (minutes east of UTC) so
-//       // "start of today" is computed in the user's local time, not server UTC.
-//       const offsetMinutes = Number(searchParams.get("tzOffset")) || 0;
+//       const startOfDay = new Date();
+//       startOfDay.setHours(0, 0, 0, 0);
 //       const now = new Date();
-//       const localNowMs = now.getTime() + offsetMinutes * 60 * 1000;
-//       const localMidnightMs = localNowMs - (localNowMs % (24 * 60 * 60 * 1000));
-//       const startOfDay = new Date(localMidnightMs - offsetMinutes * 60 * 1000);
 
 //       query.reportDate = {
 //         $gte: startOfDay,

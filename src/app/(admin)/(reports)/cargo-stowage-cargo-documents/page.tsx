@@ -5,6 +5,7 @@ import CargoPageClient from "./CargoPageClient";
 import { Metadata } from "next";
 import { cookies } from "next/headers";
 
+
 export const metadata: Metadata = {
   title: "Cargo Stowage & Cargo Documents Report | Parkora Falcon",
   description: "Comprehensive cargo stowage and cargo documents report management for maritime operations.",

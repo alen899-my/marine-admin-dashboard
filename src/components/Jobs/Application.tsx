@@ -19,6 +19,7 @@ import { applicationSchema } from "@/lib/validations/applicationSchema";
 import Joi from "joi";
 import { toast } from "react-toastify";
 import SimpleDatePicker from "@/components/form/new-datepicker";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import { Download } from "lucide-react";
 import Badge from "../ui/badge/Badge";
 import ConfirmModal from "@/components/modal/ConfirmModal";
@@ -353,6 +354,9 @@ interface ScalarState {
   seaExperienceDetail: string;
   additionalInfo: string;
   status: string;
+  profilePhotoUrl: string;
+  resumeUrl: string;
+  resumeFileName: string;
 }
 
 const initialScalar: ScalarState = {
@@ -392,6 +396,9 @@ const initialScalar: ScalarState = {
   seaExperienceDetail: "",
   additionalInfo: "",
   status: "draft",
+  profilePhotoUrl: "",
+  resumeUrl: "",
+  resumeFileName: "",
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -483,6 +490,9 @@ function dataToScalar(data: CrewApplicationData): ScalarState {
     seaExperienceDetail: data.seaExperienceDetail ?? "",
     additionalInfo: data.additionalInfo ?? "",
     status: data.status ?? "draft",
+    profilePhotoUrl: data.profilePhoto ?? "",
+    resumeUrl: data.resume?.fileUrl ?? "",
+    resumeFileName: data.resume?.fileName ?? "",
   };
 }
 
@@ -591,6 +601,8 @@ interface CrewApplicationFormProps {
   companyLogo?: string;
   mode?: FormMode;
   isPublic?: boolean;
+  availablePositions?: { value: string; label: string }[];
+  initialPosition?: string;
   initialData?: CrewApplicationData;
   applicationId?: string;
 }
@@ -601,6 +613,8 @@ export default function CrewApplicationForm({
   companyLogo,
   mode = "create",
   isPublic = false,
+  availablePositions = [],
+  initialPosition = "",
   initialData,
   applicationId,
 }: CrewApplicationFormProps) {
@@ -636,17 +650,19 @@ export default function CrewApplicationForm({
   >({});
 
   // ── Scalar state
-  const [scalar, setScalar] = useState<ScalarState>(() =>
-    initialData ? dataToScalar(initialData) : initialScalar,
-  );
+  const [scalar, setScalar] = useState<ScalarState>(() => {
+    if (initialData) return dataToScalar(initialData);
+    if (initialPosition) return { ...initialScalar, positionApplied: initialPosition };
+    return initialScalar;
+  });
   const setField = <K extends keyof ScalarState>(
     key: K,
     value: ScalarState[K],
   ) => setScalar((prev) => ({ ...prev, [key]: value }));
   const txt =
     (key: keyof ScalarState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setField(key, e.target.value as ScalarState[typeof key]);
+      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        setField(key, e.target.value as ScalarState[typeof key]);
 
   // ── Array states
   const coc = useArray<LicenceItem>([emptyLicence()]);
@@ -766,6 +782,8 @@ export default function CrewApplicationForm({
         setScalar((prev) => ({
           ...prev,
           ...cached.scalar,
+          // Prioritize the specific job clicked from the UI (initialPosition)
+          positionApplied: initialPosition || cached.scalar.positionApplied || prev.positionApplied || "",
           profilePhoto: null,
           resume: null,
         }));
@@ -1096,9 +1114,7 @@ export default function CrewApplicationForm({
     if (isEdit || isView || stepId <= maxCompleted + 1) setCurrentStep(stepId);
   };
 
-  const handleSubmit = async (
-    isDraftArg: boolean | React.MouseEvent = false,
-  ) => {
+  const handleSubmit = async (isDraftArg: boolean | React.MouseEvent = false) => {
     const isDraft = typeof isDraftArg === "boolean" ? isDraftArg : false;
     setIsSubmitting(true);
     setSubmitError(null);
@@ -1106,36 +1122,15 @@ export default function CrewApplicationForm({
     try {
       const fd = new FormData();
 
+      // ── Scalar string fields ───────────────────────────────────────────────
       const scalarKeys: (keyof ScalarState)[] = [
-        "positionApplied",
-        "rank",
-        "dateOfAvailability",
-        "availabilityNote",
-        "firstName",
-        "lastName",
-        "nationality",
-        "dateOfBirth",
-        "placeOfBirth",
-        "maritalStatus",
-        "fatherName",
-        "motherName",
-        "presentAddress",
-        "email",
-        "cellPhone",
-        "homePhone",
-        "languages",
-        "nearestAirport",
-        "kmFromAirport",
-        "weightKg",
-        "heightCm",
-        "coverallSize",
-        "shoeSize",
-        "hairColor",
-        "eyeColor",
-        "medicalCertIssuedDate",
-        "medicalCertExpiredDate",
-        "seaExperienceDetail",
-        "additionalInfo",
+        "positionApplied", "rank", "dateOfAvailability", "availabilityNote",
+        "firstName", "lastName", "nationality", "dateOfBirth", "placeOfBirth",
+        "maritalStatus", "fatherName", "motherName", "presentAddress", "email",
+        "cellPhone", "homePhone", "languages", "nearestAirport", "kmFromAirport",
+        "weightKg", "heightCm", "coverallSize", "shoeSize", "hairColor",
+        "eyeColor", "medicalCertIssuedDate", "medicalCertExpiredDate",
+        "seaExperienceDetail", "additionalInfo",
       ];
       scalarKeys.forEach((k) => {
         const v = scalar[k];
@@ -1151,15 +1146,33 @@ export default function CrewApplicationForm({
       if (scalar.nextOfKinName) {
         fd.append("nextOfKin.name", scalar.nextOfKinName);
         fd.append("nextOfKin.relationship", scalar.nextOfKinRelationship);
-        if (scalar.nextOfKinPhone)
-          fd.append("nextOfKin.phone", scalar.nextOfKinPhone);
-        if (scalar.nextOfKinAddress)
-          fd.append("nextOfKin.address", scalar.nextOfKinAddress);
+        if (scalar.nextOfKinPhone) fd.append("nextOfKin.phone", scalar.nextOfKinPhone);
+        if (scalar.nextOfKinAddress) fd.append("nextOfKin.address", scalar.nextOfKinAddress);
       }
 
-      if (scalar.profilePhoto) fd.append("profilePhoto", scalar.profilePhoto);
-      if (scalar.resume) fd.append("resume", scalar.resume);
+      // ── FILES: only append when user has selected a NEW file ──────────────
+      // This is the key fix — we check instanceof File, not just truthiness.
+      // On subsequent "Next" clicks, scalar.profilePhoto is still a File only
+      // if the user picked it. Once saved, the form doesn't re-set it from a URL,
+      // so it stays null and is NOT re-uploaded.
 
+      if (scalar.profilePhoto instanceof File) {
+        fd.append("profilePhoto", scalar.profilePhoto);
+        // In edit mode: tell server which old file to delete after replacing
+        if (isEdit && initialData?.profilePhoto) {
+          fd.append("oldProfilePhoto", initialData.profilePhoto);
+        }
+      }
+
+      if (scalar.resume instanceof File) {
+        fd.append("resume", scalar.resume);
+        // In edit mode: tell server which old resume to delete after replacing
+        if (isEdit && initialData?.resume?.fileUrl) {
+          fd.append("oldResumeUrl", initialData.resume.fileUrl);
+        }
+      }
+
+      // ── Licences (no files, always send full array) ────────────────────────
       const allLicences = [
         ...coc.items.map((l) => ({ ...l, licenceType: "coc" })),
         ...coe.items.map((l) => ({ ...l, licenceType: "coe" })),
@@ -1173,14 +1186,16 @@ export default function CrewApplicationForm({
       fd.append("otherCertificates", JSON.stringify(otherCerts.items));
       fd.append("seaExperience", JSON.stringify(seaExp.items));
 
-      // Build extraDocs metadata array and track which indices have new files
-      // We use sequential file indices to avoid gaps in the FormData keys
+      // ── Extra Docs ─────────────────────────────────────────────────────────
+      // Key rules:
+      //   • doc.file instanceof File → user picked a new file this session → upload it
+      //   • doc._fileUrl exists, no new file → already on server → send metadata only, NO file appended
+      //   • empty row (no name, no file, no url) → filtered out entirely
       let fileIdx = 0;
       const extraDocsMeta = extraDocs.items
         .filter((doc) => doc.name || doc.file || doc._fileUrl || doc._fileName)
         .map((doc) => {
-          if (doc.file) {
-            // New file — append with sequential index and record the mapping
+          if (doc.file instanceof File) {
             const currentFileIdx = fileIdx++;
             fd.append(`extraDocs[${currentFileIdx}][file]`, doc.file);
             fd.append(`extraDocs[${currentFileIdx}][name]`, doc.name);
@@ -1188,10 +1203,12 @@ export default function CrewApplicationForm({
               name: doc.name,
               _hasNewFile: true,
               _fileIdx: currentFileIdx,
+              // Tell server to delete old file if this slot had one
+              ...(doc._fileUrl ? { _oldFileUrl: doc._fileUrl } : {}),
               uploadStatus: "pending" as const,
             };
           } else {
-            // No new file — preserve existing file info
+            // No new file — pass through existing info untouched
             return {
               name: doc.name,
               fileUrl: doc._fileUrl || undefined,
@@ -1203,24 +1220,20 @@ export default function CrewApplicationForm({
           }
         });
 
-      // Always send extraDocs metadata so API knows the full list
       fd.append("extraDocs", JSON.stringify(extraDocsMeta));
-
       fd.append("companyId", companyId);
 
-      // ── Route differs based on public vs admin
+      // ── Route ──────────────────────────────────────────────────────────────
       let res: Response;
       const apiEndpoint = isPublic
         ? "/api/applications/public"
         : "/api/applications/admin";
-
       if (isEdit && applicationId) {
-        res = await fetch(`/api/applications/${applicationId}`, {
-          method: "PATCH",
-          body: fd,
-        });
+        const patchEndpoint = isPublic
+          ? `/api/applications/public/${applicationId}`   // ← public user
+          : `/api/applications/${applicationId}`;          // ← admin
+        res = await fetch(patchEndpoint, { method: "PATCH", body: fd });
       } else {
-        // Use FormData for both admin and public endpoints to support file uploads
         res = await fetch(apiEndpoint, {
           method: "POST",
           body: fd,
@@ -1228,26 +1241,62 @@ export default function CrewApplicationForm({
       }
 
       const result = await res.json();
+      console.log("API result.data keys:", JSON.stringify({
+        profilePhoto: result.data?.profilePhoto,
+        profilePhotoUrl: result.data?.profilePhotoUrl,
+        resume: result.data?.resume,
+      }, null, 2));
       if (!result.success) {
         setSubmitError(result.error || "Submission failed. Please try again.");
         toast.error(result.error || "Submission failed. Please try again.");
         return false;
       }
 
+      // ── Clear file state, but restore server-returned URLs into extraDocs ──
+      setField("profilePhoto", null);
+      setField("resume", null);
+
+      if (result.data?.profilePhoto) {
+        setField("profilePhotoUrl", result.data.profilePhoto);
+      }
+      if (result.data?.resume?.fileUrl) {
+        setField("resumeUrl", result.data.resume.fileUrl);
+        setField("resumeFileName", result.data.resume.fileName ?? "");
+      }
+
+      // Use server-returned extraDocs to update _fileUrl/_fileName
+      const savedExtraDocs: Array<{ name?: string; fileUrl?: string; fileName?: string }> =
+        result.data?.extraDocs ?? [];
+
+      extraDocs.reset(
+        extraDocs.items.map((doc, idx) => {
+          const saved = savedExtraDocs[idx];
+          return {
+            name: doc.name,
+            file: null,
+            _fileUrl: saved?.fileUrl || doc._fileUrl,
+            _fileName: saved?.fileName || doc._fileName,
+          };
+        })
+      );
+
       if (isDraft) {
-        // Just return success, don't redirect
         return true;
       }
 
       if (isEdit) {
-        router.refresh();
-        router.push(`/jobs/view/${applicationId}`);
+        if (isPublic) {
+          // Public edit (careers portal) → back to view page
+          router.push(`/careers/view/${applicationId}?company=${companyId}`);
+        } else {
+          // Admin edit → back to admin view
+          router.refresh();
+          router.push(`/jobs/view/${applicationId}`);
+        }
       } else if (isPublic) {
-        // Public form submission — redirect to success page
         clearDraftCache();
         router.push(`/apply/success?token=${result.data.submissionToken}`);
       } else {
-        // Admin-created application — redirect to view page
         clearDraftCache();
         router.refresh();
         router.push(`/jobs/view/${result.data.id}`);
@@ -1261,6 +1310,7 @@ export default function CrewApplicationForm({
       setIsSubmitting(false);
     }
   };
+
 
   // ─────────────────────────────────────────────────────────────────
   // VIEW MODE — full read-only rendering across all steps
@@ -1277,7 +1327,6 @@ export default function CrewApplicationForm({
 
     // ── Tiny shared components ────────────────────────────────────────────────
 
-    // Section heading — government form style with colored bar
     const Sec = ({ n, title }: { n: string; title: string }) => (
       <div className="flex items-center gap-2 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-3 py-2 mb-0">
         <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
@@ -1289,7 +1338,6 @@ export default function CrewApplicationForm({
       </div>
     );
 
-    // Single field cell — bordered box with label on top, value below
     const F = ({
       label,
       value,
@@ -1311,29 +1359,18 @@ export default function CrewApplicationForm({
       </div>
     );
 
-    // Bordered grid — cells share borders (no gap, borders collapse)
     const G2 = ({ children }: { children: React.ReactNode }) => (
-      <div
-        className="
-    grid 
-    grid-cols-1
-    sm:grid-cols-2
-    lg:grid-cols-4
-    border-l border-t border-gray-300 dark:border-white/15
-    [&>*]:border-r [&>*]:border-b
-    [&>*]:border-gray-300 dark:[&>*]:border-white/15
-  "
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-l border-t border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
         {children}
       </div>
     );
+
     const G3 = ({ children }: { children: React.ReactNode }) => (
       <div className="grid grid-cols-2 sm:grid-cols-3 border-l border-t border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
         {children}
       </div>
     );
 
-    // Sub-section title row (spans full width inside a bordered grid)
     const SubTitle = ({ title }: { title: string }) => (
       <div className="col-span-full bg-gray-50 dark:bg-white/5 border-r border-b border-gray-300 dark:border-white/15 px-2 py-1">
         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
@@ -1342,16 +1379,15 @@ export default function CrewApplicationForm({
       </div>
     );
 
-    // Thin divider (between grid groups within a section)
     const Hr = () => <div className="h-2" />;
 
-    // Small repeating-record label (Record 1, Record 2…)
     const RecLabel = ({ i }: { i: number }) =>
       i === 0 ? null : (
         <div className="mt-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
           Record {i + 1}
         </div>
       );
+
     type StatusColor = "default" | "info" | "warning" | "success" | "error";
 
     const statusMap: Record<string, { color: StatusColor; label: string }> = {
@@ -1364,14 +1400,84 @@ export default function CrewApplicationForm({
       archived: { color: "default", label: "Archived" },
     };
 
+    // ── NEW: accordion state — only "personal" open by default ───────────────
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+      personal: true,
+      availability: false,
+      coc: false,
+      coe: false,
+      passports: false,
+      seamans: false,
+      visas: false,
+      endorsements: false,
+      stcw: false,
+      otherCerts: false,
+      seaExperience: false,
+      documents: false,
+    });
+
+    const toggle = (key: string) =>
+      setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+    // ── NEW: Accordion replaces <Sec> — same visual header, adds chevron + collapse ─
+    const Accordion = ({
+      id,
+      n,
+      title,
+      count,
+      children,
+    }: {
+      id: string;
+      n: string;
+      title: string;
+      count?: number;
+      children: React.ReactNode;
+    }) => {
+      const isOpen = openSections[id] ?? false;
+      return (
+        <div>
+          <button
+            type="button"
+            onClick={() => toggle(id)}
+            className="w-full flex items-center justify-between gap-2 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/15 px-3 py-2 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
+                {n}
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-white/80">
+                {title}
+              </span>
+              {count !== undefined && count > 0 && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300">
+                  {count}
+                </span>
+              )}
+            </div>
+            <svg
+              className={`w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {isOpen && (
+            <div className="border-l border-r border-b border-gray-300 dark:border-white/15">
+              {children}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     // ── Page ─────────────────────────────────────────────────────────────────
 
     return (
       <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden pb-2">
-        {/* ── PROFILE HEADER ─────────────────────────────────────────────── */}
+
+        {/* ── PROFILE HEADER — always visible, no accordion ────────────── */}
         <div className="p-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-            {/* Photo */}
             <div className="shrink-0">
               {d.profilePhoto ? (
                 <img
@@ -1381,645 +1487,393 @@ export default function CrewApplicationForm({
                 />
               ) : (
                 <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5">
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wide">
-                    No Photo
-                  </span>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wide">No Photo</span>
                 </div>
               )}
             </div>
-
-            {/* Info */}
             <div className="flex flex-1 flex-col gap-2">
-              {/* Name */}
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                 {d.firstName} {d.lastName}
               </h1>
-
-              {/* Meta line */}
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {[d.rank, d.positionApplied, d.nationality]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[d.rank, d.positionApplied, d.nationality].filter(Boolean).join(" · ")}
               </p>
-
-              {/* Tags */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {d.status &&
                   (() => {
                     const config = statusMap[d.status] ?? statusMap.draft;
                     return <Badge color={config.color}>{config.label}</Badge>;
                   })()}
-                {/* Email */}
                 {d.email && (
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      Email:
-                    </span>{" "}
-                    {d.email}
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Email:</span>{" "}{d.email}
                   </span>
                 )}
-
-                {/* Phone */}
                 {d.cellPhone && (
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      Phone:
-                    </span>{" "}
-                    {d.cellPhone}
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Phone:</span>{" "}{d.cellPhone}
                   </span>
                 )}
               </div>
             </div>
           </div>
         </div>
+
         {/* ── 01 PERSONAL INFORMATION ───────────────────────────────────── */}
         <div className="p-4">
-          <Sec n="01" title="Personal Information" />
-
-          {/* Basic Info */}
-          <G3>
-            <F label="First Name" value={d.firstName || "—"} />
-            <F label="Last Name" value={d.lastName || "—"} />
-            <F label="Nationality" value={d.nationality || "—"} />
-            <F label="Date of Birth" value={formatDate(d.dateOfBirth) || "—"} />
-            <F label="Place of Birth" value={d.placeOfBirth || "—"} />
-            <F label="Marital Status" value={d.maritalStatus || "—"} />
-            <F label="Father's Name" value={d.fatherName || "—"} />
-            <F label="Mother's Name" value={d.motherName || "—"} />
-          </G3>
-
-          <Hr />
-
-          {/* Contact */}
-          <G3>
-            <F label="Email" value={d.email || "—"} />
-            <F label="Cell Phone" value={d.cellPhone || "—"} />
-            <F label="Languages" value={langDisplay || "—"} />
-          </G3>
-
-          {/* Address */}
-          <div className="grid grid-cols-1 border-l border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
-            <F label="Present Address" value={d.presentAddress || "—"} />
-          </div>
-
-          <Hr />
-
-          {/* Physical + Medical */}
-          <G3>
-            <F label="Nearest Airport" value={d.nearestAirport || "—"} />
-            <F label="Km from Airport" value={d.kmFromAirport ?? "—"} />
-            <F label="Weight (kg)" value={d.weightKg ?? "—"} />
-            <F label="Height (cm)" value={d.heightCm ?? "—"} />
-            <F label="Coverall Size" value={d.coverallSize || "—"} />
-            <F label="Shoe Size" value={d.shoeSize || "—"} />
-            <F label="Hair Color" value={d.hairColor || "—"} />
-            <F label="Eye Color" value={d.eyeColor || "—"} />
-            <F
-              label="Medical Cert. Issued"
-              value={formatDate(d.medicalCertIssuedDate) || "—"}
-            />
-            <F
-              label="Medical Cert. Expired"
-              value={formatDate(d.medicalCertExpiredDate) || "—"}
-            />
-          </G3>
-
-          {/* Next of Kin */}
-          {d.nextOfKin?.name && (
-            <>
+          <Accordion id="personal" n="01" title="Personal Information">
+            <div className="pt-0">
+              <G3>
+                <F label="First Name" value={d.firstName || "—"} />
+                <F label="Last Name" value={d.lastName || "—"} />
+                <F label="Nationality" value={d.nationality || "—"} />
+                <F label="Date of Birth" value={formatDate(d.dateOfBirth) || "—"} />
+                <F label="Place of Birth" value={d.placeOfBirth || "—"} />
+                <F label="Marital Status" value={d.maritalStatus || "—"} />
+                <F label="Father's Name" value={d.fatherName || "—"} />
+                <F label="Mother's Name" value={d.motherName || "—"} />
+              </G3>
               <Hr />
               <G3>
-                <SubTitle title="Next of Kin" />
-                <F label="Name" value={d.nextOfKin.name || "—"} />
-                <F
-                  label="Relationship"
-                  value={d.nextOfKin.relationship || "—"}
-                />
-                <F label="Phone" value={d.nextOfKin.phone || "—"} />
-                <F label="Address" value={d.nextOfKin.address || "—"} />
+                <F label="Email" value={d.email || "—"} />
+                <F label="Cell Phone" value={d.cellPhone || "—"} />
+                <F label="Languages" value={langDisplay || "—"} />
               </G3>
-            </>
-          )}
+              <div className="grid grid-cols-1 border-l border-gray-300 dark:border-white/15 [&>*]:border-r [&>*]:border-b [&>*]:border-gray-300 dark:[&>*]:border-white/15">
+                <F label="Present Address" value={d.presentAddress || "—"} />
+              </div>
+              <Hr />
+              <G3>
+                <F label="Nearest Airport" value={d.nearestAirport || "—"} />
+                <F label="Km from Airport" value={d.kmFromAirport ?? "—"} />
+                <F label="Weight (kg)" value={d.weightKg ?? "—"} />
+                <F label="Height (cm)" value={d.heightCm ?? "—"} />
+                <F label="Coverall Size" value={d.coverallSize || "—"} />
+                <F label="Shoe Size" value={d.shoeSize || "—"} />
+                <F label="Hair Color" value={d.hairColor || "—"} />
+                <F label="Eye Color" value={d.eyeColor || "—"} />
+                <F label="Medical Cert. Issued" value={formatDate(d.medicalCertIssuedDate) || "—"} />
+                <F label="Medical Cert. Expired" value={formatDate(d.medicalCertExpiredDate) || "—"} />
+              </G3>
+              {d.nextOfKin?.name && (
+                <>
+                  <Hr />
+                  <G3>
+                    <SubTitle title="Next of Kin" />
+                    <F label="Name" value={d.nextOfKin.name || "—"} />
+                    <F label="Relationship" value={d.nextOfKin.relationship || "—"} />
+                    <F label="Phone" value={d.nextOfKin.phone || "—"} />
+                    <F label="Address" value={d.nextOfKin.address || "—"} />
+                  </G3>
+                </>
+              )}
+            </div>
+          </Accordion>
         </div>
 
         {/* ── 02 AVAILABILITY ───────────────────────────────────────────── */}
         <div className="p-4">
-          <Sec n="02" title="Position & Availability" />
-
-          <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              {/* header */}
-              <div className="grid grid-cols-4 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {[
-                  "Position Applied",
-                  "Rank",
-                  "Date of Availability",
-                  "Availability Note",
-                ].map((h) => (
-                  <div
-                    key={h}
-                    className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                  >
-                    {h}
-                  </div>
-                ))}
-              </div>
-
-              {/* row */}
-              <div className="grid grid-cols-4 border-l border-r border-b border-gray-300 dark:border-white/15">
-                <F label="" value={d.positionApplied || "—"} />
-                <F label="" value={d.rank || "—"} />
-                <F label="" value={formatDate(d.dateOfAvailability) || "—"} />
-                <F label="" value={d.availabilityNote || "—"} />
+          <Accordion id="availability" n="02" title="Position & Availability">
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                <div className="grid grid-cols-4 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  {["Position Applied", "Rank", "Date of Availability", "Availability Note"].map((h) => (
+                    <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 border-l border-r border-b border-gray-300 dark:border-white/15">
+                  <F label="" value={d.positionApplied || "—"} />
+                  <F label="" value={d.rank || "—"} />
+                  <F label="" value={formatDate(d.dateOfAvailability) || "—"} />
+                  <F label="" value={d.availabilityNote || "—"} />
+                </div>
               </div>
             </div>
-          </div>
+          </Accordion>
         </div>
 
-        {/* ── 06 CoC ────────────────────────────────────────────────────── */}
+        {/* ── 03 CoC ────────────────────────────────────────────────────── */}
         {cocItems.length > 0 && (
           <div className="p-4">
-            <Sec n="03" title="Certificates of Competency (CoC)" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[1000px]">
-                {/* header */}
-                <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Country",
-                    "Grade",
-                    "Licence No.",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="coc" n="03" title="Certificates of Competency (CoC)" count={cocItems.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {cocItems.map((l, i) => (
+                    <div key={i} className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={l.country || "—"} />
+                      <F label="" value={l.grade || "—"} />
+                      <F label="" value={l.number || "—"} />
+                      <F label="" value={l.placeIssued || "—"} />
+                      <F label="" value={formatDate(l.dateIssued) || "—"} />
+                      <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {cocItems.map((l, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={l.country || "—"} />
-                    <F label="" value={l.grade || "—"} />
-                    <F label="" value={l.number || "—"} />
-                    <F label="" value={l.placeIssued || "—"} />
-                    <F label="" value={formatDate(l.dateIssued) || "—"} />
-                    <F
-                      label=""
-                      value={formatDate(l.dateExpired) || "Unlimited"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
-        {/* ── 07 CoE ────────────────────────────────────────────────────── */}
+
+        {/* ── 04 CoE ────────────────────────────────────────────────────── */}
         {coeItems.length > 0 && (
           <div className="p-4">
-            <Sec n="04" title="Certificates of Equivalency (CoE)" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[1000px]">
-                {/* header */}
-                <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Country",
-                    "Grade",
-                    "Licence No.",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="coe" n="04" title="Certificates of Equivalency (CoE)" count={coeItems.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {coeItems.map((l, i) => (
+                    <div key={i} className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={l.country || "—"} />
+                      <F label="" value={l.grade || "—"} />
+                      <F label="" value={l.number || "—"} />
+                      <F label="" value={l.placeIssued || "—"} />
+                      <F label="" value={formatDate(l.dateIssued) || "—"} />
+                      <F label="" value={formatDate(l.dateExpired) || "Unlimited"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {coeItems.map((l, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={l.country || "—"} />
-                    <F label="" value={l.grade || "—"} />
-                    <F label="" value={l.number || "—"} />
-                    <F label="" value={l.placeIssued || "—"} />
-                    <F label="" value={formatDate(l.dateIssued) || "—"} />
-                    <F
-                      label=""
-                      value={formatDate(l.dateExpired) || "Unlimited"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
-        {/* ── 08 PASSPORTS ──────────────────────────────────────────────── */}
+
+        {/* ── 05 PASSPORTS ──────────────────────────────────────────────── */}
         {(d.passports?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="05" title="Passports" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* header */}
-                <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Passport No.",
-                    "Country",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="passports" n="05" title="Passports" count={d.passports!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Passport No.", "Country", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.passports!.map((p, i) => (
+                    <div key={i} className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={p.number || "—"} />
+                      <F label="" value={p.country || "—"} />
+                      <F label="" value={p.placeIssued || "—"} />
+                      <F label="" value={formatDate(p.dateIssued) || "—"} />
+                      <F label="" value={formatDate(p.dateExpired) || "—"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.passports!.map((p, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={p.number || "—"} />
-                    <F label="" value={p.country || "—"} />
-                    <F label="" value={p.placeIssued || "—"} />
-                    <F label="" value={formatDate(p.dateIssued) || "—"} />
-                    <F label="" value={formatDate(p.dateExpired) || "—"} />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
-        {/* ── 09 SEAMAN'S BOOKS ─────────────────────────────────────────── */}
+
+        {/* ── 06 SEAMAN'S BOOKS ─────────────────────────────────────────── */}
         {(d.seamansBooks?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="06" title="Seaman's Books" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* header */}
-                <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Book No.",
-                    "Country",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="seamans" n="06" title="Seaman's Books" count={d.seamansBooks!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Book No.", "Country", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.seamansBooks!.map((s, i) => (
+                    <div key={i} className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={s.number || "—"} />
+                      <F label="" value={s.country || "—"} />
+                      <F label="" value={s.placeIssued || "—"} />
+                      <F label="" value={formatDate(s.dateIssued) || "—"} />
+                      <F label="" value={formatDate(s.dateExpired) || "Unlimited"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.seamansBooks!.map((s, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={s.number || "—"} />
-                    <F label="" value={s.country || "—"} />
-                    <F label="" value={s.placeIssued || "—"} />
-                    <F label="" value={formatDate(s.dateIssued) || "—"} />
-                    <F
-                      label=""
-                      value={formatDate(s.dateExpired) || "Unlimited"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 10 VISAS ──────────────────────────────────────────────────── */}
+        {/* ── 07 VISAS ──────────────────────────────────────────────────── */}
         {(d.visas?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="07" title="Visas" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[1000px]">
-                {/* header */}
-                <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Country",
-                    "Visa Type",
-                    "Visa No.",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="visas" n="07" title="Visas" count={d.visas!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <div className="grid grid-cols-6 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Country", "Visa Type", "Visa No.", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.visas!.map((v, i) => (
+                    <div key={i} className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={v.country || "—"} />
+                      <F label="" value={v.visaType || "—"} />
+                      <F label="" value={v.number || "—"} />
+                      <F label="" value={v.placeIssued || "—"} />
+                      <F label="" value={formatDate(v.dateIssued) || "—"} />
+                      <F label="" value={formatDate(v.dateExpired) || "—"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.visas!.map((v, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-6 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={v.country || "—"} />
-                    <F label="" value={v.visaType || "—"} />
-                    <F label="" value={v.number || "—"} />
-                    <F label="" value={v.placeIssued || "—"} />
-                    <F label="" value={formatDate(v.dateIssued) || "—"} />
-                    <F label="" value={formatDate(v.dateExpired) || "—"} />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 11 ENDORSEMENTS ───────────────────────────────────────────── */}
+        {/* ── 08 ENDORSEMENTS ───────────────────────────────────────────── */}
         {(d.endorsements?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="08" title="Endorsements" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* header */}
-                <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Certificate Name",
-                    "Number",
-                    "Place Issued",
-                    "Date Issued",
-                    "Date Expired",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="endorsements" n="08" title="Endorsements" count={d.endorsements!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Certificate Name", "Number", "Place Issued", "Date Issued", "Date Expired"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.endorsements!.map((e, i) => (
+                    <div key={i} className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={e.name} />
+                      <F label="" value={e.number} />
+                      <F label="" value={e.placeIssued} />
+                      <F label="" value={formatDate(e.dateIssued)} />
+                      <F label="" value={formatDate(e.dateExpired) || "Unlimited"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.endorsements!.map((e, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={e.name} />
-                    <F label="" value={e.number} />
-                    <F label="" value={e.placeIssued} />
-                    <F label="" value={formatDate(e.dateIssued)} />
-                    <F
-                      label=""
-                      value={formatDate(e.dateExpired) || "Unlimited"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 12 STCW CERTIFICATES ──────────────────────────────────────── */}
+        {/* ── 09 STCW CERTIFICATES ──────────────────────────────────────── */}
         {(d.stcwCertificates?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="09" title="Training Certificates (STCW)" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* header */}
-                <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Certificate Name",
-                    "Course No.",
-                    "Place Issued",
-                    "Date Issued",
-                    "Expiry Date",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="stcw" n="09" title="Training Certificates (STCW)" count={d.stcwCertificates!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Certificate Name", "Course No.", "Place Issued", "Date Issued", "Expiry Date"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.stcwCertificates!.map((c, i) => (
+                    <div key={i} className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={c.name} />
+                      <F label="" value={c.courseNumber} />
+                      <F label="" value={c.placeIssued} />
+                      <F label="" value={formatDate(c.dateIssued)} />
+                      <F label="" value={formatDate(c.dateExpired) || "No Expiry"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.stcwCertificates!.map((c, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={c.name} />
-                    <F label="" value={c.courseNumber} />
-                    <F label="" value={c.placeIssued} />
-                    <F label="" value={formatDate(c.dateIssued)} />
-                    <F
-                      label=""
-                      value={formatDate(c.dateExpired) || "No Expiry"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 12b OTHER CERTIFICATES ────────────────────────────────────── */}
+        {/* ── 10 OTHER CERTIFICATES ─────────────────────────────────────── */}
         {(d.otherCertificates?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="11b" title="Other Certificates" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* header */}
-                <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Certificate Name",
-                    "Course No.",
-                    "Place Issued",
-                    "Date Issued",
-                    "Expiry Date",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="otherCerts" n="10" title="Other Certificates" count={d.otherCertificates!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-5 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Certificate Name", "Course No.", "Place Issued", "Date Issued", "Expiry Date"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.otherCertificates!.map((c, i) => (
+                    <div key={i} className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={c.name} />
+                      <F label="" value={c.courseNumber} />
+                      <F label="" value={c.placeIssued} />
+                      <F label="" value={formatDate(c.dateIssued)} />
+                      <F label="Expiry Date" value={formatDate(c.dateExpired) || "No Expiry"} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.otherCertificates!.map((c, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-5 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={c.name} />
-                    <F label="" value={c.courseNumber} />
-                    <F label="" value={c.placeIssued} />
-                    <F label="" value={formatDate(c.dateIssued)} />
-                    <F
-                      label="Expiry Date"
-                      value={formatDate(c.dateExpired) || "No Expiry"}
-                    />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 13 SEA SERVICE RECORD ─────────────────────────────────────── */}
+        {/* ── 11 SEA SERVICE RECORD ─────────────────────────────────────── */}
         {(d.seaExperience?.length ?? 0) > 0 && (
           <div className="p-4">
-            <Sec n="10" title="Sea Service Record" />
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[1100px]">
-                {/* header row */}
-                <div className="grid grid-cols-11 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  {[
-                    "Vessel",
-                    "Flag",
-                    "Type",
-                    "GRT",
-                    "Engine",
-                    "KW",
-                    "Company",
-                    "Rank",
-                    "From",
-                    "To",
-                    "Remarks",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap"
-                    >
-                      {h}
+            <Accordion id="seaExperience" n="11" title="Sea Service Record" count={d.seaExperience!.length}>
+              <div className="overflow-x-auto">
+                <div className="min-w-[1100px]">
+                  <div className="grid grid-cols-11 border border-gray-300 dark:border-white/15 bg-gray-50 dark:bg-white/5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {["Vessel", "Flag", "Type", "GRT", "Engine", "KW", "Company", "Rank", "From", "To", "Remarks"].map((h) => (
+                      <div key={h} className="px-2 py-2 border-r border-gray-300 dark:border-white/15 last:border-r-0 whitespace-nowrap">{h}</div>
+                    ))}
+                  </div>
+                  {d.seaExperience!.map((s, i) => (
+                    <div key={i} className="grid grid-cols-11 border-l border-r border-b border-gray-300 dark:border-white/15">
+                      <F label="" value={s.vesselName} />
+                      <F label="" value={s.flag} />
+                      <F label="" value={s.vesselType} />
+                      <F label="" value={s.grt ?? "—"} />
+                      <F label="" value={s.engineType} />
+                      <F label="" value={s.engineKW ?? "—"} />
+                      <F label="" value={s.company} />
+                      <F label="" value={s.rank} />
+                      <F label="" value={formatDate(s.periodFrom)} />
+                      <F label="" value={s.periodTo ? formatDate(s.periodTo) : <span className="text-green-600 dark:text-green-400 font-semibold">Present</span>} />
+                      <F label="" value={s.jobDescription} />
                     </div>
                   ))}
                 </div>
-
-                {/* rows */}
-                {d.seaExperience!.map((s, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-11 border-l border-r border-b border-gray-300 dark:border-white/15"
-                  >
-                    <F label="" value={s.vesselName} />
-                    <F label="" value={s.flag} />
-                    <F label="" value={s.vesselType} />
-                    <F label="" value={s.grt ?? "—"} />
-                    <F label="" value={s.engineType} />
-                    <F label="" value={s.engineKW ?? "—"} />
-                    <F label="" value={s.company} />
-                    <F label="" value={s.rank} />
-                    <F label="" value={formatDate(s.periodFrom)} />
-                    <F
-                      label=""
-                      value={
-                        s.periodTo ? (
-                          formatDate(s.periodTo)
-                        ) : (
-                          <span className="text-green-600 dark:text-green-400 font-semibold">
-                            Present
-                          </span>
-                        )
-                      }
-                    />
-                    <F label="" value={s.jobDescription} />
-                  </div>
-                ))}
               </div>
-            </div>
+            </Accordion>
           </div>
         )}
 
-        {/* ── 14 DOCUMENTS ──────────────────────────────────────────────── */}
+        {/* ── 12 DOCUMENTS ──────────────────────────────────────────────── */}
         <div className="p-4">
-          <Sec n="11" title="Uploaded Documents" />
-
-          <G2>
-            {/* Resume */}
-            <F
-              label="Resume / CV"
-              value={
-                d.resume?.fileUrl ? (
-                  <a
-                    href={d.resume.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
-                  >
-                    <Download className="h-3 w-3" />
-                    {d.resume.fileName ?? "View Resume"}
-                  </a>
-                ) : (
-                  "—"
-                )
-              }
-            />
-
-            {/* Extra Documents */}
-            {(d.extraDocs?.length ?? 0) > 0 ? (
-              d.extraDocs!.map((doc, i) => (
-                <F
-                  key={i}
-                  label={doc.name || `Document ${i + 1}`}
-                  value={
-                    doc.fileUrl ? (
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
-                      >
-                        <Download className="h-3 w-3" />
-                        {doc.fileName ?? "View File"}
-                      </a>
-                    ) : (
-                      "Not uploaded"
-                    )
-                  }
-                />
-              ))
-            ) : !d.resume?.fileUrl ? (
-              <F label="Documents" value="No documents uploaded." />
-            ) : null}
-          </G2>
+          <Accordion id="documents" n="12" title="Uploaded Documents">
+            <G2>
+              <F
+                label="Resume / CV"
+                value={
+                  d.resume?.fileUrl ? (
+                    <a href={d.resume.fileUrl} target="_blank" rel="noreferrer"
+                      className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1">
+                      <Download className="h-3 w-3" />
+                      {d.resume.fileName ?? "View Resume"}
+                    </a>
+                  ) : "—"
+                }
+              />
+              {(d.extraDocs?.length ?? 0) > 0 ? (
+                d.extraDocs!.map((doc, i) => (
+                  <F
+                    key={i}
+                    label={doc.name || `Document ${i + 1}`}
+                    value={
+                      doc.fileUrl ? (
+                        <a href={doc.fileUrl} target="_blank" rel="noreferrer"
+                          className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1">
+                          <Download className="h-3 w-3" />
+                          {doc.fileName ?? "View File"}
+                        </a>
+                      ) : "Not uploaded"
+                    }
+                  />
+                ))
+              ) : !d.resume?.fileUrl ? (
+                <F label="Documents" value="No documents uploaded." />
+              ) : null}
+            </G2>
+          </Accordion>
         </div>
+
       </div>
     );
   }
@@ -2058,7 +1912,7 @@ export default function CrewApplicationForm({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <FormSection>
               <FormGrid cols={2}>
-                {isEdit && (
+                {isEdit && !isPublic && (
                   <div className="col-span-1 sm:col-span-2">
                     <Select
                       label="Application Status"
@@ -2077,14 +1931,30 @@ export default function CrewApplicationForm({
                     />
                   </div>
                 )}
-                <Input
-                  label="Position Applied *"
-                  placeholder="e.g. Third Officer"
-                  value={scalar.positionApplied}
-                  onChange={txt("positionApplied")}
-                  error={!!validationErrors.positionApplied}
-                  hint={validationErrors.positionApplied}
-                />
+                {availablePositions?.length > 0 ? (
+                  <div>
+                    <Label>Position Applied *</Label>
+                    <SearchableSelect
+                      options={availablePositions}
+                      value={scalar.positionApplied}
+                      onChange={(val) => setField("positionApplied", val)}
+                      placeholder="Select a position..."
+                      error={!!validationErrors.positionApplied}
+                    />
+                    {validationErrors.positionApplied && (
+                      <p className="mt-1 text-xs text-red-500">{validationErrors.positionApplied}</p>
+                    )}
+                  </div>
+                ) : (
+                  <Input
+                    label="Position Applied *"
+                    placeholder="e.g. Third Officer"
+                    value={scalar.positionApplied}
+                    onChange={txt("positionApplied")}
+                    error={!!validationErrors.positionApplied}
+                    hint={validationErrors.positionApplied}
+                  />
+                )}
                 <Input
                   label="Rank *"
                   placeholder="e.g. 2nd Officer"
@@ -2860,7 +2730,7 @@ export default function CrewApplicationForm({
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               If you have sea experience, please add all your records below. You
-              can add multiple entries. 
+              can add multiple entries.
             </p>
             <div className="space-y-4">
               {seaExp.items.map((item, idx) => (
@@ -3017,12 +2887,12 @@ export default function CrewApplicationForm({
                         }
                         error={
                           !!validationErrors[
-                            `seaExperience.${idx}.jobDescription`
+                          `seaExperience.${idx}.jobDescription`
                           ]
                         }
                         hint={
                           validationErrors[
-                            `seaExperience.${idx}.jobDescription`
+                          `seaExperience.${idx}.jobDescription`
                           ]
                         }
                       />
@@ -3037,13 +2907,6 @@ export default function CrewApplicationForm({
               </div>
             </div>
 
-            {submitError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-500/20 dark:bg-red-500/10">
-                <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                  {submitError}
-                </p>
-              </div>
-            )}
           </div>
         )}
 
@@ -3207,13 +3070,7 @@ export default function CrewApplicationForm({
               </div>
             </FormSection>
 
-            {submitError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-500/20 dark:bg-red-500/10">
-                <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                  {submitError}
-                </p>
-              </div>
-            )}
+
           </div>
         )}
 
@@ -3231,17 +3088,15 @@ export default function CrewApplicationForm({
               visas={visas}
               seaExp={seaExp}
               extraDocs={extraDocs}
-              existingProfilePhoto={initialData?.profilePhoto}
-              existingResume={initialData?.resume}
+              existingProfilePhoto={initialData?.profilePhoto ?? scalar.profilePhotoUrl}
+              existingResume={
+                initialData?.resume ??
+                (scalar.resumeUrl
+                  ? { fileUrl: scalar.resumeUrl, fileName: scalar.resumeFileName }
+                  : undefined)
+              }
             />
 
-            {submitError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-500/20 dark:bg-red-500/10">
-                <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                  {submitError}
-                </p>
-              </div>
-            )}
           </div>
         )}
       </div>

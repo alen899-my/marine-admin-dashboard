@@ -4,7 +4,6 @@ import ArrivalReportTable from "./ArrivalReportTable";
 import ArrivalPageClient from "./ArrivalPageClient";
 import { Metadata } from "next";
 import { cookies } from "next/headers";
-
 export const metadata: Metadata = {
   title: "Arrival Report | Parkora Falcon",
   description: "Comprehensive arrival report management for maritime operations.",
@@ -24,8 +23,7 @@ export default async function ArrivalReportPage({ searchParams }: PageProps) {
   // 2. Data Fetching
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
-
-  const cookieStore = await cookies();
+    const cookieStore = await cookies();
   const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
 
   const [reportData, filterOptions] = await Promise.all([

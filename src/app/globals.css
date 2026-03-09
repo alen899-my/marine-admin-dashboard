@@ -813,3 +813,21 @@ span.flatpickr-weekday,
   scrollbar-width: none !important;     /* Firefox */
   overflow-y: auto;                     /* Ensure scrolling still works */
 }
+@layer utilities {
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 25s linear infinite;
+  }
+
+
+}

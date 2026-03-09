@@ -1,12 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-// ═══════════════════════════════════════════════════════════════════
-// CREW APPLICATION / CV SCHEMA  —  MULTI-TENANT
-// ═══════════════════════════════════════════════════════════════════
-
-// ───────────────────────────────────────────────────────────────────
-// SHARED UPLOAD META
-// ───────────────────────────────────────────────────────────────────
 
 export interface IUploadMeta {
   fileName?: string;
@@ -47,9 +40,6 @@ export interface ILicence extends IUploadMeta {
 export interface IPassport extends IUploadMeta {
   _id?: mongoose.Types.ObjectId;
   number: string;
-  // FIX: country is required in schema but the passport step in the form
-  // does NOT have a country field — made optional here to avoid validation errors.
-  // If you re-add the country field to the passport step, change back to required.
   country?: string;
   placeIssued?: string;
   dateIssued?: Date;
@@ -224,6 +214,8 @@ export interface ICrew extends Document {
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+
+  userId?: mongoose.Types.ObjectId | null;
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -381,6 +373,7 @@ const CrewSchema = new Schema<ICrew>(
     dateOfAvailability: Date,
     availabilityNote:   { type: String, trim: true },
     profilePhoto:       String,
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
     // ── Resume
     resume: {
@@ -475,6 +468,7 @@ CrewSchema.index(
   { name: "crew_text_search" }
 );
 CrewSchema.index({ company: 1, status: 1, rank: 1, nationality: 1, deletedAt: 1 });
+CrewSchema.index({ userId: 1, company: 1 });
 
 // ───────────────────────────────────────────────────────────────────
 // EXPORT

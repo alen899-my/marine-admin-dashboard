@@ -18,8 +18,8 @@ interface GetArrivalReportsParams {
   endDate?: string;
   vesselId?: string;
   voyageId?: string;
+   tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
   companyId?: string;
-  tz?: string; // IANA timezone name, e.g. "Asia/Kolkata"
   user: any;
 }
 
@@ -33,8 +33,8 @@ export async function getArrivalReports({
   vesselId,
   voyageId,
   companyId,
-  tz = "UTC",
   user,
+   tz = "UTC",
 }: GetArrivalReportsParams) {
   await dbConnect();
 
@@ -46,9 +46,9 @@ export async function getArrivalReports({
   const skip = (page - 1) * limit;
   const query: any = { eventType: "arrival", deletedAt: null };
 
-  const emptyResult = {
-    data: [],
-    pagination: { total: 0, page, limit, totalPages: 0 }
+  const emptyResult = { 
+    data: [], 
+    pagination: { total: 0, page, limit, totalPages: 0 } 
   };
 
   // --- 1. Multi-Tenancy Logic ---
@@ -61,27 +61,27 @@ export async function getArrivalReports({
     const companyVesselIds = companyVessels.map((v) => v._id);
 
     if (selectedVessel) {
-      if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-      query.vesselId = selectedVessel;
+        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+        query.vesselId = selectedVessel;
     } else {
-      query.vesselId = { $in: companyVesselIds };
+        query.vesselId = { $in: companyVesselIds };
     }
 
     if (!isAdmin) query.createdBy = user.id;
   } else {
     // Super Admin
     if (selectedCompany && selectedCompany !== "all") {
-      const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
-      const companyVesselIds = companyVessels.map((v) => v._id);
-
-      if (selectedVessel) {
-        if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
-        query.vesselId = selectedVessel;
-      } else {
-        query.vesselId = { $in: companyVesselIds };
-      }
+       const companyVessels = await Vessel.find({ company: selectedCompany, deletedAt: null }).select("_id");
+       const companyVesselIds = companyVessels.map((v) => v._id);
+       
+       if (selectedVessel) {
+          if (!companyVesselIds.some(id => id.toString() === selectedVessel)) return emptyResult;
+          query.vesselId = selectedVessel;
+       } else {
+          query.vesselId = { $in: companyVesselIds };
+       }
     } else if (selectedVessel) {
-      query.vesselId = selectedVessel;
+       query.vesselId = selectedVessel;
     }
   }
 
@@ -93,7 +93,7 @@ export async function getArrivalReports({
     const dateQuery: any = {};
     if (startDate) dateQuery.$gte = parseDateInTz(startDate, tz);
     if (endDate) dateQuery.$lte = parseEndDateInTz(endDate, tz);
-    // If the user cannot see history, clamp the lower bound to today
+     // If the user cannot see history, clamp the lower bound to today
     if (!canSeeHistory) {
       const todayStart = localStartOfDay(tz);
       if (!dateQuery.$gte || dateQuery.$gte < todayStart) dateQuery.$gte = todayStart;
@@ -137,68 +137,68 @@ export async function getArrivalReports({
 
   // --- 4. Bulk Metrics Calculation ---
   let reportsWithMetrics: any[] = [];
-
+  
   if (reports.length > 0) {
-    const voyageIds = reports.map((r: any) => r.voyageId?._id).filter(Boolean);
+     const voyageIds = reports.map((r: any) => r.voyageId?._id).filter(Boolean);
+     
+     const [departures, noonReports] = await Promise.all([
+        ReportOperational.find({
+            voyageId: { $in: voyageIds },
+            eventType: "departure",
+            status: "active",
+            deletedAt: null
+        }).lean(),
+        ReportDaily.find({
+            voyageId: { $in: voyageIds },
+            status: "active",
+            deletedAt: null
+        }).lean()
+     ]);
 
-    const [departures, noonReports] = await Promise.all([
-      ReportOperational.find({
-        voyageId: { $in: voyageIds },
-        eventType: "departure",
-        status: "active",
-        deletedAt: null
-      }).lean(),
-      ReportDaily.find({
-        voyageId: { $in: voyageIds },
-        status: "active",
-        deletedAt: null
-      }).lean()
-    ]);
+     const departureMap = new Map(departures.map((d:any) => [d.voyageId.toString(), d]));
+     const noonMap = new Map<string, any[]>();
+     noonReports.forEach((n:any) => {
+        const id = n.voyageId.toString();
+        if(!noonMap.has(id)) noonMap.set(id, []);
+        noonMap.get(id)!.push(n);
+     });
 
-    const departureMap = new Map(departures.map((d: any) => [d.voyageId.toString(), d]));
-    const noonMap = new Map<string, any[]>();
-    noonReports.forEach((n: any) => {
-      const id = n.voyageId.toString();
-      if (!noonMap.has(id)) noonMap.set(id, []);
-      noonMap.get(id)!.push(n);
-    });
+     reportsWithMetrics = reports.map((report: any) => {
+        const vId = report.voyageId?._id?.toString();
+        if(!vId) return { ...report, metrics: null };
 
-    reportsWithMetrics = reports.map((report: any) => {
-      const vId = report.voyageId?._id?.toString();
-      if (!vId) return { ...report, metrics: null };
+        const departure = departureMap.get(vId);
+        if(!departure) return { ...report, metrics: null };
 
-      const departure = departureMap.get(vId);
-      if (!departure) return { ...report, metrics: null };
+        const arrTime = new Date(report.eventTime || report.reportDate).getTime();
+        const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+        
+        const noonList = (noonMap.get(vId) || []).filter((n:any) => {
+             const t = new Date(n.reportDate).getTime();
+             return t >= depTime - 3600000 && t <= arrTime + 3600000;
+        });
 
-      const arrTime = new Date(report.eventTime || report.reportDate).getTime();
-      const depTime = new Date(departure.eventTime || departure.reportDate).getTime();
+        const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
+        const totalDistance = noonList.reduce((sum: number, n: any) => sum + (Number(n.navigation?.distLast24h) || 0), 0);
 
-      const noonList = (noonMap.get(vId) || []).filter((n: any) => {
-        const t = new Date(n.reportDate).getTime();
-        return t >= depTime - 3600000 && t <= arrTime + 3600000;
-      });
+        const fuel = (t: string) => {
+             const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
+             const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
+             const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
+             return dep + bunk - arr;
+        };
 
-      const totalTimeHours = Math.max(0, (arrTime - depTime) / 36e5);
-      const totalDistance = noonList.reduce((sum: number, n: any) => sum + (Number(n.navigation?.distLast24h) || 0), 0);
-
-      const fuel = (t: string) => {
-        const dep = Number(departure.departureStats?.[`rob${t}`]) || 0;
-        const bunk = Number(departure.departureStats?.[`bunkersReceived${t}`]) || 0;
-        const arr = Number(report.arrivalStats?.[`rob${t}`]) || 0;
-        return dep + bunk - arr;
-      };
-
-      return {
-        ...report,
-        metrics: {
-          totalTimeHours: +totalTimeHours.toFixed(2),
-          totalDistance: +totalDistance.toFixed(2),
-          avgSpeed: totalTimeHours > 0 ? +(totalDistance / totalTimeHours).toFixed(2) : 0,
-          consumedVlsfo: +fuel("Vlsfo").toFixed(2),
-          consumedLsmgo: +fuel("Lsmgo").toFixed(2)
-        }
-      };
-    });
+        return {
+             ...report,
+             metrics: {
+                 totalTimeHours: +totalTimeHours.toFixed(2),
+                 totalDistance: +totalDistance.toFixed(2),
+                 avgSpeed: totalTimeHours > 0 ? +(totalDistance / totalTimeHours).toFixed(2) : 0,
+                 consumedVlsfo: +fuel("Vlsfo").toFixed(2),
+                 consumedLsmgo: +fuel("Lsmgo").toFixed(2)
+             }
+        };
+     });
   }
 
   const serializedReports = JSON.parse(JSON.stringify(reportsWithMetrics.length > 0 ? reportsWithMetrics : reports));
@@ -215,32 +215,32 @@ export async function getArrivalReports({
 }
 
 export async function getFilterOptions(user: any) {
-  await dbConnect();
-  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
-  const userCompanyId = user.company?.id || user.company;
+    await dbConnect();
+    const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
+    const userCompanyId = user.company?.id || user.company;
 
-  const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
-  const vesselFilter: any = { status: "active", deletedAt: null };
+    const companyFilter: any = isSuperAdmin ? { deletedAt: null } : { _id: userCompanyId, deletedAt: null };
+    const vesselFilter: any = { status: "active", deletedAt: null };
+    
+    if (!isSuperAdmin) vesselFilter.company = userCompanyId;
 
-  if (!isSuperAdmin) vesselFilter.company = userCompanyId;
+    const [companies, vessels] = await Promise.all([
+        Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
+        Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
+    ]);
 
-  const [companies, vessels] = await Promise.all([
-    Company.find(companyFilter).select("_id name").sort({ name: 1 }).lean(),
-    Vessel.find(vesselFilter).select("_id name company").sort({ name: 1 }).lean()
-  ]);
-
-  const allowedVesselIds = vessels.map((v: any) => v._id.toString());
-  const voyages = await Voyage.find({
-    vesselId: { $in: allowedVesselIds },
-    status: "active",
-    deletedAt: null
-  })
+    const allowedVesselIds = vessels.map((v: any) => v._id.toString());
+    const voyages = await Voyage.find({
+        vesselId: { $in: allowedVesselIds },
+        status: "active",
+        deletedAt: null
+    })
     .select("_id vesselId voyageNo")
     .lean();
 
-  return {
-    companies: JSON.parse(JSON.stringify(companies)),
-    vessels: JSON.parse(JSON.stringify(vessels)),
-    voyages: JSON.parse(JSON.stringify(voyages))
-  };
+    return {
+        companies: JSON.parse(JSON.stringify(companies)),
+        vessels: JSON.parse(JSON.stringify(vessels)),
+        voyages: JSON.parse(JSON.stringify(voyages))
+    };
 }

@@ -1,7 +1,11 @@
 {
-  "name": "free-nextjs-admin-dashboard",
-  "version": "2.0.2",
+  "name": "parkora-maritime",
+  "version": "2.1.0",
+  "description": "Added Job module ",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -24,6 +28,7 @@
     "apexcharts": "^4.3.0",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",
+    "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",

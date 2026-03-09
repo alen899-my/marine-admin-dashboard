@@ -21,188 +21,207 @@ interface WorkspaceModalProps {
   isReadOnly?: boolean;
 }
 
-export default function WorkspaceModal({ 
-  isOpen, 
-  onClose, 
-  data, 
-  userRole, 
-  onSuccess, 
-  isReadOnly = false 
+export default function WorkspaceModal({
+  isOpen,
+  onClose,
+  data,
+  userRole,
+  onSuccess,
+  isReadOnly = false
 }: WorkspaceModalProps) {
   const [pendingFiles, setPendingFiles] = useState<Record<string, { file: File, name: string, owner: string }>>({});
   const [pendingNotes, setPendingNotes] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
   const { can } = useAuthorization();
- const [isZipping, setIsZipping] = useState(false);
-const [isSharing, setIsSharing] = useState(false);
-// Inside WorkspaceModal component
+  const [isZipping, setIsZipping] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  // Inside WorkspaceModal component
 
 
   if (!data) return null;
 
-const displayedDocuments = data.documents;
-const handleVerify = (docId: string, status: "approved" | "rejected", reason?: string) => {
-  // 1. OPTIMISTIC UPDATE: Update the local UI immediately
-  // We modify the data object reference for this render cycle
-  if (data.documents && data.documents[docId]) {
-    data.documents[docId].status = status;
-    if (status === "rejected") {
-      data.documents[docId].rejectionReason = reason;
-    } else {
-      data.documents[docId].rejectionReason = "";
-    }
-  }
-
-  // 2. Trigger parent refresh immediately to sync background state
-  if (onSuccess) onSuccess();
-
-  // 3. Send the network payload in the background
-  fetch(`/api/pre-arrival/${data._id}/verify`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ docId, status, reason: reason || "" }),
-  })
-  .then(async (res) => {
-    if (!res.ok) {
-      const err = await res.json();
-      toast.error(err.error || "Failed to verify document");
-      // Optional: You could trigger another onSuccess here to "roll back" the UI
-      if (onSuccess) onSuccess(); 
-    } else {
-     
-    }
-  })
-  .catch(err => {
-   
-    toast.error("Network error occurred");
-  });
-};
-const handleZipDownload = async () => {
-  if (!data.documents) return;
-
-  setIsZipping(true);
-  const zip = new JSZip();
-  
-  // 1. Create the main root folder
-  const rootFolder = zip.folder(`PreArrival_Pack_${data.requestId}`);
-  
-  // 2. Create sub-folders for Ship and Admin
-  const shipFolder = rootFolder?.folder("Ship_Documents");
-  const adminFolder = rootFolder?.folder("Admin_Documents");
-
-  try {
-    const docsToDownload = Object.entries(data.documents as Record<string, any>)
-      .filter(([_, doc]) => doc.fileUrl && doc.status === "approved");
-
-    if (docsToDownload.length === 0) {
-      toast.warn("No approved files found to download.");
-      setIsZipping(false);
-      return;
-    }
-
-    const downloadPromises = docsToDownload.map(async ([key, doc]) => {
-      try {
-        const response = await fetch(doc.fileUrl);
-        if (!response.ok) throw new Error("Network error");
-        const blob = await response.blob();
-
-        // Standardize file name
-        const cleanDocName = doc.name.replace(/[/\\?%*:|"<>]/g, '-');
-        const uniqueFileName = `${cleanDocName}_${doc.fileName}`;
-        
-        // ✅ LOGIC: Place file in the correct sub-folder based on owner
-        if (doc.owner === "ship") {
-          shipFolder?.file(uniqueFileName, blob);
-        } else {
-          // Defaults to Admin/Office folder
-          adminFolder?.file(uniqueFileName, blob);
-        }
-      } catch (err) {
-        console.error(`Failed to fetch: ${doc.name}`, err);
+  const displayedDocuments = data.documents;
+  const handleVerify = (docId: string, status: "approved" | "rejected", reason?: string) => {
+    // 1. OPTIMISTIC UPDATE: Update the local UI immediately
+    // We modify the data object reference for this render cycle
+    if (data.documents && data.documents[docId]) {
+      data.documents[docId].status = status;
+      if (status === "rejected") {
+        data.documents[docId].rejectionReason = reason;
+      } else {
+        data.documents[docId].rejectionReason = "";
       }
-    });
-
-    await Promise.all(downloadPromises);
-
-    // 3. Generate and Save
-    const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, `PreArrival_Pack_${data.requestId}.zip`);
-    
-    toast.success(`Successfully packaged ${docsToDownload.length} files`);
-  } catch (error) {
-    console.error("ZIP Generation Error:", error);
-    toast.error("Failed to create ZIP file");
-  } finally {
-    setIsZipping(false);
-  }
-};
-const handleShareViaWhatsApp = async () => {
-  if (!data.documents) return;
-
-  setIsSharing(true); // Reuse your loading state
-  const zip = new JSZip();
-  const rootFolder = zip.folder(`PreArrival_Pack_${data.requestId}`);
-  const shipFolder = rootFolder?.folder("Ship_Documents");
-  const adminFolder = rootFolder?.folder("Admin_Documents");
-
-  try {
-    const docsToDownload = Object.entries(data.documents as Record<string, any>)
-      .filter(([_, doc]) => doc.fileUrl && doc.status === "approved");
-
-    if (docsToDownload.length === 0) {
-      toast.warn("No approved files found to share.");
-      return;
     }
 
-    // --- 1. Generate the ZIP (same logic as before) ---
-    const downloadPromises = docsToDownload.map(async ([key, doc]) => {
-      try {
-        const response = await fetch(doc.fileUrl);
-        const blob = await response.blob();
-        const cleanDocName = doc.name.replace(/[/\\?%*:|"<>]/g, '-');
-        const uniqueFileName = `${cleanDocName}_${doc.fileName}`;
-        
-        if (doc.owner === "ship") {
-          shipFolder?.file(uniqueFileName, blob);
+    // 2. Trigger parent refresh immediately to sync background state
+    if (onSuccess) onSuccess();
+
+    // 3. Send the network payload in the background
+    fetch(`/api/pre-arrival/${data._id}/verify`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docId, status, reason: reason || "" }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json();
+          toast.error(err.error || "Failed to verify document");
+          // Optional: You could trigger another onSuccess here to "roll back" the UI
+          if (onSuccess) onSuccess();
         } else {
-          adminFolder?.file(uniqueFileName, blob);
+
         }
-      } catch (err) { console.error(err); }
-    });
+      })
+      .catch(err => {
 
-    await Promise.all(downloadPromises);
-    const zipBlob = await zip.generateAsync({ type: "blob" });
+        toast.error("Network error occurred");
+      });
+  };
+  const handleZipDownload = async () => {
+    if (!data.documents) return;
 
-    // --- 2. Upload the ZIP to Vercel Storage ---
-    const zipFilename = `PreArrival_${data.requestId}_${Date.now()}.zip`;
-    const uploadResponse = await fetch(`/api/upload-zip?filename=${zipFilename}`, {
-      method: "POST",
-      body: zipBlob,
-    });
+    setIsZipping(true);
+    const zip = new JSZip();
 
-    if (!uploadResponse.ok) throw new Error("Upload failed");
-    const { url: vercelUrl } = await uploadResponse.json();
+    // 1. Create the main root folder
+    const rootFolder = zip.folder(`PreArrival_Pack_${data.requestId}`);
 
-    // --- 3. Share the Link via WhatsApp ---
-    const message = `🚢 *Pre-Arrival Document Pack*\n\n*Vessel:* ${data.vesselId?.name}\n*Request ID:* ${data.requestId}\n*Port:* ${data.portName}\n\nClick the link below to download the approved document ZIP:\n${vercelUrl}`;
-    
-    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappLink, "_blank");
+    // 2. Create sub-folders for Ship and Admin
+    const shipFolder = rootFolder?.folder("Ship_Documents");
+    const adminFolder = rootFolder?.folder("Admin_Documents");
 
-    toast.success("WhatsApp link generated!");
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to share via WhatsApp");
-  } finally {
-    setIsSharing(false);
-  }
-};
+    try {
+      const docsToDownload = Object.entries(data.documents as Record<string, any>)
+        .filter(([_, doc]) => doc.fileUrl && doc.status === "approved");
+
+      if (docsToDownload.length === 0) {
+        toast.warn("No approved files found to download.");
+        setIsZipping(false);
+        return;
+      }
+
+      const downloadPromises = docsToDownload.map(async ([key, doc]) => {
+        try {
+          const response = await fetch(doc.fileUrl);
+          if (!response.ok) throw new Error("Network error");
+          const blob = await response.blob();
+
+          // Standardize human-friendly ZIP file name:
+          // Use logical document name + extension inferred from stored filename/URL.
+          const cleanDocName = (doc.name || "Document").replace(/[/\\?%*:|"<>]/g, "-");
+          let ext = "";
+          if (doc.fileName && doc.fileName.includes(".")) {
+            ext = "." + doc.fileName.split(".").pop();
+          } else if (doc.fileUrl) {
+            const urlName = doc.fileUrl.split("/").pop() || "";
+            if (urlName.includes(".")) {
+              ext = "." + urlName.split(".").pop();
+            }
+          }
+          const uniqueFileName = `${cleanDocName}${ext}`;
+
+          // ✅ LOGIC: Place file in the correct sub-folder based on owner
+          if (doc.owner === "ship") {
+            shipFolder?.file(uniqueFileName, blob);
+          } else {
+            // Defaults to Admin/Office folder
+            adminFolder?.file(uniqueFileName, blob);
+          }
+        } catch (err) {
+          console.error(`Failed to fetch: ${doc.name}`, err);
+        }
+      });
+
+      await Promise.all(downloadPromises);
+
+      // 3. Generate and Save
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `PreArrival_Pack_${data.requestId}.zip`);
+
+      toast.success(`Successfully packaged ${docsToDownload.length} files`);
+    } catch (error) {
+      console.error("ZIP Generation Error:", error);
+      toast.error("Failed to create ZIP file");
+    } finally {
+      setIsZipping(false);
+    }
+  };
+  const handleShareViaWhatsApp = async () => {
+    if (!data.documents) return;
+
+    setIsSharing(true); // Reuse your loading state
+    const zip = new JSZip();
+    const rootFolder = zip.folder(`PreArrival_Pack_${data.requestId}`);
+    const shipFolder = rootFolder?.folder("Ship_Documents");
+    const adminFolder = rootFolder?.folder("Admin_Documents");
+
+    try {
+      const docsToDownload = Object.entries(data.documents as Record<string, any>)
+        .filter(([_, doc]) => doc.fileUrl && doc.status === "approved");
+
+      if (docsToDownload.length === 0) {
+        toast.warn("No approved files found to share.");
+        return;
+      }
+
+      // --- 1. Generate the ZIP (same logic as before) ---
+      const downloadPromises = docsToDownload.map(async ([key, doc]) => {
+        try {
+          const response = await fetch(doc.fileUrl);
+          const blob = await response.blob();
+          const cleanDocName = (doc.name || "Document").replace(/[/\\?%*:|"<>]/g, "-");
+          let ext = "";
+          if (doc.fileName && doc.fileName.includes(".")) {
+            ext = "." + doc.fileName.split(".").pop();
+          } else if (doc.fileUrl) {
+            const urlName = doc.fileUrl.split("/").pop() || "";
+            if (urlName.includes(".")) {
+              ext = "." + urlName.split(".").pop();
+            }
+          }
+          const uniqueFileName = `${cleanDocName}${ext}`;
+
+          if (doc.owner === "ship") {
+            shipFolder?.file(uniqueFileName, blob);
+          } else {
+            adminFolder?.file(uniqueFileName, blob);
+          }
+        } catch (err) { console.error(err); }
+      });
+
+      await Promise.all(downloadPromises);
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
+      // --- 2. Upload the ZIP to Vercel Storage ---
+      const zipFilename = `PreArrival_${data.requestId}_${Date.now()}.zip`;
+      const uploadResponse = await fetch(`/api/upload-zip?filename=${zipFilename}`, {
+        method: "POST",
+        body: zipBlob,
+      });
+
+      if (!uploadResponse.ok) throw new Error("Upload failed");
+      const { url: vercelUrl } = await uploadResponse.json();
+
+      // --- 3. Share the Link via WhatsApp ---
+      const message = `🚢 *Pre-Arrival Document Pack*\n\n*Vessel:* ${data.vesselId?.name}\n*Request ID:* ${data.requestId}\n*Port:* ${data.portName}\n\nClick the link below to download the approved document ZIP:\n${vercelUrl}`;
+
+      const whatsappLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappLink, "_blank");
+
+      toast.success("WhatsApp link generated!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to share via WhatsApp");
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const handleFileStaging = (item: any, file: File) => {
-    setPendingFiles((prev) => ({ 
-      ...prev, 
-      [item.id]: { file, name: item.name, owner: item.owner } 
+    setPendingFiles((prev) => ({
+      ...prev,
+      [item.id]: { file, name: item.name, owner: item.owner }
     }));
   };
 
@@ -218,75 +237,52 @@ const handleShareViaWhatsApp = async () => {
   };
 
  const handleSave = async () => {
-    // 1. Define the full list of required document IDs
-    const REQUIRED_DOC_IDS = [
-      "pre_arrival_form", "health_decl", "temp_14_days", "crew_health_decl",
-      "arrival_nil_cargo", "arms_decl", "nil_list", "bond_store", "rob_dg",
-      "imo_maritime_decl", "registry_cert", "tonnage_cert", "isps_ship",
-      "pi_cert", "msm_cert", "last_10_ports", "ships_particulars",
-      "hull_machinery", "safety_equipment", "sanitation_cert",
-      "medical_chest", "isps_officer", "port_clearance", "imo_crew_list",
-      "security_report"
-    ];
+  // 1. Change Detection
+  const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
+  if (changedIds.length === 0) {
+    toast.info("No changes to save");
+    return;
+  }
 
-    // 2. Perform Validation: Check if every required ID has a file
-    const missingDocs = REQUIRED_DOC_IDS.filter((id) => {
-      const isAlreadyUploaded = !!(data.documents?.[id]?.fileUrl || data.documents?.[id]?.vesselCertId);
-      const isPendingUpload = !!pendingFiles[id];
-      return !isAlreadyUploaded && !isPendingUpload;
+  setUploading(true);
+  try {
+    const uploadPromises = changedIds.map(async (docId) => {
+      const formData = new FormData();
+      formData.append("docId", docId);
+
+      if (pendingFiles[docId]) {
+        formData.append("file", pendingFiles[docId].file);
+        formData.append("name", pendingFiles[docId].name);
+        formData.append("owner", pendingFiles[docId].owner);
+      } else {
+        const existing = data.documents?.[docId];
+        if (existing) {
+          formData.append("name", existing.name);
+          formData.append("owner", existing.owner);
+        }
+      }
+
+      if (pendingNotes[docId]) formData.append("note", pendingNotes[docId]);
+
+      return fetch(`/api/pre-arrival/${data._id}/upload`, {
+        method: "PATCH",
+        body: formData,
+      });
     });
 
-    if (missingDocs.length > 0) {
-      toast.error(`Required: Please upload all documents before saving (${missingDocs.length} missing).`);
-      return;
+    const results = await Promise.all(uploadPromises);
+    if (results.every((res) => res.ok)) {
+      toast.success("Document pack updated successfully");
+      setPendingFiles({});
+      setPendingNotes({});
+      if (onSuccess) onSuccess();
     }
-
-    // 3. Change Detection (Existing Logic)
-    const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
-    if (changedIds.length === 0) {
-      toast.info("No changes to save");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const uploadPromises = changedIds.map(async (docId) => {
-        const formData = new FormData();
-        formData.append("docId", docId);
-        
-        if (pendingFiles[docId]) {
-          formData.append("file", pendingFiles[docId].file);
-          formData.append("name", pendingFiles[docId].name);
-          formData.append("owner", pendingFiles[docId].owner);
-        } else {
-          const existing = data.documents?.[docId];
-          if (existing) {
-            formData.append("name", existing.name);
-            formData.append("owner", existing.owner);
-          }
-        }
-        if (pendingNotes[docId]) formData.append("note", pendingNotes[docId]);
-
-        return fetch(`/api/pre-arrival/${data._id}/upload`, {
-          method: "PATCH",
-          body: formData,
-        });
-      });
-
-      const results = await Promise.all(uploadPromises);
-      if (results.every((res) => res.ok)) {
-        toast.success("Document pack updated successfully");
-        setPendingFiles({});
-        setPendingNotes({});
-        if (onSuccess) onSuccess();
-        onClose(); 
-      }
-    } catch (error) {
-      toast.error("Error saving document pack");
-    } finally {
-      setUploading(false);
-    }
-  };
+  } catch (error) {
+    toast.error("Error saving document pack");
+  } finally {
+    setUploading(false);
+  }
+};
 
   return (
     <Modal
@@ -321,82 +317,82 @@ const handleShareViaWhatsApp = async () => {
         <section className="animate-in fade-in duration-500 pb-2">
           <DocumentChecklist
             uploadedData={displayedDocuments}
-            onUpload={isReadOnly ? () => {} : handleFileStaging}
+            onUpload={isReadOnly ? () => { } : handleFileStaging}
             onView={(item: any) => handleAction(item, "view")}
-            onNoteChange={isReadOnly ? () => {} : handleNoteStaging}
-            onVerify={isReadOnly ? () => {} : handleVerify}
+            onNoteChange={isReadOnly ? () => { } : handleNoteStaging}
+            onVerify={isReadOnly ? () => { } : handleVerify}
             isReadOnly={isReadOnly}
           />
         </section>
       </div>
 
-<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end w-full gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-white/5 shrink-0">
-  
-  {/* Cancel Button - Now only shows if NOT in read-only/view mode */}
-  {!isReadOnly && (
-    <Button 
-      size="sm" 
-      variant="outline" 
-      onClick={onClose} 
-      disabled={uploading || isZipping || isSharing}
-      className="w-full sm:w-auto order-last sm:order-first sm:px-6"
-    >
-      Cancel
-    </Button>
-  )}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end w-full gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-white/5 shrink-0">
 
-  {isReadOnly && can("zip.download") && (
-    <>
-      {/* ZIP Download Button */}
-      <Button
-        size="sm"
-        variant="primary"
-        className="w-full sm:w-auto sm:px-6 flex items-center justify-center"
-        onClick={handleZipDownload}
-        disabled={isZipping || isSharing}
-      >
-        {isZipping ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <Download className="h-4 w-4 mr-2" />
+        {/* Cancel Button - Now only shows if NOT in read-only/view mode */}
+        {!isReadOnly && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onClose}
+            disabled={uploading || isZipping || isSharing}
+            className="w-full sm:w-auto order-last sm:order-first sm:px-6"
+          >
+            Cancel
+          </Button>
         )}
-        {isZipping ? "Generating..." : "Download ZIP"}
-      </Button>
 
-      {/* Share ZIP Button */}
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full sm:w-auto sm:px-6 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300  transition-all active:scale-95 flex items-center justify-center"
-        onClick={handleShareViaWhatsApp}
-        disabled={isZipping || isSharing}
-      >
-        {isSharing ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <IoLogoWhatsapp size={18} className="mr-2 text-[#25D366]" />
+        {isReadOnly && can("zip.download") && (
+          <>
+            {/* ZIP Download Button */}
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full sm:w-auto sm:px-6 flex items-center justify-center"
+              onClick={handleZipDownload}
+              disabled={isZipping || isSharing}
+            >
+              {isZipping ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {isZipping ? "Generating..." : "Download ZIP"}
+            </Button>
+
+            {/* Share ZIP Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full sm:w-auto sm:px-6 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-white/10 dark:text-gray-300  transition-all active:scale-95 flex items-center justify-center"
+              onClick={handleShareViaWhatsApp}
+              disabled={isZipping || isSharing}
+            >
+              {isSharing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <IoLogoWhatsapp size={18} className="mr-2 text-[#25D366]" />
+              )}
+              <span className="whitespace-nowrap">
+                {isSharing ? "Sharing..." : "Share ZIP"}
+              </span>
+            </Button>
+          </>
         )}
-        <span className="whitespace-nowrap">
-          {isSharing ? "Sharing..." : "Share ZIP"}
-        </span>
-      </Button>
-    </>
-  )}
 
-  {!isReadOnly && (
-    /* Save Button */
-    <Button
-      size="sm"
-      variant="primary"
-      className="w-full sm:w-auto sm:px-8 flex items-center justify-center"
-      onClick={handleSave}
-      disabled={uploading}
-    >
-      {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-      {uploading ? "Saving..." : "Save Pack"}
-    </Button>
-  )}
-</div>
+        {!isReadOnly && (
+          /* Save Button */
+          <Button
+            size="sm"
+            variant="primary"
+            className="w-full sm:w-auto sm:px-8 flex items-center justify-center"
+            onClick={handleSave}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            {uploading ? "Saving..." : "Save Pack"}
+          </Button>
+        )}
+      </div>
 
     </Modal>
   );

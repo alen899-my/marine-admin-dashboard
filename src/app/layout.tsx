@@ -2,6 +2,7 @@ import { Providers } from "@/components/Providers";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import Script from "next/script";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
@@ -27,6 +28,13 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      {process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true" && (
+        <Script
+          src={process.env.NEXT_PUBLIC_UMAMI_URL}
+          data-website-id={process.env.NEXT_PUBLIC_UMAMI_ID}
+          strategy="afterInteractive"
+        />
+      )}
       <body
         className={`${outfit.className} dark:bg-gray-900`}
         suppressHydrationWarning

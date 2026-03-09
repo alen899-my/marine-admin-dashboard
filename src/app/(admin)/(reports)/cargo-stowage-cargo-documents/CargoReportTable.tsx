@@ -39,6 +39,7 @@ import { toast } from "react-toastify";
 interface ICargoReportFile {
   url: string;
   name?: string;
+  originalName?: string;
 }
 interface UserRef {
   _id: string;
@@ -334,7 +335,7 @@ export default function CargoReportTable({
     {
       header: "Document Info",
       render: (r: ICargoReport) => {
-        const meta = getFileMeta(r?.file?.url);
+        const meta = getFileMeta(r?.file);
 
         return (
           <div className="flex flex-col text-xs gap-1">
@@ -475,13 +476,23 @@ export default function CargoReportTable({
     }
   }
 
-  const getFileMeta = (url?: string) => {
-    if (!url) return { name: "", isPdf: false, isImage: false, isExcel: false };
-    const name = url.split("/").pop() || "Document";
-    const isPdf = name.toLowerCase().endsWith(".pdf");
-    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name);
-    const isExcel = /\.(xls|xlsx|csv)$/i.test(name);
-    return { name, isPdf, isImage, isExcel };
+  const getFileMeta = (file?: ICargoReportFile) => {
+    if (!file?.url) {
+      return { name: "", isPdf: false, isImage: false, isExcel: false };
+    }
+
+    const rawName =
+      file.originalName ||
+      file.name ||
+      file.url.split("/").pop() ||
+      "Document";
+
+    const lower = rawName.toLowerCase();
+    const isPdf = lower.endsWith(".pdf");
+    const isImage = /\.(jpg|jpeg|png|webp)$/i.test(lower);
+    const isExcel = /\.(xls|xlsx|csv)$/i.test(lower);
+
+    return { name: rawName, isPdf, isImage, isExcel };
   };
 
   /* ================= HANDLERS ================= */
@@ -550,19 +561,19 @@ export default function CargoReportTable({
       previewUrl?.toLowerCase().endsWith(".csv");
 
   /* ================= RENDER ================= */
-  const fileMeta = selectedReport?.file?.url
-    ? getFileMeta(selectedReport.file.url)
+  const fileMeta = selectedReport?.file
+    ? getFileMeta(selectedReport.file)
     : null;
 
-  const currentFileMeta = selectedReport?.file?.url
-    ? getFileMeta(selectedReport.file.url)
+  const currentFileMeta = selectedReport?.file
+    ? getFileMeta(selectedReport.file)
     : null;
   if (!isReady) return null;
   return (
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1500px]">
             <CommonReportTable
               data={reports}
               columns={columns}

@@ -24,8 +24,7 @@ export default async function NoticeOfReadiness({ searchParams }: PageProps) {
   // 2. Data Fetching
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 1;
-
-  const cookieStore = await cookies();
+   const cookieStore = await cookies();
   const tz = decodeURIComponent(cookieStore.get("tz")?.value ?? "UTC");
 
   const [reportData, filterOptions] = await Promise.all([

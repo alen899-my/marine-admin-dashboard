@@ -252,16 +252,16 @@ export default function MultiStepFormLayout({
     <div
       className={
         isPublic
-          ? "min-h-screen bg-gray-50 dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start py-8 sm:py-12 px-4"
+          ? "min-h-screen  dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start  sm: px-1"
           : "min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4"
       }
     >
-      <div className={isPublic ? "w-full max-w-6xl" : "w-full"}>
+      <div className={isPublic ? "w-full max-w-7xl" : "w-full"}>
         {/* MAIN CONTAINER */}
         <div
           className={
             isPublic
-              ? "flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl min-h-[700px] lg:h-[88vh]"
+              ? "flex flex-col overflow-hidden rounded-2xl  dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl min-h-[700px] lg:h-[88vh]"
               : "flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
           }
         >

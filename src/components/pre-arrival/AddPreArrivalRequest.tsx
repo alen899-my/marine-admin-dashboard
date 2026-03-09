@@ -20,7 +20,7 @@ import { preArrivalSchema } from "@/lib/validations/preArrival";
 interface AddPreArrivalRequestProps {
   onSuccess?: () => void;
   className?: string;
-  vesselList: any[]; 
+  vesselList: any[];
   voyageList: any[];
   editData?: any; // ✅ New prop for editing
 }
@@ -42,8 +42,8 @@ const AddPreArrivalRequest = forwardRef(({
     vesselId: "",
     vesselName: "",
     portName: "",
-    voyageId: "", 
-    voyageNo: "", 
+    voyageId: "",
+    voyageNo: "",
     requestId: "",
     agentContact: "",
     eta: "",
@@ -70,8 +70,8 @@ const AddPreArrivalRequest = forwardRef(({
         voyageNo: editData.voyageId?.voyageNo || "",
         requestId: editData.requestId || "",
         agentContact: editData.agentContact || "",
-        eta: editData.eta ? new Date(editData.eta).toISOString().slice(0, 16) : "",
-        dueDate: editData.dueDate ? new Date(editData.dueDate).toISOString().slice(0, 16) : "",
+        eta: editData.eta ? new Date(editData.eta).toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).replace(" ", "T").slice(0, 16) : "",
+        dueDate: editData.dueDate ? new Date(editData.dueDate).toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).replace(" ", "T").slice(0, 16) : "",
         notes: editData.notes || "",
         status: editData.status || "draft",
       });
@@ -80,11 +80,11 @@ const AddPreArrivalRequest = forwardRef(({
     }
   }, [editData, isOpen]);
   const statusOptions = [
-  { value: "draft", label: "Draft" },
-  { value: "published", label: "published" },
-  { value: "sent", label: "Sent to Agent" },
-  { value: "completed", label: "Completed" },
-];
+    { value: "draft", label: "Draft" },
+    { value: "published", label: "published" },
+    { value: "sent", label: "Sent to Agent" },
+    { value: "completed", label: "Completed" },
+  ];
 
   const filteredVoyageOptions = useMemo(() => {
     if (!formData.vesselId || !voyageList || voyageList.length === 0) return [];
@@ -100,13 +100,13 @@ const AddPreArrivalRequest = forwardRef(({
       }));
   }, [formData.vesselId, voyageList]);
 
-  const vesselOptions = useMemo(() => 
+  const vesselOptions = useMemo(() =>
     vesselList.map((v: any) => ({
       value: v.name,
       label: v.name,
-      id: v._id 
-    })), 
-  [vesselList]);
+      id: v._id
+    })),
+    [vesselList]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -121,7 +121,7 @@ const AddPreArrivalRequest = forwardRef(({
     closeModal();
   };
 
- const handleSubmit = async () => {
+  const handleSubmit = async () => {
     setErrors({});
 
     // 1. Prepare a clean payload. 
@@ -133,8 +133,8 @@ const AddPreArrivalRequest = forwardRef(({
       portName: formData.portName,
       requestId: formData.requestId,
       agentContact: formData.agentContact,
-      eta: formData.eta,
-      dueDate: formData.dueDate,
+      eta: formData.eta ? `${formData.eta}+05:30` : undefined,
+      dueDate: formData.dueDate ? `${formData.dueDate}+05:30` : undefined,
       notes: formData.notes,
       ...(formData.voyageId ? { voyageId: formData.voyageId } : {}),
       ...(formData.voyageNo ? { voyageNo: formData.voyageNo } : {}),
@@ -142,7 +142,7 @@ const AddPreArrivalRequest = forwardRef(({
 
     // 2. Validate the cleaned payload instead of the raw formData
     const validation = preArrivalSchema.validate(payload, { abortEarly: false });
-    
+
     if (validation.error) {
       const joiErrors: Record<string, string> = {};
       validation.error.details.forEach((detail) => {
@@ -178,7 +178,7 @@ const AddPreArrivalRequest = forwardRef(({
       }
 
       toast.success(editData ? "Port Request Updated" : "Port Request Created");
-      
+
       if (onSuccess) onSuccess();
       handleClose();
     } catch (error) {
@@ -191,7 +191,7 @@ const AddPreArrivalRequest = forwardRef(({
 
   return (
     <>
-     
+
 
       <Modal
         isOpen={isOpen}
@@ -199,124 +199,124 @@ const AddPreArrivalRequest = forwardRef(({
         className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-[720px] lg:max-w-[850px] p-4 sm:p-6 lg:p-8"
       >
         <AddForm
-  title={editData ? "Edit Port Call Request" : "Create Port Call Request"}
-  description={editData ? "Update existing pre-arrival details." : "Initialize a pre-arrival document pack."}
-  submitLabel={isSubmitting ? "Saving..." : editData ? "Update Request" : "Create Request"}
-  onCancel={handleClose}
-  onSubmit={handleSubmit}
->
-  <div className="max-h-[70dvh] overflow-y-auto p-1 custom-scrollbar">
-    <ComponentCard title="Port Call Details">
-      <div className="space-y-5">
-        {/* Row 1: Vessel and Port Name */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <Label>Vessel Name <span className="text-red-500">*</span></Label>
-            <SearchableSelect
-              options={vesselOptions}
-              placeholder="Search Vessel"
-              value={formData.vesselName}
-              onChange={(val) => {
-                const selected = vesselOptions.find((opt) => opt.value === val);
-                setFormData((prev) => ({
-                  ...prev,
-                  vesselName: val,
-                  vesselId: selected?.id || "",
-                }));
-                if (errors.vesselId) setErrors((prev) => ({ ...prev, vesselId: "" }));
-              }}
-            />
-            {errors.vesselId && <p className="text-xs text-red-500 mt-1">{errors.vesselId}</p>}
-          </div>
-          <div>
-            <Label>Port Name <span className="text-red-500">*</span></Label>
-            <Input
-              name="portName"
-              value={formData.portName}
-              onChange={handleChange}
-              placeholder="e.g. Khor Fakkan, UAE"
-              className={errors.portName ? "border-red-500" : ""}
-            />
-            {errors.portName && <p className="text-xs text-red-500 mt-1">{errors.portName}</p>}
-          </div>
-        </div>
+          title={editData ? "Edit Port Call Request" : "Create Port Call Request"}
+          description={editData ? "Update existing pre-arrival details." : "Initialize a pre-arrival document pack."}
+          submitLabel={isSubmitting ? "Saving..." : editData ? "Update Request" : "Create Request"}
+          onCancel={handleClose}
+          onSubmit={handleSubmit}
+        >
+          <div className="max-h-[70dvh] overflow-y-auto p-1 custom-scrollbar">
+            <ComponentCard title="Port Call Details">
+              <div className="space-y-5">
+                {/* Row 1: Vessel and Port Name */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <Label>Vessel Name <span className="text-red-500">*</span></Label>
+                    <SearchableSelect
+                      options={vesselOptions}
+                      placeholder="Search Vessel"
+                      value={formData.vesselName}
+                      onChange={(val) => {
+                        const selected = vesselOptions.find((opt) => opt.value === val);
+                        setFormData((prev) => ({
+                          ...prev,
+                          vesselName: val,
+                          vesselId: selected?.id || "",
+                        }));
+                        if (errors.vesselId) setErrors((prev) => ({ ...prev, vesselId: "" }));
+                      }}
+                    />
+                    {errors.vesselId && <p className="text-xs text-red-500 mt-1">{errors.vesselId}</p>}
+                  </div>
+                  <div>
+                    <Label>Port Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      name="portName"
+                      value={formData.portName}
+                      onChange={handleChange}
+                      placeholder="e.g. Khor Fakkan, UAE"
+                      className={errors.portName ? "border-red-500" : ""}
+                    />
+                    {errors.portName && <p className="text-xs text-red-500 mt-1">{errors.portName}</p>}
+                  </div>
+                </div>
 
-        {/* Row 2: Request ID and Port Agent */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <Label>Request ID <span className="text-red-500">*</span></Label>
-            <Input 
-              name="requestId" 
-              value={formData.requestId} 
-              onChange={handleChange} 
-              placeholder="KF-2026-001" 
-              className={errors.requestId ? "border-red-500" : ""}
-            />
-            {errors.requestId && <p className="text-xs text-red-500 mt-1">{errors.requestId}</p>}
-          </div>
-          <div>
-            <Label>Port Agent</Label>
-            <Input 
-              name="agentContact" 
-              value={formData.agentContact} 
-              onChange={handleChange} 
-              placeholder="Agency Contact" 
-            />
-          </div>
-        </div>
+                {/* Row 2: Request ID and Port Agent */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <Label>Request ID <span className="text-red-500">*</span></Label>
+                    <Input
+                      name="requestId"
+                      value={formData.requestId}
+                      onChange={handleChange}
+                      placeholder="KF-2026-001"
+                      className={errors.requestId ? "border-red-500" : ""}
+                    />
+                    {errors.requestId && <p className="text-xs text-red-500 mt-1">{errors.requestId}</p>}
+                  </div>
+                  <div>
+                    <Label>Port Agent</Label>
+                    <Input
+                      name="agentContact"
+                      value={formData.agentContact}
+                      onChange={handleChange}
+                      placeholder="Agency Contact"
+                    />
+                  </div>
+                </div>
 
-        {/* Row 3: ETA and Due Date */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <Label>ETA Arrival <span className="text-red-500">*</span></Label>
-            <Input 
-              type="datetime-local" 
-              name="eta" 
-              value={formData.eta} 
-              onChange={handleChange} 
-              className={errors.eta ? "border-red-500" : ""}
-            />
-            {errors.eta && <p className="text-xs text-red-500 mt-1">{errors.eta}</p>}
-          </div>
-          <div>
-            <Label>Submission Due Date <span className="text-red-500">*</span></Label>
-            <Input 
-              type="datetime-local" 
-              name="dueDate" 
-              value={formData.dueDate} 
-              onChange={handleChange} 
-              className={errors.dueDate ? "border-red-500" : ""}
-            />
-            {errors.dueDate && <p className="text-xs text-red-500 mt-1">{errors.dueDate}</p>}
-          </div>
-          {editData && (
-  <div className="pt-2">
-    <Select
-      label="Request Status"
-      options={statusOptions}
-      value={formData.status}
-      onChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
-    />
-   
-  </div>
-)}
-        </div>
+                {/* Row 3: ETA and Due Date */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <Label>ETA Arrival <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="datetime-local"
+                      name="eta"
+                      value={formData.eta}
+                      onChange={handleChange}
+                      className={errors.eta ? "border-red-500" : ""}
+                    />
+                    {errors.eta && <p className="text-xs text-red-500 mt-1">{errors.eta}</p>}
+                  </div>
+                  <div>
+                    <Label>Submission Due Date <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="datetime-local"
+                      name="dueDate"
+                      value={formData.dueDate}
+                      onChange={handleChange}
+                      className={errors.dueDate ? "border-red-500" : ""}
+                    />
+                    {errors.dueDate && <p className="text-xs text-red-500 mt-1">{errors.dueDate}</p>}
+                  </div>
+                  {editData && (
+                    <div className="pt-2">
+                      <Select
+                        label="Request Status"
+                        options={statusOptions}
+                        value={formData.status}
+                        onChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
+                      />
 
-        {/* Row 4: Notes */}
-        <div>
-          <Label>Notes </Label>
-          <TextArea
-            name="notes"
-            rows={4}
-            value={formData.notes}
-            onChange={handleChange}
-            placeholder="Specific instructions for the ship master..."
-          />
-        </div>
-      </div>
-    </ComponentCard>
-  </div>
-</AddForm>
+                    </div>
+                  )}
+                </div>
+
+                {/* Row 4: Notes */}
+                <div>
+                  <Label>Notes </Label>
+                  <TextArea
+                    name="notes"
+                    rows={4}
+                    value={formData.notes}
+                    onChange={handleChange}
+                    placeholder="Specific instructions for the ship master..."
+                  />
+                </div>
+              </div>
+            </ComponentCard>
+          </div>
+        </AddForm>
       </Modal>
     </>
   );
