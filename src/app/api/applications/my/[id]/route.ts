@@ -8,15 +8,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const data = await getMyApplicationById(session.user.id, params.id);
+    const data = await getMyApplicationById(session.user.id, id);
 
     if (!data) {
       return NextResponse.json({ error: "Not found or access denied" }, { status: 404 });

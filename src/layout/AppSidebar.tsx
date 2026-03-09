@@ -150,23 +150,23 @@ const navItems: NavItem[] = [
     ],
   },
 
-  // {
-  //   icon: <Briefcase size={25} />,
-  //   name: "Candidate Profiles",
-  //   path: "/jobs",
-  //   requiredPermission: "jobs.view",
-  // },
-  // {
-  //   icon: <Briefcase size={25} />,
-  //   name: "Job Postings",
-  //   path: "/job-postings",
-  //   requiredPermission: "jobs.view", // Temporary; can be updated to job-postings.view if such permission exists
-  // },
-  // {
-  //   icon: <BookOpen size={25} />,
-  //   name: "User Guide",
-  //   path: "/user-guide",
-  // },
+  {
+    icon: <Briefcase size={25} />,
+    name: "Candidate Profiles",
+    path: "/jobs",
+    requiredPermission: "jobs.view",
+  },
+  {
+    icon: <Briefcase size={25} />,
+    name: "Job Postings",
+    path: "/job-postings",
+    requiredPermission: "jobs.view", // Temporary; can be updated to job-postings.view if such permission exists
+  },
+  {
+    icon: <BookOpen size={25} />,
+    name: "User Guide",
+    path: "/user-guide",
+  },
 ];
 
 const AppSidebar: React.FC = () => {
