@@ -3,25 +3,36 @@ import path from "path";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { put } from "@vercel/blob";
+import { auth } from "@/auth";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const { searchParams } = new URL(req.url);
     const filename = searchParams.get("filename") || "pack.zip";
     const cleanName = filename.replace(/[^a-zA-Z0-9.]/g, "-");
     const useLocal = process.env.UPLOAD_PROVIDER === "local";
+    const folder = buildCompanyUploadFolder({
+      companyName: session?.user?.company?.name,
+      module: "shared_exports",
+      subfolder: "packs",
+    });
 
     let url = "";
 
     if (useLocal) {
       const buffer = Buffer.from(await req.arrayBuffer());
-      const uploadDir = path.join(process.cwd(), "public/uploads/packs");
+      const uploadDir = path.join(process.cwd(), "public/uploads", folder);
       if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
       await writeFile(path.join(uploadDir, cleanName), buffer);
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-     url = `${baseUrl}/uploads/packs/${cleanName}`;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        "http://localhost:3000";
+      url = `${baseUrl}/uploads/${folder}/${cleanName}`;
     } else {
-      const blob = await put(cleanName, req.body!, {
+      const blob = await put(`${folder}/${cleanName}`, req.body!, {
         access: "public",
         contentType: "application/zip",
         addRandomSuffix: true,

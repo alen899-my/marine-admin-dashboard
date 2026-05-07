@@ -9,15 +9,16 @@ export function useAuthorization() {
   const user = session?.user;
 
   const role = user?.role; // "super-admin", "admin", etc
-  const permissions: string[] = user?.permissions ?? [];
+  const permissions = user?.permissions ?? [];
+  const stablePermissions = useMemo(() => permissions, [JSON.stringify(permissions)]);
 
   const isSuperAdmin = role === "super-admin";
   const isAdmin = role === "admin";
 
   //  Convert permissions to Set for O(1) lookup
   const permissionSet = useMemo(() => {
-    return new Set(permissions);
-  }, [permissions]);
+    return new Set(stablePermissions);
+  }, [stablePermissions]);
 
   //  Memoized permission check
   const can = useCallback(

@@ -10,6 +10,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 
 
 // --- GET COMPANIES (LIST / SEARCH / PAGINATE) ---
@@ -28,11 +29,11 @@ export async function GET(req: NextRequest) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
 
-    
+
     const query: any = { deletedAt: null };
 
     if (!isSuperAdmin) {
-      
+
       if (!userCompanyId) {
         return NextResponse.json(
           { error: "Forbidden: No company assigned to your profile." },
@@ -130,7 +131,8 @@ export async function POST(req: NextRequest) {
     const contactName = formData.get("contactName") as string;
     const contactEmail = formData.get("contactEmail") as string;
     const status = (formData.get("status") as string) || "active";
-
+    const country = formData.get("country") as string;
+    const currency = formData.get("currency") as string;
     const userIdsRaw = formData.get("userIds") as string;
     const vesselIdsRaw = formData.get("vesselIds") as string;
     let userIds: string[] = [];
@@ -154,7 +156,14 @@ export async function POST(req: NextRequest) {
         );
       }
       try {
-        const uploaded = await handleUpload(file, "companies");
+        const uploaded = await handleUpload(
+          file,
+          buildCompanyUploadFolder({
+            companyName: name,
+            module: "company-profile",
+            subfolder: session?.user?.fullName,
+          }),
+        );
         logoUrl = uploaded.url;
       } catch (err) {
         console.error("Company logo upload failed:", err);
@@ -188,6 +197,8 @@ export async function POST(req: NextRequest) {
       phone,
       address,
       contactName,
+      country,
+      currency,
       contactEmail,
       logo: logoUrl || null,
       status,

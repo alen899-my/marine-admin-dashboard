@@ -3,13 +3,22 @@ import React, { ReactNode } from "react";
 interface ButtonProps {
   children?: ReactNode;
   size?: "sm" | "md";
-  variant?: "primary" | "outline" | "destructive"; // Added destructive
+  variant?:
+    | "primary"
+    | "outline"
+    | "destructive"
+    | "secondary"
+    | "ghost"
+    | "success"
+    | "warning"
+    | "link";
   startIcon?: ReactNode;
   endIcon?: ReactNode;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   className?: string;
+  
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -31,6 +40,7 @@ const Button: React.FC<ButtonProps> = ({
 
   // Variant Classes
   const variantClasses = {
+    
     primary:
       "bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300",
 
@@ -39,7 +49,21 @@ const Button: React.FC<ButtonProps> = ({
 
     // NEW: Destructive variant
     destructive:
-      "bg-red-600 text-white shadow-theme-xs hover:bg-red-700 disabled:bg-red-400",
+      "bg-error-600 text-white shadow-theme-xs hover:bg-error-700 disabled:bg-error-300",
+    
+    secondary:
+      "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20",
+
+    ghost:
+      "bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/[0.03]",
+
+    success:
+      "bg-success-500 text-white shadow-theme-xs hover:bg-success-600 disabled:bg-success-300 dark:bg-success-600 dark:hover:bg-success-700",
+
+    warning:
+      "bg-warning-500 text-white shadow-theme-xs hover:bg-warning-600 disabled:bg-warning-300 dark:bg-warning-600 dark:hover:bg-warning-700",
+
+    link: "bg-transparent text-brand-500 hover:underline disabled:no-underline disabled:text-gray-400 !p-0 !h-auto",
   };
 
   return (

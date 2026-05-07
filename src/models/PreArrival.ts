@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 /**
- * Clean Document Interface:
- * Admin/Office documents: Reference vesselCertId. 
- * Ship documents: Physical fileName and fileUrl stored locally.
+ * PreArrival Document Interface:
+ * Office and Ship documents are stored directly in the PreArrival pack.
+ * No more vessel library references.
  */
 const LogEntrySchema = new Schema({
   message: String,
@@ -13,9 +13,7 @@ const LogEntrySchema = new Schema({
 
 
 export interface IPreArrivalDocument {
-  docSource: "vessel_library" | "onboard_upload";
-  
-  vesselCertId?: mongoose.Types.ObjectId; 
+  docSource: "office_upload" | "onboard_upload" | "vessel_library";
   
   name?: string; 
   fileName?: string; 
@@ -23,10 +21,9 @@ export interface IPreArrivalDocument {
   fileUrl?: string;
   fileSize?: number;
 
-  // Voyage-specific data (even for library docs)
   note?: string;
- status: "pending_review" | "approved" | "rejected";
- rejectionHistory?: any[];
+  status: "pending_review" | "approved" | "rejected";
+  rejectionHistory?: any[];
   owner: "ship" | "office"; 
   uploadedBy: mongoose.Types.ObjectId;
   uploadedAt: Date;
@@ -34,7 +31,7 @@ export interface IPreArrivalDocument {
 
 export interface IPreArrival extends Document {
   vesselId: mongoose.Types.ObjectId;
-voyageId?: mongoose.Types.ObjectId;
+  voyageId?: mongoose.Types.ObjectId;
   requestId: string;
   portName: string;
   eta: Date;
@@ -42,9 +39,12 @@ voyageId?: mongoose.Types.ObjectId;
   dueDate: Date;
   notes: string;
   notesHistory?: any[];
-  status: "draft" | "published" | "sent" | "completed";
+  status: "draft" | "published" | "sent" | "acknowledged" | "completed";
   isLocked: boolean;
   documents: Map<string, IPreArrivalDocument>;
+  submittedAt?: Date;
+  submittedBy?: mongoose.Types.ObjectId;
+  acknowledgedAt?: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -65,10 +65,16 @@ const PreArrivalSchema = new Schema(
     notesHistory: [LogEntrySchema],
     status: { 
       type: String, 
-      enum: ["draft", "published", "sent", "completed"], 
+      enum: ["draft", "published", "sent", "acknowledged", "completed"], 
       default: "draft" 
     },
-    isLocked: { type: Boolean, default: false },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    submittedAt: { type: Date },
+    submittedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    acknowledgedAt: { type: Date },
 
     documents: { 
       type: Map,
@@ -76,15 +82,10 @@ const PreArrivalSchema = new Schema(
         {
           docSource: { 
             type: String, 
-            enum: ["vessel_library", "onboard_upload"],
+            enum: ["office_upload", "onboard_upload", "vessel_library"],
             required: true 
           },
-          // ✅ The Reference ID (Source of Truth link)
-          vesselCertId: { 
-            type: Schema.Types.ObjectId, 
-            ref: "Vessel" 
-          },
-         
+          
           status: { 
             type: String, 
             enum: ["pending_review", "approved", "rejected"], 

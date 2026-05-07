@@ -53,7 +53,7 @@ export interface ICargoReport {
     | {
         _id: string;
         name: string;
-        company?: { _id: string; name: string };
+        company?: { _id: string; name: string; logo?: string };
       };
   portType: string;
   portName: string;
@@ -133,6 +133,11 @@ export default function CargoReportTable({
   const { can, isReady } = useAuthorization();
   const canEdit = can("cargo.edit");
   const canDelete = can("cargo.delete");
+
+  const getCompanyLogo = (r: ICargoReport | null) => {
+    if (!r || !r.vesselId || typeof r.vesselId !== "object") return undefined;
+    return r.vesselId.company?.logo;
+  };
 
   //  Voyage List (Derived from props)
   const voyageList = useMemo(() => {
@@ -809,6 +814,7 @@ export default function CargoReportTable({
                     filename={`CargoDoc_${
                       selectedReport.portName
                     }_${getVoyageNo(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     buttonLabel="Download Report"
                     data={{
                       "Report Status":
@@ -835,6 +841,7 @@ export default function CargoReportTable({
                     filename={`CargoDoc_${
                       selectedReport.portName
                     }_${getVoyageNo(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     data={{
                       "Report Status":
                         selectedReport.status?.toUpperCase() || "ACTIVE",

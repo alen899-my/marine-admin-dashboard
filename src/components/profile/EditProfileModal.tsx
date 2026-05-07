@@ -8,6 +8,7 @@ import Label from "../form/Label";
 import Badge from "../ui/badge/Badge";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
+import { useSession } from "next-auth/react";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export default function EditProfileModal({
   onSuccess,
   initialData,
 }: EditProfileModalProps) {
+  const { update } = useSession();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -81,6 +83,9 @@ export default function EditProfileModal({
 
       const updatedUser = await res.json();
       toast.success("Profile updated successfully!");
+      if (formData.password && updatedUser.passwordChangedAt) {
+        await update({ passwordChangedAt: updatedUser.passwordChangedAt });
+      }
       onSuccess(updatedUser);
       onClose();
     } catch (error: any) {

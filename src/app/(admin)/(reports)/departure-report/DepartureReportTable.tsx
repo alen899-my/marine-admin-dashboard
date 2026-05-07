@@ -51,7 +51,7 @@ export interface IDepartureReport {
     | {
         _id: string;
         name: string;
-        company?: { name: string };
+        company?: { name: string; logo?: string };
       }
     | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
@@ -118,6 +118,11 @@ export default function DepartureReportTable({
   const { can, isReady } = useAuthorization();
   const canEdit = can("departure.edit");
   const canDelete = can("departure.delete");
+
+  const getCompanyLogo = (r: IDepartureReport | null) => {
+    if (!r || !r.vesselId || typeof r.vesselId !== "object") return undefined;
+    return r.vesselId.company?.logo;
+  };
 
   // Format Helpers
   const formatDate = (date?: string) => {
@@ -741,6 +746,7 @@ export default function DepartureReportTable({
                     filename={`Departure_${
                       selectedReport.portName
                     }_${getVoyageDisplay(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     buttonLabel="Download Report"
                     data={{
                       "Report Status":
@@ -789,6 +795,7 @@ export default function DepartureReportTable({
                     filename={`Departure_${
                       selectedReport.portName
                     }_${getVoyageDisplay(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     data={{
                       "Report Status":
                         selectedReport.status?.toUpperCase() || "ACTIVE",

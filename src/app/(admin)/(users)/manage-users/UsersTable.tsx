@@ -5,19 +5,22 @@ import Image from "next/image"; // Import Image
 import { useRouter, useSearchParams } from "next/navigation"; // ✅ Added Router
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { useImpersonation } from "@/hooks/useImpersonation";
+import { useSession } from "next-auth/react";
 
 // --- Components ---
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
+import Button from "@/components/ui/button/Button";
 import UserFormModal from "@/components/Users/UserFormModal";
 
 // --- Permission Components ---
 import RoleComponentCard from "@/components/roles/RoleComponentCard";
 import PermissionLegend from "@/components/Users/components/PermissionLegend";
-import PermissionMatrixTable from "@/components/Users/components/PermissionMatrixTable";
-import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
+import PermissionGrid from "@/components/roles/PermissionGrid";
+import GeneralPermissionsSection from "@/components/roles/GeneralPermissionsSection";
 import { useAuthorization } from "@/hooks/useAuthorization";
 
 // --- Types ---
@@ -71,6 +74,8 @@ export default function UserTable({
 }: UserTableProps) {
   const router = useRouter(); // ✅ Init Router
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const { isSuperAdmin, startImpersonation, loading: impersonationLoading } = useImpersonation();
 
   // 1. Use Props for Data
   const users = data;
@@ -199,6 +204,38 @@ export default function UserTable({
         </Badge>
       ),
     },
+    ...(isSuperAdmin
+      ? [
+          {
+            header: "",
+            render: (u: IUser) => {
+              const roleName =
+                typeof u.role === "object" ? u.role?.name : u.role;
+              const isSelf = u._id === session?.user?.id;
+              const isTargetSuperAdmin =
+                roleName?.toLowerCase() === "super-admin";
+
+              if (isSelf || isTargetSuperAdmin) return null;
+
+              return (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="dark:border-gray-600 text-warning-500 dark:text-warning-500 dark:hover:text-warning-500"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startImpersonation(u._id);
+                  }}
+                  disabled={impersonationLoading}
+                >
+                  <UserIcon className="h-4 w-4 text-warning-500" />
+                  Switch to User
+                </Button>
+              );
+            },
+          },
+        ]
+      : []),
   ];
 
   const selectedUserRoleName =
@@ -383,7 +420,7 @@ export default function UserTable({
               }
             >
               <div className="space-y-6">
-                <PermissionMatrixTable
+                <PermissionGrid
                   allPermissions={allPermissions}
                   rolePermissions={getSelectedUserRolePermissions()}
                   additionalPermissions={
@@ -393,7 +430,7 @@ export default function UserTable({
                   onToggle={() => {}} // View-only
                   isReadOnly={true}
                 />
-                <DashboardWidgetSectionUser
+                <GeneralPermissionsSection
                   allPermissions={allPermissions}
                   rolePermissions={getSelectedUserRolePermissions()}
                   additionalPermissions={

@@ -1,15 +1,19 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import Company from "@/models/Company";
 import JobPageClient from "./JobPageClient";
 import JobTable from "./JobTable";
 import { Metadata } from "next";
 import mongoose from "mongoose";
-import { getCrewApplications, getAllCompaniesForDropdown } from "@/lib/services/applicationService";
+import {
+  getCandidateApplications,
+  getAllCompaniesForDropdown,
+  getJobsForDropdown,
+} from "@/lib/services/applicationService";
 
 export const metadata: Metadata = {
-  title: "Crew Management | Parkora Falcon",
-  description: "Manage crew applications, CVs, and recruitment workflow.",
+  title: "Candidate Management | Parkora Falcon",
+  description:
+    "Manage Candidate applications, CVs, and recruitment workflow.",
 };
 
 export const dynamic = "force-dynamic";
@@ -21,7 +25,9 @@ interface PageProps {
 export default async function JobManagement({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) {
-    return <div className="p-8 text-center font-medium">Unauthorized Access</div>;
+    return (
+      <div className="p-8 text-center font-medium">Unauthorized Access</div>
+    );
   }
 
   const user = session.user;
@@ -39,48 +45,62 @@ export default async function JobManagement({ searchParams }: PageProps) {
   if (!isSuperAdminNoCompany && !targetCompanyId) {
     return (
       <div className="p-8 text-center text-amber-600 bg-amber-50 rounded-lg border border-amber-200">
-        Account Error: Your user profile is not linked to a company. Please contact system administration.
+        Account Error: Your user profile is not linked to a company. Please
+        contact system administration.
       </div>
     );
   }
 
   if (targetCompanyId && !mongoose.isValidObjectId(targetCompanyId)) {
-    return <div className="p-8 text-center text-red-500 font-medium">Invalid company ID.</div>;
+    return (
+      <div className="p-8 text-center text-red-500 font-medium">
+        Invalid company ID.
+      </div>
+    );
   }
 
   const currentPage = Math.max(1, Number(resolvedParams.page) || 1);
-  const limit = 10;
+  const limit = 50;
 
   try {
     await dbConnect();
 
-    const [{ data: applications, pagination }, companies] =
+    const [{ data: applications, pagination }, companies, jobs] =
       await Promise.all([
-        getCrewApplications({
+        getCandidateApplications({
           page: currentPage,
           limit,
           search: resolvedParams.search,
           status: resolvedParams.status,
           startDate: resolvedParams.startDate,
           endDate: resolvedParams.endDate,
-          companyId: isSuperAdminNoCompany ? undefined : (targetCompanyId ?? undefined),
+          jobTitle: resolvedParams.jobTitle,
+          companyId: isSuperAdminNoCompany
+            ? undefined
+            : (targetCompanyId ?? undefined),
           user,
         }),
-
         isSuperAdmin
           ? getAllCompaniesForDropdown()
           : Promise.resolve([] as { id: string; name: string }[]),
+        getJobsForDropdown(
+          isSuperAdminNoCompany ? undefined : (targetCompanyId ?? undefined),
+        ),
       ]);
 
     const total = pagination.total;
 
     return (
       <JobPageClient
+        data={applications}
         totalCount={total}
         companies={companies}
+        jobs={jobs}
         isSuperAdmin={isSuperAdmin}
         canAdd={true}
-        currentCompanyId={isSuperAdminNoCompany ? "all" : (targetCompanyId ?? "")}
+        currentCompanyId={
+          isSuperAdminNoCompany ? "all" : (targetCompanyId ?? "")
+        }
         portalCompanyId={targetCompanyId ?? ""}
       >
         <JobTable
@@ -91,6 +111,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
             total,
             totalPages: pagination.totalPages,
           }}
+          isSuperAdmin={isSuperAdmin}
         />
       </JobPageClient>
     );

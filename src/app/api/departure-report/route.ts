@@ -247,7 +247,7 @@ export async function GET(req: NextRequest) {
           select: "name company", // Select name and company ID from Vessel
           populate: {
             path: "company", // Nested populate Company model
-            select: "name", // Only fetch the company name
+            select: "name logo", // Fetch the company name and logo
           },
         })
         .populate("createdBy", "fullName")

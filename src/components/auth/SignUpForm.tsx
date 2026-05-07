@@ -31,7 +31,11 @@ interface FieldErrors {
   [key: string]: string | undefined;
 }
 
-export default function SignUpForm() {
+interface SignUpFormProps {
+  redirect?: string;
+}
+
+export default function SignUpForm({ redirect }: SignUpFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
@@ -61,81 +65,84 @@ export default function SignUpForm() {
   };
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setFieldErrors({});
-    setSuccessMessage("");
+  e.preventDefault();
+  setFieldErrors({});
+  setSuccessMessage("");
 
-    //  Terms check (non-Joi)
-    if (!isChecked) {
-      setFieldErrors({ general: "Please accept Terms and Conditions" });
-      return;
-    }
+  // Collect all errors at once
+  const errors: FieldErrors = {};
 
-    // Phone required check for candidate signup
-    if (!form.phone.trim()) {
-      setFieldErrors({ phone: "Phone is required" });
-      return;
-    }
+  if (!isChecked) {
+    errors.general = "Please accept Terms and Conditions";
+  }
 
-    // Confirm password check
-    if (form.password !== form.confirmPassword) {
-      setFieldErrors({ confirmPassword: "Passwords must match" });
-      return;
-    }
+  if (!form.phone.trim()) {
+    errors.phone = "Phone is required";
+  }
 
-    //  RUN JOI VALIDATION (CLIENT SIDE)
-    const { error } = registerValidation.validate(
-      {
-        ...form,
-        role: "candidate",
-      },
-      { abortEarly: false },
-    );
+  if (form.password !== form.confirmPassword) {
+    errors.confirmPassword = "Passwords must match";
+  }
 
-    if (error) {
-      const errors: FieldErrors = {};
+  // RUN JOI VALIDATION (CLIENT SIDE)
+  const { error } = registerValidation.validate(
+    { ...form, role: "candidate" },
+    { abortEarly: false },
+  );
 
-      error.details.forEach((detail) => {
-        const key = detail.path[0] as keyof FieldErrors;
-        errors[key] = detail.message;
-      });
+  if (error) {
+    error.details.forEach((detail) => {
+      const key = detail.path[0] as keyof FieldErrors;
+      errors[key] = detail.message;
+    });
+  }
 
-      setFieldErrors(errors);
-      return; // ⛔ STOP submit
-    }
-
-    setLoading(true);
-
-   try {
-  const res = await fetch("/api/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fullName: form.fullName,
-      email: form.email,
-      phone: form.phone,
-      password: form.password,
-      role: "candidate",
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    setFieldErrors({ general: data.message || "Registration failed" });
-    setLoading(false);
+  // If any errors, show all at once and stop
+  if (Object.keys(errors).length > 0) {
+    setFieldErrors(errors);
     return;
   }
 
-  // SUCCESS — show message then redirect to signin
-  setSuccessMessage("Account created! Please sign in to continue.");
-  setTimeout(() => router.push("/signin"), 1500);
+  setLoading(true);
 
-} catch (err) {
-  setFieldErrors({ general: "Network error or server unavailable" });
-  setLoading(false);
-}
-  };
+  try {
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        role: "candidate",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setFieldErrors({ general: data.message || "Registration failed" });
+      setLoading(false);
+      return;
+    }
+
+    const safeRedirect =
+      redirect?.startsWith("/") && !redirect.startsWith("//")
+        ? redirect
+        : null;
+    const signInPath = safeRedirect
+      ? `/signin?redirect=${encodeURIComponent(safeRedirect)}`
+      : "/signin";
+
+    // SUCCESS — show message then redirect to signin
+    setSuccessMessage("Account created! Please sign in to continue.");
+    setTimeout(() => router.push(signInPath), 1500);
+
+  } catch (err) {
+    setFieldErrors({ general: "Network error or server unavailable" });
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full overflow-y-auto no-scrollbar">

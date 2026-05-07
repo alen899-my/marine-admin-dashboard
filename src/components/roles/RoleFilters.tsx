@@ -77,7 +77,7 @@ export default function RoleFilters({
   };
 
   return (
-    <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
+    <div className="flex flex-wrap lg:flex-nowrap items-end gap-4 p-4 w-full">
       {/* SEARCH - Updated to match common component size */}
       <div className="w-full sm:w-auto min-w-[200px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">

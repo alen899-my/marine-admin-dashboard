@@ -1,53 +1,60 @@
 import { redirect, notFound } from "next/navigation";
 import mongoose from "mongoose";
 import { Metadata } from "next";
-import CrewApplicationForm from "@/components/Jobs/Application";
+import CandidateApplicationForm from "@/components/Jobs/Application";
 import PublicHeader from "@/layout/Publicheader";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
   requireCareerAuth,
   fetchCareerCompany,
   getMyApplicationById,
+  fetchActiveJobPositions,
 } from "@/lib/services/applicationService";
-import Job from "@/models/Job";
+import {
+  canEditPublicApplication,
+  canEditPublicApplicationStatus,
+} from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ company?: string }>;
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: "Edit Application | Crew Portal" };
-}
+export const metadata: Metadata = {
+  title: "Edit Application | Candidate Portal",
+};
 
-export default async function CareerEditPage({ params, searchParams }: PageProps) {
+export default async function CareerEditPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
   const { company: companyId } = await searchParams;
 
   if (!id || !mongoose.isValidObjectId(id)) notFound();
   if (!companyId || !mongoose.isValidObjectId(companyId)) notFound();
 
-  const session = await requireCareerAuth(`/careers/edit/${id}?company=${companyId}`);
+  const session = await requireCareerAuth(
+    `/careers/edit/${id}?company=${companyId}`,
+  );
 
-  const application = await getMyApplicationById(session.user.id, id);
+  const [application, company, availablePositions] = await Promise.all([
+    getMyApplicationById(session.user.id, id),
+    fetchCareerCompany(companyId, "name logo"),
+    fetchActiveJobPositions(companyId),
+  ]);
   if (!application) notFound();
 
-  if (!["draft", "submitted"].includes(application.status)) {
+  const canEdit =
+    canEditPublicApplicationStatus(application.status) &&
+    canEditPublicApplication({
+      jobIsAccepting: application.jobIsAccepting,
+      deadline: application.deadline,
+    });
+
+  if (!canEdit) {
     redirect(`/careers/view/${id}?company=${companyId}`);
   }
-
-  const company = await fetchCareerCompany(companyId, "name logo");
-
-
-  const activeJobsRes = await Job.find({ companyId, status: "active", isAccepting: true })
-    .select("title")
-    .sort({ createdAt: -1 })
-    .lean();
-
-  const availablePositions = activeJobsRes.map((j: any) => ({
-    value: j.title,
-    label: j.title,
-  }));
 
   return (
     <>
@@ -55,9 +62,9 @@ export default async function CareerEditPage({ params, searchParams }: PageProps
       <div className="px-4 sm:px-6 pt-5 max-w-7xl mx-auto w-full">
         <PageBreadcrumb
           pageTitle="Edit Application"
-          items={[{ label: "Back To portal", href: `/careers?company=${companyId}` }]}
+          items={[{ label: "Back to Portal", href: "/careers" }]}
         />
-        <CrewApplicationForm
+        <CandidateApplicationForm
           companyId={companyId}
           companyName={company.name}
           companyLogo={company.logo}
@@ -66,6 +73,7 @@ export default async function CareerEditPage({ params, searchParams }: PageProps
           initialData={application}
           applicationId={id}
           availablePositions={availablePositions}
+          jobId={application.jobId?.toString()}
         />
       </div>
     </>

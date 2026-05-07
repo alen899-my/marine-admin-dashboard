@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 import bcrypt from "bcryptjs";
 import { existsSync } from "fs";
 import { unlink } from "fs/promises";
@@ -64,6 +65,7 @@ export async function PATCH(req: NextRequest) {
       }
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
+      updateData.passwordChangedAt = new Date();
     }
 
     // Handle Profile Picture
@@ -81,7 +83,14 @@ export async function PATCH(req: NextRequest) {
       }
 
       try {
-        const uploaded = await handleUpload(file, "profiles");
+        const uploaded = await handleUpload(
+          file,
+          buildCompanyUploadFolder({
+            companyName: session.user.company?.name,
+            module: "user-profile",
+            entityName: session.user.fullName,
+          }),
+        );
         updateData.profilePicture = uploaded.url;
       } catch (err) {
         console.error("Profile picture upload failed:", err);

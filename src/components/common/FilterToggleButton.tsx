@@ -1,6 +1,7 @@
 "use client";
 import Button from "@/components/ui/button/Button";
 import { Filter, FunnelX } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Props {
   isVisible: boolean;
@@ -8,13 +9,19 @@ interface Props {
 }
 
 export default function FilterToggleButton({ isVisible, onToggle }: Props) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Button
       variant="outline"
       size="sm"
       className="p-1 min-w-[40px] h-[48px]"
       onClick={() => onToggle(!isVisible)}
-      startIcon={isVisible ? <FunnelX size={20} /> : <Filter size={20} />}
+      startIcon={mounted ? (isVisible ? <FunnelX size={20} /> : <Filter size={20} />) : <Filter size={20} />}
     >
       {null}
     </Button>

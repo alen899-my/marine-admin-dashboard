@@ -57,12 +57,12 @@ export default function Filters({
   searchJob,
   optionOff,
   vesselId = "",
-  setVesselId = () => { },
+  setVesselId = () => {},
   voyageId = "",
-  setVoyageId = () => { },
+  setVoyageId = () => {},
   vessels = [],
   companyId = "",
-  setCompanyId = () => { },
+  setCompanyId = () => {},
   companies = [],
   isSuperAdmin = false,
   onApply, // Destructure new prop
@@ -79,13 +79,27 @@ export default function Filters({
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
 
   // Sync props to local state
-  useEffect(() => { setLocalSearch(search); }, [search]);
-  useEffect(() => { setLocalStatus(status); }, [status]);
-  useEffect(() => { setLocalStartDate(startDate); }, [startDate]);
-  useEffect(() => { setLocalEndDate(endDate); }, [endDate]);
-  useEffect(() => { setLocalVesselId(vesselId); }, [vesselId]);
-  useEffect(() => { setLocalVoyageId(voyageId); }, [voyageId]);
-  useEffect(() => { setLocalCompanyId(companyId); }, [companyId]);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
+  useEffect(() => {
+    setLocalStartDate(startDate);
+  }, [startDate]);
+  useEffect(() => {
+    setLocalEndDate(endDate);
+  }, [endDate]);
+  useEffect(() => {
+    setLocalVesselId(vesselId);
+  }, [vesselId]);
+  useEffect(() => {
+    setLocalVoyageId(voyageId);
+  }, [voyageId]);
+  useEffect(() => {
+    setLocalCompanyId(companyId);
+  }, [companyId]);
 
   // Fetch Voyages for dropdown
   useEffect(() => {
@@ -103,7 +117,7 @@ export default function Filters({
             allVoyages.map((v: any) => ({
               value: v._id,
               label: v.voyageNo,
-            }))
+            })),
           );
         }
       } catch (error) {
@@ -285,11 +299,12 @@ export default function Filters({
                 }))}
                 placeholder="Select Vessel"
                 value={
-                  (vessels || []).find((v) => v._id === localVesselId)?.name || ""
+                  (vessels || []).find((v) => v._id === localVesselId)?.name ||
+                  ""
                 }
                 onChange={(selectedName) => {
                   const selectedVessel = (vessels || []).find(
-                    (v: any) => v.name === selectedName
+                    (v: any) => v.name === selectedName,
                   );
                   setLocalVesselId(selectedVessel?._id || "");
                   setLocalVoyageId(""); // Reset voyage when vessel changes

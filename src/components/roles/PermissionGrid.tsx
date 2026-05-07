@@ -18,7 +18,10 @@ export interface IPermission {
 
 interface PermissionGridProps {
   allPermissions: IPermission[];
-  selectedPermissions: string[]; // Array of slugs
+  selectedPermissions?: string[]; // Array of slugs (used for Roles)
+  rolePermissions?: string[]; // (used for Users)
+  additionalPermissions?: string[]; // (used for Users)
+  excludedPermissions?: string[]; // (used for Users)
   isReadOnly?: boolean;
   onToggle?: (slug: string, checked: boolean) => void;
 }
@@ -40,7 +43,10 @@ const groupPermissions = (perms: IPermission[]) => {
 
 export default function PermissionGrid({
   allPermissions,
-  selectedPermissions,
+  selectedPermissions = [],
+  rolePermissions = [],
+  additionalPermissions = [],
+  excludedPermissions = [],
   isReadOnly = false,
   onToggle,
 }: PermissionGridProps) {
@@ -63,6 +69,7 @@ export default function PermissionGrid({
       return isGridAction && !isDashboard;
     });
   }, [allPermissions]);
+
   // 2. Group the filtered permissions
   const grouped = useMemo(
     () => groupPermissions(filteredPermissions),
@@ -110,7 +117,7 @@ export default function PermissionGrid({
               key={groupName}
               className="grid grid-cols-5 items-center py-2 px-4 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
             >
-              <div className="col-span-1 font-semibold text-sm text-gray-800 dark:text-gray-200 truncate pr-2">
+              <div className="col-span-1 font-semibold text-sm text-gray-600 dark:text-gray-200 truncate pr-2">
                 {groupName}
               </div>
 
@@ -132,13 +139,24 @@ export default function PermissionGrid({
                   );
                 }
 
-                const isAssigned = selectedPermissions.includes(perm.slug);
+                // --- User Specific Logic ---
+                const isInherited = rolePermissions.includes(perm.slug);
+                const isAdditional = additionalPermissions.includes(perm.slug);
+                const isExcluded = excludedPermissions.includes(perm.slug);
 
-                const variant: CheckboxVariant = "default";
+                // --- Effective Check ---
+                let isChecked = selectedPermissions.includes(perm.slug);
+                let variant: CheckboxVariant = "default";
+
+                if (excludedPermissions.length > 0 || additionalPermissions.length > 0 || rolePermissions.length > 0) {
+                  isChecked = (isInherited || isAdditional) && !isExcluded;
+                  if (isExcluded) variant = "danger";
+                  else if (isAdditional) variant = "success";
+                  else if (isInherited) variant = "default";
+                }
 
                 return (
                   <div key={action} className="flex justify-center">
-                    {/*  Corrected Tooltip Nesting */}
                     <Tooltip
                       position="top"
                       content={
@@ -152,7 +170,7 @@ export default function PermissionGrid({
                     >
                       <div
                         onClick={() =>
-                          !isReadOnly && onToggle?.(perm.slug, !isAssigned)
+                          !isReadOnly && onToggle?.(perm.slug, !isChecked)
                         }
                         className={`relative flex items-center justify-center p-1 transition-transform 
                         ${
@@ -162,7 +180,7 @@ export default function PermissionGrid({
                         }`}
                       >
                         <Checkbox
-                          checked={isAssigned}
+                          checked={isChecked}
                           onChange={() => {}} // Controlled by div click for better UX
                           variant={variant}
                           className={isReadOnly ? "pointer-events-none" : ""}

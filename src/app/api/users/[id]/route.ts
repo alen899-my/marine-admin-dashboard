@@ -1,6 +1,7 @@
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
+import Role from "@/models/Role";
 import User from "@/models/User";
 import { put } from "@vercel/blob";
 import bcrypt from "bcryptjs";
@@ -8,9 +9,11 @@ import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import { handleUpload } from "@/lib/handleUpload"
+import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 import { del } from "@vercel/blob";
 import { unlink } from "fs/promises";
+import mongoose from "mongoose";
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -30,6 +33,11 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    let targetCompanyName: string | null = null;
+    if (user.company) {
+      const currentCompany = await Company.findById(user.company).select("name").lean();
+      targetCompanyName = currentCompany?.name || null;
+    }
 
     // 3. Prepare Update Object
     const updateData: any = {};
@@ -37,7 +45,19 @@ export async function PATCH(
     if (formData.has("name")) updateData.fullName = formData.get("name") as string;
     if (formData.has("email")) updateData.email = formData.get("email") as string;
     if (formData.has("phone")) updateData.phone = formData.get("phone") as string;
-    if (formData.has("role")) updateData.role = formData.get("role") as string;
+    if (formData.has("role")) {
+      const roleValue = formData.get("role") as string;
+      let validRole;
+      if (mongoose.Types.ObjectId.isValid(roleValue)) {
+        validRole = await Role.findById(roleValue);
+      } else {
+        validRole = await Role.findOne({ name: roleValue.toLowerCase() });
+      }
+      if (!validRole) {
+        return NextResponse.json({ error: "Invalid Role ID or name" }, { status: 400 });
+      }
+      updateData.role = validRole._id;
+    }
     if (formData.has("status")) updateData.status = formData.get("status") as string;
 
     if (formData.has("company")) {
@@ -51,6 +71,7 @@ export async function PATCH(
         }
 
         updateData.company = newCompanyId;
+        targetCompanyName = companyExists.name;
 
         if (oldCompanyId) {
           await Company.findByIdAndUpdate(oldCompanyId, { $pull: { users: id } });
@@ -63,6 +84,7 @@ export async function PATCH(
     const password = formData.get("password") as string;
     if (password && password.trim() !== "") {
       updateData.password = await bcrypt.hash(password, 10);
+      updateData.passwordChangedAt = new Date();
     }
 
     // Permission Arrays
@@ -95,13 +117,20 @@ export async function PATCH(
           { status: 400 }
         );
       }
-        const oldPicUrl = user.profilePicture;
-  if (oldPicUrl) {
-    await deleteFile(oldPicUrl); // ← add this
-  }
+      const oldPicUrl = user.profilePicture;
+      if (oldPicUrl) {
+        await deleteFile(oldPicUrl);
+      }
 
       try {
-        const uploaded = await handleUpload(file, "users");
+        const uploaded = await handleUpload(
+          file,
+          buildCompanyUploadFolder({
+            companyName: targetCompanyName,
+            module: "user-profile",
+            entityName: (formData.get("name") as string) || user.fullName,
+          }),
+        );
         updateData.profilePicture = uploaded.url;
       } catch (err) {
         console.error("Profile picture upload failed:", err);

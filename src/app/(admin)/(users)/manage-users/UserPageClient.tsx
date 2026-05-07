@@ -12,6 +12,7 @@ interface UserPageClientProps {
   children: ReactNode;
   totalCount: number;
   companies: any[];
+  roles: any[];
   isSuperAdmin: boolean;
   canAdd: boolean;
 }
@@ -20,6 +21,7 @@ export default function UserPageClient({
   children,
   totalCount,
   companies,
+  roles,
   isSuperAdmin,
   canAdd,
 }: UserPageClientProps) {
@@ -44,9 +46,14 @@ export default function UserPageClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          User Management
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+            User Management
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Manage system users, company access, roles, and account permissions.
+          </p>
+        </div>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">
@@ -70,6 +77,7 @@ export default function UserPageClient({
           isFilterVisible ? (
             <UserFilterWrapper
               companies={companies}
+              roles={roles}
               isSuperAdmin={isSuperAdmin}
             />
           ) : null

@@ -1,5 +1,6 @@
 import { dbConnect } from "@/lib/db";
 import Role from "@/models/Role";
+import Permission from "@/models/Permission";
 
 interface GetRolesParams {
   page?: number;
@@ -18,34 +19,53 @@ export async function getRoles({
 }: GetRolesParams) {
   await dbConnect();
 
-  const userRoleName = user.role?.toLowerCase();
+  const userRole = user.role;
+  const userPermissions = user.permissions || [];
   const skip = (page - 1) * limit;
 
   // 1. Build Query
   const query: any = {};
 
-  // RBAC Filtering
-  if (userRoleName === "admin") {
+  // 2. RBAC Logic
+  if (userRole !== "super-admin") {
+    // Find all Permission documents matching the user's slugs
+    const allowedPerms = await Permission.find({
+      slug: { $in: userPermissions },
+    }).select("resourceId");
+
+    const allowedResourceIds = allowedPerms
+      .map((p) => p.resourceId)
+      .filter((id) => id != null);
+
+    // Non-super-admins cannot see super-admin or admin roles
     query.name = { $nin: ["super-admin", "admin"] };
-  } else if (userRoleName !== "super-admin") {
-    // Non-admins see nothing (or handle differently based on your needs)
-    return { 
-      data: [], 
-      pagination: { total: 0, page, limit, totalPages: 0 } 
-    };
+
+    // If user has no relevant permissions, return empty
+    if (allowedResourceIds.length === 0) {
+      return {
+        data: [],
+        pagination: { total: 0, page, limit, totalPages: 0 },
+      };
+    }
   }
 
-  // 2. Search Filter
+  // 3. Search Filter (safe merge with existing query.name)
   if (search.trim()) {
-    query.name = { $regex: search.trim(), $options: "i" };
+    const searchRegex = { $regex: search.trim(), $options: "i" };
+    if (query.name) {
+      query.$and = [{ name: query.name }, { name: searchRegex }];
+      delete query.name;
+    } else {
+      query.name = searchRegex;
+    }
   }
 
-  // 3. Status Filter
+  // 4. Status Filter
   if (status && status !== "all") {
     query.status = status.toLowerCase();
   }
 
-  // 4. Execute Query
+  // 5. Execute Query
   const [data, total] = await Promise.all([
     Role.find(query)
       .sort({ createdAt: -1 })
@@ -59,11 +79,6 @@ export async function getRoles({
 
   return {
     data: JSON.parse(JSON.stringify(data)),
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages,
-    },
+    pagination: { total, page, limit, totalPages },
   };
 }

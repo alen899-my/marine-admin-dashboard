@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 import { ThemeScript } from "@/components/ThemeScript";
 import { auth } from "@/auth";
+import SessionRefreshProvider from "@/providers/SessionRefreshProvider";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -55,6 +56,7 @@ export default async function RootLayout({
 
         {/* Pass session to providers for instant authentication */}
         <Providers session={session}>
+          <SessionRefreshProvider />
           {children}
           <ToastContainer
             position="top-right"

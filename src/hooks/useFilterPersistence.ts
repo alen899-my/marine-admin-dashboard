@@ -6,23 +6,26 @@ import { useState, useEffect } from "react";
  * @param defaultValue - Whether filters should be open by default
  */
 export function useFilterPersistence(key: string = "common", defaultValue: boolean = false) {
-  // Create the storage key based on the page name
   const storageKey = `${key}ReportFilterVisible`;
 
-  const [isFilterVisible, setIsFilterVisible] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(storageKey);
-      // If nothing is saved, use the defaultValue
-      return saved !== null ? saved === "true" : defaultValue;
-    }
-    return defaultValue;
-  });
+  const [isFilterVisible, setIsFilterVisible] = useState(defaultValue);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
     if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) {
+        setIsFilterVisible(saved === "true");
+      }
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && isHydrated) {
       localStorage.setItem(storageKey, isFilterVisible.toString());
     }
-  }, [isFilterVisible, storageKey]);
+  }, [isFilterVisible, storageKey, isHydrated]);
 
   return { isFilterVisible, setIsFilterVisible };
 }

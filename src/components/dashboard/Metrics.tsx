@@ -5,6 +5,9 @@ import { useCountUp } from "@/hooks/useCountUp";
 import {
   Boxes,
   Building2,
+  CalendarClock,
+  CircleDollarSign,
+  FileCheck,
   FileStack,
   FileText,
   Flag,
@@ -12,229 +15,251 @@ import {
   Ship,
   SquareArrowDownRight,
   SquareArrowUpLeft,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
   Users2,
 } from "lucide-react";
 import Link from "next/link";
+import { MetricCard } from "./MetricCard";
+import type { MetricsData } from "@/types/dashboard";
 
-// Define the interface for props
-interface MetricsData {
-  dailyNoon: number;
-  departure: number;
-  arrival: number;
-  nor: number;
-  cargoStowage: number;
-  cargoDocuments: number;
-  vesselCount: number;
-  voyageCount: number;
-  userCount: number;
-  companyCount: number;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+// Using shared MetricCard component
+
+type SectionTitle = "Fleet & HR" | "Operations & Voyages" | "Administrative";
+
+interface MetricWidgetConfig {
+  section: SectionTitle;
+  permission: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  title: string;
+  valueKey: keyof MetricsData;
+  path: string;
+  trendKey: keyof MetricsData;
+  sparklineKey: keyof MetricsData;
 }
+
+const METRIC_WIDGETS: MetricWidgetConfig[] = [
+  {
+    section: "Fleet & HR",
+    permission: "stats.vessels",
+    icon: <Ship size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Vessels in Fleet",
+    valueKey: "vesselCount",
+    path: "/vessels",
+    trendKey: "vesselTrend",
+    sparklineKey: "vesselSparkline",
+  },
+  {
+    section: "Fleet & HR",
+    permission: "stats.activecrew",
+    icon: <Users2 size={22} className="text-blue-600 dark:text-blue-400" />,
+    iconBg: "bg-blue-50 dark:bg-blue-900/20",
+    title: "Active Crew",
+    valueKey: "activeCrewCount",
+    path: "/crews",
+    trendKey: "crewTrend",
+    sparklineKey: "crewSparkline",
+  },
+  {
+    section: "Fleet & HR",
+    permission: "stats.candidates",
+    icon: <UserCheck size={22} className="text-indigo-600 dark:text-indigo-400" />,
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/20",
+    title: "Total Candidates",
+    valueKey: "candidateCount",
+    path: "/onboarding",
+    trendKey: "candidateTrend",
+    sparklineKey: "candidateSparkline",
+  },
+  {
+    section: "Fleet & HR",
+    permission: "stats.activecontracts",
+    icon: <FileCheck size={22} className="text-violet-600 dark:text-violet-400" />,
+    iconBg: "bg-violet-50 dark:bg-violet-900/20",
+    title: "Active Contracts",
+    valueKey: "activeContractCount",
+    path: "/contracts",
+    trendKey: "contractTrend",
+    sparklineKey: "contractSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.voyages",
+    icon: <Map size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Voyages",
+    valueKey: "voyageCount",
+    path: "/voyage",
+    trendKey: "voyageTrend",
+    sparklineKey: "voyageSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.noon",
+    icon: <FileText size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Daily Noon Reports",
+    valueKey: "dailyNoon",
+    path: "/daily-noon-report",
+    trendKey: "noonTrend",
+    sparklineKey: "noonSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.departure",
+    icon: <SquareArrowUpLeft size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Departure Reports",
+    valueKey: "departure",
+    path: "/departure-report",
+    trendKey: "departureTrend",
+    sparklineKey: "departureSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.arrival",
+    icon: <SquareArrowDownRight size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Arrival Reports",
+    valueKey: "arrival",
+    path: "/arrival-report",
+    trendKey: "arrivalTrend",
+    sparklineKey: "arrivalSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.nor",
+    icon: <Flag size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "NOR Reports",
+    valueKey: "nor",
+    path: "/nor",
+    trendKey: "norTrend",
+    sparklineKey: "norSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.cargo_stowage",
+    icon: <Boxes size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Cargo Stowage Reports",
+    valueKey: "cargoStowage",
+    path: "/cargo-stowage-cargo-documents",
+    trendKey: "stowageTrend",
+    sparklineKey: "stowageSparkline",
+  },
+  {
+    section: "Operations & Voyages",
+    permission: "stats.cargo_docs",
+    icon: <FileStack size={22} className="text-teal-600 dark:text-teal-400" />,
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+    title: "Cargo Documents",
+    valueKey: "cargoDocuments",
+    path: "/cargo-stowage-cargo-documents",
+    trendKey: "cargoDocTrend",
+    sparklineKey: "cargoDocSparkline",
+  },
+  {
+    section: "Administrative",
+    permission: "stats.openpayrolls",
+    icon: <CircleDollarSign size={22} className="text-emerald-600 dark:text-emerald-400" />,
+    iconBg: "bg-emerald-50 dark:bg-emerald-900/20",
+    title: "Open Payrolls",
+    valueKey: "openPayrollCount",
+    path: "/payroll",
+    trendKey: "payrollTrend",
+    sparklineKey: "payrollSparkline",
+  },
+  {
+    section: "Administrative",
+    permission: "stats.pendingleaves",
+    icon: <CalendarClock size={22} className="text-amber-600 dark:text-amber-400" />,
+    iconBg: "bg-amber-50 dark:bg-amber-900/20",
+    title: "Pending Leave Approvals",
+    valueKey: "pendingLeaveCount",
+    path: "/payroll",
+    trendKey: "pendingLeaveTrend",
+    sparklineKey: "pendingLeaveSparkline",
+  },
+  {
+    section: "Administrative",
+    permission: "stats.users",
+    icon: <Users2 size={22} className="text-slate-600 dark:text-slate-400" />,
+    iconBg: "bg-slate-50 dark:bg-slate-900/20",
+    title: "Users",
+    valueKey: "userCount",
+    path: "/manage-users",
+    trendKey: "userTrend",
+    sparklineKey: "userSparkline",
+  },
+  {
+    section: "Administrative",
+    permission: "stats.companies",
+    icon: <Building2 size={22} className="text-slate-600 dark:text-slate-400" />,
+    iconBg: "bg-slate-50 dark:bg-slate-900/20",
+    title: "Companies",
+    valueKey: "companyCount",
+    path: "/manage-companies",
+    trendKey: "companyTrend",
+    sparklineKey: "companySparkline",
+  },
+];
+
+// ─── Metrics (main export) ────────────────────────────────────────────────────
 
 export const Metrics = ({ data }: { data: MetricsData }) => {
   const { can, isReady } = useAuthorization();
 
-  // If auth isn't ready (client-side check), show skeleton or null
-  // Note: Since data is passed from server, 'data' itself is never null/loading here
   if (!isReady) return null;
 
-  const hasFleetAccess =
-    can("stats.vessels") ||
-    can("stats.voyages") ||
-    can("stats.users") ||
-    can("stats.companies");
-  const hasOpsAccess =
-    can("stats.noon") ||
-    can("stats.departure") ||
-    can("stats.arrival") ||
-    can("stats.nor") ||
-    can("stats.cargo_stowage") ||
-    can("stats.cargo_docs");
+  const sections: SectionTitle[] = [
+    "Fleet & HR",
+    "Operations & Voyages",
+    "Administrative",
+  ];
 
   return (
     <div className="space-y-8 w-full max-w-full">
-      {/* --- Section 1: Fleet & Management --- */}
-      {hasFleetAccess && (
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">
-            Fleet & Management
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {can("stats.vessels") && (
-              <MetricCard
-                icon={
-                  <Ship
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Vessels"
-                value={data.vesselCount}
-                path="/vessels"
-              />
-            )}
-            {can("stats.voyages") && (
-              <MetricCard
-                icon={
-                  <Map size={24} className="text-teal-600 dark:text-teal-400" />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Voyages"
-                value={data.voyageCount}
-                path="/voyage"
-              />
-            )}
-            {can("stats.users") && (
-              <MetricCard
-                icon={
-                  <Users2
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Users"
-                value={data.userCount}
-                path="/manage-users"
-              />
-            )}
-            {can("stats.companies") && (
-              <MetricCard
-                icon={
-                  <Building2
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Companies"
-                value={data.companyCount}
-                path="/manage-companies"
-              />
-            )}
-          </div>
-        </div>
-      )}
+      {sections.map((section) => {
+        const visibleWidgets = METRIC_WIDGETS.filter(
+          (widget) => widget.section === section && can(widget.permission),
+        );
 
-      {/* --- Section 2: Operational Reports --- */}
-      {hasOpsAccess && (
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">
-            Operational Reports
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-            {can("stats.noon") && (
-              <MetricCard
-                icon={
-                  <FileText
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Daily Noon Reports"
-                value={data.dailyNoon}
-                path="/daily-noon-report"
-              />
-            )}
-            {can("stats.departure") && (
-              <MetricCard
-                icon={
-                  <SquareArrowUpLeft
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Departure Reports"
-                value={data.departure}
-                path="/departure-report"
-              />
-            )}
-            {can("stats.arrival") && (
-              <MetricCard
-                icon={
-                  <SquareArrowDownRight
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Arrival Reports"
-                value={data.arrival}
-                path="/arrival-report"
-              />
-            )}
-            {can("stats.nor") && (
-              <MetricCard
-                icon={
-                  <Flag
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="NOR Reports"
-                value={data.nor}
-                path="/nor"
-              />
-            )}
-            {can("stats.cargo_stowage") && (
-              <MetricCard
-                icon={
-                  <Boxes
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Cargo Stowage Reports"
-                value={data.cargoStowage}
-                path="/cargo-stowage-cargo-documents"
-              />
-            )}
-            {can("stats.cargo_docs") && (
-              <MetricCard
-                icon={
-                  <FileStack
-                    size={24}
-                    className="text-teal-600 dark:text-teal-400"
-                  />
-                }
-                iconBg="bg-teal-50 dark:bg-teal-900/20"
-                title="Cargo Documents"
-                value={data.cargoDocuments}
-                path="/cargo-stowage-cargo-documents"
-              />
-            )}
+        if (visibleWidgets.length === 0) return null;
+
+        const gridClassName =
+          section === "Operations & Voyages"
+            ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+            : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6";
+
+        return (
+          <div key={section}>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 ml-1">
+              {section}
+            </h3>
+            <div className={gridClassName}>
+              {visibleWidgets.map((widget) => (
+                <MetricCard
+                  key={widget.permission}
+                  id={widget.permission}
+                  icon={widget.icon}
+                  iconBg={widget.iconBg}
+                  title={widget.title}
+                  value={data[widget.valueKey] as number}
+                  path={widget.path}
+                  trend={data[widget.trendKey] as number}
+                  sparkline={data[widget.sparklineKey] as number[]}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
-  );
-};
-
-/* --- KEEP MetricCard and SkeletonCard COMPONENTS AS THEY WERE --- */
-const MetricCard = ({ icon, iconBg, title, value, path }: any) => {
-  const animatedValue = useCountUp(Number(value), 800);
-  return (
-    <Link
-      href={path}
-      className="group block min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] dark:hover:border-brand-500/50"
-    >
-      <div
-        className={`flex items-center justify-center w-12 h-12 rounded-xl transition-transform group-hover:scale-110 group-hover:rotate-3 ${iconBg}`}
-      >
-        {icon}
-      </div>
-      <div className="flex flex-col mt-5">
-        <span className="text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-brand-500 transition-colors line-clamp-1">
-          {title}
-        </span>
-        <h4 className="mt-2 font-bold text-gray-800 text-2xl dark:text-white/90">
-          {animatedValue}
-        </h4>
-      </div>
-    </Link>
   );
 };

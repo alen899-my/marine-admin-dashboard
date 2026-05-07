@@ -70,7 +70,7 @@ export default function PublicUserDropdown() {
         <div className="relative">
           <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-brand-400/30 via-transparent to-brand-600/20 dark:from-brand-500/20 dark:to-brand-700/10 blur-sm" />
 
-          <div className="relative rounded-2xl border border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-theme-xl overflow-hidden">
+          <div className="relative rounded-2xl dark:border-white/[0.06] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-theme-xl overflow-hidden">
 
             {/* Header (Matching UserDropdown Hero style) */}
             <div className="relative px-5 pt-5 pb-10 bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden">
@@ -83,12 +83,7 @@ export default function PublicUserDropdown() {
                     {fullName}
                   </p>
                   <p className="text-brand-100 text-[11px] truncate mb-2">{email}</p>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">
-                      {roleName}
-                    </span>
-                  </span>
+                
                 </div>
 
                 <div className="flex-shrink-0 h-12 w-12 rounded-2xl overflow-hidden border-2 border-white/40 shadow-theme-md bg-brand-400">
@@ -116,7 +111,7 @@ export default function PublicUserDropdown() {
                 <span>Edit Profile</span>
               </DropdownItem>
 
-              <DropdownItem
+              {/* <DropdownItem
                 tag="a"
                 href="/careers/help"
                 onItemClick={closeDropdown}
@@ -124,7 +119,7 @@ export default function PublicUserDropdown() {
               >
                 <Info className="w-4 h-4 flex-shrink-0 text-gray-400 group-hover:text-brand-500 transition-colors" />
                 <span>Help Center</span>
-              </DropdownItem>
+              </DropdownItem> */}
             </div>
 
             {/* Sign Out */}

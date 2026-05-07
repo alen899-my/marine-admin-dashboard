@@ -83,6 +83,7 @@ const AddPreArrivalRequest = forwardRef(({
     { value: "draft", label: "Draft" },
     { value: "published", label: "published" },
     { value: "sent", label: "Sent to Agent" },
+    { value: "acknowledged", label: "Acknowledged" },
     { value: "completed", label: "Completed" },
   ];
 

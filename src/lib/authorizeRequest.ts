@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-export async function authorizeRequest(permission: string) {
+export async function authorizeRequest(permission: string | string[]) {
   const session = await auth();
 
   if (!session || !session.user) {
@@ -12,13 +12,20 @@ export async function authorizeRequest(permission: string) {
   }
 
   const role = session.user.role;
+  const permissionsToCheck = Array.isArray(permission)
+    ? permission
+    : [permission];
 
   //  SUPER ADMIN BYPASS — ABSOLUTE
   if (role === "super-admin") {
     return { ok: true, session };
   }
 
-  if (!session.user.permissions?.includes(permission)) {
+  const hasPermission = permissionsToCheck.some((item) =>
+    session.user.permissions?.includes(item),
+  );
+
+  if (!hasPermission) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),

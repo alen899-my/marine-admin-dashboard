@@ -4,19 +4,19 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthorization } from "@/hooks/useAuthorization";
+import { Copy, Check } from "lucide-react";
 
-import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
 import ViewModal from "@/components/common/ViewModal";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 
-import Input from "@/components/form/input/InputField";
-import TextArea from "@/components/form/input/TextArea";
-import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
-import SearchableSelect from "@/components/form/SearchableSelect";
+import { parseDateInTz } from "@/lib/timezone";
+import { toZonedTime } from "date-fns-tz";
+import { format } from "date-fns";
+
+import JobPostingForm, { JobFormData, validateJobForm } from "./Jobpostingform";
 
 interface Company {
     _id: string;
@@ -30,7 +30,6 @@ interface Job {
     applicationLink?: string;
     isAccepting: boolean;
     deadline?: string;
-    status: "active" | "inactive";
     companyId: Company;
     createdAt?: string;
 }
@@ -46,6 +45,35 @@ interface JobsTableProps {
     companyOptions: { value: string; label: string }[];
 }
 
+// ── Timezone helpers ──────────────────────────────────────────────────────────
+
+function utcIsoToLocalDateOnly(iso: string | undefined): string {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+function localDateOnlyToUtcIso(dateOnly: string): string | null {
+    if (!dateOnly) return null;
+    const utcDate = new Date(`${dateOnly}T00:00:00.000Z`);
+    return isNaN(utcDate.getTime()) ? null : utcDate.toISOString();
+}
+
+function formatDeadlineDisplay(iso: string | undefined): string {
+    if (!iso) return "No Deadline";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "No Deadline";
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function JobsTable({
     data,
     pagination,
@@ -54,28 +82,21 @@ export default function JobsTable({
 }: JobsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { isReady } = useAuthorization();
+    const { can, isReady } = useAuthorization();
 
-    // Replace these with actual permissions later if added to DB
-    const canEdit = true;
-    const canDelete = true;
+    const canEdit = can("jobs.edit");
+    const canDelete = can("jobs.delete");
 
     const [openView, setOpenView] = useState(false);
     const [openDelete, setOpenDelete] = useState(false);
     const [openEdit, setOpenEdit] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+    const [copied, setCopied] = useState(false);
 
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-    const [editData, setEditData] = useState<{
-        title: string;
-        description: string;
-        applicationLink: string;
-        isAccepting: boolean;
-        deadline: string;
-        status: "active" | "inactive";
-        companyId: string;
-    } | null>(null);
+    const [editData, setEditData] = useState<JobFormData | null>(null);
 
     const handlePageChange = (newPage: number) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -83,30 +104,45 @@ export default function JobsTable({
         router.push(`?${params.toString()}`);
     };
 
-    const toLocal = (iso: string | undefined): string =>
-        iso ? new Date(iso).toISOString().slice(0, 16) : "";
+    const handleCopyLink = (link: string) => {
+        navigator.clipboard.writeText(link).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
 
     const columns = [
         {
             header: "S.No",
-            render: (_: Job, index: number) => (pagination.page - 1) * pagination.limit + index + 1,
+            render: (_: Job, index: number) =>
+                (pagination.page - 1) * pagination.limit + index + 1,
         },
-        ...(isSuperAdmin ? [{
-            header: "Company",
-            render: (j: Job) => (
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {j.companyId?.name || "N/A"}
-                </span>
-            ),
-        }] : []),
+        ...(isSuperAdmin
+            ? [{
+                  header: "Company",
+                  render: (j: Job) => (
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                          {j.companyId?.name || "N/A"}
+                      </span>
+                  ),
+              }]
+            : []),
         {
             header: "Job Title",
             render: (j: Job) => (
-                <span className="text-sm font-semibold capitalize text-brand-600 dark:text-brand-400">
+                <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-300">
                     {j.title}
                 </span>
             ),
         },
+        {
+    header: "Deadline",
+    render: (j: Job) => (
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+            {formatDeadlineDisplay(j.deadline)}
+        </span>
+    ),
+},
         {
             header: "Accepting",
             render: (j: Job) => (
@@ -115,30 +151,23 @@ export default function JobsTable({
                 </Badge>
             ),
         },
-        {
-            header: "Status",
-            render: (j: Job) => (
-                <Badge color={j.status === "active" ? "success" : "error"}>
-                    {j.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-            ),
-        },
     ];
 
     const handleView = (j: Job) => {
         setSelectedJob(j);
+        setCopied(false);
         setOpenView(true);
     };
 
     const handleEdit = (j: Job) => {
         setSelectedJob(j);
+        setEditErrors({});
         setEditData({
             title: j.title,
             description: j.description,
             applicationLink: j.applicationLink || "",
             isAccepting: j.isAccepting,
-            deadline: toLocal(j.deadline),
-            status: j.status,
+            deadline: utcIsoToLocalDateOnly(j.deadline),
             companyId: j.companyId?._id || "",
         });
         setOpenEdit(true);
@@ -146,21 +175,25 @@ export default function JobsTable({
 
     const handleUpdate = async () => {
         if (!selectedJob || !editData) return;
+
+        const validationErrors = validateJobForm(editData, isSuperAdmin);
+        if (Object.keys(validationErrors).length > 0) {
+            setEditErrors(validationErrors);
+            return;
+        }
+
         setSaving(true);
         try {
+            const deadlineUtc = localDateOnlyToUtcIso(editData.deadline);
             const res = await fetch(`/api/job-postings/${selectedJob._id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...editData,
-                    deadline: editData.deadline ? new Date(editData.deadline).toISOString() : null
-                }),
+                body: JSON.stringify({ ...editData, deadline: deadlineUtc }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.error);
             }
-
             toast.success("Job updated");
             setOpenEdit(false);
             router.refresh();
@@ -179,7 +212,6 @@ export default function JobsTable({
                 method: "DELETE",
             });
             if (!res.ok) throw new Error();
-
             toast.success("Job completely removed");
             setOpenDelete(false);
             router.refresh();
@@ -194,151 +226,149 @@ export default function JobsTable({
 
     return (
         <>
-            <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl overflow-hidden mt-6">
-                <div className="max-w-full overflow-x-auto">
-                    <div className="min-w-[1200px]">
-                        <CommonReportTable
-                            data={data}
-                            columns={columns}
-                            loading={false}
-                            currentPage={pagination.page}
-                            totalPages={pagination.totalPages}
-                            onPageChange={handlePageChange}
-                            onRowClick={handleView}
-                            onView={(j) => {
-                                setSelectedJob(j);
-                                setOpenView(true);
-                            }}
-                            onEdit={canEdit ? handleEdit : undefined}
-                            onDelete={canDelete ? (j) => {
-                                setSelectedJob(j);
-                                setOpenDelete(true);
-                            } : undefined}
-                        />
-                    </div>
+            {/* TABLE */}
+            <div className="max-w-full overflow-x-auto">
+                <div className="min-w-[1200px]">
+                    <CommonReportTable
+                        data={data}
+                        columns={columns}
+                        loading={false}
+                        currentPage={pagination.page}
+                        totalPages={pagination.totalPages}
+                        onPageChange={handlePageChange}
+                        onRowClick={handleView}
+                        onView={(j) => { setSelectedJob(j); setOpenView(true); }}
+                        onEdit={canEdit ? handleEdit : undefined}
+                        onDelete={
+                            canDelete
+                                ? (j) => { setSelectedJob(j); setOpenDelete(true); }
+                                : undefined
+                        }
+                    />
                 </div>
             </div>
 
-            {/* VIEW MODAL */}
-            <ViewModal isOpen={openView} onClose={() => setOpenView(false)} title="Job Details" size="sm">
-                <div className="space-y-4 p-2">
-                    <div className="flex flex-col border-b pb-2">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Title</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{selectedJob?.title}</span>
-                    </div>
-
-                    <div className="flex flex-col border-b pb-2">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Company</span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">{selectedJob?.companyId?.name || "N/A"}</span>
-                    </div>
-
-                    <div className="flex flex-col border-b pb-2">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Description</span>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedJob?.description}</p>
-                    </div>
-
-                    {selectedJob?.applicationLink && (
-                        <div className="flex flex-col border-b pb-2">
-                            <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Application Link</span>
-                            <a href={selectedJob.applicationLink} target="_blank" className="text-brand-500 hover:underline text-sm break-all">
-                                {selectedJob.applicationLink}
-                            </a>
+            {/* ── VIEW MODAL ── */}
+            <ViewModal
+                isOpen={openView}
+                onClose={() => setOpenView(false)}
+                title="Job Details"
+                headerRight={
+                    selectedJob && (
+                        <div className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                            <span className="font-bold">{selectedJob.title}</span>
                         </div>
-                    )}
+                    )
+                }
+            >
+                <div className="text-[13px] py-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                        <section className="space-y-1.5">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                                Basic Information
+                            </h3>
+                            <div className="flex justify-between gap-4">
+                                <span className="text-gray-500 shrink-0">Title</span>
+                                <span className="font-medium text-right">
+                                    {selectedJob?.title || "-"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <span className="text-gray-500 shrink-0">Company</span>
+                                <span className="font-medium text-right">
+                                    {selectedJob?.companyId?.name || "N/A"}
+                                </span>
+                            </div>
+                        </section>
 
-                    <div className="flex items-center justify-between border-b pb-2">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider">Accepting Applications</span>
-                        <Badge color={selectedJob?.isAccepting ? "success" : "error"}>{selectedJob?.isAccepting ? "Yes" : "No"}</Badge>
-                    </div>
+                        <section className="space-y-1.5">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                                Status
+                            </h3>
+                            <div className="flex justify-between gap-4">
+                                <span className="text-gray-500 shrink-0">Accepting Applications</span>
+                                <Badge color={selectedJob?.isAccepting ? "success" : "error"}>
+                                    {selectedJob?.isAccepting ? "Yes" : "No"}
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <span className="text-gray-500 shrink-0">Deadline</span>
+                                <span className="font-medium text-right">
+                                    {formatDeadlineDisplay(selectedJob?.deadline)}
+                                </span>
+                            </div>
+                        </section>
 
-                    <div className="flex items-center justify-between border-b pb-2">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider">Deadline</span>
-                        <span className="text-sm font-medium">
-                            {selectedJob?.deadline ? new Date(selectedJob.deadline).toLocaleString() : "No Deadline"}
-                        </span>
-                    </div>
+                        <section className="space-y-1.5 md:col-span-2">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                                Description
+                            </h3>
+                            <div
+                                className="rte-content text-sm text-gray-700 dark:text-gray-300"
+                                dangerouslySetInnerHTML={{ __html: selectedJob?.description || "" }}
+                            />
+                        </section>
 
-                    <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider">Status</span>
-                        <Badge color={selectedJob?.status === "active" ? "success" : "error"}>{selectedJob?.status}</Badge>
+                        {selectedJob?.applicationLink && (
+                            <section className="space-y-1.5 md:col-span-2">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b">
+                                    Application Link
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={selectedJob.applicationLink}
+                                        target="_blank"
+                                        className="text-brand-500 hover:underline truncate"
+                                        title={selectedJob.applicationLink}
+                                    >
+                                        {selectedJob.applicationLink}
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopyLink(selectedJob.applicationLink!)}
+                                        className="shrink-0 text-gray-400 hover:text-brand-500 transition-colors"
+                                        title="Copy link"
+                                    >
+                                        {copied
+                                            ? <Check size={20} className="text-green-500" />
+                                            : <Copy size={20} />
+                                        }
+                                    </button>
+                                </div>
+                            </section>
+                        )}
                     </div>
                 </div>
             </ViewModal>
 
-            {/* EDIT MODAL */}
+            {/* ── EDIT MODAL ── */}
             <EditModal
                 isOpen={openEdit}
-                onClose={() => setOpenEdit(false)}
+                onClose={() => { setOpenEdit(false); setEditErrors({}); }}
                 title="Edit Job"
                 loading={saving}
                 onSubmit={handleUpdate}
             >
                 {editData && (
-                    <div className="max-h-[75vh] overflow-y-auto p-1 space-y-5 custom-scrollbar pb-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-
-                            {isSuperAdmin && (
-                                <div className="md:col-span-2">
-                                    <Label>Company</Label>
-                                    <SearchableSelect
-                                        options={companyOptions}
-                                        value={editData.companyId}
-                                        onChange={(val) => setEditData({ ...editData, companyId: val })}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="md:col-span-2">
-                                <Label>Job Title <span className="text-red-500">*</span></Label>
-                                <Input value={editData.title} onChange={(e) => setEditData({ ...editData, title: e.target.value })} />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <Label>Description <span className="text-red-500">*</span></Label>
-                                <TextArea rows={4} value={editData.description} onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <Label>Application Link</Label>
-                                <Input placeholder="https://..." value={editData.applicationLink} onChange={(e) => setEditData({ ...editData, applicationLink: e.target.value })} />
-                            </div>
-
-                            <div className="md:col-span-1">
-                                <Label>Deadline</Label>
-                                <Input type="datetime-local" value={editData.deadline} onChange={(e) => setEditData({ ...editData, deadline: e.target.value })} />
-                            </div>
-
-                            <div className="md:col-span-1 border border-gray-100 dark:border-gray-800 rounded-lg p-3 flex flex-col justify-center">
-                                <div className="flex items-center justify-between">
-                                    <Label className="mb-0">Accepting Applications?</Label>
-                                    <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={editData.isAccepting}
-                                        onClick={() => setEditData((v) => ({ ...v!, isAccepting: !v!.isAccepting }))}
-                                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${editData.isAccepting ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
-                                            }`}
-                                    >
-                                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${editData.isAccepting ? "translate-x-5" : "translate-x-0"
-                                            }`} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <Label>Status</Label>
-                                <Select
-                                    options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]}
-                                    value={editData.status}
-                                    onChange={(val) => setEditData({ ...editData, status: val as any })}
-                                />
-                            </div>
-                        </div>
+                    <div className="max-h-[75vh] overflow-y-auto p-1 custom-scrollbar pb-6">
+                        <JobPostingForm
+                            data={editData}
+                            onChange={(updated) => {
+                                setEditData(updated);
+                                if (Object.keys(editErrors).length > 0) {
+                                    setEditErrors(validateJobForm(updated, isSuperAdmin));
+                                }
+                            }}
+                            errors={editErrors}
+                            isSuperAdmin={isSuperAdmin}
+                            companies={companyOptions}
+                            mode="edit"
+                        />
                     </div>
                 )}
             </EditModal>
 
-            {/* DELETE MODAL */}
+            {/* ── DELETE MODAL ── */}
             <ConfirmDeleteModal
                 description="Are you sure you want to completely remove this job posting? This action cannot be undone."
                 isOpen={openDelete}

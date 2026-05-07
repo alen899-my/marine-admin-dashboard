@@ -6,6 +6,8 @@ const CompanySchema = new Schema(
     email: { type: String, required: true, unique: true },
     phone: { type: String },
     address: { type: String },
+    country: { type: String, trim: true, default: "" },   
+    currency: { type: String, trim: true, default: "" },  
     contactName: {
       type: String,
       trim: true,
@@ -17,7 +19,7 @@ const CompanySchema = new Schema(
       lowercase: true,
       default: "",
     },
-    logo: { type: String }, // Stores the URL (Local or Vercel Blob)
+    logo: { type: String },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     vessels: [{ type: Schema.Types.ObjectId, ref: "Vessel" }],
     users: [{ type: Schema.Types.ObjectId, ref: "User" }],

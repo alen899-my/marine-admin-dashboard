@@ -44,17 +44,17 @@ const EditModal: React.FC<EditModalProps> = ({
         lg:p-8
       `}
     >
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
         {/* HEADER */}
-        <h4 className="mb-6 text-lg font-medium text-gray-800 dark:text-white/90">
+        <h4 className="mb-6 shrink-0 text-lg font-medium text-gray-800 dark:text-white/90">
           {title}
         </h4>
 
         {/* BODY */}
-        <div>{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
 
         {/* FOOTER */}
-        <div className="flex items-center justify-end w-full gap-3 mt-6">
+        <div className="mt-6 flex w-full shrink-0 items-center justify-end gap-3 border-t border-gray-200 pt-4 dark:border-white/10">
           <Button
             size="sm"
             variant="outline"

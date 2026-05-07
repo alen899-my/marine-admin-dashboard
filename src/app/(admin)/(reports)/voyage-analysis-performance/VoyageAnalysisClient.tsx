@@ -7,7 +7,7 @@ import Label from "@/components/form/Label";
 import SearchableSelect from "@/components/form/SearchableSelect";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
-import Tooltip from "@/components/ui/tooltip/Tooltip";
+import Tooltip2 from "@/components/ui/tooltip/Tooltip2";
 import {
   Activity,
   AlertTriangle,
@@ -98,7 +98,16 @@ export default function VoyageAnalysisClient({
   );
 
   // Map dropdown options
-  const vesselsList = useMemo(() => vesselOptions.map((v) => ({ value: v._id, label: v.name })), [vesselOptions]);
+  const vesselsList = useMemo(
+    () =>
+      vesselOptions.map((v) => ({
+        value: v._id,
+        label: v.name,
+        logoUrl:
+          v.company && typeof v.company === "object" ? v.company.logo : undefined,
+      })),
+    [vesselOptions],
+  );
   const voyagesList = useMemo(() => voyageOptions.map((v) => ({ value: v._id, label: v.voyageNo })), [voyageOptions]);
   
   // New: Loading state is just a UI placeholder for navigation
@@ -254,6 +263,7 @@ export default function VoyageAnalysisClient({
   };
 
   const vesselName = vesselsList.find((v) => v.value === vessel)?.label || "N/A";
+  const companyLogo = vesselsList.find((v) => v.value === vessel)?.logoUrl;
   const voyageNo = voyagesList.find((v) => v.value === legId)?.label || "N/A";
 
   // date time format function for pdf
@@ -303,6 +313,7 @@ export default function VoyageAnalysisClient({
             title="Voyage Analysis & Performance Report"
             filename={`Voyage_Report_${voyageNo}_${vesselName}`}
             data={pdfData}
+            logoUrl={companyLogo}
             buttonLabel="Export PDF"
             disabled={!vessel || !legId}
           />
@@ -635,11 +646,11 @@ export default function VoyageAnalysisClient({
                         size={20}
                       />
                     </div>
-                    <Tooltip content={metric.tooltip} position="left">
+                    <Tooltip2 content={metric.tooltip} position="left">
                       <button className="text-slate-400 transition-colors">
                         <Info size={14} />
                       </button>
-                    </Tooltip>
+                    </Tooltip2>
                   </div>
 
                   <div>
@@ -706,12 +717,12 @@ export default function VoyageAnalysisClient({
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-tight">
                           {item.label}
                         </span>
-                        <Tooltip content={item.tooltip}>
+                        <Tooltip2 content={item.tooltip}>
                           <Info
                             size={12}
                             className="text-gray-400 hover:text-gray-500 cursor-help transition-colors"
                           />
-                        </Tooltip>
+                        </Tooltip2>
                       </div>
                       <p className="text-[10px] text-gray-500 font-medium">
                         {item.subtext}
@@ -811,7 +822,7 @@ export default function VoyageAnalysisClient({
                             <span className="text-xs font-medium">
                               Total Consumed
                             </span>
-                            <Tooltip
+                            <Tooltip2
                               content="(Departure ROB - Arrival ROB) + Any Bunkering"
                               position="right"
                             >
@@ -819,7 +830,7 @@ export default function VoyageAnalysisClient({
                                 size={11}
                                 className="cursor-help opacity-60 hover:opacity-100"
                               />
-                            </Tooltip>
+                            </Tooltip2>
                           </div>
                         </div>
 
@@ -837,12 +848,12 @@ export default function VoyageAnalysisClient({
                               className={`mt-1 flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[12px] ${fuel.badgeColor}`}
                             >
                               {fuel.perDay} MT / DAY
-                              <Tooltip
+                              <Tooltip2
                                 content="Total MT Consumed / (Total Steam Hours / 24)"
                                 position="left"
                               >
                                 <Info size={10} className="cursor-help" />
-                              </Tooltip>
+                              </Tooltip2>
                             </div>
                           </div>
                         </div>

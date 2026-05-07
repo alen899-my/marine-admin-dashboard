@@ -1,12 +1,12 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import Crew from "@/models/Application";
+import Candidate from "@/models/Candidate";
 import Company from "@/models/Company";
-import Job from "@/models/Job";
-import CrewApplicationForm from "@/components/Jobs/Application";
+import CandidateApplicationForm from "@/components/Jobs/Application";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { fetchActiveJobPositions } from "@/lib/services/applicationService";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -16,8 +16,10 @@ export default async function EditApplicationPage({ params }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { id } = await params;
+  const user = session.user;
+  const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
 
+  const { id } = await params;
   if (!mongoose.isValidObjectId(id)) {
     return (
       <div className="p-8 text-center text-red-500 font-medium">
@@ -28,41 +30,61 @@ export default async function EditApplicationPage({ params }: PageProps) {
 
   await dbConnect();
 
-  const raw = await Crew.findOne({ _id: id, deletedAt: null })
+  const raw = await Candidate.findOne({ _id: id, deletedAt: null })
+    .populate("jobId", "title")
     .select("-adminNotes -__v")
     .lean();
-
   if (!raw) notFound();
 
-  // Serialize all ObjectIds / Dates / Buffers to plain values
   const application = JSON.parse(JSON.stringify(raw));
+  if (application.jobId && typeof application.jobId === "object") {
+    application.positionApplied =
+      application.jobId.title || application.positionApplied || "";
+    application.jobId = application.jobId._id;
+  }
 
   const companyId =
     typeof application.company === "string"
       ? application.company
-      : application.company?.$oid ?? String(application.company);
+      : (application.company?.$oid ?? String(application.company));
 
-  // Fetch company details for logo
-  const company = await Company.findById(companyId).select("name logo").lean();
+  const [company, activePositions] = await Promise.all([
+    Company.findById(companyId).select("name logo").lean(),
+    fetchActiveJobPositions(companyId),
+  ]);
   const companyData = company ? JSON.parse(JSON.stringify(company)) : null;
 
-  const activeJobsRes = await Job.find({ companyId, status: "active", isAccepting: true })
-    .select("title")
-    .sort({ createdAt: -1 })
-    .lean();
+  const availablePositions = [...activePositions];
+  if (application.jobId && application.positionApplied) {
+    const jobIdStr = application.jobId.toString();
+    const exists = availablePositions.some((p) => p.value === jobIdStr);
+    if (!exists) {
+      availablePositions.push({
+        value: jobIdStr,
+        label: application.positionApplied,
+      });
+    }
+  }
 
-  const availablePositions = activeJobsRes.map((j: any) => ({
-    value: j.title,
-    label: j.title,
-  }));
+  let companiesProp: { value: string; label: string }[] = [];
+  if (isSuperAdmin) {
+    const allCompanies = await Company.find({ deletedAt: null })
+      .select("name")
+      .sort({ name: 1 })
+      .lean();
+    companiesProp = (allCompanies as any[]).map((c) => ({
+      value: c._id.toString(),
+      label: c.name,
+    }));
+  }
 
   return (
     <div className="">
       <PageBreadcrumb
         pageTitle=""
-        items={[{ label: "Crew Applications", href: "/jobs" }]}
+        items={[{ label: "Candidate Applications", href: "/jobs" }]}
       />
-      <CrewApplicationForm
+      <CandidateApplicationForm
         mode="edit"
         companyId={companyId}
         companyName={companyData?.name}
@@ -70,6 +92,9 @@ export default async function EditApplicationPage({ params }: PageProps) {
         initialData={application}
         applicationId={id}
         availablePositions={availablePositions}
+        jobId={application.jobId?.toString()}
+        isSuperAdmin={isSuperAdmin}
+        companies={companiesProp}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface SwitchProps {
   label: string;
@@ -17,6 +17,11 @@ const Switch: React.FC<SwitchProps> = ({
   color = "blue", // Default to blue color
 }) => {
   const [isChecked, setIsChecked] = useState(defaultChecked);
+
+  // Sync internal state with prop whenever defaultChecked changes
+  useEffect(() => {
+    setIsChecked(defaultChecked);
+  }, [defaultChecked]);
 
   const handleToggle = () => {
     if (disabled) return;

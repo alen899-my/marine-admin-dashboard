@@ -55,6 +55,9 @@ export default function PermissionPageClient({
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
             Permission Management
           </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Create and maintain permission slugs that control access to system features.
+          </p>
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">

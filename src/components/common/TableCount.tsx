@@ -12,11 +12,11 @@ export default function TableCount({ count, label = "Items", loading }: TableCou
   }
 
   return (
-    <div className="flex gap-1.5 p-1 px-2 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 w-fit text-center">
-      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+    <div className="flex gap-1.5 px-2 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 w-fit text-center">
+      <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400">
         {count.toLocaleString()}
       </span>
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
         {label}
       </span>
     </div>

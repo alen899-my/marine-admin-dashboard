@@ -9,6 +9,7 @@ import Voyage from "@/models/Voyage";
 import { auth } from "@/auth"; 
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 
 // --- HELPER: PARSE DD/MM/YYYY or YYYY-MM-DD → Date ---
 function parseDMY(str: string): Date {
@@ -91,6 +92,12 @@ export async function PATCH(
   try {
     const session = await auth();
     const currentUserId = session?.user?.id;
+    const companyName = session?.user?.company?.name;
+    const cargoUploadFolder = buildCompanyUploadFolder({
+      companyName,
+      module: "cargo",
+      subfolder: session?.user?.fullName,
+    });
     const authz = await authorizeRequest("cargo.edit");
     if (!authz.ok) return authz.response;
 
@@ -158,7 +165,7 @@ export async function PATCH(
 
       // Upload new file
       try {
-        const uploaded = await handleUpload(file, "cargo");
+        const uploaded = await handleUpload(file, cargoUploadFolder);
         updateData.file = {
           url: uploaded.url,
           originalName: file.name,

@@ -2,19 +2,21 @@ import Image from "next/image";
 import React from "react";
 
 interface AvatarProps {
-  src: string; // URL of the avatar image
+  src?: string | null; // URL of the avatar image
+  name?: string; // Name to generate initials from if src is missing
   alt?: string; // Alt text for the avatar
   size?: "xsmall" | "small" | "medium" | "large" | "xlarge" | "xxlarge"; // Avatar size
   status?: "online" | "offline" | "busy" | "none"; // Status indicator
+  className?: string; // Additional classes
 }
 
 const sizeClasses = {
-  xsmall: "h-6 w-6 max-w-6",
-  small: "h-8 w-8 max-w-8",
-  medium: "h-10 w-10 max-w-10",
-  large: "h-12 w-12 max-w-12",
-  xlarge: "h-14 w-14 max-w-14",
-  xxlarge: "h-16 w-16 max-w-16",
+  xsmall: "h-6 w-6 max-w-6 text-[10px]",
+  small: "h-8 w-8 max-w-8 text-[12px]",
+  medium: "h-10 w-10 max-w-10 text-[14px]",
+  large: "h-12 w-12 max-w-12 text-[16px]",
+  xlarge: "h-14 w-14 max-w-14 text-[18px]",
+  xxlarge: "h-16 w-16 max-w-16 text-[20px]",
 };
 
 const statusSizeClasses = {
@@ -32,23 +34,56 @@ const statusColorClasses = {
   busy: "bg-warning-500",
 };
 
+const colors = [
+  "bg-brand-100 text-brand-600",
+  "bg-pink-100 text-pink-600",
+  "bg-cyan-100 text-cyan-600",
+  "bg-orange-100 text-orange-600",
+  "bg-green-100 text-green-600",
+  "bg-purple-100 text-purple-600",
+  "bg-yellow-100 text-yellow-600",
+  "bg-error-100 text-error-600",
+];
+
+const getColorClass = (name: string) => {
+  const index = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[index % colors.length];
+};
+
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 const Avatar: React.FC<AvatarProps> = ({
   src,
+  name = "User",
   alt = "User Avatar",
   size = "medium",
   status = "none",
+  className = "",
 }) => {
   return (
-    <div className={`relative  rounded-full ${sizeClasses[size]}`}>
+    <div className={`relative rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden ${sizeClasses[size]} ${!src ? getColorClass(name) : ""} ${className}`}>
       {/* Avatar Image */}
-      <Image
-        width="0"
-        height="0"
-        sizes="100vw"
-        src={src}
-        alt={alt}
-        className="object-cover w-full rounded-full"
-      />
+      {src ? (
+        <Image
+          width="0"
+          height="0"
+          sizes="100vw"
+          src={src}
+          alt={alt || name}
+          className="object-cover w-full h-full rounded-full"
+        />
+      ) : (
+        <span className="font-bold leading-none">{getInitials(name)}</span>
+      )}
 
       {/* Status Indicator */}
       {status !== "none" && (

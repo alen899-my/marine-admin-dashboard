@@ -1,21 +1,25 @@
 "use client";
 
-import CrewFilters, { CrewFilterData } from "@/components/Jobs/Crewfilters";
+import CandidateFilters, {
+  CandidateFilterData,
+} from "@/components/Jobs/CandidateFilters";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-export default function CrewFilterWrapper({
+export default function CandidateFilterWrapper({
   companies,
   isSuperAdmin,
+  jobs,
 }: {
   companies: any[];
   isSuperAdmin: boolean;
+  jobs: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleApply = useCallback(
-    (data: CrewFilterData) => {
+    (data: CandidateFilterData) => {
       const params = new URLSearchParams(searchParams.toString());
 
       Object.entries(data).forEach(([key, value]) => {
@@ -33,11 +37,13 @@ export default function CrewFilterWrapper({
   );
 
   return (
-    <CrewFilters
+    <CandidateFilters
       search={searchParams.get("search") || ""}
       status={searchParams.get("status") || "all"}
       companyId={searchParams.get("companyId") || ""}
+      jobTitle={searchParams.get("jobTitle") || ""}
       companies={companies}
+      jobs={jobs}
       isSuperAdmin={isSuperAdmin}
       onApply={handleApply}
     />

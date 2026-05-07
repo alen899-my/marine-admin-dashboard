@@ -7,21 +7,23 @@ import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
+import { COUNTRY_OPTIONS, CURRENCY_OPTIONS, getCurrencySymbol } from "@/constants/geoData";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useModal } from "@/hooks/useModal";
 import { companySchema } from "@/lib/validations/companySchema";
 
 interface AddCompanyButtonProps {
   onSuccess: () => void;
-   className?: string;
+  className?: string;
 }
 
-export default function AddCompanyButton({ onSuccess,className }: AddCompanyButtonProps) {
+export default function AddCompanyButton({ onSuccess, className }: AddCompanyButtonProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const { can, isReady } = useAuthorization();
 
@@ -37,6 +39,8 @@ export default function AddCompanyButton({ onSuccess,className }: AddCompanyButt
     address: "",
     contactName: "",
     contactEmail: "",
+    country: "",
+    currency: "",
   };
 
   const [form, setForm] = useState(defaultState);
@@ -59,31 +63,27 @@ export default function AddCompanyButton({ onSuccess,className }: AddCompanyButt
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 1. Create a URL for the selected file
     const objectUrl = URL.createObjectURL(file);
     const img = new window.Image();
 
     img.onload = () => {
-      // 2. Check dimensions
       const width = img.width;
       const height = img.height;
 
       if (width === 785 && height === 220) {
         setLogoFile(file);
         setLogoPreview(objectUrl);
-        // Clear logo error if you have one in the errors state
         setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors.logo;
           return newErrors;
         });
       } else {
-        // 3. Reject if dimensions don't match
         toast.error(
           `Invalid dimensions: ${width}x${height}. Required: 785x220.`
         );
-        e.target.value = ""; // Reset the input
-        URL.revokeObjectURL(objectUrl); // Clean up memory
+        e.target.value = "";
+        URL.revokeObjectURL(objectUrl);
       }
     };
 
@@ -126,6 +126,8 @@ export default function AddCompanyButton({ onSuccess,className }: AddCompanyButt
       formData.append("address", form.address);
       formData.append("contactName", form.contactName);
       formData.append("contactEmail", form.contactEmail);
+      formData.append("country", form.country);
+      formData.append("currency", form.currency);
 
       if (logoFile) formData.append("logo", logoFile);
 
@@ -213,6 +215,48 @@ export default function AddCompanyButton({ onSuccess,className }: AddCompanyButt
                   />
                 </div>
 
+                {/* Country */}
+                <div>
+                  <Label>Country</Label>
+                  <SearchableSelect
+                    options={COUNTRY_OPTIONS}
+                    value={form.country}
+                    onChange={(val) =>
+                      setForm((prev) => ({ ...prev, country: val }))
+                    }
+                    placeholder="Select country..."
+                    error={!!errors.country}
+                  />
+                  {errors.country && (
+                    <p className="mt-1 text-xs text-red-500">{errors.country}</p>
+                  )}
+                </div>
+
+                {/* Currency */}
+                <div>
+                  <Label>Currency</Label>
+                  <div className="relative">
+                    {form.currency && (
+                      <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                        {getCurrencySymbol(form.currency)}
+                      </span>
+                    )}
+                    <SearchableSelect
+                      options={CURRENCY_OPTIONS}
+                      value={form.currency}
+                      onChange={(val) =>
+                        setForm((prev) => ({ ...prev, currency: val }))
+                      }
+                      placeholder="Select currency..."
+                      error={!!errors.currency}
+                      className={form.currency ? "[&_input]:pl-9" : ""}
+                    />
+                  </div>
+                  {errors.currency && (
+                    <p className="mt-1 text-xs text-red-500">{errors.currency}</p>
+                  )}
+                </div>
+
                 <div className="md:col-span-2">
                   <Label>Address</Label>
                   <TextArea
@@ -258,7 +302,6 @@ export default function AddCompanyButton({ onSuccess,className }: AddCompanyButt
             </ComponentCard>
 
             <div className="flex flex-col items-center justify-center py-4 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-              {/* Reduced max-width from 500px to 320px for a more compact look */}
               <div className="relative w-full max-w-[320px] aspect-[785/220] rounded-xl overflow-hidden bg-white dark:bg-gray-900 border-2 border-white dark:border-gray-800 shadow-sm mb-3">
                 {logoPreview ? (
                   <Image

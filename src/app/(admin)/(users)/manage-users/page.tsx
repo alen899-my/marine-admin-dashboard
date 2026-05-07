@@ -37,6 +37,7 @@ export default async function UserManagement({ searchParams }: PageProps) {
     <UserPageClient
       totalCount={pagination.total}
       companies={metadata.companies}
+      roles={metadata.roles}
       isSuperAdmin={isSuperAdmin}
       canAdd={canAdd}
     >

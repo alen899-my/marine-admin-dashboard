@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const phonePattern = /^(?=.*\d)[\d+\s]+$/;
+
 export const userSchema = Joi.object({
   name: Joi.string().min(3).required().messages({
     "string.empty": "Name is required",
@@ -18,13 +20,18 @@ export const userSchema = Joi.object({
     "string.empty": "Please select a company",
     "any.required": "Company is required",
   }),
-
-phone: Joi.string()
-    .pattern(/^[0-9]{8,15}$/)
+  phone: Joi.string()
+    .trim()
+    .min(8)
+    .max(20)
+    .pattern(phonePattern)
     .required()
     .messages({
       "string.empty": "Phone number is required",
-      "string.pattern.base": "Phone number must be between 8 and 15 digits",
+      "string.min": "Phone number must be at least 8 characters",
+      "string.max": "Phone number cannot exceed 20 characters",
+      "string.pattern.base":
+        "Phone number can contain only digits, spaces, and +",
     }),
   password: Joi.string().min(6).required().messages({
     "string.empty": "Password is required",

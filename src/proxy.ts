@@ -2,8 +2,13 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { routePermissions } from "@/lib/routePermissions";
 
-const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password",  "/reset-password", "/careers"];
+const publicRoutes = ["/signin", "/signup", "/register", "/forgot-password", "/reset-password"];
 const authOnlyRoutes = ["/signin", "/signup", "/register", "/forgot-password"];
+
+function getSafeInternalRedirect(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -16,7 +21,15 @@ export default auth((req) => {
   }
   const userRole = (user as any)?.role?.toLowerCase();
   if (isLoggedIn && authOnlyRoutes.includes(nextUrl.pathname)) {
-    const redirectUrl = userRole === "candidate" ? "/careers" : "/";
+    const requestedRedirect = getSafeInternalRedirect(
+      nextUrl.searchParams.get("redirect"),
+    );
+    const redirectUrl =
+      requestedRedirect && userRole === "candidate"
+        ? requestedRedirect
+        : userRole === "candidate"
+          ? "/careers"
+          : requestedRedirect || "/";
     return NextResponse.redirect(new URL(redirectUrl, nextUrl));
   }
 
@@ -32,7 +45,10 @@ export default auth((req) => {
   }
 
   // 2. Redirect if not logged in and accessing protected pages
-  if (!isLoggedIn && !publicRoutes.includes(nextUrl.pathname)) {
+  const isPublicRoute =
+    publicRoutes.includes(nextUrl.pathname) || nextUrl.pathname.startsWith("/careers");
+
+  if (!isLoggedIn && !isPublicRoute) {
     return NextResponse.redirect(new URL("/signin", nextUrl));
   }
 

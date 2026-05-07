@@ -57,6 +57,7 @@ const userSchema = new Schema(
     lastLoginAt: { type: Date, default: null }, // Renamed to match your requested 'last_login_at'
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Number, default: null },
+    passwordChangedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   description: "Sign in to your Parkora Falcon account.",
 };
 
-export default function SignIn() {
-  return <SignInForm />;
+interface SignInProps {
+  searchParams: Promise<{ redirect?: string }>;
+}
+
+export default async function SignIn({ searchParams }: SignInProps) {
+  const { redirect } = await searchParams;
+
+  return <SignInForm redirect={redirect} />;
 }

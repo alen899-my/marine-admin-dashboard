@@ -10,7 +10,6 @@ import Alert from "../ui/alert/Alert";
 import { EyeIcon, EyeOff } from "lucide-react";
 // 1. Import NextAuth Client
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { signinValidation } from "@/lib/validations/signinValidation";
 interface FieldErrors {
   email?: string;
@@ -19,8 +18,18 @@ interface FieldErrors {
   [key: string]: string | undefined;
 }
 
-export default function SignInForm() {
-  const router = useRouter(); // For redirection
+interface SignInFormProps {
+  redirect?: string;
+}
+
+export default function SignInForm({ redirect }: SignInFormProps) {
+  const safeRedirect =
+    redirect?.startsWith("/") && !redirect.startsWith("//")
+      ? redirect
+      : null;
+  const signUpPath = safeRedirect
+    ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`
+    : "/signup";
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,8 +91,15 @@ export default function SignInForm() {
     }
 
     // 🔹 2. REAL SIGN-IN (NextAuth)
-    // Redirect candidates to /careers, others to /
-    const callbackUrl = data.role === "candidate" ? "/careers" : "/";
+    const callbackUrl =
+      safeRedirect && data.role === "candidate"
+        ? safeRedirect
+        : data.role === "candidate"
+          ? "/careers"
+          : safeRedirect
+            ? safeRedirect
+            : "/";
+
     await signIn("credentials", {
       email: form.email,
       password: form.password,
@@ -220,7 +236,7 @@ export default function SignInForm() {
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}
               <Link
-                href="/signup"
+                href={signUpPath}
                 className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
               >
                 Sign Up

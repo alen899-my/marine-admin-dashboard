@@ -68,9 +68,14 @@ export default function ArrivalPageClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Arrival Report
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+            Arrival Report
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Record vessel arrival details, NOR timing, port information, and arrival ROB.
+          </p>
+        </div>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="w-full flex justify-end sm:w-auto">

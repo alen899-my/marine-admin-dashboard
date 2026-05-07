@@ -9,11 +9,11 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import Alert from "@/components/ui/alert/Alert";
-import DashboardWidgetSectionUser from "@/components/Users/DashboardWidgetSectionUser";
+import PermissionGrid from "@/components/roles/PermissionGrid";
+import GeneralPermissionsSection from "@/components/roles/GeneralPermissionsSection";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useSession } from "next-auth/react";
 import PermissionLegend from "./components/PermissionLegend";
-import PermissionMatrixTable from "./components/PermissionMatrixTable";
 import RoleSelectionList from "./components/RoleSelectionList";
 import UserDetailsForm from "./components/UserDetailsForm";
 // --- Types ---
@@ -61,7 +61,7 @@ export default function UserFormModal({
 }: UserFormModalProps) {
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const { can, isReady } = useAuthorization();
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
 
   const loggedInUserRole = session?.user?.role?.toLowerCase();
   const loggedInUserCompanyId = session?.user?.company?.id;
@@ -491,6 +491,9 @@ export default function UserFormModal({
       // --- Success Logic ---
       if (initialData || createdUserId) {
         toast.success("User updated successfully!");
+        if (formData.password && session?.user?.id === currentUserId && data?.user?.passwordChangedAt) {
+          await update({ passwordChangedAt: data.user.passwordChangedAt });
+        }
         onSuccess?.();
         setAlertConfig({
           title: "User Updated Successfully",
@@ -565,20 +568,20 @@ export default function UserFormModal({
           }
         >
           <div className="space-y-6">
-            <PermissionMatrixTable
+            <PermissionGrid
               allPermissions={allPermissions}
               rolePermissions={selectedRolePermissions}
               additionalPermissions={additionalPerms}
               excludedPermissions={excludedPerms}
-              onToggle={togglePermission}
+              onToggle={(slug) => togglePermission(slug)}
               isReadOnly={!isEditMode || isSuperAdmin}
             />
-            <DashboardWidgetSectionUser
+            <GeneralPermissionsSection
               allPermissions={allPermissions}
               rolePermissions={selectedRolePermissions}
               additionalPermissions={additionalPerms}
               excludedPermissions={excludedPerms}
-              onToggle={togglePermission} // Uses the exact same logic as the grid
+              onToggle={(slug) => togglePermission(slug)} // Uses the exact same logic as the grid
               isReadOnly={!isEditMode || isSuperAdmin}
             />
           </div>

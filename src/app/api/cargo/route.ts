@@ -12,6 +12,7 @@ import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 const sendResponse = (
   status: number,
   message: string,
@@ -77,7 +78,13 @@ export async function POST(req: Request) {
     const documentType = formData.get("documentType") as string;
     const documentDate = formData.get("documentDate") as string;
     const remarks = formData.get("remarks") as string;
-
+    const companyName = session?.user.company?.name;
+    const cargoUploadFolder = buildCompanyUploadFolder({
+      companyName,
+      module: "cargo",
+      subfolder: session?.user?.fullName,
+    });
+    
     // ── File Upload ────────────────────────────────────────────────────────
     const file = formData.get("file") as File | null;
     if (!file)
@@ -87,7 +94,7 @@ export async function POST(req: Request) {
 
     let fileUrl = "";
     try {
-      const uploaded = await handleUpload(file, "cargo");
+      const uploaded = await handleUpload(file, cargoUploadFolder);
       fileUrl = uploaded.url;
     } catch (err) {
       console.error("Cargo document upload failed:", err);
@@ -324,7 +331,7 @@ export async function GET(req: Request) {
           select: "name company",
           populate: {
             path: "company",
-            select: "name",
+            select: "name logo",
           },
         })
         .populate("voyageId", "voyageNo")

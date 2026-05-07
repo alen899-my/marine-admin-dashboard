@@ -1,29 +1,20 @@
 "use client";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import {
-  Boxes,
-  Building2,
-  ChartSpline,
+  Briefcase,
+  BookOpen,
   ChevronDown,
-  Component,
+  CircleDollarSign,
+  ClipboardList,
+  Database,
   Ellipsis,
   FileCheck,
   FileText,
-  Fingerprint,
-  Flag,
-  IdCard,
   LayoutDashboard,
-  Map,
-  Ship,
-  SquareArrowDownRight,
-  SquareArrowUpLeft,
-  Users2,
-  Database,
+  Settings,
   ShieldCheck,
-  ClipboardList,
-  Briefcase,
-  BookOpen,
 } from "lucide-react";
+import type { SidebarNotificationCounts } from "@/context/SidebarNotificationContext";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -49,6 +40,43 @@ type NavItem = {
     requiredPermission?: string;
   }[];
 };
+type BadgeVariant = "red" | "zinc" | "blue";
+
+const variantStyles: Record<BadgeVariant, string> = {
+  red: "bg-red-600 dark:bg-red-500 text-white",
+  zinc: "bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400",
+  blue: "bg-blue-600 dark:bg-blue-500 text-white",
+};
+
+interface SidebarBadgeProps {
+  count: number;
+  variant?: BadgeVariant;
+}
+
+export const SidebarBadge = ({ count, variant = "blue" }: SidebarBadgeProps) => {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={`ml-2 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold tracking-tight text-gray-600 shadow-sm ${variantStyles[variant]}`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+};
+
+const SidebarDot = () => (
+  <span className="relative mr-2 inline-flex h-2.5 w-2.5">
+    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600 dark:bg-red-500" />
+  </span>
+);
+
+const SidebarIconDot = () => (
+  <span className="absolute -right-0.5 -top-0.5 inline-flex h-2.5 w-2.5">
+    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600 dark:bg-red-500" />
+  </span>
+);
 
 const navItems: NavItem[] = [
   {
@@ -91,11 +119,14 @@ const navItems: NavItem[] = [
         path: "/voyage-analysis-performance",
         requiredPermission: "voyageanalysis.view",
       },
-
     ],
   },
-
-
+  {
+    icon: <FileCheck size={25} />,
+    name: "Pre-Arrival Management",
+    path: "/pre-arrival",
+    requiredPermission: "prearrival.view",
+  },
   {
     icon: <Database size={25} />,
     name: "Masters",
@@ -120,13 +151,69 @@ const navItems: NavItem[] = [
         path: "/manage-users",
         requiredPermission: "users.view",
       },
+      {
+        name: "Crews",
+        path: "/crews",
+        requiredPermission: "crews.view",
+      },
     ],
   },
   {
-    icon: <FileCheck size={25} />,
-    name: "Pre-Arrival Management",
-    path: "/pre-arrival",
-    requiredPermission: "prearrival.view",
+    icon: <Briefcase size={25} />,
+    name: "HR",
+    subItems: [
+      {
+        name: "Job Postings",
+        path: "/job-postings",
+        requiredPermission: "jobs.view",
+      },
+      {
+        name: "Candidate Profiles",
+        path: "/jobs",
+        requiredPermission: "candidates.view",
+      },
+      {
+        name: "Contracts",
+        path: "/contracts",
+        requiredPermission: "contracts.view",
+      },
+      {
+        name: "Onboarding",
+        path: "/onboarding",
+        requiredPermission: "onboarding.view",
+      },
+      {
+        name: "Compilance expiry",
+        path: "/compliance-expiry",
+        requiredPermission: "compilance.view",
+      },
+      {
+        name: "Leave Types",
+        path: "/leave-type",
+        requiredPermission: "leavetype.view",
+      },
+    ],
+  },
+  {
+    icon: <CircleDollarSign size={25} />,
+    name: "Finance",
+    subItems: [
+      {
+        name: "Allowance & Deduction",
+        path: "/allowance-deduction",
+        requiredPermission: "allowance.deduction.view",
+      },
+      {
+        name: "Salary Head",
+        path: "/salary-head",
+        requiredPermission: "salary.head.view",
+      },
+      {
+        name: "Payroll",
+        path: "/payroll",
+        requiredPermission: "payroll.view",
+      },
+    ],
   },
   {
     icon: <ShieldCheck size={25} />,
@@ -136,6 +223,11 @@ const navItems: NavItem[] = [
         name: "Roles",
         path: "/roles-and-permissions",
         requiredPermission: "roles.view",
+      },
+      {
+        name: "Active Sessions",
+        path: "/active-sessions",
+        requiredPermission: "sessions.view",
       },
       {
         name: "Permissions ",
@@ -150,26 +242,46 @@ const navItems: NavItem[] = [
     ],
   },
 
-  // {
-  //   icon: <Briefcase size={25} />,
-  //   name: "Candidate Profiles",
-  //   path: "/jobs",
-  //   requiredPermission: "jobs.view",
-  // },
-  // {
-  //   icon: <Briefcase size={25} />,
-  //   name: "Job Postings",
-  //   path: "/job-postings",
-  //   requiredPermission: "jobs.view", // Temporary; can be updated to job-postings.view if such permission exists
-  // },
-  // {
-  //   icon: <BookOpen size={25} />,
-  //   name: "User Guide",
-  //   path: "/user-guide",
-  // },
+  {
+    icon: <BookOpen size={25} />,
+    name: "User Guide",
+    subItems: [
+      {
+        name: "Manage Guides",
+        path: "/user-guide-management",
+        requiredPermission: "userguide.edit",
+      },
+      {
+        name: "Groups",
+        path: "/user-guide-groups",
+        requiredPermission: "userguide.edit",
+      },
+    ],
+  },
+  {
+    icon: <FileText size={25} />,
+    name: "Templates",
+    subItems: [
+      {
+        name: "SEA Templates",
+        path: "/sea-templates",
+        requiredPermission: "templates.view",
+      },
+    ],
+  },
+  {
+    icon: <Settings size={25} />,
+    name: "Settings",
+    path: "/settings",
+    requiredPermission: "settings.manage",
+  },
 ];
 
-const AppSidebar: React.FC = () => {
+interface AppSidebarProps {
+  notificationCounts: SidebarNotificationCounts;
+}
+
+const AppSidebar: React.FC<AppSidebarProps> = ({ notificationCounts }) => {
   const {
     isExpanded,
     isMobileOpen,
@@ -193,7 +305,7 @@ const AppSidebar: React.FC = () => {
       // Handle logic for items with sub-items
       if (item.subItems) {
         const visibleSubItems = item.subItems.filter(
-          (sub) => !sub.requiredPermission || can(sub.requiredPermission)
+          (sub) => !sub.requiredPermission || can(sub.requiredPermission),
         );
 
         // Only add the parent if it has at least one visible sub-item
@@ -213,7 +325,9 @@ const AppSidebar: React.FC = () => {
     type: "main" | "others";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
+    {},
+  );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
@@ -255,6 +369,33 @@ const AppSidebar: React.FC = () => {
     });
   };
 
+  const getSubItemNotificationCount = useCallback(
+    (subItemName: string) => {
+      if (subItemName === "Compilance expiry") {
+        return notificationCounts.complianceExpiry;
+      }
+      if (subItemName === "Contracts") {
+        return notificationCounts.contracts;
+      }
+      if (subItemName === "Onboarding") {
+        return notificationCounts.onboarding;
+      }
+      if (subItemName === "Candidate Profiles") {
+        return notificationCounts.candidateProfiles;
+      }
+      return 0;
+    },
+    [notificationCounts],
+  );
+
+  const hasSubItemNotifications = useCallback(
+    (nav: NavItem) =>
+      !!nav.subItems?.some(
+        (subItem) => getSubItemNotificationCount(subItem.name) > 0,
+      ),
+    [getSubItemNotificationCount],
+  );
+
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-2">
       {items.map((nav, index) => (
@@ -262,30 +403,44 @@ const AppSidebar: React.FC = () => {
           {nav.subItems ? (
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group w-full ${openSubmenu?.type === menuType && openSubmenu?.index === index
-                ? "menu-item-active"
-                : "menu-item-inactive"
-                } cursor-pointer ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
-                }`}
+              className={`menu-item group w-full ${
+                openSubmenu?.type === menuType && openSubmenu?.index === index
+                  ? "menu-item-active"
+                  : "menu-item-inactive"
+              } cursor-pointer ${
+                !isExpanded && !isHovered
+                  ? "lg:justify-center"
+                  : "lg:justify-start"
+              }`}
             >
               <span
-                className={`${openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-icon-active"
-                  : "menu-item-icon-inactive"
-                  }`}
+                className={`${
+                  openSubmenu?.type === menuType && openSubmenu?.index === index
+                    ? "menu-item-icon-active"
+                    : "menu-item-icon-inactive"
+                } relative`}
               >
                 {nav.icon}
+                {hasSubItemNotifications(nav) &&
+                  !isExpanded &&
+                  !isHovered &&
+                  !isMobileOpen && <SidebarIconDot />}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
-                <span className={`menu-item-text`}>{nav.name}</span>
+                <span className="menu-item-text">{nav.name}</span>
               )}
               {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDown
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "rotate-180 text-brand-500"
-                    : ""
+                <span className="ml-auto flex items-center">
+                  {hasSubItemNotifications(nav) && <SidebarDot />}
+                  <ChevronDown
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      openSubmenu?.type === menuType &&
+                      openSubmenu?.index === index
+                        ? "rotate-180 text-brand-500"
+                        : ""
                     }`}
-                />
+                  />
+                </span>
               )}
             </button>
           ) : (
@@ -295,12 +450,16 @@ const AppSidebar: React.FC = () => {
                 onClick={() => {
                   if (isMobileOpen) toggleMobileSidebar();
                 }}
-                className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                  }`}
+                className={`menu-item group ${
+                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+                }`}
               >
                 <span
-                  className={`${isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"
-                    }`}
+                  className={`${
+                    isActive(nav.path)
+                      ? "menu-item-icon-active"
+                      : "menu-item-icon-inactive"
+                  }`}
                 >
                   {nav.icon}
                 </span>
@@ -332,12 +491,19 @@ const AppSidebar: React.FC = () => {
                       onClick={() => {
                         if (isMobileOpen) toggleMobileSidebar();
                       }}
-                      className={`menu-dropdown-item ${isActive(subItem.path)
-                        ? "menu-dropdown-item-active"
-                        : "menu-dropdown-item-inactive"
-                        }`}
+                      className={`menu-dropdown-item ${
+                        isActive(subItem.path)
+                          ? "menu-dropdown-item-active"
+                          : "menu-dropdown-item-inactive"
+                      }`}
                     >
-                      {subItem.name}
+      <span className="flex items-center justify-between w-full">
+  {subItem.name}
+  <SidebarBadge
+    count={getSubItemNotificationCount(subItem.name)}
+    variant={subItem.name === "Compilance expiry" ? "red" : "zinc"}
+  />
+</span>
                     </Link>
                   </li>
                 ))}
@@ -360,15 +526,37 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`py-5 hidden lg:flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-center"}`}>
+      <div
+        className={`py-5 hidden lg:flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-center"}`}
+      >
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              <Image priority className="dark:hidden" src="/images/logo/b.png" alt="Logo" width={160} height={50} />
-              <Image priority className="hidden dark:block" src="/images/logo/parkora_logo_dark.png" alt="Logo" width={160} height={50} />
+              <Image
+                priority
+                className="dark:hidden"
+                src="/images/logo/b.png"
+                alt="Logo"
+                width={160}
+                height={50}
+              />
+              <Image
+                priority
+                className="hidden dark:block"
+                src="/images/logo/parkora_logo_dark.png"
+                alt="Logo"
+                width={160}
+                height={50}
+              />
             </>
           ) : (
-            <Image priority src="/images/logo/p.png" alt="Logo" width={32} height={32} />
+            <Image
+              priority
+              src="/images/logo/p.png"
+              alt="Logo"
+              width={32}
+              height={32}
+            />
           )}
         </Link>
       </div>
@@ -376,7 +564,9 @@ const AppSidebar: React.FC = () => {
         <nav className="mb-6 pb-20">
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"}`}>
+              <h2
+                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"}`}
+              >
                 {isExpanded || isHovered || isMobileOpen ? "" : <Ellipsis />}
               </h2>
               {renderMenuItems(filteredNavItems, "main")}

@@ -6,19 +6,23 @@ import Button from "@/components/ui/button/Button";
 type AddFormProps = {
   title: string;
   description?: string;
+  descriptionError?: boolean;
   children: React.ReactNode;
   onCancel?: () => void;
-  onSubmit?: () => void;
+  onSubmit?: () => unknown | Promise<unknown>;
   submitLabel?: string;
+  actions?: React.ReactNode;
 };
 
 export default function AddForm({
   title,
   description,
+  descriptionError,
   children,
   onCancel,
   onSubmit,
   submitLabel = "Submit",
+  actions,
 }: AddFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +37,13 @@ export default function AddForm({
           {title}
         </h4>
         {description && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 sm:text-base mt-1">
+          <p
+            className={`text-sm sm:text-base mt-1 ${
+              descriptionError
+                ? "text-error-600 border-l-2 border-error-600 pl-2"
+                : "text-gray-500 dark:text-gray-400"
+            }`}
+          >
             {description}
           </p>
         )}
@@ -43,15 +53,19 @@ export default function AddForm({
       {children}
 
       {/* ACTIONS */}
-      <div className="flex justify-end gap-3">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
+      {actions ? (
+        <div className="flex flex-wrap justify-end gap-3">{actions}</div>
+      ) : (
+        <div className="flex justify-end gap-3">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
 
-        <Button type="submit">{submitLabel}</Button>
-      </div>
+          <Button type="submit">{submitLabel}</Button>
+        </div>
+      )}
     </form>
   );
 }

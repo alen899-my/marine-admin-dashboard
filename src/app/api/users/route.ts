@@ -13,6 +13,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 export async function POST(req: NextRequest) {
   try {
     // 1. Authorization
@@ -55,21 +56,6 @@ export async function POST(req: NextRequest) {
     // 3. Handle Profile Picture Upload
     const file = formData.get("profilePicture") as File | null;
     let profilePictureUrl = ""; // Default to empty/null
-
-    if (file && file.size > 0) {
-  if (file.size > 2 * 1024 * 1024) {
-    return NextResponse.json(
-      { error: "Profile picture exceeds the 2MB limit." },
-      { status: 400 },
-    );
-  }
-  try {
-    const uploaded = await handleUpload(file, "users");
-    profilePictureUrl = uploaded.url;
-  } catch (err) {
-    console.error("Profile picture upload failed:", err);
-  }
-}
     // 4. Role Fallback Logic
     if (!role) {
       const defaultRole = await Role.findOne({
@@ -110,10 +96,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validRole = await Role.findById(role);
+    if (file && file.size > 0) {
+      if (file.size > 2 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: "Profile picture exceeds the 2MB limit." },
+          { status: 400 },
+        );
+      }
+      try {
+        const uploaded = await handleUpload(
+          file,
+          buildCompanyUploadFolder({
+            companyName: validCompany.name,
+            module: "user-profile",
+            entityName: name,
+          }),
+        );
+        profilePictureUrl = uploaded.url;
+      } catch (err) {
+        console.error("Profile picture upload failed:", err);
+      }
+    }
+
+    const mongoose = require("mongoose");
+    let validRole;
+    if (mongoose.Types.ObjectId.isValid(role)) {
+      validRole = await Role.findById(role);
+    } else {
+      validRole = await Role.findOne({ name: role.toLowerCase() });
+    }
     if (!validRole) {
       return NextResponse.json(
-        { error: "Invalid Role ID provided" },
+        { error: "Invalid Role ID or name provided" },
         { status: 400 },
       );
     }
@@ -127,7 +141,7 @@ export async function POST(req: NextRequest) {
       phone: phone,
       password: hashedPassword,
       company: company,
-      role: role,
+      role: validRole._id,
       additionalPermissions: additionalPermissions,
       excludedPermissions: excludedPermissions,
       profilePicture: profilePictureUrl || null, //  Save the URL
@@ -198,15 +212,17 @@ export async function GET(req: NextRequest) {
     }
 
     // --- Roles Query Logic ---
-    const roleQuery: any = {};
+    const roleQuery: any = { deletedAt: null }; // Base query
+    const rolesToExcludeNames = ["candidate"];
+    
     if (!isSuperAdmin) {
-      if (isAdmin) {
-        roleQuery.name = { $ne: "super-admin" };
-      } else {
-        // Non-admins shouldn't see roles list usually, or only their own
+      rolesToExcludeNames.push("super-admin");
+      if (!isAdmin) {
+        // Non-admins shouldn't see roles list usually
         roleQuery._id = null;
       }
     }
+    roleQuery.name = { $nin: rolesToExcludeNames };
 
     // --- Users Query Logic (The complex one) ---
     const userQuery: any = {
@@ -216,6 +232,10 @@ export async function GET(req: NextRequest) {
     };
 
     // Multi-tenancy & Admin restrictions
+    const rolesToExcludeIds = [];
+    const candidateRole = await Role.findOne({ name: "candidate" }).select("_id");
+    if (candidateRole) rolesToExcludeIds.push(candidateRole._id);
+
     if (isSuperAdmin) {
       if (
         companyIdParam &&
@@ -231,15 +251,15 @@ export async function GET(req: NextRequest) {
         );
       }
       userQuery.company = userCompanyId;
-      // This now runs for EVERYONE who is not a Super Admin
-      if (!isSuperAdmin) {
-        const superAdminRole = await Role.findOne({
-          name: /super-admin/i,
-        }).select("_id");
-        if (superAdminRole) {
-          userQuery.role = { $ne: superAdminRole._id }; // Now restricted for all other roles
-        }
-      }
+
+      const superAdminRole = await Role.findOne({
+        name: /super-admin/i,
+      }).select("_id");
+      if (superAdminRole) rolesToExcludeIds.push(superAdminRole._id);
+    }
+
+    if (rolesToExcludeIds.length > 0) {
+      userQuery.role = { $nin: rolesToExcludeIds };
     }
 
     if (status !== "all") userQuery.status = status;

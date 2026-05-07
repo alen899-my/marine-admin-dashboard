@@ -7,11 +7,13 @@ import { toast } from "react-toastify";
 
 import AddForm from "@/components/common/AddForm";
 import ComponentCard from "@/components/common/ComponentCard";
+import SearchableSelect from "@/components/form/SearchableSelect";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Label from "@/components/form/Label";
-import Select from "@/components/form/Select"; // Ensure you have a Select component
+import Select from "@/components/form/Select";
 import { Modal } from "@/components/ui/modal";
+import { COUNTRY_OPTIONS, CURRENCY_OPTIONS, getCurrencySymbol } from "@/constants/geoData";
 import { companySchema } from "@/lib/validations/companySchema";
 
 interface CompanyFormModalProps {
@@ -38,9 +40,11 @@ export default function CompanyFormModal({
     email: "",
     phone: "",
     address: "",
-    status: "active", // Added status to state
+    status: "active",
     contactName: "",
     contactEmail: "",
+    country: "",
+    currency: "",
   };
 
   const [form, setForm] = useState(defaultState);
@@ -52,9 +56,11 @@ export default function CompanyFormModal({
         email: initialData.email || "",
         phone: initialData.phone || "",
         address: initialData.address || "",
-        status: initialData.status || "active", // Sync status
+        status: initialData.status || "active",
         contactName: initialData.contactName || "",
         contactEmail: initialData.contactEmail || "",
+        country: initialData.country || "",
+        currency: initialData.currency || "",
       });
       setLogoPreview(initialData.logo || null);
     } else {
@@ -97,7 +103,7 @@ export default function CompanyFormModal({
         toast.error(
           `Invalid dimensions: ${img.width}x${img.height}. Required: 785x220.`
         );
-        e.target.value = ""; // Reset input
+        e.target.value = "";
         URL.revokeObjectURL(objectUrl);
       }
     };
@@ -138,9 +144,11 @@ export default function CompanyFormModal({
       formData.append("email", form.email);
       formData.append("phone", form.phone);
       formData.append("address", form.address);
-      formData.append("status", form.status); // Append status to FormData
+      formData.append("status", form.status);
       formData.append("contactName", form.contactName);
       formData.append("contactEmail", form.contactEmail);
+      formData.append("country", form.country);
+      formData.append("currency", form.currency);
 
       if (logoFile) {
         formData.append("logo", logoFile);
@@ -253,6 +261,50 @@ export default function CompanyFormModal({
                 />
               </div>
 
+              {/* Country */}
+              <div>
+                <Label>Country</Label>
+                <SearchableSelect
+                  options={COUNTRY_OPTIONS}
+                  value={form.country}
+                  onChange={(val) =>
+                    setForm((prev) => ({ ...prev, country: val }))
+                  }
+                  placeholder="Select country..."
+                  error={!!errors.country}
+                />
+                {errors.country && (
+                  <p className="mt-1 text-xs text-red-500">{errors.country}</p>
+                )}
+              </div>
+
+              {/* Currency */}
+              <div>
+                <Label>Currency</Label>
+                <div className="relative">
+                  {/* Symbol badge — only shown when a currency is selected */}
+                  {form.currency && (
+                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                      {getCurrencySymbol(form.currency)}
+                    </span>
+                  )}
+                  <SearchableSelect
+                    options={CURRENCY_OPTIONS}
+                    value={form.currency}
+                    onChange={(val) =>
+                      setForm((prev) => ({ ...prev, currency: val }))
+                    }
+                    placeholder="Select currency..."
+                    error={!!errors.currency}
+                    // Indent text to make room for the symbol badge
+                    className={form.currency ? "[&_input]:pl-9" : ""}
+                  />
+                </div>
+                {errors.currency && (
+                  <p className="mt-1 text-xs text-red-500">{errors.currency}</p>
+                )}
+              </div>
+
               <div className="md:col-span-2">
                 <Label>Address</Label>
                 <TextArea
@@ -305,7 +357,7 @@ export default function CompanyFormModal({
                   src={logoPreview}
                   alt="Logo Preview"
                   fill
-                  className="object-contain" // Contain ensures wide logos aren't clipped
+                  className="object-contain"
                   unoptimized
                 />
               ) : (

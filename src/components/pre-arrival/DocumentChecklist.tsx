@@ -157,6 +157,11 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
     ],
     [],
   );
+  const getEffectiveStatus = (docId: string, owner?: string) => {
+    if (optimisticStatus[docId]) return optimisticStatus[docId];
+    if (tempFiles[docId] && owner === "office") return "approved";
+    return uploadedData?.[docId]?.status || "draft";
+  };
   const filteredData = useMemo(() => {
     // 1. Explicitly type the array to prevent the ts(7005) error
     let baseDocs: DocDefinition[] = [];
@@ -175,7 +180,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
     }
     if (filterStatus !== "all") {
     baseDocs = baseDocs.filter((doc) => {
-      const status = uploadedData?.[doc.id]?.status || "draft";
+      const status = getEffectiveStatus(doc.id, doc.owner);
       const fileInfo = uploadedData?.[doc.id];
       const isUploaded = !!fileInfo?.fileUrl || !!tempFiles[doc.id];
       if (filterStatus === "pending") {
@@ -187,7 +192,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
 
     if (isReadOnly) {
       return baseDocs.filter((doc) => {
-        const status = uploadedData?.[doc.id]?.status;
+        const status = getEffectiveStatus(doc.id, doc.owner);
         return status === "approved";
       });
     }
@@ -204,7 +209,9 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
     allDocuments,
     isReadOnly,
     uploadedData,
-    filterStatus
+    tempFiles,
+    filterStatus,
+    optimisticStatus
   ]);
   const handleDownloadFile = async (url: string, fileName: string) => {
   try {
@@ -267,22 +274,25 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
       .map((d) => d.id);
 
     const approvedCount = myDocIds.filter((id) => {
-      return uploadedData?.[id]?.status === "approved";
+      const owner = allDocuments.find((doc) => doc.id === id)?.owner;
+      return getEffectiveStatus(id, owner) === "approved";
     }).length;
     const pendingCount = myDocIds.filter((id) => {
-    const doc = uploadedData?.[id];
-    const isUploaded = !!doc?.fileUrl || !!doc?.vesselCertId || !!tempFiles[id];
-    return isUploaded && doc?.status !== "approved" && doc?.status !== "rejected";
-  }).length;
-  
-
+      const doc = uploadedData?.[id];
+      const isUploaded = !!doc?.fileUrl || !!tempFiles[id];
+      const owner = allDocuments.find((docItem) => docItem.id === id)?.owner;
+      const status = getEffectiveStatus(id, owner);
+      return isUploaded && status !== "approved" && status !== "rejected";
+    }).length;
+    
     const rejectedCount = myDocIds.filter((id) => {
-      return uploadedData?.[id]?.status === "rejected";
+      const owner = allDocuments.find((doc) => doc.id === id)?.owner;
+      return getEffectiveStatus(id, owner) === "rejected";
     }).length;
 
     const uploadedCount = myDocIds.filter((id) => {
       const doc = uploadedData?.[id];
-      return !!doc?.fileUrl || !!doc?.vesselCertId || !!tempFiles[id];
+      return !!doc?.fileUrl || !!tempFiles[id];
     }).length;
 
     const total = myDocIds.length;
@@ -296,6 +306,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
     canSeeAll,
     hasVerifyPerm,
     hasUploadPerm,
+    optimisticStatus,
   ]);
 
   const progressLabel = isSuperAdmin
@@ -419,8 +430,8 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                 optimisticStatus[row.id] || fileInfo?.status || "draft";
               const isUploaded =
                 !!fileInfo?.fileUrl ||
-                !!fileInfo?.vesselCertId ||
                 !!tempFiles[row.id];
+              const showStatusBadge = isUploaded && row.owner === "ship";
 
               // Raw stored filename (may include timestamp/id prefix)
               const rawFileName = tempFiles[row.id] || fileInfo?.fileName;
@@ -505,7 +516,7 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
         >
           {row.owner === "ship" ? "Ship" : "Admin"}
         </Badge>
-        {isUploaded && (
+        {showStatusBadge && (
           <Badge
             size="sm"
             variant="light"

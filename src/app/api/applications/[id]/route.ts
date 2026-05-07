@@ -5,11 +5,15 @@
 import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
-import Crew from "@/models/Application";
+import Candidate from "@/models/Candidate";
+import Company from "@/models/Company";
+import Crew from "@/models/Crew";
+import Contract from "@/models/Contract";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import type { ICrew } from "@/models/Application";
+import type { ICandidate } from "@/models/Candidate";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 import { del } from "@vercel/blob";
 import { unlink } from "fs/promises";
 import { existsSync } from "fs";
@@ -51,7 +55,7 @@ async function deleteFile(fileUrl: string | null | undefined): Promise<void> {
   }
 }
 /**
- * Collect every fileUrl stored on a crew document so they can be bulk-deleted.
+ * Collect every fileUrl stored on a candidate document so they can be bulk-deleted.
  * Extend this if future schema fields gain fileUrl properties.
  */
 function collectAllFileUrls(doc: any): string[] {
@@ -88,7 +92,7 @@ interface RouteContext {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH — admin updates an existing crew application
+// PATCH — admin updates an existing candidate application
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
@@ -100,7 +104,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 2. Permission ────────────────────────────────────────────────────
-    const authz = await authorizeRequest("jobs.edit");
+    const authz = await authorizeRequest(["candidates.edit", "crews.edit"]);
     if (!authz.ok) return authz.response;
 
     // ── 3. Validate ID ───────────────────────────────────────────────────
@@ -124,10 +128,30 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         body = await req.json();
 
       } else if (contentType.includes("multipart/form-data")) {
+        await dbConnect();
         const formData = await req.formData();
+        const existingForUpload = await Candidate.findOne({ _id: id, deletedAt: null })
+          .select("company firstName lastName")
+          .lean();
+        if (!existingForUpload) {
+          return NextResponse.json({ error: "Application not found." }, { status: 404 });
+        }
 
         const companyId = (formData.get("companyId") as string) || "";
-        const uploadPath = `applications/${companyId || "temp"}`;
+        const effectiveCompanyId = companyId || existingForUpload.company?.toString() || "";
+        const applicantFirstName = (formData.get("firstName") as string) || existingForUpload.firstName || "";
+        const applicantLastName = (formData.get("lastName") as string) || existingForUpload.lastName || "";
+        const applicantName = `${applicantFirstName} ${applicantLastName}`.trim() || "applicant";
+        let companyNameForUpload = session.user.company?.name || effectiveCompanyId || "company";
+        if (effectiveCompanyId && mongoose.isValidObjectId(effectiveCompanyId)) {
+          const companyForUpload = await Company.findById(effectiveCompanyId).select("name").lean();
+          companyNameForUpload = companyForUpload?.name || companyNameForUpload;
+        }
+        const applicationUploadFolder = buildCompanyUploadFolder({
+          companyName: companyNameForUpload,
+          module: "applications",
+          subfolder: applicantName,
+        });
         const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
         // ── Profile photo ──────────────────────────────────────────────
@@ -140,7 +164,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
+            const uploaded = await handleUpload(profilePhotoFile, `${applicationUploadFolder}/photos`);
             body.profilePhoto = uploaded.url;
             // Queue old photo for deletion only after upload succeeds
             const oldUrl = formData.get("oldProfilePhoto") as string | null;
@@ -160,7 +184,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await handleUpload(resumeFile, `${uploadPath}/resumes`);
+            const uploaded = await handleUpload(resumeFile, `${applicationUploadFolder}/resumes`);
             body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
             // Queue old resume for deletion only after upload succeeds
             const oldUrl = formData.get("oldResumeUrl") as string | null;
@@ -202,7 +226,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
                 );
               }
               try {
-                const uploaded = await handleUpload(file, `${uploadPath}/extra`);
+                const uploaded = await handleUpload(file, `${applicationUploadFolder}/extra`);
                 // Queue old extra-doc file for deletion only after upload succeeds
                 if (meta._oldFileUrl) urlsToDelete.push(meta._oldFileUrl);
                 extraDocsMeta[i] = {
@@ -277,7 +301,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     await dbConnect();
 
     // ── 5. Find existing document ────────────────────────────────────────
-    const existing = await Crew.findOne({ _id: id, deletedAt: null });
+    const existing = await Candidate.findOne({ _id: id, deletedAt: null });
     if (!existing) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
@@ -297,7 +321,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       updatedAt: new Date(),
     };
 
-    const scalarFields: Array<keyof ICrew> = [
+    const scalarFields: Array<keyof ICandidate> = [
       "firstName", "lastName", "rank", "positionApplied", "availabilityNote",
       "nationality", "placeOfBirth", "maritalStatus", "fatherName", "motherName",
       "presentAddress", "cellPhone", "homePhone", "nearestAirport",
@@ -308,10 +332,28 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (f in body) update[f] = str(body[f]) || undefined;
     });
 
+    // Handle jobId update - convert to ObjectId if valid
+    if ("jobId" in body) {
+      const rawJobId = str(body.jobId);
+      if (rawJobId && mongoose.isValidObjectId(rawJobId)) {
+        update.jobId = new mongoose.Types.ObjectId(rawJobId);
+      } else if (rawJobId === "") {
+        // Allow clearing jobId by sending empty string
+        update.jobId = null;
+      }
+    }
+
+    if (isSuperAdmin && "companyId" in body) {
+      const rawCompanyId = str(body.companyId);
+      if (rawCompanyId && mongoose.isValidObjectId(rawCompanyId)) {
+        update.company = new mongoose.Types.ObjectId(rawCompanyId);
+      }
+    }
+
     if ("email" in body) {
       const newEmail = str(body.email).toLowerCase();
       if (newEmail && newEmail !== existing.email) {
-        const conflict = await Crew.exists({
+        const conflict = await Candidate.exists({
           company: existing.company,
           email: newEmail,
           _id: { $ne: existing._id },
@@ -326,9 +368,50 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    if ("status" in body) update.status = str(body.status) as ICrew["status"];
+    if ("status" in body) {
+      if (existing.status === "onboarded") {
+        return NextResponse.json(
+          { error: "Cannot change status of an onboarded candidate." },
+          { status: 400 }
+        );
+      }
+      const newStatus = str(body.status);
+      update.status = newStatus as ICandidate["status"];
 
-    const dateFields: Array<keyof ICrew> = [
+      // If status is "accepted", also activate the associated contract
+      if (newStatus === "accepted") {
+        await Contract.updateMany(
+          { applicationId: new mongoose.Types.ObjectId(id), deletedAt: null },
+          { $set: { contractStatus: "active" } }
+        );
+      }
+    }
+
+    if ("crew" in body) {
+      const crewStatus = str(body.crew).toLowerCase();
+      const validStatuses = [
+        "onboard",
+        "vacation",
+        "available",
+        "traveling",
+        "medical_leave",
+        "training",
+        "inactive",
+        "resigned",
+        "blacklisted",
+      ];
+      if (validStatuses.includes(crewStatus)) {
+        // Write crew status to the dedicated Crew document
+        await Crew.findOneAndUpdate(
+          { applicationId: new mongoose.Types.ObjectId(id) },
+          { $set: { crewStatus } },
+        );
+        // Also keep Candidate.crew in sync for backward compatibility
+        update.crew = crewStatus;
+      }
+    }
+
+    const dateFields: Array<keyof ICandidate> = [
       "dateOfBirth", "dateOfAvailability",
       "medicalCertIssuedDate", "medicalCertExpiredDate",
     ];
@@ -478,8 +561,27 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         }));
     }
 
+    if ("leaveLimits" in body) {
+      const leaveLimits = arr<Record<string, any>>(body, "leaveLimits")
+        .filter((l) => l.leaveTypeId && l.maxDays !== undefined)
+        .map((l) => ({
+          leaveTypeId: new mongoose.Types.ObjectId(l.leaveTypeId),
+          maxDays: Number(l.maxDays) || 0,
+        }));
+
+      // Upsert leave limits into the Crew collection instead of Candidate
+      await Crew.findOneAndUpdate(
+        { applicationId: new mongoose.Types.ObjectId(id) },
+        { 
+          $set: { leaveLimits },
+          $setOnInsert: { company: existing.company }
+        },
+        { upsert: true, new: true }
+      );
+    }
+
     // ── 10. Apply update ─────────────────────────────────────────────────
-    const updated = await Crew.findByIdAndUpdate(
+    const updated = await Candidate.findByIdAndUpdate(
       id,
       { $set: update },
       { new: true, runValidators: true }
@@ -490,11 +592,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   } catch (error: any) {
     if (error?.code === 11000) {
       return NextResponse.json(
-        { error: "A crew member with this email already exists." },
+        { error: "A candidate member with this email already exists." },
         { status: 409 }
       );
     }
-    console.error("PATCH CREW (ADMIN) ERROR →", error);
+    console.error("PATCH Candidate (ADMIN) ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -512,7 +614,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 2. Permission ────────────────────────────────────────────────────
-    const authz = await authorizeRequest("jobs.delete");
+    const authz = await authorizeRequest("candidates.delete");
     if (!authz.ok) return authz.response;
 
     // ── 3. Validate ID ───────────────────────────────────────────────────
@@ -525,7 +627,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 
     // ── 4. Find document ─────────────────────────────────────────────────
     // Use .lean() so we get a plain object for collectAllFileUrls
-    const existing = await Crew.findById(id).lean();
+    const existing = await Candidate.findById(id).lean();
     if (!existing) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
@@ -541,12 +643,12 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     await Promise.all(fileUrls.map(deleteFile));
 
     // ── 7. Hard delete ───────────────────────────────────────────────────
-    await Crew.deleteOne({ _id: id });
+    await Candidate.deleteOne({ _id: id });
 
     return NextResponse.json({ success: true, message: "Application permanently deleted." });
 
   } catch (error: any) {
-    console.error("DELETE CREW (ADMIN) ERROR →", error);
+    console.error("DELETE Candidate (ADMIN) ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

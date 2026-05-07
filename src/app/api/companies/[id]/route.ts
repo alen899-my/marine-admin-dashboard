@@ -12,6 +12,7 @@ import Document from "@/models/Document";
 import { auth } from "@/auth";
 import mongoose from "mongoose";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 import { del } from "@vercel/blob";
 import { unlink } from "fs/promises";
 import path from "path";
@@ -60,7 +61,8 @@ export async function PATCH(
     if (formData.has("status")) updateData.status = formData.get("status") as string;
     if (formData.has("contactName")) updateData.contactName = formData.get("contactName") as string;
     if (formData.has("contactEmail")) updateData.contactEmail = formData.get("contactEmail") as string;
-
+    if (formData.has("country")) updateData.country = formData.get("country") as string;
+    if (formData.has("currency")) updateData.currency = formData.get("currency") as string;
     // 6. Handle Logo Update
     const file = formData.get("logo") as File | null;
     if (file && file.size > 0) {
@@ -71,11 +73,18 @@ export async function PATCH(
         );
       }
       const oldLogo = company.logo;
-  if (oldLogo) {
-    await deleteFile(oldLogo); // ← add this
-  }
+      if (oldLogo) {
+        await deleteFile(oldLogo);
+      }
       try {
-        const uploaded = await handleUpload(file, "companies");
+        const uploaded = await handleUpload(
+          file,
+          buildCompanyUploadFolder({
+            companyName: (updateData.name as string) || company.name,
+            module: "company-profile",
+            subfolder: session.user.fullName,
+          }),
+        );
         updateData.logo = uploaded.url;
       } catch (err) {
         console.error("Company logo upload failed:", err);
@@ -132,17 +141,17 @@ export async function DELETE(
 
     // 2. CHECK FOR EXISTING USERS
     // We check if any user is linked to this company who is NOT already marked as 'deleted'
-    const userCount = await User.countDocuments({ 
-      company: id, 
+    const userCount = await User.countDocuments({
+      company: id,
       status: "active",           // Only block if there are truly "active" users
       deletedAt: null             // Ensure we ignore anyone already soft-deleted
     });
 
     if (userCount > 0) {
       return NextResponse.json(
-        { 
-          error: `Cannot delete company. There are still ${userCount} active user(s) associated with this company.` 
-        }, 
+        {
+          error: `Cannot delete company. There are still ${userCount} active user(s) associated with this company.`
+        },
         { status: 400 } // Bad Request / Conflict
       );
     }
@@ -150,9 +159,9 @@ export async function DELETE(
     // 3. Perform Soft Delete on Company
     const deleted = await Company.findByIdAndUpdate(
       id,
-      { 
-        status: "inactive", 
-        deletedAt: now 
+      {
+        status: "inactive",
+        deletedAt: now
       },
       { new: true }
     );
@@ -169,11 +178,11 @@ export async function DELETE(
 
     await Promise.all([
       Vessel.updateMany(
-        { company: id }, 
+        { company: id },
         { $set: { status: "inactive", deletedAt: now } }
       ),
       Voyage.updateMany(
-        { vesselId: { $in: vesselIds } }, 
+        { vesselId: { $in: vesselIds } },
         { $set: { deletedAt: now } }
       ),
       ReportDaily.updateMany(

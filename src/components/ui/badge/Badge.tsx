@@ -2,6 +2,7 @@ import React from "react";
 
 type BadgeVariant = "light" | "solid";
 type BadgeSize = "sm" | "md";
+type BadgeShape = "pill" | "rounded" | "square";
 
 type BadgeColor =
   | "primary"
@@ -17,18 +18,19 @@ type BadgeColor =
   | "amber"
   | "teal"
   | "pink"
-  |"blue"  
-  | "cyan"    
-  | "lime"    
-  | "emerald" 
-  | "rose"    
+  | "blue"
+  | "green" // Added here
+  | "cyan"
+  | "lime"
+  | "emerald"
+  | "rose"
   | "slate"
-  | "orange"  // 1. Energetic / High Attention
-  | "indigo"  // 2. Trust / Deep Professional
-  | "violet"  // 3. Creative / Specialized
-  | "fuchsia" // 4. Distinct / Unique ID
-  | "sky"     // 5. Calm / Supplemental
-  | "gray";   // 6. Basic Neutral
+  | "orange"
+  | "indigo"
+  | "violet"
+  | "fuchsia"
+  | "sky"
+  | "gray";
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -36,6 +38,8 @@ interface BadgeProps {
   color?: BadgeColor;
   startIcon?: React.ReactNode;
   endIcon?: React.ReactNode;
+  shape?: BadgeShape;
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -45,14 +49,22 @@ const Badge: React.FC<BadgeProps> = ({
   size = "md",
   startIcon,
   endIcon,
+  shape = "pill",
+  className = "",
   children,
 }) => {
   const baseStyles =
-    "inline-flex items-center px-2.5 py-0.5 justify-center gap-1 rounded-full font-medium transition-colors";
+    "inline-flex items-center px-2 py-0.5 justify-center gap-1 font-medium transition-colors";
 
   const sizeStyles = {
     sm: "text-theme-xs",
     md: "text-sm",
+  };
+  
+  const shapeStyles = {
+    pill: "rounded-full border border-current/30",
+    rounded: "rounded-sm border border-current/30",
+    square: "rounded-none border border-current/30",
   };
 
   const variants = {
@@ -71,6 +83,7 @@ const Badge: React.FC<BadgeProps> = ({
       teal: "bg-teal-50 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400",
       pink: "bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400",
       blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400",
+      green: "bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-400", // Added light green
       cyan: "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-400",
       lime: "bg-lime-50 text-lime-600 dark:bg-lime-500/15 dark:text-lime-400",
       emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
@@ -98,6 +111,7 @@ const Badge: React.FC<BadgeProps> = ({
       teal: "bg-teal-600 text-white",
       pink: "bg-pink-600 text-white",
       blue: "bg-blue-600 text-white",
+      green: "bg-green-600 text-white", // Added solid green
       cyan: "bg-cyan-600 text-white",
       lime: "bg-lime-600 text-white",
       emerald: "bg-emerald-600 text-white",
@@ -113,10 +127,10 @@ const Badge: React.FC<BadgeProps> = ({
   };
 
   const sizeClass = sizeStyles[size];
-  const colorStyles = variants[variant][color];
+  const colorStyles = variants[variant][color as keyof (typeof variants)[typeof variant]];
 
   return (
-    <span className={`${baseStyles} ${sizeClass} ${colorStyles}`}>
+    <span className={`${baseStyles} ${shapeStyles[shape]} ${sizeClass} ${colorStyles} ${className}`}>
       {startIcon && <span className="inline-flex">{startIcon}</span>}
       {children}
       {endIcon && <span className="inline-flex">{endIcon}</span>}

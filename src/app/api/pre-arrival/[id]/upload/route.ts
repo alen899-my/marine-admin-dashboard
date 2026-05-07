@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
-import Vessel from "@/models/Vessel";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { del } from "@vercel/blob";
 import { unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
-
-const OFFICE_LIBRARY_DOCS = [
-  "registry_cert", "tonnage_cert", "isps_ship", "isps_officer",
-  "pi_cert", "sanitation_cert", "msm_cert", "hull_machinery",
-  "safety_equipment", "medical_chest", "ships_particulars", "security_report"
-];
+import { buildCompanyUploadFolder, sanitizeFolderSegment } from "@/lib/uploadFolders";
 
 export async function PATCH(
   req: NextRequest,
@@ -27,7 +21,6 @@ export async function PATCH(
 
     const { id } = await params;
     const userId = authz.session.user.id;
-    const userRole = authz.session.user.role?.toLowerCase();
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -39,157 +32,95 @@ export async function PATCH(
     await dbConnect();
 
     const preArrival = await PreArrival.findById(id)
-      .select("vesselId documents")
+      .select("documents requestId vesselId isLocked status")
+      .populate({
+        path: "vesselId",
+        select: "company",
+        populate: {
+          path: "company",
+          select: "name",
+        },
+      })
       .lean({ flattenMaps: true }) as any;
-    if (!preArrival) return NextResponse.json({ error: "Request not found" }, { status: 404 });
-
-    const isLibraryDoc = OFFICE_LIBRARY_DOCS.includes(docId);
-    const isAdmin = userRole === "admin" || userRole === "super-admin";
-
-    let updateData: any = {};
-    let fileInfo: any = null;
-
-    // 1. File Upload Logic
-    if (file && file.size > 0) {
-      // Library docs (Office) -> Vessel folder. Onboard docs (Ship) -> Pre-Arrival folder.
-      const folder = isLibraryDoc ? `vessels/${preArrival.vesselId}` : `pre-arrival/${id}`;
-
-      // ── Delete old non-library file if replacing ──
-      if (!isLibraryDoc) {
-        try {
-          // Place 1 - replacing non-library doc
-const oldFileUrl = preArrival.documents?.[docId]?.fileUrl;
-if (oldFileUrl) {
-  if (process.env.UPLOAD_PROVIDER === "local") {
-    let urlPath = oldFileUrl;
-    if (oldFileUrl.startsWith("http")) urlPath = new URL(oldFileUrl).pathname;
-    const uploadsPrefix = "/uploads/";
-    if (urlPath.startsWith(uploadsPrefix)) {
-      const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
-      if (existsSync(filePath)) await unlink(filePath);
+    if (!preArrival) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
-  } else {
-    await del(oldFileUrl);
-  }
-}
+
+    const isPackLocked =
+      !!preArrival.isLocked ||
+      ["sent", "acknowledged", "completed"].includes(preArrival.status);
+
+    if (isPackLocked) {
+      return NextResponse.json(
+        { error: `This pre-arrival pack is locked in ${preArrival.status || "its current"} status.` },
+        { status: 423 }
+      );
+    }
+    
+
+    const updateData: any = {};
+    const pushData: any = {};
+    const existingDocument = preArrival.documents?.[docId] || {};
+    const effectiveOwner = owner || existingDocument.owner || "ship";
+    const historyRole = effectiveOwner === "office" ? "admin" : "ship";
+
+    if (file && file.size > 0) {
+      const requestFolder = sanitizeFolderSegment(preArrival.requestId || id, "request");
+      const folder = buildCompanyUploadFolder({
+        companyName: preArrival.vesselId?.company?.name || authz.session.user.company?.name,
+        module: "prearrival",
+        subfolder: requestFolder,
+      });
+
+      const oldFileUrl = preArrival.documents?.[docId]?.fileUrl;
+      if (oldFileUrl) {
+        try {
+          if (process.env.UPLOAD_PROVIDER === "local") {
+            const urlPath = oldFileUrl.startsWith("http") ? new URL(oldFileUrl).pathname : oldFileUrl;
+            const uploadsPrefix = "/uploads/";
+            if (urlPath.startsWith(uploadsPrefix)) {
+              const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
+              if (existsSync(filePath)) await unlink(filePath);
+            }
+          } else {
+            await del(oldFileUrl);
+          }
         } catch (err) {
           console.warn("Could not delete old file:", err);
         }
       }
 
-      // ── Upload new file via handleUpload ──
       const uploaded = await handleUpload(file, folder);
-      fileInfo = {
-        name: uploaded.name,
-        url: uploaded.url,
-        size: file.size,
-      };
+      updateData[`documents.${docId}.fileName`] = uploaded.name;
+      updateData[`documents.${docId}.fileUrl`] = uploaded.url;
+      updateData[`documents.${docId}.fileSize`] = file.size;
+      updateData[`documents.${docId}.status`] =
+        effectiveOwner === "office" ? "approved" : "pending_review";
+      updateData[`documents.${docId}.rejectionReason`] = "";
+      updateData[`documents.${docId}.uploadedBy`] = userId;
+      updateData[`documents.${docId}.uploadedAt`] = new Date();
 
-      // Only save physical file info to PreArrival if it's NOT a library doc
-      if (!isLibraryDoc) {
-        updateData[`documents.${docId}.fileName`] = fileInfo.name;
-        updateData[`documents.${docId}.fileUrl`] = fileInfo.url;
-        updateData[`documents.${docId}.fileSize`] = fileInfo.size;
-      }
+      pushData[`documents.${docId}.rejectionHistory`] = {
+        message: `File uploaded: ${file.name}`,
+        role: historyRole,
+        createdAt: new Date(),
+      };
     }
 
-    // 2. Prepare Metadata for PreArrival
-    if (!isLibraryDoc && docName) updateData[`documents.${docId}.name`] = docName;
-    if (!isLibraryDoc && owner) updateData[`documents.${docId}.owner`] = owner;
-
-    updateData[`documents.${docId}.docSource`] = isLibraryDoc ? "vessel_library" : "onboard_upload";
+    updateData[`documents.${docId}.docSource`] = effectiveOwner === "office" ? "office_upload" : "onboard_upload";
+    if (docName) updateData[`documents.${docId}.name`] = docName;
+    if (owner) updateData[`documents.${docId}.owner`] = owner;
     updateData[`documents.${docId}.note`] = note || "";
 
-    const pushData: any = {};
-    if (note) {
+    if (note && !file) {
       pushData[`documents.${docId}.rejectionHistory`] = {
         message: note,
-        role: "ship",
-        createdAt: new Date(),
-      };
-    } else if (file) {
-      pushData[`documents.${docId}.rejectionHistory`] = {
-        message: `New file uploaded: ${file.name}`,
-        role: "ship",
+        role: historyRole,
         createdAt: new Date(),
       };
     }
-
-    const shouldAutoApprove = isLibraryDoc || owner === "office";
-    updateData[`documents.${docId}.status`] = shouldAutoApprove ? "approved" : "pending_review";
-    updateData[`documents.${docId}.uploadedBy`] = userId;
-    updateData[`documents.${docId}.uploadedAt`] = new Date();
     updateData[`updatedBy`] = userId;
 
-    // 3. Handle Vessel Library Sync (Admin Only)
-    if (isLibraryDoc && isAdmin) {
-
-      // ── Delete old vessel library file before uploading new one ──
-      if (file && file.size > 0) {
-        try {
-          const vessel = await Vessel.findOne(
-            { _id: preArrival.vesselId, "certificates.docType": docId },
-            { "certificates.$": 1 }
-          ).lean() as any;
-         const oldFileUrl = vessel?.certificates?.[0]?.fileUrl;
-if (oldFileUrl) {
-  if (process.env.UPLOAD_PROVIDER === "local") {
-    let urlPath = oldFileUrl;
-    if (oldFileUrl.startsWith("http")) urlPath = new URL(oldFileUrl).pathname;
-    const uploadsPrefix = "/uploads/";
-    if (urlPath.startsWith(uploadsPrefix)) {
-      const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
-      if (existsSync(filePath)) await unlink(filePath);
-    }
-  } else {
-    await del(oldFileUrl);
-  }
-}
-        } catch (err) {
-          console.warn("Could not delete old vessel library file:", err);
-        }
-      }
-
-      const certUpdate: any = {
-        docType: docId,
-        name: docName,
-        owner: owner || "office",
-        note: note || "",
-        updatedAt: new Date(),
-        uploadedBy: userId,
-      };
-
-      if (fileInfo) {
-        certUpdate.fileName = fileInfo.name;
-        certUpdate.fileUrl = fileInfo.url;
-      }
-
-      // Upsert into Vessel certificates array
-      const vesselUpdate = await Vessel.findOneAndUpdate(
-        { _id: preArrival.vesselId, "certificates.docType": docId },
-        { $set: { "certificates.$": certUpdate } },
-        { new: true }
-      );
-
-      let finalCertId;
-      if (!vesselUpdate) {
-        const added = await Vessel.findByIdAndUpdate(
-          preArrival.vesselId,
-          { $addToSet: { certificates: certUpdate } },
-          { new: true }
-        );
-        finalCertId = added.certificates.find((c: any) => c.docType === docId)?._id;
-      } else {
-        finalCertId = vesselUpdate.certificates.find((c: any) => c.docType === docId)?._id;
-      }
-
-      // REFERENCE LOGIC: Save ONLY the pointer in PreArrival
-      updateData[`documents.${docId}.vesselCertId`] = finalCertId;
-      updateData[`documents.${docId}.fileName`] = null;
-      updateData[`documents.${docId}.fileUrl`] = null;
-    }
-
-    // 4. Update the Pre-Arrival record
     const updatedRequest = await PreArrival.findByIdAndUpdate(
       id,
       {
@@ -199,22 +130,7 @@ if (oldFileUrl) {
       { new: true, lean: true }
     );
 
-    // 5. HYDRATION: Return live strings to the frontend for UI icons/links
     const responseDoc = (updatedRequest.documents as any)[docId];
-
-    if (isLibraryDoc && responseDoc.vesselCertId) {
-      const vessel = await Vessel.findById(preArrival.vesselId).select("certificates").lean();
-      const liveCert = vessel?.certificates?.find((c: any) =>
-        c._id.toString() === responseDoc.vesselCertId.toString() || c.docType === docId
-      );
-
-      if (liveCert) {
-        responseDoc.name = liveCert.name;
-        responseDoc.owner = liveCert.owner;
-        responseDoc.fileName = liveCert.fileName;
-        responseDoc.fileUrl = liveCert.fileUrl;
-      }
-    }
 
     return NextResponse.json({
       success: true,

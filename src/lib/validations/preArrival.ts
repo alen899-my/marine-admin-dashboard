@@ -24,7 +24,7 @@ dueDate: Joi.date().required().less(Joi.ref('eta')).messages({
 }),
   notes: Joi.string().allow(""),
   status: Joi.string()
-    .valid("draft", "published", "sent", "completed")
+    .valid("draft", "published", "sent", "acknowledged", "completed")
     .default("draft")
     .messages({
       "any.only": "Invalid status selected",

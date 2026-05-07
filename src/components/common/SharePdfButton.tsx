@@ -10,6 +10,7 @@ export interface SharePdfButtonProps {
   title: string;
   filename: string;
   data: Record<string, any>;
+  logoUrl?: string;
   buttonLabel?: string;
 }
 
@@ -17,6 +18,7 @@ export default function SharePdfButton({
   title,
   filename,
   data,
+  logoUrl,
   buttonLabel = "Share via WhatsApp",
 }: SharePdfButtonProps) {
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,7 @@ export default function SharePdfButton({
   const loadImage = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = url;
       img.onload = () => resolve(img);
       img.onerror = (err) => reject(err);
@@ -42,7 +45,7 @@ export default function SharePdfButton({
       // -------- 1. HEADER & LOGO LOGIC --------
       let logoBottomY = 25;
       try {
-        const logo = await loadImage("/images/logo/b.png");
+        const logo = await loadImage(logoUrl || "/images/logo/b.png");
         const displayWidth = 45;
         const displayHeight =
           (logo.naturalHeight * displayWidth) / logo.naturalWidth;

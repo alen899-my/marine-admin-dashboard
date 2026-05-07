@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     user.password = hashedPassword;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
+    user.passwordChangedAt = new Date();
     await user.save();
 
     return NextResponse.json({

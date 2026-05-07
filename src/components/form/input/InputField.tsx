@@ -1,10 +1,10 @@
-import React, { FC } from "react";
+import React, { forwardRef } from "react";
 
 interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | string;
   id?: string;
   name?: string;
-  label?: string; //  ADD THIS
+  label?: string;
   placeholder?: string;
   value?: string | number;
   defaultValue?: string | number;
@@ -21,90 +21,97 @@ interface InputProps {
   maxLength?: number;
 }
 
-const Input: FC<InputProps> = ({
-  type = "text",
-  id,
-  name,
-  label, //  Destructure label
-  placeholder,
-  value,
-  defaultValue,
-  onChange,
-  onKeyDown,
-  className = "",
-  min,
-  max,
-  step,
-  disabled = false,
-  success = false,
-  error = false,
-  hint,
-  maxLength,
-}) => {
-  // ... (keep your existing inputClasses logic)
-  let inputClasses = `h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 dark:[color-scheme:dark] ${className} `;
+const Input = forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      type = "text",
+      id,
+      name,
+      label,
+      placeholder,
+      value,
+      defaultValue,
+      onChange,
+      onKeyDown,
+      className = "",
+      min,
+      max,
+      step,
+      disabled = false,
+      success = false,
+      error = false,
+      hint,
+      maxLength,
+    },
+    ref,
+  ) => {
+    let inputClasses = `h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-none focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 dark:[color-scheme:dark] ${className} `;
 
-  if (disabled) {
-    inputClasses += ` text-gray-500 border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700`;
-  } else if (error) {
-    inputClasses += ` bg-transparent text-gray-800 border-error-500 focus:ring-error-500/10 dark:text-white/90 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800`;
-  } else if (success) {
-    inputClasses += ` text-success-500 border-success-400 focus:ring-success-500/10 dark:text-success-400 dark:border-success-500`;
-  } else {
-    inputClasses += ` bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800`;
-  }
+    if (disabled) {
+      inputClasses += ` text-gray-500 border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700`;
+    } else if (error) {
+      inputClasses += ` bg-transparent text-gray-800 border-error-500 focus:ring-error-500/10 dark:text-white/90 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800`;
+    } else if (success) {
+      inputClasses += ` text-success-500 border-success-400 focus:ring-success-500/10 dark:text-success-400 dark:border-success-500`;
+    } else {
+      inputClasses += ` bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800`;
+    }
 
-  return (
-    <div className="w-full">
-      {/*  ADD THE LABEL RENDERER */}
-      {label && (
-        <label
-          htmlFor={id || name}
-          className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400 ml-1"
-        >
-          {label.includes("*") ? (
-            <>
-              {label.replace("*", "").trim()} <span className="text-error-500">*</span>
-            </>
-          ) : (
-            label
-          )}
-        </label>
-      )}
-
-      <div className="relative">
-        <input
-          type={type}
-          id={id || name}
-          name={name}
-          placeholder={placeholder}
-          value={value}
-          defaultValue={defaultValue}
-          onChange={onChange}
-          onKeyDown={onKeyDown}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-          maxLength={maxLength}
-          className={inputClasses}
-        />
-
-        {hint && (
-          <p
-            className={`mt-1.5 text-xs ${error
-              ? "text-error-500"
-              : success
-                ? "text-success-500"
-                : "text-gray-500"
-              }`}
+    return (
+      <div className="w-full">
+        {label && (
+          <label
+            htmlFor={id || name}
+            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400 ml-1"
           >
-            {hint}
-          </p>
+            {label.includes("*") ? (
+              <>
+                {label.replace("*", "").trim()} <span className="text-error-500">*</span>
+              </>
+            ) : (
+              label
+            )}
+          </label>
         )}
+
+        <div className="relative">
+          <input
+            ref={ref}
+            type={type}
+            id={id || name}
+            name={name}
+            placeholder={placeholder}
+            value={value}
+            defaultValue={defaultValue}
+            onChange={onChange}
+            onKeyDown={onKeyDown}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            maxLength={maxLength}
+            className={inputClasses}
+          />
+
+          {hint && (
+            <p
+              className={`mt-1.5 text-xs ${
+                error
+                  ? "text-error-500"
+                  : success
+                    ? "text-success-500"
+                    : "text-gray-500"
+              }`}
+            >
+              {hint}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  },
+);
+
+Input.displayName = "Input";
 
 export default Input;

@@ -3,7 +3,6 @@
 import React from "react";
 import { Check, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/button/Button";
-import ComponentCard from "@/components/common/ComponentCard";
 import { Trash2 } from "lucide-react";
 
 export interface StepConfig {
@@ -240,7 +239,6 @@ export default function MultiStepFormLayout({
   pageTitle = "Application Form",
   pageSubtitle,
   companyName,
-  companyLogo,
   isPublic = false,
   children,
 }: MultiStepFormLayoutProps) {
@@ -252,16 +250,16 @@ export default function MultiStepFormLayout({
     <div
       className={
         isPublic
-          ? "min-h-screen  dark:bg-gray-950 w-full overflow-y-auto flex justify-center items-start  sm: px-1"
+          ? "w-full px-4 pb-8 sm:px-6"
           : "min-h-screen py-4 sm:py-8 lg:py-6 bg-gray-50/50 dark:bg-black/20 px-4"
       }
     >
-      <div className={isPublic ? "w-full max-w-7xl" : "w-full"}>
+      <div className={isPublic ? "w-full max-w-7xl min-w-0" : "w-full"}>
         {/* MAIN CONTAINER */}
         <div
           className={
             isPublic
-              ? "flex flex-col overflow-hidden rounded-2xl  dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl min-h-[700px] lg:h-[88vh]"
+              ? "flex min-w-0 flex-col overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 min-h-[600px] lg:max-h-[calc(100vh-2rem)] lg:overflow-hidden"
               : "flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:h-[90vh] min-h-[600px]"
           }
         >
@@ -333,7 +331,13 @@ export default function MultiStepFormLayout({
                 allowAllStepsClickable={allowAllStepsClickable}
               />
 
-              <div className="flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar">
+              <div
+                className={
+                  isPublic
+                    ? "flex-1 min-w-0 overflow-visible px-4 py-1 sm:px-6 lg:overflow-y-auto lg:px-8 lg:hide-scrollbar"
+                    : "flex-1 overflow-y-auto px-6 sm:px-10 hide-scrollbar"
+                }
+              >
                 {/* CURRENT STEP HEADER */}
                 <div className="mb-8 pt-6">
                   <h2 className="text-l font-medium text-gray-800 dark:text-white">
@@ -359,7 +363,7 @@ export default function MultiStepFormLayout({
                     disabled={isFirst}
                     className="w-full sm:w-auto"
                   >
-                    ← Back
+                    Back
                   </Button>
                   {onReset && (
                     <Button
@@ -390,10 +394,38 @@ export default function MultiStepFormLayout({
                     <Button
                       variant="primary"
                       onClick={onNext}
-                      disabled={isNextDisabled}
+                      disabled={isSubmitting || isNextDisabled}
                       className="w-full sm:w-auto"
                     >
-                      Save & Continue →
+                      {isSubmitting ? (
+                        <>
+                          <svg
+                            className="h-4 w-4 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8z"
+                            />
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          Save & Continue <ChevronRight />
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>

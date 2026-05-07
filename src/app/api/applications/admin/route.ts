@@ -1,6 +1,6 @@
 // app/api/applications/admin/route.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN crew application — JSON body POST, requires authenticated session.
+// ADMIN candidate application — JSON body POST, requires authenticated session.
 // Uses auth() from @/auth (Auth.js v5) — same pattern as the rest of the project.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -8,13 +8,14 @@ import { auth } from "@/auth";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { dbConnect } from "@/lib/db";
 import { uploadFile } from "@/lib/upload-provider";
-import Crew from "@/models/Application";
+import Candidate from "@/models/Candidate";
 import Company from "@/models/Company";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { randomBytes } from "crypto";
-import type { ICrew } from "@/models/Application";
+import type { ICandidate } from "@/models/Candidate";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -40,7 +41,7 @@ function arr<T>(body: Record<string, unknown>, key: string): T[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST — admin creates a new crew application
+// POST — admin creates a new candidate application
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 2. Permission check ────────────────────────────────────────────────
-    const authz = await authorizeRequest("jobs.create");
+    const authz = await authorizeRequest("candidates.create");
     if (!authz.ok) return authz.response;
 
     // ── 3. Parse body — support both JSON and FormData ───────────────────────
@@ -73,7 +74,24 @@ export async function POST(req: NextRequest) {
 
       // Handle file uploads
       const companyId = formData.get("companyId") as string;
-      const uploadPath = `applications/${companyId || "temp"}`;
+      const firstName = (formData.get("firstName") as string) || "";
+      const lastName = (formData.get("lastName") as string) || "";
+      const applicantName = `${firstName} ${lastName}`.trim() || "applicant";
+      let applicationUploadFolder = buildCompanyUploadFolder({
+        companyName: companyId || session.user.company?.name || "company",
+        module: "applications",
+        subfolder: applicantName,
+      });
+
+      if (companyId && mongoose.isValidObjectId(companyId)) {
+        await dbConnect();
+        const companyForUpload = await Company.findById(companyId).select("name").lean();
+        applicationUploadFolder = buildCompanyUploadFolder({
+          companyName: companyForUpload?.name || companyId,
+          module: "applications",
+          subfolder: applicantName,
+        });
+      }
 
       // Validate file size (max 2MB = 2 * 1024 * 1024 bytes)
       const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -88,7 +106,7 @@ export async function POST(req: NextRequest) {
           );
         }
         try {
-          const uploaded = await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
+          const uploaded = await handleUpload(profilePhotoFile, `${applicationUploadFolder}/photos`);
 
           body.profilePhoto = uploaded.url;
         } catch (err) {
@@ -106,7 +124,7 @@ export async function POST(req: NextRequest) {
           );
         }
         try {
-          const uploaded = await handleUpload(resumeFile, `${uploadPath}/resumes`);
+          const uploaded = await handleUpload(resumeFile, `${applicationUploadFolder}/resumes`);
           body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
         } catch (err) {
           console.error("Resume upload failed:", err);
@@ -148,7 +166,7 @@ export async function POST(req: NextRequest) {
               );
             }
             try {
-              const uploaded =await handleUpload(file, `${uploadPath}/extra`);
+              const uploaded = await handleUpload(file, `${applicationUploadFolder}/extra`);
               extraDocsMeta[i] = {
                 name: docName,
                 fileUrl: uploaded.url,
@@ -234,7 +252,10 @@ export async function POST(req: NextRequest) {
     }
 
     const companyId = new mongoose.Types.ObjectId(rawCompanyId);
-
+    const rawJobId = str(body.jobId);
+    const jobId = rawJobId && mongoose.isValidObjectId(rawJobId)
+      ? new mongoose.Types.ObjectId(rawJobId)
+      : null;
     // ── 5. Validate required fields ────────────────────────────────────────
     const firstName = str(body.firstName);
     const lastName = str(body.lastName);
@@ -261,14 +282,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 6. Duplicate check & Upsert logic ──────────────────────────────────
-    const requestedStatus = (str(body.status) as ICrew["status"]) || "draft";
+    const requestedStatus = (str(body.status) as ICandidate["status"]) || "draft";
 
-    let existingCrew = await Crew.findOne({ company: companyId, email });
+    let existingCandidate = await Candidate.findOne({ company: companyId, email });
 
-    if (existingCrew) {
-      if (existingCrew.status !== "draft") {
+    if (existingCandidate) {
+      if (existingCandidate.status !== "draft") {
         return NextResponse.json(
-          { error: "A crew member with this email already exists in this company." },
+          { error: "A candidate member with this email already exists in this company." },
           { status: 409 }
         );
       }
@@ -391,7 +412,7 @@ export async function POST(req: NextRequest) {
         : [];
 
     // ── 10. Create or Update document ──────────────────────────────────────
-    const crewData: any = {
+    const candidateData: any = {
       company: companyId,
       formSource: "admin_created",
       lastEditedBy: session.user.id,
@@ -407,7 +428,7 @@ export async function POST(req: NextRequest) {
       nationality,
       dateOfBirth,
       placeOfBirth: str(body.placeOfBirth) || undefined,
-      maritalStatus: (str(body.maritalStatus) as ICrew["maritalStatus"]) || undefined,
+      maritalStatus: (str(body.maritalStatus) as ICandidate["maritalStatus"]) || undefined,
       fatherName: str(body.fatherName) || undefined,
       motherName: str(body.motherName) || undefined,
 
@@ -439,66 +460,68 @@ export async function POST(req: NextRequest) {
       stcwCertificates,
       otherCertificates,
       extraDocs: Array.isArray(body.extraDocs)
-  ? (body.extraDocs as Array<{
-      name?: string;
-      fileUrl?: string;
-      fileName?: string;
-      uploadStatus?: string;
-    }>)
-      .filter((d) => d.name?.trim())
-      .map((d) => ({
-        name: d.name,
-        fileUrl: d.fileUrl,
-        fileName: d.fileName,
-        uploadStatus: d.uploadStatus ?? "not_uploaded",
-      }))
-  : [],
+        ? (body.extraDocs as Array<{
+          name?: string;
+          fileUrl?: string;
+          fileName?: string;
+          uploadStatus?: string;
+        }>)
+          .filter((d) => d.name?.trim())
+          .map((d) => ({
+            name: d.name,
+            fileUrl: d.fileUrl,
+            fileName: d.fileName,
+            uploadStatus: d.uploadStatus ?? "not_uploaded",
+          }))
+        : [],
       seaExperience,
 
       additionalInfo: str(body.additionalInfo) || undefined,
       seaExperienceDetail: str(body.seaExperienceDetail) || undefined,
-      userId: session.user.id
-        ? new mongoose.Types.ObjectId(session.user.id)
-        : null,
+      userId: null, // admin-created candidates have no portal account — never set to admin's ID
+      jobId,
     };
 
-    if (body.profilePhoto) crewData.profilePhoto = body.profilePhoto;
-    if (body.resume) crewData.resume = body.resume;
+    if (body.profilePhoto) candidateData.profilePhoto = body.profilePhoto;
+    if (body.resume) candidateData.resume = body.resume;
 
-    let crew;
-    if (existingCrew) {
-      crew = await Crew.findByIdAndUpdate(existingCrew._id, { $set: crewData }, { new: true });
+    let candidate: ICandidate | null = null;
+    if (existingCandidate) {
+      candidate = await Candidate.findByIdAndUpdate(existingCandidate._id, { $set: candidateData }, { new: true }) as unknown as ICandidate;
     } else {
-      crewData.submissionToken = generateToken();
-      crewData.adminNotes = [];
-      if (!crewData.resume) crewData.resume = { uploadStatus: "not_uploaded" };
-      crew = await Crew.create(crewData);
+      candidateData.submissionToken = generateToken();
+      candidateData.adminNotes = [];
+      if (!candidateData.resume) candidateData.resume = { uploadStatus: "not_uploaded" };
+      candidate = await Candidate.create(candidateData) as unknown as ICandidate;
     }
 
-   return NextResponse.json(
-  {
-    success: true,
-    data: {
-      id: crew._id,
-      submissionToken: crew.submissionToken,
-      status: crew.status,
-      profilePhoto: crew.profilePhoto ?? null,
-      resume: crew.resume ?? null,
-      extraDocs: crew.extraDocs,
-    },
-  },
-  { status: 201 }
-);
+    if (!candidate) {
+      return NextResponse.json({ error: "Failed to create/update candidate" }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          id: candidate._id,
+          submissionToken: candidate.submissionToken,
+          status: candidate.status,
+          profilePhoto: candidate.profilePhoto ?? null,
+          resume: candidate.resume ?? null,
+          extraDocs: candidate.extraDocs,
+        },
+      },
+      { status: 201 }
+    );
 
   } catch (error: any) {
     if (error?.code === 11000) {
       return NextResponse.json(
-        { error: "A crew member with this email already exists." },
+        { error: "A candidate member with this email already exists." },
         { status: 409 }
       );
     }
-    console.error("CREATE CREW (ADMIN) ERROR →", error);
+    console.error("CREATE Candidate (ADMIN) ERROR →", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

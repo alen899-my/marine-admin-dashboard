@@ -4,6 +4,7 @@ import ReportDaily from "@/models/ReportDaily";
 import Vessel from "@/models/Vessel";
 import Voyage from "@/models/Voyage";
 import { authorizeRequest } from "@/lib/authorizeRequest";
+import Company from "@/models/Company";
 
 export async function getVoyagePerformanceData(voyageId: string) {
   if (!voyageId) return null;
@@ -73,6 +74,8 @@ export async function getVoyagePerformanceData(voyageId: string) {
 export async function getAnalysisOptions(vesselId?: string, user?: any) {
   await dbConnect();
 
+  const _ensureModels = [Company, Vessel, Voyage];
+
   const isSuperAdmin = user?.role?.toLowerCase() === "super-admin";
   
   // Robustly extract company ID (handles your specific user object structure)
@@ -91,7 +94,8 @@ export async function getAnalysisOptions(vesselId?: string, user?: any) {
 
   // Fetch Vessels
   const vessels = await Vessel.find(vesselQuery)
-    .select("_id name")
+    .populate("company", "logo")
+    .select("_id name company")
     .sort({ name: 1 })
     .lean();
 

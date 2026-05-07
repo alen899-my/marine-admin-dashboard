@@ -28,6 +28,8 @@ interface ICompany {
   email: string;
   phone: string;
   address: string;
+  country?: string;
+  currency?: string;
   contactName?: string;
   contactEmail?: string;
   status: string;
@@ -63,7 +65,7 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function CompaniesTable({
-data,
+  data,
   pagination,
 }: CompanyTableProps) {
   // --- Data State ---
@@ -81,7 +83,7 @@ data,
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<ICompany | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-const searchParams = useSearchParams();
+  const searchParams = useSearchParams();
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -91,7 +93,7 @@ const searchParams = useSearchParams();
   const canEdit = can("company.edit");
   const canDelete = can("company.delete");
 
-const handlePageChange = (newPage: number) => {
+  const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", newPage.toString());
     router.push(`?${params.toString()}`);
@@ -122,7 +124,7 @@ const handlePageChange = (newPage: number) => {
         throw new Error(data.error || "Failed to delete");
       }
 
-     setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
+      setCompanies((prev) => prev.filter((c) => c._id !== selectedCompany._id));
 
       toast.success("Company deleted successfully");
       router.refresh();
@@ -297,6 +299,18 @@ const handlePageChange = (newPage: number) => {
                     {selectedCompany?.address ?? "-"}
                   </p>
                 </div>
+                <div className="flex justify-between gap-4">
+                    <span className="text-gray-500 shrink-0">Country</span>
+                    <span className="font-medium text-right text-gray-900 dark:text-gray-100">
+                      {selectedCompany?.country || "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-500 shrink-0">Currency</span>
+                    <span className="font-medium text-right text-gray-900 dark:text-gray-100">
+                      {selectedCompany?.currency || "-"}
+                    </span>
+                  </div>
               </div>
             </section>
 
@@ -364,7 +378,7 @@ const handlePageChange = (newPage: number) => {
       <CompanyFormModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-     onSuccess={() => router.refresh()}
+        onSuccess={() => router.refresh()}
         initialData={companyToEdit}
       />
 

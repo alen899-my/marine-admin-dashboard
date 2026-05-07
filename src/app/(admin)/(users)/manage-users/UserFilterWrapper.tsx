@@ -6,11 +6,17 @@ import { useCallback } from "react";
 
 export default function UserFilterWrapper({
   companies,
+  roles,
   isSuperAdmin,
 }: {
   companies: any[];
+  roles: any[];
   isSuperAdmin: boolean;
 }) {
+  const roleOptions = roles?.map((r: any) => ({
+    value: r._id,
+    label: r.name,
+  })) || [];
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -59,18 +65,21 @@ export default function UserFilterWrapper({
       // Pass current URL values as initial state
       search={searchParams.get("search") || ""}
       status={searchParams.get("status") || "all"}
+      role={searchParams.get("role") || "all"}
       companyId={searchParams.get("companyId") || "all"}
       startDate={searchParams.get("startDate") || ""}
       endDate={searchParams.get("endDate") || ""}
       // Dummy setters (required by interface but overridden by onApply)
       setSearch={() => {}}
       setStatus={() => {}}
+      setRole={() => {}}
       setCompanyId={() => {}}
       setStartDate={() => {}}
       setEndDate={() => {}}
       // ✅ Real Logic
       isSuperAdmin={isSuperAdmin}
       companies={companies}
+      roles={roleOptions}
       onApply={handleApply}
       onClear={handleClear}
     />

@@ -15,12 +15,26 @@ interface Application {
   email: string;
   rank: string;
   nationality: string;
-  status: "draft" | "submitted" | "reviewing" | "approved" | "rejected" | "on_hold" | "archived";
+  status:
+  | "draft"
+  | "submitted"
+  | "hr_review"
+  | "shortlisted"
+  | "interview_scheduled"
+  | "interview_completed"
+  | "selected"
+  | "offer_sea_issued"
+  | "accepted"
+  | "onboarding_ready"
+  | "onboarded"
+  | "rejected";
   positionApplied?: string;
+  jobTitle?: string | null;
   dateOfAvailability?: string;
   cellPhone?: string;
   createdAt: string;
   company: string;
+  companyName?: string;
 }
 
 interface JobTableProps {
@@ -31,9 +45,44 @@ interface JobTableProps {
     total: number;
     totalPages: number;
   };
+  isSuperAdmin?: boolean;
 }
 
-export default function JobTable({ data, pagination }: JobTableProps) {
+const statusMap: Record<
+  string,
+  {
+    color: "slate" | "sky" | "indigo" | "purple" | "cyan" | "teal" | "emerald" | "lime" | "green" | "gray" | "rose";
+    label: string;
+  }
+> = {
+  draft:               { color: "slate",   label: "Draft" },
+  submitted:           { color: "sky",     label: "Submitted" },
+  hr_review:           { color: "indigo",  label: "HR Review" },
+  shortlisted:         { color: "purple",  label: "Shortlisted" },
+  interview_scheduled: { color: "cyan",    label: "Interview Scheduled" },
+  interview_completed: { color: "teal",    label: "Interview Completed" },
+  selected:            { color: "emerald", label: "Selected" },
+  offer_sea_issued:    { color: "lime",    label: "Offer/SEA Issued" },
+  accepted:            { color: "green",   label: "Accepted" },
+  onboarding_ready:    { color: "green",   label: "Onboarding Ready" },
+  onboarded:           { color: "green",   label: "Onboarded" },
+  rejected:            { color: "rose",    label: "Rejected" },
+};
+
+const formatDateOnly = (date?: string) => {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+export default function JobTable({
+  data,
+  pagination,
+  isSuperAdmin = false,
+}: JobTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [openDelete, setOpenDelete] = useState(false);
@@ -41,8 +90,8 @@ export default function JobTable({ data, pagination }: JobTableProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { can, isReady } = useAuthorization();
-  const canEdit = can("jobs.edit");
-  const canDelete = can("jobs.delete");
+  const canEdit = can("candidates.edit");
+  const canDelete = can("candidates.delete");
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -81,11 +130,11 @@ export default function JobTable({ data, pagination }: JobTableProps) {
         (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
-      header: "Candidate Name",
+      header: "Candidate ",
       render: (a: Application) => (
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-gray-900 dark:text-white">
-          {a.firstName} {a.lastName}
+            {a.firstName} {a.lastName}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
             <span>{a.email}</span>
@@ -94,33 +143,36 @@ export default function JobTable({ data, pagination }: JobTableProps) {
       ),
     },
     {
-      header: "Position & Rank",
+      header: "Applied Position & Rank",
       render: (a: Application) => (
         <div className="flex flex-col gap-1 text-xs">
           <span className="text-gray-900 dark:text-white font-medium">
-            {a.rank || "N/A"}
+            {a.jobTitle || a.positionApplied || "Not specified"}
           </span>
-          <span className="text-gray-500">
-            {a.positionApplied || "Not specified"}
-          </span>
+          <span className="text-gray-500">{a.rank || "N/A"}</span>
         </div>
       ),
     },
+    ...(isSuperAdmin
+      ? [
+          {
+            header: "Company",
+            render: (a: Application) => (
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                {a.companyName || "-"}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
-      header: "Details",
+      header: "Available on",
       render: (a: Application) => (
         <div className="flex flex-col gap-1 text-xs min-w-[140px]">
           <div className="grid grid-cols-[70px_1fr] items-center">
-            <span className="text-gray-400">Nationality</span>
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-right sm:text-left">
-              {a.nationality || "-"}
-            </span>
-          </div>
-          <div className="grid grid-cols-[70px_1fr] items-center">
-            <span className="text-gray-400">Available</span>
             <span className="text-gray-700 dark:text-gray-300 font-medium text-right sm:text-left">
               {a.dateOfAvailability
-                ? new Date(a.dateOfAvailability).toLocaleDateString()
+                ? formatDateOnly(a.dateOfAvailability)
                 : "Immediate"}
             </span>
           </div>
@@ -128,25 +180,16 @@ export default function JobTable({ data, pagination }: JobTableProps) {
       ),
     },
     {
-      header: "Applied Date",
+      header: "Phone Number",
       render: (a: Application) => (
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          {new Date(a.createdAt).toLocaleDateString("en-GB")}
+          {a.cellPhone}
         </span>
       ),
     },
     {
       header: "Status",
       render: (a: Application) => {
-        const statusMap: Record<string, { color: any; label: string }> = {
-          draft: { color: "default", label: "Draft" },
-          submitted: { color: "info", label: "Submitted" },
-          reviewing: { color: "warning", label: "Reviewing" },
-          approved: { color: "success", label: "Approved" },
-          rejected: { color: "error", label: "Rejected" },
-          on_hold: { color: "warning", label: "On Hold" },
-          archived: { color: "default", label: "Archived" },
-        };
         const config = statusMap[a.status] ?? statusMap.draft;
         return <Badge color={config.color}>{config.label}</Badge>;
       },
@@ -176,12 +219,14 @@ export default function JobTable({ data, pagination }: JobTableProps) {
               onDelete={
                 canDelete
                   ? (a: Application) => {
-                    setSelectedId(a._id);
-                    setOpenDelete(true);
-                  }
+                      setSelectedId(a._id);
+                      setOpenDelete(true);
+                    }
                   : undefined
               }
-              onRowClick={(a: Application) => router.push(`/jobs/view/${a._id}`)}
+              onRowClick={(a: Application) =>
+                router.push(`/jobs/view/${a._id}`)
+              }
             />
           </div>
         </div>
@@ -196,7 +241,7 @@ export default function JobTable({ data, pagination }: JobTableProps) {
         onConfirm={handleActionDelete}
         loading={isDeleting}
         title="Delete Application"
-        description="Are you sure you want to delete this crew application? This action cannot be undone."
+        description="Are you sure you want to delete this candidate application? This action cannot be undone."
       />
     </>
   );

@@ -6,15 +6,22 @@
 
 import { auth } from "@/auth";           // same next-auth — career portal uses same provider
 import { dbConnect } from "@/lib/db";
-import Crew from "@/models/Application";
+import Candidate from "@/models/Candidate";
+import Company from "@/models/Company";
+import Job from "@/models/Job";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import type { ICrew } from "@/models/Application";
+import type { ICandidate } from "@/models/Candidate";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 import { del } from "@vercel/blob";
 import { unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import {
+  canEditPublicApplication,
+  canEditPublicApplicationStatus,
+} from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // File deletion — identical to admin route, never throws
@@ -64,6 +71,17 @@ function arr<T>(body: Record<string, unknown>, key: string): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
 
+function normalizeCompletedSteps(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((step) => Number(step))
+        .filter((step) => Number.isInteger(step) && step >= 1 && step <= 11)
+    )
+  ).sort((a, b) => a - b);
+}
+
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -91,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     await dbConnect();
 
     // ── 3. Load existing doc early so we can check ownership BEFORE parsing body
-    const existing = await Crew.findOne({ _id: id, deletedAt: null });
+    const existing = await Candidate.findOne({ _id: id, deletedAt: null });
     if (!existing) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
@@ -104,8 +122,24 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 5. Editable-status guard ─────────────────────────────────────────
-    // Prevent editing once an admin has actioned the application.
-    if (!["draft", "submitted"].includes(existing.status)) {
+    if (!canEditPublicApplicationStatus(existing.status)) {
+      return NextResponse.json(
+        { error: "This application can no longer be edited." },
+        { status: 403 }
+      );
+    }
+
+    const job = existing.jobId
+      ? await Job.findById(existing.jobId)
+          .select("title isAccepting deadline")
+          .lean()
+      : null;
+    const canEdit = canEditPublicApplication({
+      jobIsAccepting: job?.isAccepting ?? true,
+      deadline: job?.deadline ?? null,
+    });
+
+    if (!canEdit) {
       return NextResponse.json(
         { error: "This application can no longer be edited." },
         { status: 403 }
@@ -123,7 +157,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         const formData = await req.formData();
 
         const companyId = (formData.get("companyId") as string) || "";
-        const uploadPath = `applications/${companyId || "temp"}`;
+        const effectiveCompanyId = companyId || existing.company?.toString() || "";
+        const applicantFirstName = (formData.get("firstName") as string) || existing.firstName || "";
+        const applicantLastName = (formData.get("lastName") as string) || existing.lastName || "";
+        const applicantName = `${applicantFirstName} ${applicantLastName}`.trim() || "applicant";
+        let companyNameForUpload = effectiveCompanyId || "company";
+        if (effectiveCompanyId && mongoose.isValidObjectId(effectiveCompanyId)) {
+          const companyForUpload = await Company.findById(effectiveCompanyId).select("name").lean();
+          companyNameForUpload = companyForUpload?.name || companyNameForUpload;
+        }
+        const applicationUploadFolder = buildCompanyUploadFolder({
+          companyName: companyNameForUpload,
+          module: "applications",
+          subfolder: applicantName,
+        });
         const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
         // ── Profile photo ──────────────────────────────────────────────
@@ -136,7 +183,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await handleUpload(profilePhotoFile, `${uploadPath}/photos`);
+            const uploaded = await handleUpload(profilePhotoFile, `${applicationUploadFolder}/photos`);
             body.profilePhoto = uploaded.url;
             const oldUrl = formData.get("oldProfilePhoto") as string | null;
             if (oldUrl) urlsToDelete.push(oldUrl);
@@ -155,7 +202,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             );
           }
           try {
-            const uploaded = await handleUpload(resumeFile, `${uploadPath}/resumes`);
+            const uploaded = await handleUpload(resumeFile, `${applicationUploadFolder}/resumes`);
             body.resume = { fileUrl: uploaded.url, fileName: uploaded.name, uploadStatus: "pending" };
             const oldUrl = formData.get("oldResumeUrl") as string | null;
             if (oldUrl) urlsToDelete.push(oldUrl);
@@ -195,7 +242,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
                 );
               }
               try {
-                const uploaded = await handleUpload(file, `${uploadPath}/extra`);
+                const uploaded = await handleUpload(file, `${applicationUploadFolder}/extra`);
                 if (meta._oldFileUrl) urlsToDelete.push(meta._oldFileUrl);
                 extraDocsMeta[i] = {
                   name: docName,
@@ -213,9 +260,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           }
         }
 
-        const cleanedExtraDocs = extraDocsMeta.map(
-          ({ _hasNewFile, _fileIdx, _oldFileUrl, ...rest }) => rest
-        );
+        const cleanedExtraDocs = extraDocsMeta.map((doc) => ({
+          name: doc.name,
+          fileUrl: doc.fileUrl,
+          fileName: doc.fileName,
+          uploadStatus: doc.uploadStatus,
+        }));
         if (cleanedExtraDocs.length > 0) body.extraDocs = cleanedExtraDocs;
 
         // ── Remaining scalar form fields ───────────────────────────────
@@ -237,7 +287,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         const jsonFields = [
           "licences", "passports", "seamansBooks", "visas",
           "endorsements", "stcwCertificates", "otherCertificates",
-          "seaExperience", "extraDocs", "nextOfKin",
+          "seaExperience", "extraDocs", "nextOfKin", "completedSteps",
         ];
         for (const field of jsonFields) {
           if (typeof body[field] === "string") {
@@ -262,9 +312,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       updatedAt: new Date(),
     };
 
+    const hasFixedPublicJob = Boolean(existing.jobId);
+
     // Scalar string fields — applicant can update all personal fields
-    const scalarFields: Array<keyof ICrew> = [
-      "firstName", "lastName", "rank", "positionApplied", "availabilityNote",
+    const scalarFields: Array<keyof ICandidate> = [
+      "firstName", "lastName", "rank", "availabilityNote",
       "nationality", "placeOfBirth", "maritalStatus", "fatherName", "motherName",
       "presentAddress", "cellPhone", "homePhone", "nearestAirport",
       "hairColor", "eyeColor", "coverallSize", "shoeSize",
@@ -274,23 +326,30 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (f in body) update[f] = str(body[f]) || undefined;
     });
 
+    if (!hasFixedPublicJob && "positionApplied" in body) {
+      update.positionApplied = str(body.positionApplied) || undefined;
+    }
+
+    // Handle jobId update - convert to ObjectId if valid
+    if (!hasFixedPublicJob && "jobId" in body) {
+      const rawJobId = str(body.jobId);
+      if (rawJobId && mongoose.isValidObjectId(rawJobId)) {
+        update.jobId = new mongoose.Types.ObjectId(rawJobId);
+      } else if (rawJobId === "") {
+        // Allow clearing jobId by sending empty string
+        update.jobId = null;
+      }
+    }
+
+    if (hasFixedPublicJob) {
+      update.jobId = existing.jobId;
+      update.positionApplied = job?.title || existing.positionApplied || undefined;
+    }
+
     // Email — check for conflicts within same company
     if ("email" in body) {
       const newEmail = str(body.email).toLowerCase();
-      if (newEmail && newEmail !== existing.email) {
-        const conflict = await Crew.exists({
-          company: existing.company,
-          email: newEmail,
-          _id: { $ne: existing._id },
-        });
-        if (conflict) {
-          return NextResponse.json(
-            { error: "Another application with this email already exists." },
-            { status: 409 }
-          );
-        }
-        update.email = newEmail;
-      }
+      if (newEmail) update.email = newEmail;
     }
 
     // ── Status: applicant may only set draft → submitted, never other values ─
@@ -304,8 +363,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       // Silently ignore any other value (e.g. "approved", "rejected")
     }
 
+    if ("completedSteps" in body) {
+      update.completedSteps = normalizeCompletedSteps(body.completedSteps);
+    }
+
     // Date fields
-    const dateFields: Array<keyof ICrew> = [
+    const dateFields: Array<keyof ICandidate> = [
       "dateOfBirth", "dateOfAvailability",
       "medicalCertIssuedDate", "medicalCertExpiredDate",
     ];
@@ -329,11 +392,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       const nok = body.nextOfKin as Record<string, string> | undefined;
       update.nextOfKin = nok?.name
         ? {
-            name: nok.name,
-            relationship: nok.relationship || "",
-            phone: nok.phone || undefined,
-            address: nok.address || undefined,
-          }
+          name: nok.name,
+          relationship: nok.relationship || "",
+          phone: nok.phone || undefined,
+          address: nok.address || undefined,
+        }
         : undefined;
     }
 
@@ -456,7 +519,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
 
     // ── 10. Apply update ─────────────────────────────────────────────────
-    const updated = await Crew.findByIdAndUpdate(
+    const updated = await Candidate.findByIdAndUpdate(
       id,
       { $set: update },
       { new: true, runValidators: true }
@@ -464,14 +527,19 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({ success: true, data: updated });
 
-  } catch (error: any) {
-    if (error?.code === 11000) {
+  } catch (error: unknown) {
+    const errorCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: unknown }).code
+        : undefined;
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (errorCode === 11000) {
       return NextResponse.json(
-        { error: "A crew member with this email already exists." },
+        { error: "A candidate member with this email already exists." },
         { status: 409 }
       );
     }
-    console.error("PATCH CREW (PUBLIC) ERROR →", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("PATCH Candidate (PUBLIC) ERROR →", error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

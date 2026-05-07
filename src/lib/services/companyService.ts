@@ -1,6 +1,7 @@
 import { dbConnect } from "@/lib/db";
 import Company from "@/models/Company";
 
+import { getCurrencySymbol } from "@/constants/geoData";
 interface GetCompaniesParams {
   page?: number;
   limit?: number;
@@ -90,6 +91,27 @@ export async function getCompanies({
       totalPages,
     },
   };
+}
+
+export async function getCompanyCurrency(companyId: string): Promise<string> {
+  if (!companyId) return "USD";
+
+  await dbConnect();
+  const company = await Company.findById(companyId).select("currency").lean();
+  return company?.currency || "USD";
+}
+
+export async function getCompanyCurrencySettings(companyId: string): Promise<{ currencySymbol: string; currencyCode: string }> {
+  if (!companyId) return { currencySymbol: "$", currencyCode: "USD" };
+
+  await dbConnect();
+  const company = await Company.findById(companyId).select("currency").lean();
+  const currencyCode = company?.currency || "USD";
+
+  
+  const currencySymbol = getCurrencySymbol(currencyCode);
+
+  return { currencySymbol, currencyCode };
 }
 
 

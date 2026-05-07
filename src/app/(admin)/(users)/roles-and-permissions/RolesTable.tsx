@@ -20,7 +20,7 @@ import {
   useState,
 } from "react";
 import { toast } from "react-toastify";
-import DashboardWidgetSection from "@/components/roles/DashboardWidgetSection";
+import GeneralPermissionsSection from "@/components/roles/GeneralPermissionsSection";
 
 // --- Types ---
 interface IRole {
@@ -271,17 +271,22 @@ export default function RolesTable({
                     isReadOnly={true}
                   />
                 </div>
-                <div className=" opacity-80 border-gray-200 dark:border-white/10 ">
-                  <DashboardWidgetSection
-                    isSuperAdmin={selectedRole.name.toLowerCase() === "super-admin"}
-                    allPermissions={allPermissions}
-                    selectedPermissions={selectedRole.permissions}
-                    onToggle={() => {}}
-                  />
-                </div>
               </div>
             )}
           </RoleComponentCard>
+
+          {selectedRole && (
+            <div className="opacity-80">
+              <RoleComponentCard title="General Permissions">
+                <GeneralPermissionsSection
+                  isSuperAdmin={selectedRole.name.toLowerCase() === "super-admin"}
+                  allPermissions={allPermissions}
+                  selectedPermissions={selectedRole.permissions}
+                  onToggle={() => {}}
+                />
+              </RoleComponentCard>
+            </div>
+          )}
         </div>
       </ViewModal>
 
@@ -348,19 +353,25 @@ export default function RolesTable({
                     }}
                   />
                 </div>
-                <DashboardWidgetSection
-                  isReadOnly={isEditingSuperAdmin}
-                  isSuperAdmin={isEditingSuperAdmin}
-                  allPermissions={allPermissions}
-                  selectedPermissions={editData.permissions}
-                  onToggle={(slug, checked) => {
-                    const newPerms = checked
-                      ? [...editData.permissions, slug]
-                      : editData.permissions.filter((p) => p !== slug);
-                    setEditData({ ...editData, permissions: newPerms });
-                  }}
-                />
               </div>
+            </RoleComponentCard>
+
+            <RoleComponentCard
+              title="General Permissions"
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+            >
+              <GeneralPermissionsSection
+                isReadOnly={isEditingSuperAdmin}
+                isSuperAdmin={isEditingSuperAdmin}
+                allPermissions={allPermissions}
+                selectedPermissions={editData.permissions}
+                onToggle={(slug, checked) => {
+                  const newPerms = checked
+                    ? [...editData.permissions, slug]
+                    : editData.permissions.filter((p) => p !== slug);
+                  setEditData({ ...editData, permissions: newPerms });
+                }}
+              />
             </RoleComponentCard>
           </div>
         )}

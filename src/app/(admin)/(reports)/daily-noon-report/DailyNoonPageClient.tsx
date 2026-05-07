@@ -73,9 +73,14 @@ export default function DailyNoonReportClient({
     <div className="space-y-6">
       {/* --- HEADER SECTION --- */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-          Daily Noon Report
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+            Daily Noon Report
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Track daily noon positions, distance, weather, and fuel consumption.
+          </p>
+        </div>
 
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           {/* 1. Filter Toggle Button */}

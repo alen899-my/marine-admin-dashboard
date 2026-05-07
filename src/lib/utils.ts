@@ -18,7 +18,7 @@ export const formatDate = (date: string | Date | undefined) => {
     minute: "2-digit",
     hour12: true, // Change to true if you prefer 12-hour format
     timeZone: "Asia/Kolkata", // Always display in IST
-  }).format(d);
+  }).format(d).toUpperCase();
 };
 
 /**
@@ -33,4 +33,93 @@ export const formatShortDate = (date: string | Date | undefined) => {
     month: "short",
     year: "numeric",
   }).format(d);
+};
+
+export const formatUploadedFileName = (
+  fileName?: string | null,
+  fileUrl?: string | null,
+) => {
+  let rawName = fileName?.trim() ?? "";
+
+  if (!rawName && fileUrl) {
+    try {
+      const pathname = new URL(fileUrl, "http://localhost").pathname;
+      rawName = decodeURIComponent(pathname.split("/").pop() ?? "");
+    } catch {
+      rawName = fileUrl.split("/").pop()?.split("?")[0] ?? "";
+    }
+  }
+
+  if (!rawName) return "File";
+
+  const cleanedName = rawName
+    .replace(/^\d{10,}[-_]?/, "")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleanedName || rawName;
+};
+
+export const PUBLIC_EDITABLE_APPLICATION_STATUSES = [
+  "draft",
+  "submitted",
+] as const;
+
+export const canEditPublicApplicationStatus = (status?: string | null) =>
+  PUBLIC_EDITABLE_APPLICATION_STATUSES.includes(
+    (status ?? "") as (typeof PUBLIC_EDITABLE_APPLICATION_STATUSES)[number],
+  );
+
+export const canEditPublicApplication = ({
+  jobIsAccepting,
+  deadline,
+  now = new Date(),
+}: {
+  jobIsAccepting?: boolean;
+  deadline?: string | Date | null;
+  now?: Date;
+}) => {
+  if (jobIsAccepting === false) return false;
+  if (!deadline) return true;
+
+  const deadlineDate = new Date(deadline);
+  if (Number.isNaN(deadlineDate.getTime())) return true;
+
+  return now < deadlineDate;
+};
+
+/**
+ * Generates a name for a duplicate item, appending copy(1), copy(2), etc.
+ * @param name The current name of the item
+ * @param existingNames A list of names to check against for duplicates
+ */
+export const getNextCopyName = (name: string, existingNames: string[]) => {
+  // 1. Identify base name by removing existing copy suffixes
+  // Matches " (copy)", " (Copy)", " copy(1)", " copy(22)", etc. at the end of the string
+  const copySuffixPattern = /\s+(\(copy\)|copy\(\d+\))$/i;
+  const baseName = name.replace(copySuffixPattern, "").trim();
+
+  // 2. Find the highest number used so far for this base name
+  // Pattern: baseName + " copy(\d+)"
+  const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const numberPattern = new RegExp(`^${escapedBaseName}\\s+copy\\((\\d+)\\)$`, "i");
+
+  let maxNumber = 0;
+  let foundExactBase = false;
+
+  for (const n of existingNames) {
+    if (n.trim().toLowerCase() === baseName.toLowerCase()) {
+      foundExactBase = true;
+    }
+    const match = n.match(numberPattern);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNumber) maxNumber = num;
+    }
+  }
+
+  // If no numbered copies exist, but the base name exists, we start with copy(1)
+  // If even the base name doesn't exist (unlikely as we are duplicating), we still use copy(1)
+  return `${baseName} copy(${maxNumber + 1})`;
 };

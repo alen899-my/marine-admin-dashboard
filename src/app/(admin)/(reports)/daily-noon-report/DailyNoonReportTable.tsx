@@ -56,7 +56,7 @@ export interface IDailyNoonReport {
     | {
         _id: string;
         name: string;
-        company?: { name: string };
+        company?: { name: string; logo?: string };
       };
   type: string;
   status: string;
@@ -152,6 +152,11 @@ export default function DailyNoonReportTable({
     }
     // If it's the string stored directly
     return typeof r.voyageId === "string" ? r.voyageId : "-";
+  };
+
+  const getCompanyLogo = (r: IDailyNoonReport | null) => {
+    if (!r || !r.vesselId || typeof r.vesselId !== "object") return undefined;
+    return r.vesselId.company?.logo;
   };
 
   const statusOptions = [
@@ -770,6 +775,7 @@ export default function DailyNoonReportTable({
                   <DownloadPdfButton
                     title={`Noon Report - ${getVesselName(selectedReport)}`}
                     filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     buttonLabel="Download PDF"
                     data={{
                       "Vessel Name": getVesselName(selectedReport),
@@ -800,6 +806,7 @@ export default function DailyNoonReportTable({
                   <SharePdfButton
                     title={`Noon Report - ${getVesselName(selectedReport)}`}
                     filename={`NoonReport_${getVoyageNo(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     data={{
                       "Vessel Name": getVesselName(selectedReport),
                       "Voyage Number": getVoyageNo(selectedReport),

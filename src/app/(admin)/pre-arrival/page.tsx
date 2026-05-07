@@ -10,30 +10,51 @@ export const metadata: Metadata = {
   description: "Manage pre-arrival operations for maritime vessels.",
 };
 
-export default async function PreArrivalManagement() {
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}
+
+export default async function PreArrivalManagement({ searchParams }: PageProps) {
   // 1. Authorize on Server
-const authz = await authorizeRequest("prearrival.view");
-if (!authz.ok || !authz.session) {
-    redirect("/login"); 
-    // Alternatively, you could return: <div>You are not authorized to view this page.</div>
+  const authz = await authorizeRequest("prearrival.view");
+  if (!authz.ok || !authz.session) {
+    redirect("/login");
   }
 
-  // 2. Direct DB Call (No internal HTTP request!)
+  // 2. Parse URL search params (same pattern as Companies page)
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 1;
+  const limit = 10;
+  const search = resolvedParams.search || "";
+  const status = resolvedParams.status || "all";
+  const vesselId = resolvedParams.vesselId || "";
+  const companyId = resolvedParams.companyId || "";
+
+  // 3. Direct DB Call with all filter params
   const initialData = await getPreArrivalData({
     user: authz.session.user,
     init: true,
-    page: 1,
-    limit: 10
+    page,
+    limit,
+    search,
+    status,
+    vesselId: vesselId || undefined,
+    companyId: companyId || undefined,
   });
 
-  // 3. Render Client Component with Hydrated Data
+  const isSuperAdmin =
+    authz.session.user?.role?.toLowerCase() === "super-admin";
+
+  // 4. Render Client Component with fully hydrated SSR data
   return (
     <PreArrivalClient
       initialRequests={JSON.parse(JSON.stringify(initialData.data))}
       initialVessels={JSON.parse(JSON.stringify(initialData.vessels))}
       initialVoyages={JSON.parse(JSON.stringify(initialData.voyages))}
-      initialTotalPages={initialData.pagination.totalPages}
+      initialCompanies={JSON.parse(JSON.stringify(initialData.companies))}
+      pagination={initialData.pagination}
       user={authz.session.user}
+      isSuperAdmin={isSuperAdmin}
     />
   );
 }

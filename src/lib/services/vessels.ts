@@ -104,3 +104,30 @@ export async function getCompanyOptions() {
 
   return JSON.parse(JSON.stringify(companies));
 }
+
+/**
+ * Optimized helper for fetching small vessel objects for dropdowns.
+ * Used by Contracts, Pre-Arrival and other forms to avoid heavy fields.
+ */
+export async function getVesselOptionsForDropdown(companyId?: string) {
+  await dbConnect();
+  
+  // Initial Query: Exclude soft-deleted records and only active vessels
+  const query: any = { status: "active", deletedAt: null };
+  
+  if (companyId && companyId !== "all") {
+    query.company = companyId;
+  }
+  
+  const vessels = await Vessel.find(query)
+    .select("_id name company")
+    .sort({ name: 1 })
+    .lean();
+    
+  return JSON.parse(JSON.stringify(vessels.map((v: any) => ({
+    value: v._id.toString(),
+    label: v.name,
+    id: v._id.toString(),
+    companyId: v.company?.toString()
+  }))));
+}

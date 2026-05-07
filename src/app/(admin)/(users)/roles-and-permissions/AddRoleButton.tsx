@@ -14,8 +14,7 @@ import { roleSchema } from "@/lib/validations/roleSchema";
 import PermissionLegend from "@/components/roles/PermissionLegend";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import PermissionGrid, { IPermission } from "@/components/roles/PermissionGrid";
-// 1. Import the new component
-import DashboardWidgetSection from "@/components/roles/DashboardWidgetSection";
+import GeneralPermissionsSection from "@/components/roles/GeneralPermissionsSection";
 
 interface AddRoleButtonProps {
   onSuccess: () => void;
@@ -170,20 +169,18 @@ export default function AddRoleButton({ onSuccess,className }: AddRoleButtonProp
                     onToggle={handlePermissionToggle}
                   />
                 </div>
-                
-                {/* A. Dashboard Widgets Section */}
-                <DashboardWidgetSection 
-                allPermissions={permissionsList}
-                  selectedPermissions={formData.permissions}
-                  onToggle={handlePermissionToggle}
-                />
-
-                <div className="border-t border-gray-100 dark:border-gray-800"></div>
-
-             
-               
-
               </div>
+            </RoleComponentCard>
+
+            <RoleComponentCard
+              title="General Permissions"
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+            >
+              <GeneralPermissionsSection
+                allPermissions={permissionsList}
+                selectedPermissions={formData.permissions}
+                onToggle={handlePermissionToggle}
+              />
             </RoleComponentCard>
 
           </div>

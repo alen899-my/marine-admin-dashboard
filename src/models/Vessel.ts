@@ -13,20 +13,6 @@ export interface IVessel extends Document {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
-  // This acts as the "Vessel Library" for Admin/Office documents
-  certificates: {
-    _id?: mongoose.Types.ObjectId; 
-    docType: string;               
-    name: string;                  
-    owner: "ship" | "office";
-    fileName: string;              
-    fileUrl: string;               
-    note?: string;
-    expiryDate?: Date;
-    rejectionReason?: string;
-    updatedAt: Date;
-    uploadedBy?: mongoose.Types.ObjectId;
-  }[];
   dimensions: {
     loa: number;
     beam: number;
@@ -77,33 +63,6 @@ const VesselSchema = new Schema<IVessel>(
     mmsi: String,
     flag: String,
     yearBuilt: Number,
-    // THE VESSEL LIBRARY (NOT REQUIRED)
-  certificates: {
-      type: [
-        {
-          docType: {
-            type: String,
-            required: true,
-            enum: [
-              "registry_cert", "tonnage_cert", "isps_ship", "isps_officer",
-              "pi_cert", "sanitation_cert", "msm_cert", "hull_machinery",
-              "safety_equipment", "medical_chest", "ships_particulars",
-              "security_report"
-            ]
-          },
-          name: { type: String, required: true },
-          owner: { type: String, enum: ["ship", "office"], default: "office" },
-          fileName: { type: String, required: true },
-          fileUrl: { type: String, required: true },
-          note: String,
-          rejectionReason: { type: String, default: "" },
-          expiryDate: Date,
-          updatedAt: { type: Date, default: Date.now },
-          uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-        }
-      ],
-      default: []
-    },
     dimensions: {
       loa: Number,
       beam: Number,

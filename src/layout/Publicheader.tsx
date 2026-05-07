@@ -3,8 +3,9 @@ import PublicUserDropdown from "@/components/header/PublicUserDropdown";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { ImpersonationBanner } from "@/components/common/ImpersonationBanner";
 
 const NAV_ITEMS = [
 
@@ -18,10 +19,16 @@ interface PublicHeaderProps {
 const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentPath, setCurrentPath] = useState(pathname);
   const { status } = useSession();
 
+  useEffect(() => {
+    setCurrentPath(`${window.location.pathname}${window.location.search}`);
+  }, [pathname]);
+
   return (
-    <header className="sticky top-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-[99999]">
+    <header className="sticky top-0 flex flex-col w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-[99999]">
+      <ImpersonationBanner />
       <div className="flex items-center justify-between px-4 sm:px-6 h-16">
 
         {/* ── LEFT: Logo ── */}
@@ -70,7 +77,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
               <PublicUserDropdown />
             ) : (
               <Link
-                href={`/signin?redirect=${encodeURIComponent(pathname)}`}
+                href={`/signin?redirect=${encodeURIComponent(currentPath)}`}
                 className="px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors"
               >
                 Login
@@ -127,7 +134,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
             {/* Mobile Login fallback when unauthenticated */}
             {status === "unauthenticated" && (
               <Link
-                href={`/signin?redirect=${encodeURIComponent(pathname)}`}
+                href={`/signin?redirect=${encodeURIComponent(currentPath)}`}
                 onClick={() => setMobileOpen(false)}
                 className="mt-4 mx-4 py-3 text-center rounded-xl text-base font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors"
               >

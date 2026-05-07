@@ -21,6 +21,13 @@ export const companySchema = Joi.object({
   address: Joi.string().allow("", null).max(500).messages({
     "string.max": "Address cannot exceed 500 characters",
   }),
+  country: Joi.string().allow("", null).max(2).messages({
+    "string.max": "Invalid country code",
+  }),
+
+  currency: Joi.string().allow("", null).max(3).messages({
+    "string.max": "Invalid currency code",
+  }),
 
   contactName: Joi.string().allow("", null).max(100).messages({
     "string.max": "Contact name cannot exceed 100 characters",

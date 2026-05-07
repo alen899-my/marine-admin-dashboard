@@ -9,8 +9,8 @@ const documentBase = {
   dateExpired: Joi.date().iso().allow(null, ""),
 };
 
-// Phone number pattern: digits only, optional leading +, 7-15 digits
-const phonePattern = /^[+]?[0-9]{7,15}$/;
+// Phone number pattern: allow common international formatting, but reject letters.
+const phonePattern = /^(?=.*\d)[\d+\s().-]+$/;
 
 export const applicationSchema = Joi.object({
   // Identity & Contact
@@ -39,7 +39,7 @@ export const applicationSchema = Joi.object({
   }),
   cellPhone: Joi.string().trim().pattern(phonePattern).required().label("Cell Phone").messages({
     "string.empty": "{#label} is required",
-    "string.pattern.base": "{#label} must contain only digits (7-15 digits)",
+    "string.pattern.base": "{#label} must not contain letters",
   }),
   
   // Personal Details
@@ -111,7 +111,7 @@ export const applicationSchema = Joi.object({
     }),
     phone: Joi.string().trim().pattern(phonePattern).required().label("NOK Phone").messages({
       "string.empty": "{#label} is required",
-      "string.pattern.base": "{#label} must contain only digits (7-15 digits)",
+      "string.pattern.base": "{#label} must not contain letters",
     }),
     address: Joi.string().trim().min(5).required().label("NOK Address").messages({
       "string.empty": "{#label} is required",
@@ -189,5 +189,20 @@ seaExperience: Joi.array().items(Joi.object({
   // System Fields (Required for Action)
   company: Joi.string().required(),
   formSource: Joi.string().valid("public_form", "admin_created").required(),
-  status: Joi.string().valid("draft", "submitted", "reviewing", "approved", "rejected", "on_hold", "archived").optional(),
+  status: Joi.string()
+  .valid(
+    "draft",
+    "submitted",
+    "hr_review",
+    "shortlisted",
+    "interview_scheduled",
+    "interview_completed",
+    "selected",
+    "offer_sea_issued",
+    "accepted",
+    "onboarding_ready",
+    "onboarded",
+    "rejected"
+  )
+  .optional(),
 });

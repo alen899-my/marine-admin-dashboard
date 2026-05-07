@@ -1,80 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import Job from "@/models/Job";
-import { auth } from "@/auth";
-
-// ── Helper to check if user has access to this job ──
-async function checkJobAccess(jobId: string) {
-  await dbConnect();
-  const session = await auth();
-
-  if (!session?.user) {
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  const job = await Job.findById(jobId);
-  if (!job) {
-    return { error: "Job not found", status: 404 };
-  }
-
-  const userRole = session.user.role?.toLowerCase() || "";
-  const isSuperAdmin = userRole === "super_admin" || userRole === "super-admin";
-
-  // Regular admins can only touch jobs in their own company
-  if (!isSuperAdmin) {
-    const userCompanyId = session.user.company?.id;
-    if (job.companyId.toString() !== userCompanyId) {
-      return { error: "Forbidden", status: 403 };
-    }
-  }
-
-  return { session, job, isSuperAdmin };
-}
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
 // ── PUT (Update a Job) ──
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // Route handler params in Next.js 15+ are a Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
+    const authz = await authorizeRequest("jobs.edit");
+    if (!authz.ok) return authz.response;
 
+    const { id } = await params;
     if (!id) {
       return NextResponse.json({ success: false, error: "Missing Job ID" }, { status: 400 });
     }
 
-    const access = await checkJobAccess(id);
-    if (access.error) {
-      return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+    await dbConnect();
+
+    const session = authz.session;
+    const userRole = session?.user?.role?.toLowerCase() || "";
+    const isSuperAdmin = userRole === "super-admin" || userRole === "super_admin";
+    const userCompanyId = session?.user?.company?.id;
+
+    const job = await Job.findById(id);
+    if (!job) {
+      return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 });
+    }
+
+    // Regular users can only touch jobs in their own company
+    if (!isSuperAdmin && job.companyId.toString() !== userCompanyId) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
 
-    // Prevent non-super-admins from changing the companyId directly
-    if (!access.isSuperAdmin && body.companyId) {
-       delete body.companyId; 
+    // Prevent non-super-admins from changing companyId
+    if (!isSuperAdmin && body.companyId) {
+      delete body.companyId;
     }
-
-    const { job, session } = access;
 
     job.title = body.title ?? job.title;
     job.description = body.description ?? job.description;
     job.applicationLink = body.applicationLink ?? job.applicationLink;
     job.isAccepting = body.isAccepting ?? job.isAccepting;
-    
-    // Explicit null checks for deadline since `undefined` doesn't overwrite DB values
+
     if (body.deadline === null || body.deadline === "") {
-        job.deadline = null;
+      job.deadline = null;
     } else if (body.deadline) {
-        job.deadline = new Date(body.deadline);
+      job.deadline = new Date(body.deadline);
     }
-    
-    if (body.companyId && access.isSuperAdmin) {
-       job.companyId = body.companyId;
+
+    if (body.companyId && isSuperAdmin) {
+      job.companyId = body.companyId;
     }
-    
-    job.status = body.status ?? job.status;
+
     job.updatedBy = session?.user?.id;
 
     await job.save();
@@ -94,21 +75,32 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
+    const authz = await authorizeRequest("jobs.delete");
+    if (!authz.ok) return authz.response;
 
+    const { id } = await params;
     if (!id) {
       return NextResponse.json({ success: false, error: "Missing Job ID" }, { status: 400 });
     }
 
-    const access = await checkJobAccess(id);
-    if (access.error) {
-      return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+    await dbConnect();
+
+    const session = authz.session;
+    const userRole = session?.user?.role?.toLowerCase() || "";
+    const isSuperAdmin = userRole === "super-admin" || userRole === "super_admin";
+    const userCompanyId = session?.user?.company?.id;
+
+    const job = await Job.findById(id);
+    if (!job) {
+      return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 });
     }
 
-    // Hard delete based on the revised implementation plan
-    await Job.findByIdAndDelete(id);
+    // Regular users can only delete jobs in their own company
+    if (!isSuperAdmin && job.companyId.toString() !== userCompanyId) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
 
+    await Job.findByIdAndDelete(id);
     return NextResponse.json({ success: true, message: "Job deleted successfully" }, { status: 200 });
   } catch (error: any) {
     console.error("DELETE /api/job-postings/[id] error:", error);

@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
-import Vessel from "@/models/Vessel";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { getPreArrivalById } from "@/lib/services/preArrivalService";
 import path from "path";
 import { existsSync } from "fs";
 import { unlink } from "fs/promises";
 import { del } from "@vercel/blob";
-
-// These are vessel library docs — never delete their physical files
-const OFFICE_LIBRARY_DOCS = [
-  "registry_cert", "tonnage_cert", "isps_ship", "isps_officer",
-  "pi_cert", "sanitation_cert", "msm_cert", "hull_machinery",
-  "safety_equipment", "medical_chest", "ships_particulars", "security_report"
-];
 
 
 export async function GET(
@@ -41,21 +33,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 1. Permission Check
     const authz = await authorizeRequest("prearrival.edit");
-    
-    // If authz.ok is false, we return. 
-    // If it's true, TypeScript now knows 'session' MUST exist.
     if (!authz.ok || !authz.session) return authz.response;
-
-    // Destructure session here to lock the type
     const { session } = authz;
 
     await dbConnect();
     const { id } = await params;
     const body = await req.json();
 
-    // 2. Duplicate RequestID Check
+    const current = await PreArrival.findById(id)
+      .select("status submittedAt")
+      .lean() as any;
+    if (!current) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Duplicate request ID check
     if (body.requestId) {
       const existing = await PreArrival.findOne({ 
         requestId: body.requestId, 
@@ -69,21 +62,40 @@ export async function PATCH(
       }
     }
 
-    // 3. Perform Update
+    // Build update fields
+    const updateFields: any = {
+      vesselId:     body.vesselId,
+      voyageId:     body.voyageId,
+      portName:     body.portName,
+      requestId:    body.requestId,
+      agentContact: body.agentContact,
+      eta:          body.eta,
+      dueDate:      body.dueDate,
+      notes:        body.notes,
+      status:       body.status,
+      updatedBy:    session.user.id,
+    };
+
+    // Lock on sent/acknowledged/completed
+    if (["sent", "acknowledged", "completed"].includes(body.status)) {
+      updateFields.isLocked = true;
+      if (body.status === "sent" && !current.submittedAt) {
+        updateFields.submittedAt = new Date();
+        updateFields.submittedBy = session.user.id;
+      }
+      if (body.status === "acknowledged") {
+        updateFields.acknowledgedAt = new Date();
+      }
+    }
+
+    // Unlock if status changed back to draft or published
+    if (["draft", "published"].includes(body.status)) {
+      updateFields.isLocked = false;
+    }
+
     const updated = await PreArrival.findByIdAndUpdate(
       id,
-      {
-        vesselId: body.vesselId,
-        voyageId: body.voyageId,
-        portName: body.portName,
-        requestId: body.requestId,
-        agentContact: body.agentContact,
-        eta: body.eta,
-        dueDate: body.dueDate,
-        notes: body.notes,
-    status: body.status,
-        updatedBy: session.user.id, 
-      },
+      { $set: updateFields },
       { new: true, runValidators: true }
     );
 
@@ -130,15 +142,12 @@ export async function DELETE(
       );
     }
 
-    // 2. Delete physical files for non-library docs only
+    // 2. Delete physical files
     const documents = preArrival.documents || {};
     const isLocal = process.env.UPLOAD_PROVIDER === "local";
 
     const fileDeletionPromises = Object.entries(documents).map(async ([docId, doc]: [string, any]) => {
-      // ✅ Skip vessel library docs — their files belong to the vessel, not this pre-arrival
-      if (OFFICE_LIBRARY_DOCS.includes(docId)) return;
-
-      // Skip if no fileUrl (library doc reference only has vesselCertId)
+      // Skip if no fileUrl
       if (!doc?.fileUrl) return;
 
       try {

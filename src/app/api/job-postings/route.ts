@@ -1,57 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import Job from "@/models/Job";
-import { auth } from "@/auth";
+import { authorizeRequest } from "@/lib/authorizeRequest";
 
 export async function POST(req: NextRequest) {
   try {
-    await dbConnect();
-    const session = await auth();
+    // 1. Authorize with permission slug
+    const authz = await authorizeRequest("jobs.create");
+    if (!authz.ok) return authz.response;
 
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+    await dbConnect();
+
+    const session = authz.session;
+    const userRole = session?.user?.role?.toLowerCase() || "";
+    const isSuperAdmin = userRole === "super-admin" || userRole === "super_admin";
+    const userCompanyId = session?.user?.company?.id;
 
     const body = await req.json();
-    const userRole = session.user.role?.toLowerCase() || "";
-    const isSuperAdmin = userRole === "super_admin" || userRole === "super-admin";
-    const userCompanyId = session.user.company?.id;
 
-    // RBAC: If super_admin, they must provide a companyId in the body.
-    // If regular admin, they can ONLY create jobs for their own company.
+    // 2. Company targeting logic
     let targetCompanyId = body.companyId;
 
     if (!isSuperAdmin) {
       if (!userCompanyId) {
-        return NextResponse.json({ success: false, error: "No company associated with user." }, { status: 403 });
+        return NextResponse.json(
+          { success: false, error: "No company associated with user." },
+          { status: 403 }
+        );
       }
-      targetCompanyId = userCompanyId; // Force the target company to be the user's company
+      targetCompanyId = userCompanyId; // Force user's own company
     } else {
       if (!targetCompanyId) {
-        return NextResponse.json({ success: false, error: "Super Admin must specify a companyId." }, { status: 400 });
+        return NextResponse.json(
+          { success: false, error: "Super Admin must specify a companyId." },
+          { status: 400 }
+        );
       }
     }
+    const existing = await Job.findOne({
+      title: { $regex: new RegExp(`^${body.title.trim()}$`, "i") },
+      companyId: targetCompanyId,
+      deletedAt: null,
+    });
 
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: `A job titled "${body.title}" already exists.` },
+        { status: 409 }
+      );
+    }
+
+    // 3. Create Job
     const newJob = new Job({
       title: body.title,
       description: body.description,
       isAccepting: body.isAccepting ?? true,
       deadline: body.deadline ? new Date(body.deadline) : null,
       companyId: targetCompanyId,
-      status: body.status || "active",
-      createdBy: session.user.id,
+      createdBy: session?.user?.id,
     });
 
     await newJob.save();
 
-    // Automatically generate the localized application link if not provided
+    // 4. Generate application link
     const base = req.nextUrl.origin;
-    const generatedLink = `${base}/careers/apply?company=${targetCompanyId}`;
-    
-    // We add suffix later if needed, but standard link is just company for now, or jobId
-    const finalLink = `${generatedLink}&jobId=${newJob._id}`;
-    
-    newJob.applicationLink = body.applicationLink || finalLink;
+    newJob.applicationLink =
+      body.applicationLink ||
+      `${base}/careers/apply?company=${targetCompanyId}&jobId=${newJob._id}`;
+
     await newJob.save();
 
     return NextResponse.json({ success: true, data: newJob }, { status: 201 });

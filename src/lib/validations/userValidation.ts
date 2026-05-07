@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const phonePattern = /^(?=.*\d)[\d+\s]+$/;
+
 export const registerValidation = Joi.object({
   fullName: Joi.string()
     .min(2)
@@ -24,11 +26,17 @@ export const registerValidation = Joi.object({
     }),
 
   phone: Joi.string()
-    .pattern(/^[0-9+\-()\s]{7,20}$/)
+    .trim()
+    .min(8)
+    .max(20)
+    .pattern(phonePattern)
     .optional()
     .allow("", null)
     .messages({
-      "string.pattern.base": "Phone must be 7-20 characters and contain only numbers and phone symbols",
+      "string.min": "Phone number must be at least 8 characters",
+      "string.max": "Phone number cannot exceed 20 characters",
+      "string.pattern.base":
+        "Phone number can contain only digits, spaces, and +",
     }),
 
   password: Joi.string()
@@ -45,7 +53,7 @@ export const registerValidation = Joi.object({
       "candidate",
       "superintendent",
       "ops_manager",
-      "crew_manager",
+      "candidate_manager",
       "vessel_user",
       "admin"
     )

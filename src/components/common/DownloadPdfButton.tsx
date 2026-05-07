@@ -10,6 +10,7 @@ export interface DownloadPdfButtonProps {
   title: string;
   filename: string;
   data: Record<string, any>;
+  logoUrl?: string;
   buttonLabel?: string;
   disabled?: boolean;
 }
@@ -18,6 +19,7 @@ export default function DownloadPdfButton({
   title,
   filename,
   data,
+  logoUrl,
   buttonLabel = "Download Report",
   disabled = false,
 }: DownloadPdfButtonProps) {
@@ -27,6 +29,7 @@ export default function DownloadPdfButton({
   const loadImage = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = url;
       img.onload = () => resolve(img);
       img.onerror = (err) => reject(err);
@@ -44,7 +47,7 @@ export default function DownloadPdfButton({
       // -------- 1. HEADER & LOGO LOGIC --------
       let logoBottomY = 25;
       try {
-        const logo = await loadImage("/images/logo/b.png");
+        const logo = await loadImage(logoUrl || "/images/logo/b.png");
         const displayWidth = 45;
         const displayHeight = (logo.naturalHeight * displayWidth) / logo.naturalWidth;
         

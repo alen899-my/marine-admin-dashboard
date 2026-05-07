@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
+import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
 
 export interface UserFilterValues {
   search: string;
   status: string;
+  role: string;
   companyId: string;
   startDate: string;
   endDate: string;
@@ -18,6 +20,8 @@ interface UserFiltersProps {
   setSearch: (v: string) => void;
   status: string;
   setStatus: (v: string) => void;
+  role: string;
+  setRole: (v: string) => void;
   companyId: string;
   setCompanyId: (v: string) => void;
   isSuperAdmin: boolean;
@@ -27,6 +31,7 @@ interface UserFiltersProps {
   setEndDate: (v: string) => void;
   // ✅ Added props for Server Component Architecture
   companies?: { value: string; label: string }[];
+  roles?: { value: string; label: string }[];
   onApply?: (values: UserFilterValues) => void;
   onClear?: () => void;
 }
@@ -36,6 +41,8 @@ export default function UserFilters({
   setSearch,
   status,
   setStatus,
+  role,
+  setRole,
   companyId,
   setCompanyId,
   isSuperAdmin,
@@ -44,12 +51,14 @@ export default function UserFilters({
   endDate,
   setEndDate,
   companies = [],
+  roles = [],
   onApply,
   onClear,
 }: UserFiltersProps) {
   // Local state for debounced/deferred updates
   const [localSearch, setLocalSearch] = useState(search);
   const [localStatus, setLocalStatus] = useState(status);
+  const [localRole, setLocalRole] = useState(role);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
@@ -61,6 +70,9 @@ export default function UserFilters({
   useEffect(() => {
     setLocalStatus(status);
   }, [status]);
+  useEffect(() => {
+    setLocalRole(role);
+  }, [role]);
   useEffect(() => {
     setLocalCompanyId(companyId);
   }, [companyId]);
@@ -78,6 +90,7 @@ export default function UserFilters({
       onApply({
         search: localSearch,
         status: localStatus,
+        role: localRole,
         companyId: localCompanyId,
         startDate: localStartDate,
         endDate: localEndDate,
@@ -85,6 +98,7 @@ export default function UserFilters({
     } else {
       setSearch(localSearch);
       setStatus(localStatus);
+      setRole(localRole);
       setCompanyId(localCompanyId);
       setStartDate(localStartDate);
       setEndDate(localEndDate);
@@ -94,6 +108,7 @@ export default function UserFilters({
   const handleClear = () => {
     setLocalSearch("");
     setLocalStatus("all");
+    setLocalRole("all");
     setLocalCompanyId("all");
     setLocalStartDate("");
     setLocalEndDate("");
@@ -104,6 +119,7 @@ export default function UserFilters({
       // Immediately clear parent state too (Legacy)
       setSearch("");
       setStatus("all");
+      setRole("all");
       setCompanyId("all");
       setStartDate("");
       setEndDate("");
@@ -115,7 +131,7 @@ export default function UserFilters({
   };
 
   return (
-    <div className="flex flex-wrap lg:flex-wrap items-end gap-4 p-4 w-full overflow-x-auto no-scrollbar">
+    <div className="flex flex-wrap lg:flex-wrap items-end gap-4 p-4 w-full">
       {/* SEARCH - Updated to match common component size */}
       <div className="w-full sm:w-auto min-w-[200px] shrink-0">
         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
@@ -148,12 +164,26 @@ export default function UserFilters({
         />
       </div>
 
+      {/* ROLE FILTER */}
+      <div className="w-full sm:w-auto min-w-[210px] shrink-0">
+        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
+          Role
+        </label>
+        <Select
+          className="w-full"
+          value={localRole}
+          onChange={setLocalRole}
+          placeholder="Select role"
+          options={[{ value: "all", label: "All Roles" }, ...roles]}
+        />
+      </div>
+
       {isSuperAdmin && (
         <div className="w-full sm:w-auto min-w-[210px] shrink-0">
           <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
             Company
           </label>
-          <Select
+          <SearchableSelect
             className="w-full"
             value={localCompanyId}
             onChange={setLocalCompanyId}

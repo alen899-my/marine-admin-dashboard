@@ -1,18 +1,18 @@
 "use client";
 import EditProfileModal from "@/components/profile/EditProfileModal";
+import { useAuthorization } from "@/hooks/useAuthorization";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { useModal } from "../../hooks/useModal";
-import Badge from "../ui/badge/Badge";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import Link from "next/link";
-import { UserCog, Info, LogOut } from "lucide-react"; 
+import { UserCog, Info, LogOut, BookOpen, ShieldCheck } from "lucide-react";
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [dbUser, setDbUser] = useState<any>(null);
   const { isOpen: isModalOpen, openModal, closeModal } = useModal();
+  const { can, isReady } = useAuthorization();
 
   const { data: session } = useSession();
   const user = session?.user;
@@ -41,6 +41,7 @@ export default function UserDropdown() {
   const profilePicture = dbUser?.profilePicture || user?.profilePicture;
   const roleName = dbUser?.role?.name;
   const companyName = dbUser?.company?.name;
+  const canManageSettings = isReady && can("settings.manage");
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -51,7 +52,7 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-return (
+  return (
     <div className="relative">
       {/* Trigger — minimal avatar-only pill */}
       <button
@@ -81,7 +82,7 @@ return (
             </svg>
           )}
         </span>
-      
+
       </button>
 
       {/* Dropdown Panel */}
@@ -155,7 +156,7 @@ return (
                 <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                   {companyName}
                 </span>
-             
+
               </div>
             </div>
 
@@ -176,14 +177,33 @@ return (
                 </svg>
               </DropdownItem>
 
+              {canManageSettings ? (
+                <>
+                  <DropdownItem
+                    tag="a"
+                    href="/settings/about"
+                    onItemClick={closeDropdown}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-theme-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-all duration-150 group"
+                  >
+                    <Info className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition-colors" />
+                    <span>System Info</span>
+                    <svg className="ml-auto w-3.5 h-3.5 text-gray-300 dark:text-gray-600 group-hover:text-brand-400 dark:group-hover:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </DropdownItem>
+
+                
+                </>
+              ) : null}
+
               <DropdownItem
                 tag="a"
-                href="/settings/about"
+                href="/user-guide"
                 onItemClick={closeDropdown}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-theme-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-all duration-150 group"
               >
-                <Info className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition-colors" />
-                <span>System Info</span>
+                <BookOpen className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition-colors" />
+                <span>User Guide</span>
                 <svg className="ml-auto w-3.5 h-3.5 text-gray-300 dark:text-gray-600 group-hover:text-brand-400 dark:group-hover:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -193,7 +213,17 @@ return (
             {/* Sign Out — full-width bottom bar */}
             <div className="mx-3 mb-3 mt-1">
               <button
-                onClick={() => { closeDropdown(); signOut({ callbackUrl: "/signin" }); }}
+                onClick={async () => { 
+                  closeDropdown();
+                  if ((session as any)?.sessionId) {
+                    await fetch("/api/auth/signout-cleanup", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ sessionId: (session as any).sessionId }),
+                    });
+                  }
+                  signOut({ callbackUrl: "/signin" }); 
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-theme-sm font-medium text-error-600 dark:text-error-400 border border-error-100 dark:border-error-500/20 bg-error-50 dark:bg-error-500/10 hover:bg-error-100 dark:hover:bg-error-500/20 hover:border-error-200 dark:hover:border-error-500/30 transition-all duration-150 group"
               >
                 <LogOut className="w-4 h-4 flex-shrink-0" />

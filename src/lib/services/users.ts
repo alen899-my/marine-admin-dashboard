@@ -10,6 +10,7 @@ interface GetUsersParams {
   limit?: number;
   search?: string;
   status?: string;
+  role?: string;
   companyId?: string;
   startDate?: string;
   endDate?: string;
@@ -21,6 +22,7 @@ export async function getUsers({
   limit = 20,
   search,
   status,
+  role,
   companyId,
   startDate,
   endDate,
@@ -40,6 +42,12 @@ export async function getUsers({
   };
 
   // --- 1. Multi-Tenancy & Role Restriction Logic ---
+  const rolesToExclude = [];
+  
+  // 1. Always exclude candidates from User Management table
+  const candidateRole = await Role.findOne({ name: "candidate" }).select("_id");
+  if (candidateRole) rolesToExclude.push(candidateRole._id);
+
   if (isSuperAdmin) {
     if (companyId && companyId !== "all") {
       query.company = companyId;
@@ -53,13 +61,22 @@ export async function getUsers({
     const superAdminRole = await Role.findOne({ name: "super-admin" }).select(
       "_id",
     );
-    if (superAdminRole) {
-      query.role = { $ne: superAdminRole._id };
-    }
+    if (superAdminRole) rolesToExclude.push(superAdminRole._id);
   }
 
   // --- 2. Filters ---
   if (status && status !== "all") query.status = status;
+  
+  if (role && role !== "all") {
+    // If a specific role is requested via filter, ensure it's not one of the excluded ones
+    if (rolesToExclude.some(id => id.toString() === role)) {
+      query.role = { $in: [] }; // Forbidden role requested via URL/Filter
+    } else {
+      query.role = role;
+    }
+  } else if (rolesToExclude.length > 0) {
+    query.role = { $nin: rolesToExclude };
+  }
 
   if (search) {
     query.$or = [
@@ -110,15 +127,13 @@ export async function getUserMetadata(user: any) {
   const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
   const isAdmin = user.role?.toLowerCase() === "admin";
 
-  // 1. Role Query: Hide 'super-admin' role from non-super-admins
+  // 1. Role Query: Hide 'super-admin' and 'candidate' roles from dropdowns
   const roleQuery: any = { deletedAt: null };
+  const namesToExclude = ["candidate"];
   if (!isSuperAdmin) {
-    roleQuery.name = { $ne: "super-admin" };
-    if (!isAdmin) {
-      // If regular user (not admin), maybe hide all roles or specific ones?
-      // Defaulting to showing available roles for their level
-    }
+    namesToExclude.push("super-admin");
   }
+  roleQuery.name = { $nin: namesToExclude };
 
   // 2. Permission Query: Only show permissions the current user has access to (if not super admin)
   const permQuery: any = { status: "active" };

@@ -14,6 +14,7 @@ import { mkdir, writeFile } from "fs/promises";
 import mongoose from "mongoose"; //  Import Mongoose
 import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
+import { buildCompanyUploadFolder } from "@/lib/uploadFolders";
 const sendResponse = (
   status: number,
   message: string,
@@ -226,7 +227,7 @@ export async function GET(req: Request) {
           select: "name company",
           populate: {
             path: "company",
-            select: "name",
+            select: "name logo",
           },
         })
         .populate("createdBy", "fullName")
@@ -322,6 +323,11 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     const currentUserId = session?.user?.id;
+    const norUploadFolder = buildCompanyUploadFolder({
+      companyName: session?.user?.company?.name,
+      module: "nor",
+      subfolder: session?.user?.fullName,
+    });
     const authz = await authorizeRequest("nor.create");
     if (!authz.ok) return authz.response;
 
@@ -355,7 +361,7 @@ export async function POST(req: Request) {
         );
       }
       try {
-        const uploaded = await handleUpload(file, "nor");
+        const uploaded = await handleUpload(file, norUploadFolder);
         finalDocumentUrl = uploaded.url;
       } catch (err) {
         console.error("NOR document upload failed:", err);

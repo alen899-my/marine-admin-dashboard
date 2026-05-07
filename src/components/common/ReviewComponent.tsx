@@ -212,6 +212,7 @@ interface ScalarState {
 
 interface DynamicReviewProps {
   scalar: ScalarState;
+  availablePositions?: { value: string; label: string }[];
   coc: { items: any[] };
   coe: { items: any[] };
   passports: { items: any[] };
@@ -232,6 +233,7 @@ interface DynamicReviewProps {
 
 export default function DynamicReview({
   scalar,
+  availablePositions = [],
   coc,
   coe,
   passports,
@@ -242,6 +244,9 @@ export default function DynamicReview({
   existingProfilePhoto,
   existingResume,
 }: DynamicReviewProps) {
+  const positionLabel =
+    availablePositions.find((p) => p.value === scalar.positionApplied)?.label
+    ?? scalar.positionApplied;
   return (
     <div className="space-y-0 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 overflow-hidden">
 
@@ -309,7 +314,7 @@ export default function DynamicReview({
             <TableHeader headers={["Position Applied", "Rank", "Date of Availability", "Availability Note"]} />
             <TableRow
               values={[
-                scalar.positionApplied,
+               positionLabel,
                 scalar.rank,
                 scalar.dateOfAvailability,
                 scalar.availabilityNote,
@@ -326,7 +331,7 @@ export default function DynamicReview({
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               <TableHeader
-                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"]}
+                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date of Expiry"]}
               />
               {coc.items.map((l, i) => (
                 <TableRow
@@ -353,7 +358,7 @@ export default function DynamicReview({
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               <TableHeader
-                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date Expired"]}
+                headers={["Country", "Grade", "Licence No.", "Place Issued", "Date Issued", "Date of Expiry"]}
               />
               {coe.items.map((l, i) => (
                 <TableRow
@@ -380,7 +385,7 @@ export default function DynamicReview({
           <div className="overflow-x-auto">
             <div className="min-w-[700px]">
               <TableHeader
-                headers={["Passport No.", "Country", "Place Issued", "Date Issued", "Date Expired"]}
+                headers={["Passport No.", "Country", "Place Issued", "Date Issued", "Date of Expiry"]}
               />
               {passports.items.map((p, i) => (
                 <TableRow
@@ -400,7 +405,7 @@ export default function DynamicReview({
           <div className="overflow-x-auto">
             <div className="min-w-[700px]">
               <TableHeader
-                headers={["Book No.", "Country", "Place Issued", "Date Issued", "Date Expired"]}
+                headers={["Book No.", "Country", "Place Issued", "Date Issued", "Date of Expiry"]}
               />
               {seamans.items.map((s, i) => (
                 <TableRow
@@ -420,7 +425,7 @@ export default function DynamicReview({
           <div className="overflow-x-auto">
             <div className="min-w-[900px]">
               <TableHeader
-                headers={["Country", "Visa Type", "Visa No.", "Place Issued", "Date Issued", "Date Expired"]}
+                headers={["Country", "Visa Type", "Visa No.", "Place Issued", "Date Issued", "Date of Expiry"]}
               />
               {visas.items.map((v, i) => (
                 <TableRow
@@ -476,12 +481,16 @@ export default function DynamicReview({
         </div>
 
         {/* Rows */}
-        <DocRow
-          label="Profile Photo"
-          file={scalar.profilePhoto}
-          existingUrl={existingProfilePhoto}
-          existingName={existingProfilePhoto ? "Current photo" : undefined}
-        />
+       <DocRow
+  label="Profile Photo"
+  file={scalar.profilePhoto}
+  existingUrl={existingProfilePhoto}
+  existingName={
+    existingProfilePhoto
+      ? existingProfilePhoto.split("/").pop()?.split("?")[0]
+      : undefined
+  }
+/>
         <DocRow
           label="Resume / CV"
           file={scalar.resume}

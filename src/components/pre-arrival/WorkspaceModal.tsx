@@ -36,6 +36,10 @@ export default function WorkspaceModal({
   const { can } = useAuthorization();
   const [isZipping, setIsZipping] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const isPackLocked =
+    !!data?.isLocked ||
+    ["sent", "acknowledged", "completed"].includes(data?.status);
+  const isEffectivelyReadOnly = isReadOnly || isPackLocked;
   // Inside WorkspaceModal component
 
 
@@ -238,7 +242,12 @@ export default function WorkspaceModal({
 
  const handleSave = async () => {
   // 1. Change Detection
-  const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
+  if (isPackLocked) {
+    toast.info("This pre-arrival pack is locked and can no longer be updated.");
+    return;
+  }
+
+    const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
   if (changedIds.length === 0) {
     toast.info("No changes to save");
     return;
@@ -301,8 +310,13 @@ export default function WorkspaceModal({
       <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
           <h4 className="text-lg font-medium text-gray-800 dark:text-white/90">
-            {isReadOnly ? "Approved Documents" : "Upload Document Packs"}
+            {isEffectivelyReadOnly ? "Approved Documents" : "Upload Document Packs"}
           </h4>
+          {isPackLocked && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              This pack is locked. Uploads and edits are disabled.
+            </p>
+          )}
         </div>
         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
           <X className="h-5 w-5 text-gray-400" />
@@ -317,11 +331,11 @@ export default function WorkspaceModal({
         <section className="animate-in fade-in duration-500 pb-2">
           <DocumentChecklist
             uploadedData={displayedDocuments}
-            onUpload={isReadOnly ? () => { } : handleFileStaging}
+            onUpload={isEffectivelyReadOnly ? () => { } : handleFileStaging}
             onView={(item: any) => handleAction(item, "view")}
-            onNoteChange={isReadOnly ? () => { } : handleNoteStaging}
-            onVerify={isReadOnly ? () => { } : handleVerify}
-            isReadOnly={isReadOnly}
+            onNoteChange={isEffectivelyReadOnly ? () => { } : handleNoteStaging}
+            onVerify={isEffectivelyReadOnly ? () => { } : handleVerify}
+            isReadOnly={isEffectivelyReadOnly}
           />
         </section>
       </div>
@@ -329,7 +343,7 @@ export default function WorkspaceModal({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end w-full gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-white/5 shrink-0">
 
         {/* Cancel Button - Now only shows if NOT in read-only/view mode */}
-        {!isReadOnly && (
+        {!isEffectivelyReadOnly && (
           <Button
             size="sm"
             variant="outline"
@@ -341,7 +355,7 @@ export default function WorkspaceModal({
           </Button>
         )}
 
-        {isReadOnly && can("zip.download") && (
+        {isEffectivelyReadOnly && can("zip.download") && (
           <>
             {/* ZIP Download Button */}
             <Button
@@ -379,7 +393,7 @@ export default function WorkspaceModal({
           </>
         )}
 
-        {!isReadOnly && (
+        {!isEffectivelyReadOnly && (
           /* Save Button */
           <Button
             size="sm"

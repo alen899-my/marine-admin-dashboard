@@ -13,6 +13,7 @@ type PropsType = {
   className?: string;
   error?: boolean;
   hint?: string;
+  disabled?: boolean;
 };
 
 /** * Forces the display to always be DD/MM/YYYY 
@@ -55,6 +56,7 @@ export default function SimpleDatePicker({
   className,
   error = false,
   hint,
+  disabled = false,
 }: PropsType) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -71,6 +73,7 @@ export default function SimpleDatePicker({
 
   const handleContainerClick = () => {
     // This forces the native browser calendar to open
+    if (disabled) return;
     if (inputRef.current) {
       try {
         inputRef.current.showPicker();
@@ -83,9 +86,11 @@ export default function SimpleDatePicker({
 
   const labelStr = typeof label === 'string' ? label : '';
   const hasAsterisk = labelStr.includes('*');
-  const borderClasses = error
-    ? 'border-error-500 focus-within:ring-error-500/10 dark:border-gray-700'
-    : 'border-gray-300 focus-within:border-brand-300 focus-within:ring-brand-500/20 dark:border-gray-700';
+  const borderClasses = disabled
+    ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/20 cursor-not-allowed'
+    : error
+      ? 'border-error-500 focus-within:ring-error-500/10 dark:border-gray-700'
+      : 'border-gray-300 focus-within:border-brand-300 focus-within:ring-brand-500/20 dark:border-gray-700';
 
   return (
     <div className="w-full">
@@ -125,7 +130,8 @@ export default function SimpleDatePicker({
           type="date"
           value={toInputValue(value)}
           onChange={handleChange}
-          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:dark]"
+          disabled={disabled}
+          className={`absolute inset-0 opacity-0 w-full h-full [color-scheme:dark] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           style={{ appearance: 'none' }}
         />
 

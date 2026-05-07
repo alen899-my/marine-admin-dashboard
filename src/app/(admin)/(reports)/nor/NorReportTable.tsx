@@ -45,7 +45,7 @@ export interface INorReport {
     | {
         _id: string;
         name: string;
-        company?: { name: string };
+        company?: { name: string; logo?: string };
       }
     | null;
   voyageId: string | { _id: string; voyageNo: string } | null;
@@ -138,6 +138,11 @@ export default function NorReportTable({
     editData?.vesselId,
     editData?.reportDate,
   );
+
+  const getCompanyLogo = (r: INorReport | null) => {
+    if (!r || !r.vesselId || typeof r.vesselId !== "object") return undefined;
+    return r.vesselId.company?.logo;
+  };
 
   useEffect(() => {
     //  FIX 2: Update 'voyageNo' in state
@@ -785,6 +790,7 @@ async function handleDelete() {
                     filename={`NOR_${selectedReport.portName}_${getVoyageNo(
                       selectedReport,
                     )}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     buttonLabel="Download Report"
                     data={{
                       "Report Status":
@@ -813,6 +819,7 @@ async function handleDelete() {
                     filename={`NOR_${selectedReport.portName}_${getVoyageNo(
                       selectedReport,
                     )}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     data={{
                       "Report Status":
                         selectedReport.status?.toUpperCase() || "ACTIVE",

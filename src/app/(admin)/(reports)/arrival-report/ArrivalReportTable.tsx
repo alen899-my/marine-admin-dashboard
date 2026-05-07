@@ -51,7 +51,7 @@ export interface ArrivalReport {
     | {
         _id: string;
         name: string;
-        company?: { name: string };
+        company?: { name: string; logo?: string };
       }
     | null;
   voyageId: string | { voyageNo: string; _id: string } | null;
@@ -137,6 +137,11 @@ export default function ArrivalReportTable({
   const [editData, setEditData] = useState<EditFormData | null>(null);
   const [editNorSameAsArrival, setEditNorSameAsArrival] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const getCompanyLogo = (r: ArrivalReport | null) => {
+    if (!r || !r.vesselId || typeof r.vesselId !== "object") return undefined;
+    return r.vesselId.company?.logo;
+  };
   
   // Metrics state for View Modal (populated from server data)
   const [voyageMetrics, setVoyageMetrics] = useState<VoyageMetrics | null>(
@@ -868,6 +873,7 @@ export default function ArrivalReportTable({
                     filename={`ArrivalReport_${
                       selectedReport.portName
                     }_${getVoyageDisplay(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     buttonLabel="Download Report"
                     data={{
                       // --- General Information ---
@@ -919,6 +925,7 @@ export default function ArrivalReportTable({
                     filename={`ArrivalReport_${
                       selectedReport.portName
                     }_${getVoyageDisplay(selectedReport)}`}
+                    logoUrl={getCompanyLogo(selectedReport)}
                     data={{
                       "Report Status":
                         selectedReport.status?.toUpperCase() || "ACTIVE",

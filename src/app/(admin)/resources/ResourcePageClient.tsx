@@ -53,6 +53,9 @@ const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("resources"
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
             Resource Management
           </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Manage permission resources that group and organize access control capabilities.
+          </p>
         </div>
         <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
           {/* Desktop: First (Left) | Mobile: Bottom */}

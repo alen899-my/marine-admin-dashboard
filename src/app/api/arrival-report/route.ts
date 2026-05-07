@@ -223,7 +223,7 @@ export async function GET(req: NextRequest) {
           select: "name company",
           populate: {
             path: "company",
-            select: "name",
+            select: "name logo",
           },
         })
         .sort({ createdAt: -1 })
