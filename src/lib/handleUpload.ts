@@ -31,7 +31,7 @@ function inferModuleCode(folder: string) {
 
 function stripStoredFilenamePrefix(fileName: string) {
   return fileName
-    .replace(/^\d{10,}-/, "")
+    .replace(/^\d{10,}[-_]/, "")
     .replace(/^[a-z0-9]{2}_[a-z0-9]{2}_/i, "");
 }
 
@@ -56,10 +56,14 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
     const buffer = Buffer.from(await file.arrayBuffer());
     const uploadDir = path.join(process.cwd(), "public/uploads", folder);
     if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
+    
+    const timestamp = Date.now();
+    const uniqueFilename = `${timestamp}_${filename}`;
+    
+    await writeFile(path.join(uploadDir, uniqueFilename), buffer);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
-    return { url: `${baseUrl}/uploads/${folder}/${filename}`, name: filename };
+    return { url: `${baseUrl}/uploads/${folder}/${uniqueFilename}`, name: uniqueFilename };
   } else {
     const blob = await put(`${folder}/${filename}`, file, {
       access: "public",
