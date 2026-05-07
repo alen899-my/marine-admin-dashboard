@@ -123,7 +123,7 @@ export async function getNorReports({
       .populate({
         path: "vesselId",
         select: "name company",
-        populate: { path: "company", select: "name" },
+        populate: { path: "company", select: "name logo" },
       })
       .populate("createdBy", "fullName")
       .populate("updatedBy", "fullName")

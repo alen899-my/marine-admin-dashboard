@@ -119,7 +119,7 @@ export async function getCargoReports({
         .populate({
           path: "vesselId",
           select: "name company",
-          populate: { path: "company", select: "name" },
+          populate: { path: "company", select: "name logo" },
         })
         .populate("voyageId", "voyageNo")
         .populate("createdBy", "fullName")
