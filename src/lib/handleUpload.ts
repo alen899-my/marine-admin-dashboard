@@ -65,11 +65,12 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
 
     return { url: `${baseUrl}/uploads/${folder}/${uniqueFilename}`, name: uniqueFilename };
   } else {
-    const blob = await put(`${folder}/${filename}`, file, {
+    const timestamp = Date.now();
+    const uniqueFilename = `${timestamp}_${filename}`;
+    const blob = await put(`${folder}/${uniqueFilename}`, file, {
       access: "public",
-      addRandomSuffix: true,
     });
-    return { url: blob.url, name: filename };
+    return { url: blob.url, name: uniqueFilename };
   }
 }
 
