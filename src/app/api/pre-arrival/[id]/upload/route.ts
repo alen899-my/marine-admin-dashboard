@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
 import Vessel from "@/models/Vessel";
+import Company from "@/models/Company";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { handleUpload } from "@/lib/handleUpload";
 import { buildCompanyUploadFolder, sanitizeFolderSegment } from "@/lib/uploadFolders";
@@ -83,6 +84,9 @@ export async function PATCH(
     }
 
     await dbConnect();
+
+    const _ensureModels = [Vessel, Company];
+
 
     const preArrival = await PreArrival.findById(id)
       .select("documents requestId vesselId isLocked status")
