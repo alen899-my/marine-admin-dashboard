@@ -52,7 +52,7 @@ function buildUploadFilename(originalName: string, folder: string) {
 export async function handleUpload(file: File, folder: string): Promise<{ url: string; name: string }> {
   const filename = buildUploadFilename(file.name, folder);
   console.log("[handleUpload] Input file:", file.name, "Output filename:", filename);
-  const useLocal = process.env.UPLOAD_PROVIDER === "local";
+  const useLocal = process.env.UPLOAD_PROVIDER === "local" && !process.env.VERCEL;
   const originalName = file.name;
 
   if (useLocal) {
@@ -95,7 +95,7 @@ export async function cloneUploadedFile(
 ): Promise<{ url: string; name: string }> {
   const parsedName = fileUrl.split("/").pop() || fallbackName;
   const baseFilename = buildUploadFilename(parsedName, folder);
-  const useLocal = process.env.UPLOAD_PROVIDER === "local";
+  const useLocal = process.env.UPLOAD_PROVIDER === "local" && !process.env.VERCEL;
 
   const timestamp = Date.now();
   const uniqueId = randomUUID().split("-")[0];

@@ -258,10 +258,7 @@ export default function WorkspaceModal({
 
   setUploading(true);
   try {
-    // Upload sequentially to avoid race conditions
-    const results = [];
-    for (const docId of changedIds) {
-      console.log("[handleSave] Processing docId:", docId, "has file:", !!pendingFiles[docId]);
+    const buildDocumentFormData = (docId: string) => {
       const formData = new FormData();
       formData.append("docId", docId);
 
@@ -272,32 +269,59 @@ export default function WorkspaceModal({
         formData.append("owner", pendingFiles[docId].owner);
       } else {
         const existing = data.documents?.[docId];
-        if (existing) {
-          formData.append("name", existing.name);
-          formData.append("owner", existing.owner);
-        }
+        if (existing?.name) formData.append("name", existing.name);
+        if (existing?.owner) formData.append("owner", existing.owner);
       }
 
       if (pendingNotes[docId]) formData.append("note", pendingNotes[docId]);
+      return formData;
+    };
 
+    const uploadOne = async (docId: string) => {
       const res = await fetch(`/api/pre-arrival/${data._id}/upload`, {
         method: "PATCH",
-        body: formData,
+        body: buildDocumentFormData(docId),
       });
-      results.push(res);
-      console.log("[handleSave] Upload result for", docId, ":", res.status);
-    }
 
-    const allOk = results.every((res) => res.ok);
-    if (allOk) {
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(`${docId}: ${errorData.error || res.statusText}`);
+      }
+    };
+
+    const concurrency = 4;
+    const failures: string[] = [];
+    let nextIndex = 0;
+    const workers = Array.from({ length: Math.min(concurrency, changedIds.length) }, async () => {
+      while (nextIndex < changedIds.length) {
+        const docId = changedIds[nextIndex];
+        nextIndex += 1;
+        try {
+          await uploadOne(docId);
+        } catch (error: any) {
+          console.error("[handleSave] Upload failed:", error);
+          failures.push(error.message || docId);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+
+    if (failures.length === 0) {
       toast.success("Document pack updated successfully");
       setPendingFiles({});
       setPendingNotes({});
       if (onSuccess) onSuccess();
     } else {
-      toast.error("Some files failed to upload");
+      toast.error(
+        failures.length === changedIds.length
+          ? "Document upload failed"
+          : `${failures.length} document(s) failed to upload`,
+      );
+      if (onSuccess) onSuccess();
     }
   } catch (error) {
+    console.error("[handleSave] Upload error:", error);
     toast.error("Error saving document pack");
   } finally {
     setUploading(false);

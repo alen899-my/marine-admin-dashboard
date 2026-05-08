@@ -2,12 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
 import { authorizeRequest } from "@/lib/authorizeRequest";
-import { del } from "@vercel/blob";
-import { unlink } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
 import { handleUpload } from "@/lib/handleUpload";
 import { buildCompanyUploadFolder, sanitizeFolderSegment } from "@/lib/uploadFolders";
+
+type UploadItem = {
+  docId: string;
+  docName: string;
+  owner: string;
+  note: string;
+  file: File | null;
+};
+
+function readString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function parseUploadItems(formData: FormData): UploadItem[] {
+  const bulkMetaRaw = formData.get("items");
+
+  if (typeof bulkMetaRaw === "string" && bulkMetaRaw.trim()) {
+    const parsedItems = JSON.parse(bulkMetaRaw) as Array<{
+      docId?: string;
+      name?: string;
+      owner?: string;
+      note?: string;
+      fileKey?: string;
+    }>;
+
+    return parsedItems
+      .filter((item) => item.docId)
+      .map((item) => {
+        const fileValue = item.fileKey ? formData.get(item.fileKey) : null;
+        return {
+          docId: item.docId || "",
+          docName: item.name || "",
+          owner: item.owner || "",
+          note: item.note || "",
+          file: fileValue instanceof File && fileValue.size > 0 ? fileValue : null,
+        };
+      });
+  }
+
+  const fileValue = formData.get("file");
+  return [
+    {
+      docId: readString(formData, "docId"),
+      docName: readString(formData, "name"),
+      owner: readString(formData, "owner"),
+      note: readString(formData, "note"),
+      file: fileValue instanceof File && fileValue.size > 0 ? fileValue : null,
+    },
+  ].filter((item) => item.docId);
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -23,13 +70,16 @@ export async function PATCH(
     const userId = authz.session.user.id;
 
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const docId = formData.get("docId") as string;
-    const docName = formData.get("name") as string;
-    const owner = formData.get("owner") as string;
-    const note = formData.get("note") as string;
+    const uploadItems = parseUploadItems(formData);
 
-    console.log("[UPLOAD] Received upload request:", { docId, fileName: file?.name, fileSize: file?.size });
+    console.log("[UPLOAD] Received upload request:", {
+      count: uploadItems.length,
+      files: uploadItems.filter((item) => item.file).length,
+    });
+
+    if (uploadItems.length === 0) {
+      return NextResponse.json({ error: "No documents supplied" }, { status: 400 });
+    }
 
     await dbConnect();
 
@@ -60,68 +110,68 @@ export async function PATCH(
     }
     
 
-    const updateData: any = {};
+    const requestFolder = sanitizeFolderSegment(preArrival.requestId || id, "request");
+    const folder = buildCompanyUploadFolder({
+      companyName: preArrival.vesselId?.company?.name || authz.session.user.company?.name,
+      module: "prearrival",
+      subfolder: requestFolder,
+    });
+
+    const uploadedByDocId = new Map<string, { url: string; name: string; size: number; originalName: string }>();
+    await Promise.all(
+      uploadItems
+        .filter((item) => item.file)
+        .map(async (item) => {
+          const file = item.file as File;
+          console.log("[UPLOAD] Calling handleUpload for file:", file.name, "folder:", folder);
+          const uploaded = await handleUpload(file, folder);
+          uploadedByDocId.set(item.docId, {
+            url: uploaded.url,
+            name: uploaded.name,
+            size: file.size,
+            originalName: file.name,
+          });
+        })
+    );
+
+    const updateData: any = { updatedBy: userId };
     const pushData: any = {};
-    const existingDocument = preArrival.documents?.[docId] || {};
-    const effectiveOwner = owner || existingDocument.owner || "ship";
-    const historyRole = effectiveOwner === "office" ? "admin" : "ship";
 
-    if (file && file.size > 0) {
-      const requestFolder = sanitizeFolderSegment(preArrival.requestId || id, "request");
-      const folder = buildCompanyUploadFolder({
-        companyName: preArrival.vesselId?.company?.name || authz.session.user.company?.name,
-        module: "prearrival",
-        subfolder: requestFolder,
-      });
+    for (const item of uploadItems) {
+      const existingDocument = preArrival.documents?.[item.docId] || {};
+      const effectiveOwner = item.owner || existingDocument.owner || "ship";
+      const historyRole = effectiveOwner === "office" ? "admin" : "ship";
+      const uploaded = uploadedByDocId.get(item.docId);
 
-      const oldFileUrl = preArrival.documents?.[docId]?.fileUrl;
-      if (oldFileUrl) {
-        try {
-          if (process.env.UPLOAD_PROVIDER === "local") {
-            const urlPath = oldFileUrl.startsWith("http") ? new URL(oldFileUrl).pathname : oldFileUrl;
-            const uploadsPrefix = "/uploads/";
-            if (urlPath.startsWith(uploadsPrefix)) {
-              const filePath = path.join(process.cwd(), "public", "uploads", urlPath.slice(uploadsPrefix.length));
-              if (existsSync(filePath)) await unlink(filePath);
-            }
-          } else {
-            await del(oldFileUrl);
-          }
-        } catch (err) {
-          console.warn("Could not delete old file:", err);
-        }
+      updateData[`documents.${item.docId}.docSource`] =
+        effectiveOwner === "office" ? "office_upload" : "onboard_upload";
+      if (item.docName) updateData[`documents.${item.docId}.name`] = item.docName;
+      if (item.owner) updateData[`documents.${item.docId}.owner`] = item.owner;
+      updateData[`documents.${item.docId}.note`] = item.note || "";
+
+      if (uploaded) {
+        updateData[`documents.${item.docId}.fileName`] = uploaded.name;
+        updateData[`documents.${item.docId}.fileUrl`] = uploaded.url;
+        updateData[`documents.${item.docId}.fileSize`] = uploaded.size;
+        updateData[`documents.${item.docId}.status`] =
+          effectiveOwner === "office" ? "approved" : "pending_review";
+        updateData[`documents.${item.docId}.rejectionReason`] = "";
+        updateData[`documents.${item.docId}.uploadedBy`] = userId;
+        updateData[`documents.${item.docId}.uploadedAt`] = new Date();
+
+        pushData[`documents.${item.docId}.rejectionHistory`] = {
+          message: `File uploaded: ${uploaded.originalName}`,
+          role: historyRole,
+          createdAt: new Date(),
+        };
+      } else if (item.note) {
+        pushData[`documents.${item.docId}.rejectionHistory`] = {
+          message: item.note,
+          role: historyRole,
+          createdAt: new Date(),
+        };
       }
-
-      const uploaded = await handleUpload(file, folder);
-      updateData[`documents.${docId}.fileName`] = uploaded.name;
-      updateData[`documents.${docId}.fileUrl`] = uploaded.url;
-      updateData[`documents.${docId}.fileSize`] = file.size;
-      updateData[`documents.${docId}.status`] =
-        effectiveOwner === "office" ? "approved" : "pending_review";
-      updateData[`documents.${docId}.rejectionReason`] = "";
-      updateData[`documents.${docId}.uploadedBy`] = userId;
-      updateData[`documents.${docId}.uploadedAt`] = new Date();
-
-      pushData[`documents.${docId}.rejectionHistory`] = {
-        message: `File uploaded: ${file.name}`,
-        role: historyRole,
-        createdAt: new Date(),
-      };
     }
-
-    updateData[`documents.${docId}.docSource`] = effectiveOwner === "office" ? "office_upload" : "onboard_upload";
-    if (docName) updateData[`documents.${docId}.name`] = docName;
-    if (owner) updateData[`documents.${docId}.owner`] = owner;
-    updateData[`documents.${docId}.note`] = note || "";
-
-    if (note && !file) {
-      pushData[`documents.${docId}.rejectionHistory`] = {
-        message: note,
-        role: historyRole,
-        createdAt: new Date(),
-      };
-    }
-    updateData[`updatedBy`] = userId;
 
     const updatedRequest = await PreArrival.findByIdAndUpdate(
       id,
@@ -132,11 +182,16 @@ export async function PATCH(
       { new: true, lean: true }
     );
 
-    const responseDoc = (updatedRequest.documents as any)[docId];
+    const updatedDocuments = updatedRequest.documents as any;
+    const firstDocId = uploadItems[0].docId;
 
     return NextResponse.json({
       success: true,
-      document: responseDoc,
+      document: updatedDocuments[firstDocId],
+      documents: uploadItems.reduce((acc: Record<string, any>, item) => {
+        acc[item.docId] = updatedDocuments[item.docId];
+        return acc;
+      }, {}),
     });
 
   } catch (error: any) {
