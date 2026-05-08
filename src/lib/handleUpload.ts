@@ -69,6 +69,7 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
     const uniqueFilename = `${timestamp}_${filename}`;
     const blob = await put(`${folder}/${uniqueFilename}`, file, {
       access: "public",
+      allowOverwrite: true,
     });
     return { url: blob.url, name: uniqueFilename };
   }

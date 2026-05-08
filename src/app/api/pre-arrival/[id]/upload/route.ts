@@ -29,6 +29,8 @@ export async function PATCH(
     const owner = formData.get("owner") as string;
     const note = formData.get("note") as string;
 
+    console.log("[UPLOAD] Received upload request:", { docId, fileName: file?.name, fileSize: file?.size });
+
     await dbConnect();
 
     const preArrival = await PreArrival.findById(id)
