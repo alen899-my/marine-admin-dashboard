@@ -289,7 +289,7 @@ export default function WorkspaceModal({
       }
     };
 
-    const concurrency = 4;
+    const concurrency = 1;
     const failures: string[] = [];
     let nextIndex = 0;
     const workers = Array.from({ length: Math.min(concurrency, changedIds.length) }, async () => {

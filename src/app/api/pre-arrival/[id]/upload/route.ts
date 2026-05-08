@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import PreArrival from "@/models/PreArrival";
+import Vessel from "@/models/Vessel";
 import { authorizeRequest } from "@/lib/authorizeRequest";
 import { handleUpload } from "@/lib/handleUpload";
 import { buildCompanyUploadFolder, sanitizeFolderSegment } from "@/lib/uploadFolders";
