@@ -2,6 +2,7 @@ import path from "path";
 import { existsSync } from "fs";
 import { copyFile, mkdir, writeFile } from "fs/promises";
 import { put } from "@vercel/blob";
+import { randomUUID } from "crypto";
 
 function sanitizeFilePart(value: string, fallback = "file") {
   const sanitized = value
@@ -31,7 +32,7 @@ function inferModuleCode(folder: string) {
 
 function stripStoredFilenamePrefix(fileName: string) {
   return fileName
-    .replace(/^\d{10,}[-_]/, "")
+    .replace(/^\d{10,}[-_]([a-f0-9]{8}[-_])?/, "")
     .replace(/^[a-z0-9]{2}_[a-z0-9]{2}_/i, "");
 }
 
@@ -58,7 +59,8 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
     if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
     
     const timestamp = Date.now();
-    const uniqueFilename = `${timestamp}_${filename}`;
+    const uniqueId = randomUUID().split("-")[0];
+    const uniqueFilename = `${timestamp}_${uniqueId}_${filename}`;
     
     await writeFile(path.join(uploadDir, uniqueFilename), buffer);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -66,7 +68,8 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
     return { url: `${baseUrl}/uploads/${folder}/${uniqueFilename}`, name: uniqueFilename };
   } else {
     const timestamp = Date.now();
-    const uniqueFilename = `${timestamp}_${filename}`;
+    const uniqueId = randomUUID().split("-")[0];
+    const uniqueFilename = `${timestamp}_${uniqueId}_${filename}`;
     const blob = await put(`${folder}/${uniqueFilename}`, file, {
       access: "public",
       allowOverwrite: true,
@@ -81,8 +84,12 @@ export async function cloneUploadedFile(
   fallbackName = "file"
 ): Promise<{ url: string; name: string }> {
   const parsedName = fileUrl.split("/").pop() || fallbackName;
-  const filename = buildUploadFilename(parsedName, folder);
+  const baseFilename = buildUploadFilename(parsedName, folder);
   const useLocal = process.env.UPLOAD_PROVIDER === "local";
+
+  const timestamp = Date.now();
+  const uniqueId = randomUUID().split("-")[0];
+  const filename = `${timestamp}_${uniqueId}_${baseFilename}`;
 
   if (useLocal) {
     let urlPath = fileUrl;
