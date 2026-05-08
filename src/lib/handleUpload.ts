@@ -51,6 +51,7 @@ function buildUploadFilename(originalName: string, folder: string) {
 
 export async function handleUpload(file: File, folder: string): Promise<{ url: string; name: string }> {
   const filename = buildUploadFilename(file.name, folder);
+  console.log("[handleUpload] Input file:", file.name, "Output filename:", filename);
   const useLocal = process.env.UPLOAD_PROVIDER === "local";
 
   if (useLocal) {
@@ -70,10 +71,13 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
     const timestamp = Date.now();
     const uniqueId = randomUUID().split("-")[0];
     const uniqueFilename = `${timestamp}_${uniqueId}_${filename}`;
+    console.log("[handleUpload] Uploading to blob:", uniqueFilename);
     const blob = await put(`${folder}/${uniqueFilename}`, file, {
       access: "public",
+      addRandomSuffix: true,
       allowOverwrite: true,
     });
+    console.log("[handleUpload] Blob uploaded, url:", blob.url);
     return { url: blob.url, name: uniqueFilename };
   }
 }

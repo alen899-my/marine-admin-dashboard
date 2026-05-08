@@ -247,7 +247,10 @@ export default function WorkspaceModal({
     return;
   }
 
-    const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
+  const changedIds = Array.from(new Set([...Object.keys(pendingFiles), ...Object.keys(pendingNotes)]));
+  console.log("[handleSave] Changed IDs:", changedIds);
+  console.log("[handleSave] Pending files:", pendingFiles);
+  
   if (changedIds.length === 0) {
     toast.info("No changes to save");
     return;
@@ -256,10 +259,12 @@ export default function WorkspaceModal({
   setUploading(true);
   try {
     const uploadPromises = changedIds.map(async (docId) => {
+      console.log("[handleSave] Processing docId:", docId, "has file:", !!pendingFiles[docId]);
       const formData = new FormData();
       formData.append("docId", docId);
 
       if (pendingFiles[docId]) {
+        console.log("[handleSave] Appending file:", pendingFiles[docId].file.name);
         formData.append("file", pendingFiles[docId].file);
         formData.append("name", pendingFiles[docId].name);
         formData.append("owner", pendingFiles[docId].owner);
@@ -280,6 +285,7 @@ export default function WorkspaceModal({
     });
 
     const results = await Promise.all(uploadPromises);
+    console.log("[handleSave] Upload results:", results.map(r => ({ status: r.status, ok: r.ok })));
     if (results.every((res) => res.ok)) {
       toast.success("Document pack updated successfully");
       setPendingFiles({});
