@@ -118,21 +118,18 @@ export async function PATCH(
     });
 
     const uploadedByDocId = new Map<string, { url: string; name: string; size: number; originalName: string }>();
-    await Promise.all(
-      uploadItems
-        .filter((item) => item.file)
-        .map(async (item) => {
-          const file = item.file as File;
-          console.log("[UPLOAD] Calling handleUpload for file:", file.name, "folder:", folder);
-          const uploaded = await handleUpload(file, folder);
-          uploadedByDocId.set(item.docId, {
-            url: uploaded.url,
-            name: uploaded.name,
-            size: file.size,
-            originalName: file.name,
-          });
-        })
-    );
+    for (const item of uploadItems) {
+      if (!item.file) continue;
+      const file = item.file as File;
+      console.log("[UPLOAD] Calling handleUpload for file:", file.name, "folder:", folder);
+      const uploaded = await handleUpload(file, folder);
+      uploadedByDocId.set(item.docId, {
+        url: uploaded.url,
+        name: uploaded.name,
+        size: file.size,
+        originalName: file.name,
+      });
+    }
 
     const updateData: any = { updatedBy: userId };
     const pushData: any = {};
