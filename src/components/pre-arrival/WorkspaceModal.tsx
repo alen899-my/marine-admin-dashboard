@@ -258,7 +258,9 @@ export default function WorkspaceModal({
 
   setUploading(true);
   try {
-    const uploadPromises = changedIds.map(async (docId) => {
+    // Upload sequentially to avoid race conditions
+    const results = [];
+    for (const docId of changedIds) {
       console.log("[handleSave] Processing docId:", docId, "has file:", !!pendingFiles[docId]);
       const formData = new FormData();
       formData.append("docId", docId);
@@ -278,19 +280,22 @@ export default function WorkspaceModal({
 
       if (pendingNotes[docId]) formData.append("note", pendingNotes[docId]);
 
-      return fetch(`/api/pre-arrival/${data._id}/upload`, {
+      const res = await fetch(`/api/pre-arrival/${data._id}/upload`, {
         method: "PATCH",
         body: formData,
       });
-    });
+      results.push(res);
+      console.log("[handleSave] Upload result for", docId, ":", res.status);
+    }
 
-    const results = await Promise.all(uploadPromises);
-    console.log("[handleSave] Upload results:", results.map(r => ({ status: r.status, ok: r.ok })));
-    if (results.every((res) => res.ok)) {
+    const allOk = results.every((res) => res.ok);
+    if (allOk) {
       toast.success("Document pack updated successfully");
       setPendingFiles({});
       setPendingNotes({});
       if (onSuccess) onSuccess();
+    } else {
+      toast.error("Some files failed to upload");
     }
   } catch (error) {
     toast.error("Error saving document pack");

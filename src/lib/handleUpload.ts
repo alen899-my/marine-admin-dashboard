@@ -53,32 +53,38 @@ export async function handleUpload(file: File, folder: string): Promise<{ url: s
   const filename = buildUploadFilename(file.name, folder);
   console.log("[handleUpload] Input file:", file.name, "Output filename:", filename);
   const useLocal = process.env.UPLOAD_PROVIDER === "local";
+  const originalName = file.name;
 
   if (useLocal) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const uploadDir = path.join(process.cwd(), "public/uploads", folder);
     if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
     
-    const timestamp = Date.now();
-    const uniqueId = randomUUID().split("-")[0];
-    const uniqueFilename = `${timestamp}_${uniqueId}_${filename}`;
+    const uniqueId = randomUUID();
+    const uniqueFilename = `${uniqueId}_${filename}`;
     
     await writeFile(path.join(uploadDir, uniqueFilename), buffer);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
-    return { url: `${baseUrl}/uploads/${folder}/${uniqueFilename}`, name: uniqueFilename };
+    return { url: `${baseUrl}/uploads/${folder}/${uniqueFilename}`, name: originalName };
   } else {
-    const timestamp = Date.now();
-    const uniqueId = randomUUID().split("-")[0];
-    const uniqueFilename = `${timestamp}_${uniqueId}_${filename}`;
-    console.log("[handleUpload] Uploading to blob:", uniqueFilename);
-    const blob = await put(`${folder}/${uniqueFilename}`, file, {
-      access: "public",
-      addRandomSuffix: true,
-      allowOverwrite: true,
-    });
-    console.log("[handleUpload] Blob uploaded, url:", blob.url);
-    return { url: blob.url, name: uniqueFilename };
+    try {
+      const uniqueId = randomUUID();
+      const uniqueFilename = `${uniqueId}_${filename}`;
+      console.log("[handleUpload] Uploading to blob:", uniqueFilename);
+      
+      const blob = await put(`${folder}/${uniqueFilename}`, file, {
+        access: "public",
+        addRandomSuffix: true,
+        allowOverwrite: true,
+      });
+      
+      console.log("[handleUpload] Blob uploaded successfully, url:", blob.url);
+      return { url: blob.url, name: originalName };
+    } catch (blobError: any) {
+      console.error("[handleUpload] Blob upload error:", blobError.message || blobError);
+      throw blobError;
+    }
   }
 }
 
