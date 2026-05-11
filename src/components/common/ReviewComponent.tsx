@@ -4,6 +4,7 @@ import {
   XCircle,
   Download,
 } from "lucide-react";
+import { formatUploadedFileName } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────
 // HELPERS
@@ -481,16 +482,12 @@ export default function DynamicReview({
         </div>
 
         {/* Rows */}
-       <DocRow
+<DocRow
   label="Profile Photo"
   file={scalar.profilePhoto}
   existingUrl={existingProfilePhoto}
-  existingName={
-    existingProfilePhoto
-      ? existingProfilePhoto.split("/").pop()?.split("?")[0]
-      : undefined
-  }
-/>
+  existingName={formatUploadedFileName(undefined, existingProfilePhoto)}
+ />
         <DocRow
           label="Resume / CV"
           file={scalar.resume}

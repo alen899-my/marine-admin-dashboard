@@ -39,26 +39,23 @@ export const formatUploadedFileName = (
   fileName?: string | null,
   fileUrl?: string | null,
 ) => {
-  let rawName = fileName?.trim() ?? "";
-
-  if (!rawName && fileUrl) {
-    try {
-      const pathname = new URL(fileUrl, "http://localhost").pathname;
-      rawName = decodeURIComponent(pathname.split("/").pop() ?? "");
-    } catch {
-      rawName = fileUrl.split("/").pop()?.split("?")[0] ?? "";
-    }
+  if (fileName?.trim()) {
+    return fileName.trim();
   }
 
-  if (!rawName) return "File";
+  if (!fileUrl) return "File";
 
-  const cleanedName = rawName
-    .replace(/^\d{10,}[-_]?/, "")
-    .replace(/_/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return cleanedName || rawName;
+  try {
+    const pathname = new URL(fileUrl, "http://localhost").pathname;
+    const fileFromUrl = decodeURIComponent(pathname.split("/").pop() ?? "");
+    const parts = fileFromUrl.split("_");
+    const originalName = parts.length > 2 ? parts.slice(2).join("_") : fileFromUrl;
+    return originalName || "File";
+  } catch {
+    const fileFromUrl = fileUrl.split("/").pop()?.split("?")[0] ?? "";
+    const parts = fileFromUrl.split("_");
+    return parts.length > 2 ? parts.slice(2).join("_") : fileFromUrl || "File";
+  }
 };
 
 export const PUBLIC_EDITABLE_APPLICATION_STATUSES = [
