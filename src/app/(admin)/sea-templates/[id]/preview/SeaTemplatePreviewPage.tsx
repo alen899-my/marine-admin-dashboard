@@ -114,39 +114,89 @@ export default function SeaTemplatePreviewPage({ template }: Props) {
     });
   };
 
-  // ── Download handler ─────────────────────────────────────────────────────
+// ── Download handler ─────────────────────────────────────────────────────
   const handleDownloadPDF = async () => {
     setDownloading(true);
     try {
-      // Use the HTML that SeaDocumentPreview built after measurement (has correct
-      // page-break layout). Fall back to our own build if not ready yet.
       const html = capturedHtmlRef.current ?? buildFallbackHtml();
 
-      const res = await fetch("/api/generate-pdf/sea-template", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ html, filename: template.name || "SEA-Document" }),
-      });
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) throw new Error("Failed to open print window");
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || "Server PDF generation failed");
-      }
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${template.name || "SEA Document"}</title>
+          <style>
+            @page { size: A4; margin: 0; }
+            @media print {
+              @page { size: A4; margin: 0; }
+              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+            *, *::before, *::after { box-sizing: border-box; }
+            html, body { margin: 0; padding: 0; background: #fff; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 10pt; color: #000; }
+            a { color: inherit !important; text-decoration: none !important; }
+            img { max-width: 100%; }
+            p { margin: 0 0 2pt; }
+            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+            td, th { vertical-align: top; word-break: break-word; border: 1px solid #000; padding: 3pt 5pt; font-size: 9pt; }
+            th { font-weight: bold; background: #fff; text-align: left; }
+            h1, h2, h3 { font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: inherit; font-weight: bold; margin: 0; padding: 0; }
+            .sea-richtext-content h1 { font-size: 13pt !important; margin: 5pt 0 2pt !important; }
+            .sea-richtext-content h2 { font-size: 11pt !important; margin: 4pt 0 2pt !important; }
+            .sea-richtext-content h3 { font-size: 10pt !important; margin: 3pt 0 1pt !important; }
+            ul { list-style: disc; padding-left: 16pt; margin: 2pt 0; }
+            ol { list-style: decimal; padding-left: 16pt; margin: 2pt 0; }
+            li { font-size: 10pt; line-height: 1.4; margin-bottom: 1pt; }
+            blockquote { border-left: 2pt solid #999; padding-left: 8pt; margin: 3pt 0 3pt 4pt; color: #333; font-style: italic; }
+            strong { font-weight: bold; } em { font-style: italic; } u { text-decoration: underline; }
+            [data-count] { display: grid !important; gap: 1px !important; width: 100% !important; margin-bottom: 1pt !important; align-items: start !important; }
+            [data-count="2"] { grid-template-columns: 1fr 1fr !important; }
+            [data-count="3"] { grid-template-columns: 1fr 1fr 1fr !important; }
+            [data-count] > * { min-width: 0; overflow-wrap: break-word; word-break: break-word; }
+            .sea-doc-scope, .sea-doc-scope * { box-sizing: border-box; }
+            .sea-richtext-content { overflow-x: hidden; }
+            .sea-richtext-content p span { line-height: 1.4 !important; }
+            .sea-richtext-content p:empty { min-height: 14pt; display: block; }
+            .sea-richtext-content p:empty::before { content: ""; display: block; }
+            .sea-richtext-content h1 { font-size: 13pt; font-weight: bold; margin: 5pt 0 2pt; }
+            .sea-richtext-content h2 { font-size: 11pt; font-weight: bold; margin: 4pt 0 2pt; }
+            .sea-richtext-content h3 { font-size: 10pt; font-weight: bold; margin: 3pt 0 1pt; }
+            .sea-richtext-content ul { list-style: disc; padding-left: 16pt; margin: 2pt 0; }
+            .sea-richtext-content ol { list-style: decimal; padding-left: 16pt; margin: 2pt 0; }
+            .sea-richtext-content li { font-size: 10pt; line-height: 1.4; margin-bottom: 1pt; }
+            .sea-doc-page {
+              width: 794px;
+              height: 1123px;
+              padding: 57px 57px 137px;
+              box-sizing: border-box;
+              page-break-after: always;
+              break-after: page;
+              position: relative;
+              overflow: hidden;
+              background: #fff;
+            }
+            .sea-doc-page:last-child { page-break-after: auto; }
+          </style>
+        </head>
+        <body>${html}</body>
+        </html>
+      `);
 
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `${template.name || "SEA-Document"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      printWindow.document.close();
+      
+      printWindow.onload = () => {
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          setDownloading(false);
+        }, 500);
+      };
 
     } catch (err: any) {
       console.error("PDF download failed:", err);
       alert(`PDF generation failed: ${err?.message || "Please try again."}`);
-    } finally {
       setDownloading(false);
     }
   };
