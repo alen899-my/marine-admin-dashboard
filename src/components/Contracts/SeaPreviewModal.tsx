@@ -399,10 +399,18 @@ export default function SeaPreviewModal({
           )
         : "SEA";
 
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) throw new Error("Failed to open print window");
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      document.body.appendChild(iframe);
 
-      printWindow.document.write(`
+      const doc = iframe.contentWindow?.document;
+      if (!doc) throw new Error("Failed to create print iframe");
+
+      doc.open();
+      doc.write(`
         <!DOCTYPE html>
         <html>
         <head>
@@ -462,15 +470,14 @@ export default function SeaPreviewModal({
         <body>${html}</body>
         </html>
       `);
+      doc.close();
 
-      printWindow.document.close();
-      
-      printWindow.onload = () => {
-        printWindow.focus();
+      iframe.onload = () => {
         setTimeout(() => {
-          printWindow.print();
+          iframe.contentWindow?.print();
+          document.body.removeChild(iframe);
           setDownloading(false);
-        }, 500);
+        }, 250);
       };
 
     } catch (err: any) {
