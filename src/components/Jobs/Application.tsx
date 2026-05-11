@@ -1583,9 +1583,10 @@ export default function CandidateApplicationForm({
           router.refresh();
           router.push(`/jobs/view/${applicationId}`);
         }
-      } else if (isPublic) {
-        router.push(`/apply/success?token=${result.data.submissionToken}`);
-      } else {
+} else if (isPublic) {
+          toast.success("Application submitted successfully!");
+          router.push(`/apply/success?token=${result.data.submissionToken}`);
+        } else {
         toast.success("Application created successfully");
         router.refresh();
         router.push(`/jobs/view/${result.data.id}`);
@@ -2402,13 +2403,15 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
                       href={d.resume.fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
+                      className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1 max-w-[200px] truncate"
                     >
-                      <Download className="h-3 w-3" />
-                      {formatUploadedFileName(
-                        d.resume.fileName,
-                        d.resume.fileUrl,
-                      )}
+                      <Download className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {formatUploadedFileName(
+                          d.resume.fileName,
+                          d.resume.fileUrl,
+                        )}
+                      </span>
                     </a>
                   ) : (
                     "—"
@@ -2426,10 +2429,12 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
                           href={doc.fileUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1"
+                          className="text-brand-600 dark:text-brand-400 underline inline-flex items-center gap-1 max-w-[200px] truncate"
                         >
-                          <Download className="h-3 w-3" />
-                          {formatUploadedFileName(doc.fileName, doc.fileUrl)}
+                          <Download className="h-3 w-3 shrink-0" />
+                          <span className="truncate">
+                            {formatUploadedFileName(doc.fileName, doc.fileUrl)}
+                          </span>
                         </a>
                       ) : (
                         "Not uploaded"

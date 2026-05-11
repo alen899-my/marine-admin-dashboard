@@ -538,13 +538,13 @@ function DocRow({
             <span className="text-[10px] text-gray-400 dark:text-gray-500">(new)</span>
           </div>
         ) : hasExisting ? (
-          <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400">
-            <Download size={14} />
+          <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 max-w-[200px]">
+            <Download size={14} className="shrink-0" />
             <a
               href={existingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-semibold hover:underline"
+              className="text-xs font-semibold hover:underline truncate"
             >
               {existingName || "Existing file"}
             </a>
