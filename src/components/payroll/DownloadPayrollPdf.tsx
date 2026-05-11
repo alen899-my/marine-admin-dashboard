@@ -4,7 +4,7 @@ import { useState } from "react";
 import { HiOutlineDownload } from "react-icons/hi";
 import { PayrollRow, PayrollLeaveTypeOption } from "@/lib/payroll";
 import Button from "../ui/button/Button";
-import { toast } from "react-toastify";
+import { generatePayrollHtml } from "@/lib/payroll-pdf-template";
 
 interface DownloadPayrollPdfProps {
   row: PayrollRow;
@@ -32,31 +32,40 @@ export default function DownloadPayrollPdf({
   const generatePdf = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/payroll/generate-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ row, leaveTypes, currencyCode, currencySettings }),
-      });
+      const html = generatePayrollHtml(row, leaveTypes, currencyCode, currencySettings);
 
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) throw new Error("Failed to open print window");
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Payslip_${row.crewName.replace(/\s+/g, "_")}_${row.periodTo}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Payslip_${row.crewName?.replace(/\s+/g, "_") || "Payroll"}_${row.periodTo}</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            @media print {
+              @page { size: A4; margin: 12mm; }
+              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+          </style>
+        </head>
+        <body>${html}</body>
+        </html>
+      `);
+
+      printWindow.document.close();
       
-      toast.success("PDF generated successfully");
+      printWindow.onload = () => {
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          setLoading(false);
+        }, 500);
+      };
+
     } catch (err) {
       console.error("PDF Generation failed:", err);
-      toast.error("Failed to generate PDF. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
