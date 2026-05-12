@@ -1574,7 +1574,7 @@ export default function CandidateApplicationForm({
       );
 
       if (isDraft) {
-        toast.success("Draft saved successfully");
+        toast.success(" saved successfully");
         return true;
       }
 
