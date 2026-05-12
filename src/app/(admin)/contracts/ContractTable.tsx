@@ -425,7 +425,7 @@ export default function ContractTable({
         <div className="flex flex-col gap-0.5 min-w-[160px]">
           <button
             type="button"
-            onClick={() => router.push(`/jobs/view/${a._id}`)}
+            onClick={() => router.push(`/candidates/view/${a._id}`)}
             className="group flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition-colors cursor-pointer text-left w-fit"
           >
             {a.firstName} {a.lastName}

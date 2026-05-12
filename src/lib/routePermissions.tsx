@@ -23,7 +23,7 @@ export const routePermissions: Record<string, string> = {
   "/voyage-analysis-performance": "voyageanalysis.view",
   "/pre-arrival": "prearrival.view",
   "/job-postings": "jobs.view",
-  "/jobs": "candidates.view",
+  "/candidates": "candidates.view",
   "/crews": "crews.view",
   "/manage-crews": "crews.view",
   "/contracts": "contracts.view",

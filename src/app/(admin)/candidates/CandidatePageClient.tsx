@@ -9,7 +9,7 @@ import { ReactNode } from "react";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import JobFilterWrapper from "./JobFilterWrapper";
+import CandidateFilterWrapper from "./CandidateFilterWrapper";
 import Button from "@/components/ui/button/Button";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
 
@@ -51,10 +51,10 @@ const excelMapping = (r: any) => ({
  
 
   "Resume":  r._id
-    ? `${BASE_URL}/jobs/resume/${r._id}`
+    ? `${BASE_URL}/candidates/resume/${r._id}`
     : "No Attachment",
 });
-interface JobPageClientProps {
+interface CandidatePageClientProps {
   children: ReactNode;
   data: any[];
   totalCount: number;
@@ -66,7 +66,7 @@ interface JobPageClientProps {
   portalCompanyId: string;
 }
 
-export default function JobPageClient({
+export default function CandidatePageClient({
   children,
   data,
   totalCount,
@@ -76,12 +76,12 @@ export default function JobPageClient({
   canAdd,
   currentCompanyId,
   portalCompanyId,
-}: JobPageClientProps) {
+}: CandidatePageClientProps) {
   const router = useRouter();
   const { can, isReady } = useAuthorization();
   const canView = can("candidates.view");
   const canCreate = can("candidates.create") || canAdd;
-  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("jobs");
+  const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("candidates");
 
   if (!isReady) return null;
 
@@ -127,7 +127,7 @@ export default function JobPageClient({
           {canCreate && (
             <div className="w-full sm:w-auto">
               <Button
-                onClick={() => router.push("/jobs/apply")}
+                onClick={() => router.push("/candidates/apply")}
                 variant="primary"
                 size="sm"
                 className="w-full sm:w-auto justify-center"
@@ -144,7 +144,7 @@ export default function JobPageClient({
         headerClassName="p-0 px-1"
         title={
           isFilterVisible ? (
-            <JobFilterWrapper
+            <CandidateFilterWrapper
               companies={companies}
               jobs={jobs}
               isSuperAdmin={isSuperAdmin}

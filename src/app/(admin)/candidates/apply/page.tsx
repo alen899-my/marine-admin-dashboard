@@ -25,7 +25,7 @@ export default async function NewApplicationPage({
   const breadcrumb = (
     <PageBreadcrumb
       pageTitle=""
-      items={[{ label: "Candidate Applications", href: "/jobs" }]}
+      items={[{ label: "Candidate Applications", href: "/candidates" }]}
     />
   );
 

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/db";
-import JobPageClient from "./JobPageClient";
-import JobTable from "./JobTable";
+import CandidatePageClient from "./CandidatePageClient";
+import CandidateTable from "./CandidateTable";
 import { Metadata } from "next";
 import mongoose from "mongoose";
 import {
@@ -91,7 +91,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
     const total = pagination.total;
 
     return (
-      <JobPageClient
+      <CandidatePageClient
         data={applications}
         totalCount={total}
         companies={companies}
@@ -103,7 +103,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
         }
         portalCompanyId={targetCompanyId ?? ""}
       >
-        <JobTable
+        <CandidateTable
           data={applications}
           pagination={{
             page: currentPage,
@@ -113,7 +113,7 @@ export default async function JobManagement({ searchParams }: PageProps) {
           }}
           isSuperAdmin={isSuperAdmin}
         />
-      </JobPageClient>
+      </CandidatePageClient>
     );
   } catch (error) {
     console.error("JOB MANAGEMENT PAGE ERROR →", error);

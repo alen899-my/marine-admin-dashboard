@@ -54,7 +54,7 @@ const getExcelMapping = (isSuperAdmin: boolean) => (r: any) => {
     "Shoe Size":           r.shoeSize || "-",
 
     "Resume":  r._id
-      ? `${BASE_URL}/jobs/resume/${r._id}`
+      ? `${BASE_URL}/candidates/resume/${r._id}`
       : "No Attachment",
   };
 };

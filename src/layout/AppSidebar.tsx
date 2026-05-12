@@ -169,7 +169,7 @@ const navItems: NavItem[] = [
       },
       {
         name: "Candidate Profiles",
-        path: "/jobs",
+        path: "/candidates",
         requiredPermission: "candidates.view",
       },
       {

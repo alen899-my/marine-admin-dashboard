@@ -1,4 +1,4 @@
-// app/(admin)/jobs/resume/[id]/page.tsx
+// app/(admin)/candidates/resume/[id]/page.tsx
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { dbConnect } from "@/lib/db";
@@ -14,7 +14,7 @@ export default async function ResumeRedirect({
   const session = await auth();
 
   if (!session?.user) {
-    redirect(`/signin?redirect=/jobs/resume/${id}`);
+    redirect(`/signin?redirect=/candidates/resume/${id}`);
   }
 
   await dbConnect();

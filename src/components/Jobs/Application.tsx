@@ -1581,7 +1581,7 @@ export default function CandidateApplicationForm({
           // Admin edit → back to admin view
           toast.success("Application updated successfully");
           router.refresh();
-          router.push(`/jobs/view/${applicationId}`);
+          router.push(`/candidates/view/${applicationId}`);
         }
 } else if (isPublic) {
           toast.success("Application submitted successfully!");
@@ -1589,7 +1589,7 @@ export default function CandidateApplicationForm({
         } else {
         toast.success("Application created successfully");
         router.refresh();
-        router.push(`/jobs/view/${result.data.id}`);
+        router.push(`/candidates/view/${result.data.id}`);
       }
       return true;
     } catch {

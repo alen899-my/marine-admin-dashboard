@@ -37,7 +37,7 @@ interface Application {
   companyName?: string;
 }
 
-interface JobTableProps {
+interface CandidateTableProps {
   data: Application[];
   pagination: {
     page: number;
@@ -78,11 +78,11 @@ const formatDateOnly = (date?: string) => {
   });
 };
 
-export default function JobTable({
+export default function CandidateTable({
   data,
   pagination,
   isSuperAdmin = false,
-}: JobTableProps) {
+}: CandidateTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [openDelete, setOpenDelete] = useState(false);
@@ -210,10 +210,10 @@ export default function JobTable({
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
-              onView={(a: Application) => router.push(`/jobs/view/${a._id}`)}
+              onView={(a: Application) => router.push(`/candidates/view/${a._id}`)}
               onEdit={
                 canEdit
-                  ? (a: Application) => router.push(`/jobs/edit/${a._id}`)
+                  ? (a: Application) => router.push(`/candidates/edit/${a._id}`)
                   : undefined
               }
               onDelete={
@@ -225,7 +225,7 @@ export default function JobTable({
                   : undefined
               }
               onRowClick={(a: Application) =>
-                router.push(`/jobs/view/${a._id}`)
+                router.push(`/candidates/view/${a._id}`)
               }
             />
           </div>
