@@ -695,6 +695,8 @@ export default function CandidateApplicationForm({
   const isCreate = mode === "create";
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [prefillDismissed, setPrefillDismissed] = useState(false);
+  const [showOnboardedWarning, setShowOnboardedWarning] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const submitInFlightRef = useRef(false);
 
   const handleReset = useCallback(() => {
@@ -1321,6 +1323,7 @@ export default function CandidateApplicationForm({
     submitInFlightRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
+    toast.info(isDraft ? "Saving draft..." : "Saving...");
 
     try {
       const fd = new FormData();
@@ -1568,6 +1571,7 @@ export default function CandidateApplicationForm({
       );
 
       if (isDraft) {
+        toast.success("Draft saved successfully");
         return true;
       }
 
@@ -2576,7 +2580,14 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
 ]}
                       placeholder="Select status..."
                       value={scalar.status}
-                      onChange={(v) => setField("status", v)}
+                      onChange={(v) => {
+                        if (v === "onboarded" && scalar.status !== "onboarded") {
+                          setPendingStatus(v);
+                          setShowOnboardedWarning(true);
+                        } else {
+                          setField("status", v);
+                        }
+                      }}
                     />
                   </div>
                 )}
@@ -3800,6 +3811,26 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
         title="Reset Form"
         description="Are you sure you want to reset the form? All unsaved data will be lost."
         confirmLabel="Reset"
+        variant="warning"
+      />
+
+      {/* Onboarded Status Warning Modal */}
+      <ConfirmModal
+        isOpen={showOnboardedWarning}
+        onClose={() => {
+          setShowOnboardedWarning(false);
+          setPendingStatus(null);
+        }}
+        onConfirm={() => {
+          if (pendingStatus === "onboarded") {
+            setField("status", "onboarded");
+          }
+          setShowOnboardedWarning(false);
+          setPendingStatus(null);
+        }}
+        title="Confirm Onboarded Status"
+        description="Once you set the status to 'Onboarded', it cannot be changed back. Are you sure you want to proceed?"
+        confirmLabel="Yes, Set as Onboarded"
         variant="warning"
       />
     </MultiStepFormLayout>
