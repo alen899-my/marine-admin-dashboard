@@ -2382,7 +2382,11 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
                           )
                         }
                       />
-                      <F label="" value={s.jobDescription} />
+                      <div className="border border-gray-300 dark:border-white/15 px-2 py-1.5 min-w-0">
+                        <p className="text-sm text-gray-800 dark:text-white/90 break-all whitespace-pre-wrap text-xs">
+                          {s.jobDescription || "—"}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
