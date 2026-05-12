@@ -69,8 +69,11 @@ export async function getDocumentExpiryAlerts(
   const isSuperAdmin = user.role?.toLowerCase() === "super-admin";
   const userCompanyId = user.company?.id || user.company;
 
-  // Build company filter
-  const candidateFilter: any = { deletedAt: null };
+  // Build company filter - only active crew (not candidates/inactive)
+  const candidateFilter: any = { 
+    deletedAt: null,
+    crew: { $nin: ["inactive", "resigned", "blacklisted"] }
+  };
 
   if (!isSuperAdmin) {
     if (!userCompanyId) throw new Error("No company assigned");

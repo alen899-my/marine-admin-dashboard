@@ -6,7 +6,10 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import Contract from "@/models/Contract";
 import Vessel from "@/models/Vessel";
+import Job from "@/models/Job";
 import { pickLatestWage } from "@/lib/wageHistory";
+
+const _ensureModels = [Candidate, Company, Contract, Vessel, Job];
 
 
 interface GetCandidateApplicationsParams {
@@ -111,7 +114,6 @@ export async function getCandidateApplications({
   // Build jobTitle $or clause
   let jobTitleOrClause: any[] | undefined;
   if (jobTitle?.trim()) {
-    const Job = (await import("@/models/Job")).default;
     // Don't filter by status - include all jobs (active, inactive, archived)
     // so we can filter applications that were submitted for those jobs
     const escapedJobTitle = jobTitle.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -396,8 +398,6 @@ export async function getLastApplicationByUser(userId: string) {
 
 export async function getJobsForDropdown(companyId?: string): Promise<{ value: string; label: string }[]> {
   await dbConnect();
-  const Job = (await import("@/models/Job")).default;
-
   // Don't filter by status - include all jobs (active, inactive, archived)
   // so we can filter applications that were submitted for those jobs
   const query: any = {};
@@ -423,7 +423,6 @@ export async function getJobsForDropdown(companyId?: string): Promise<{ value: s
 }
 //fetchActiveJobPositions(companyId) — builds availablePositions array. Used in: careers/edit, careers/apply, admin/jobs/edit, admin/jobs/apply
 export async function fetchActiveJobPositions(companyId: string) {
-  const Job = (await import("@/models/Job")).default;
   const jobs = await Job.find({ companyId, isAccepting: true })
     .select("_id title")
     .sort({ createdAt: -1 })
@@ -434,7 +433,6 @@ export async function fetchActiveJobPositions(companyId: string) {
 //resolveApplicationPosition(application) — resolves jobId → title. Used in: careers/view, admin/jobs/view
 export async function resolveApplicationPosition(application: any) {
   if (!application?.jobId) return application;
-  const Job = (await import("@/models/Job")).default;
   const job = await Job.findById(application.jobId).select("title").lean() as any;
   return { ...application, positionApplied: job?.title ?? application.positionApplied ?? "" };
 }
