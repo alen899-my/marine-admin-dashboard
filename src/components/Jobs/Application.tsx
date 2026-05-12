@@ -1323,7 +1323,10 @@ export default function CandidateApplicationForm({
     submitInFlightRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
-    toast.info(isDraft ? "Saving draft..." : "Saving...");
+    const saveMessage = isEdit 
+      ? (isDraft ? "Saving changes..." : "Saving...") 
+      : (isDraft ? "Saving ..." : "Saving...");
+    toast.info(saveMessage);
 
     try {
       const fd = new FormData();
