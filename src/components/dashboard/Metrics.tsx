@@ -72,7 +72,7 @@ const METRIC_WIDGETS: MetricWidgetConfig[] = [
     iconBg: "bg-indigo-50 dark:bg-indigo-900/20",
     title: "Total Candidates",
     valueKey: "candidateCount",
-    path: "/onboarding",
+    path: "/candidates",
     trendKey: "candidateTrend",
     sparklineKey: "candidateSparkline",
   },

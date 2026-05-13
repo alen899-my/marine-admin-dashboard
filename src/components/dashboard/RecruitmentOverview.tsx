@@ -42,7 +42,7 @@ export default function RecruitmentOverview({ data, metrics }: RecruitmentOvervi
             iconBg="bg-indigo-50 dark:bg-indigo-900/20"
             title="Total Candidates"
             value={metrics.candidateCount}
-            path="/onboarding"
+            path="/candidates"
             trend={metrics.candidateTrend}
             sparkline={metrics.candidateSparkline}
           />
