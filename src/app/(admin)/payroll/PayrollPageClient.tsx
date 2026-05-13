@@ -29,6 +29,7 @@ import PayrollEditModal from "@/components/payroll/PayrollEditModal";
 import { payrollItemSchema } from "@/lib/validations/payrollSchema";
 import PayrollFilterWrapper from "./PayrollFilterWrapper";
 import PayrollBatchConfirmModal from "@/components/payroll/PayrollBatchConfirmModal";
+import ConfirmModal from "@/components/modal/ConfirmModal";
 import { formatCurrency } from "@/lib/formatCurrency";
 
 type CurrencySettings = {
@@ -137,6 +138,31 @@ function toPayrollMonthQueryValue(month: number, year: number) {
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
 }
 
+function getPayrollMonthEnd(value: string) {
+  const [yearPart, monthPart] = value.split("-").map(Number);
+  if (!yearPart || !monthPart || monthPart < 1 || monthPart > 12) return "";
+
+  return new Date(Date.UTC(yearPart, monthPart, 0)).toISOString().slice(0, 10);
+}
+
+function doesSalaryHeadCoverPayrollMonth(
+  salaryHead: SalaryHeadOption | undefined,
+  payrollDate: string,
+) {
+  if (!salaryHead?.periodFrom || !salaryHead.periodTo || !payrollDate) {
+    return true;
+  }
+
+  const payrollMonthStart = payrollDate.slice(0, 10);
+  const payrollMonthEnd = getPayrollMonthEnd(payrollDate);
+  if (!payrollMonthEnd) return true;
+
+  return (
+    salaryHead.periodFrom <= payrollMonthEnd &&
+    salaryHead.periodTo >= payrollMonthStart
+  );
+}
+
 export default function PayrollPageClient({
   companies,
   salaryHeads,
@@ -199,6 +225,8 @@ export default function PayrollPageClient({
     "verify" | "approve" | null
   >(null);
   const [showApprovalWarning, setShowApprovalWarning] = useState(false);
+  const [salaryHeadPeriodErrorOpen, setSalaryHeadPeriodErrorOpen] =
+    useState(false);
   const [entryQueue, setEntryQueue] = useState<string[]>([]);
   const [entryQueueIndex, setEntryQueueIndex] = useState(0);
   const [entrySaving, setEntrySaving] = useState(false);
@@ -222,6 +250,9 @@ export default function PayrollPageClient({
     value: item.id,
     label: `${item.title} `,
   }));
+  const selectedSalaryHead = salaryHeads.find(
+    (item) => item.id === selectedSalaryHeadId,
+  );
   const salaryHeadDropdownOptions = [...salaryHeadOptions];
   const rankOptions = useMemo(
     () =>
@@ -454,6 +485,13 @@ export default function PayrollPageClient({
     }
     if (!targetRows.length) {
       toast.error("Selected crew do not have a salary head to remove");
+      return;
+    }
+    if (
+      !isRemovingSalaryHead &&
+      !doesSalaryHeadCoverPayrollMonth(selectedSalaryHead, payrollDate)
+    ) {
+      setSalaryHeadPeriodErrorOpen(true);
       return;
     }
 
@@ -1029,6 +1067,24 @@ export default function PayrollPageClient({
         onClose={() => setShowApprovalWarning(false)}
         onConfirm={handleBatchConfirm}
         loading={activeAction === "approve"}
+      />
+
+      <ConfirmModal
+        isOpen={salaryHeadPeriodErrorOpen}
+        onClose={() => setSalaryHeadPeriodErrorOpen(false)}
+        onConfirm={() => setSalaryHeadPeriodErrorOpen(false)}
+        title="Cannot apply salary head"
+        description={
+          selectedSalaryHead
+            ? `${selectedSalaryHead.title} cannot be applied for ${formatPayrollMonthLabel(
+                payrollDate,
+              )} because its period is ${formatDate(
+                selectedSalaryHead.periodFrom,
+              )} to ${formatDate(selectedSalaryHead.periodTo)}.`
+            : "This salary head cannot be applied for the selected payroll month."
+        }
+        confirmLabel="OK"
+        variant="warning"
       />
     </>
   );

@@ -150,6 +150,20 @@ function getPayrollPeriodFromMonth(payrollDate: string) {
   };
 }
 
+function isSalaryHeadApplicableToPayrollMonth(
+  salaryHead: Awaited<ReturnType<typeof getSalaryHeadSnapshot>> | null,
+  payrollPeriod: { periodFrom: string; periodTo: string },
+) {
+  if (!salaryHead?.periodFrom || !salaryHead.periodTo) {
+    return true;
+  }
+
+  return (
+    salaryHead.periodFrom <= payrollPeriod.periodTo &&
+    salaryHead.periodTo >= payrollPeriod.periodFrom
+  );
+}
+
 function getOverlappingDateRange(input: {
   leftFrom: string;
   leftTo: string;
@@ -1005,6 +1019,7 @@ export async function savePayrollRecords({
   if (!resolvedPayrollDate) {
     throw new Error("Select a payroll month");
   }
+  const payrollPeriod = getPayrollPeriodFromMonth(resolvedPayrollDate);
 
   const distinctApplicationIds = Array.from(
     new Set(items.map((item) => item.applicationId).filter(Boolean)),
@@ -1068,6 +1083,18 @@ export async function savePayrollRecords({
     }
 
     if (requestedSalaryHeadId) {
+      if (
+        !isSalaryHeadApplicableToPayrollMonth(requestedSalaryHead, payrollPeriod)
+      ) {
+        const salaryHeadTitle =
+          requestedSalaryHead?.title || "Selected salary head";
+        const salaryHeadPeriod =
+          `${requestedSalaryHead?.periodFrom} to ${requestedSalaryHead?.periodTo}`;
+        throw new Error(
+          `Cannot apply salary head for this payroll month. ${salaryHeadTitle} is valid from ${salaryHeadPeriod}.`,
+        );
+      }
+
       const salaryHeadCompanyId = getHydratedSalaryHeadCompanyId(
         requestedSalaryHead,
       );
