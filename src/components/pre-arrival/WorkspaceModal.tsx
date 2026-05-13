@@ -258,71 +258,48 @@ export default function WorkspaceModal({
 
   setUploading(true);
   try {
-    const buildDocumentFormData = (docId: string) => {
-      const formData = new FormData();
-      formData.append("docId", docId);
+    const formData = new FormData();
+    const items = changedIds.map((docId) => {
+      const pendingFile = pendingFiles[docId];
+      const existing = data.documents?.[docId];
+      const fileKey = pendingFile ? `file_${docId}` : undefined;
 
-      if (pendingFiles[docId]) {
-        console.log("[handleSave] Appending file:", pendingFiles[docId].file.name);
-        formData.append("file", pendingFiles[docId].file);
-        formData.append("name", pendingFiles[docId].name);
-        formData.append("owner", pendingFiles[docId].owner);
-      } else {
-        const existing = data.documents?.[docId];
-        if (existing?.name) formData.append("name", existing.name);
-        if (existing?.owner) formData.append("owner", existing.owner);
+      if (pendingFile && fileKey) {
+        console.log("[handleSave] Appending file:", pendingFile.file.name);
+        formData.append(fileKey, pendingFile.file);
       }
 
-      if (pendingNotes[docId]) formData.append("note", pendingNotes[docId]);
-      return formData;
-    };
-
-    const uploadOne = async (docId: string) => {
-      const res = await fetch(`/api/pre-arrival/${data._id}/upload`, {
-        method: "PATCH",
-        body: buildDocumentFormData(docId),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(`${docId}: ${errorData.error || res.statusText}`);
-      }
-    };
-
-    const concurrency = changedIds.length;
-    const failures: string[] = [];
-    let nextIndex = 0;
-    const workers = Array.from({ length: Math.min(concurrency, changedIds.length) }, async () => {
-      while (nextIndex < changedIds.length) {
-        const docId = changedIds[nextIndex];
-        nextIndex += 1;
-        try {
-          await uploadOne(docId);
-        } catch (error: any) {
-          console.error("[handleSave] Upload failed:", error);
-          failures.push(error.message || docId);
-        }
-      }
+      return {
+        docId,
+        name: pendingFile?.name || existing?.name || "",
+        owner: pendingFile?.owner || existing?.owner || "",
+        note: Object.prototype.hasOwnProperty.call(pendingNotes, docId)
+          ? pendingNotes[docId]
+          : existing?.note || "",
+        fileKey,
+      };
     });
 
-    await Promise.all(workers);
+    formData.append("items", JSON.stringify(items));
 
-    if (failures.length === 0) {
-      toast.success("Document pack updated successfully");
-      setPendingFiles({});
-      setPendingNotes({});
-      if (onSuccess) onSuccess();
-    } else {
-      toast.error(
-        failures.length === changedIds.length
-          ? "Document upload failed"
-          : `${failures.length} document(s) failed to upload`,
-      );
-      if (onSuccess) onSuccess();
+    const res = await fetch(`/api/pre-arrival/${data._id}/upload`, {
+      method: "PATCH",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(errorData.error || res.statusText);
     }
-  } catch (error) {
+
+    toast.success("Document pack updated successfully");
+    setPendingFiles({});
+    setPendingNotes({});
+    if (onSuccess) onSuccess();
+  } catch (error: any) {
     console.error("[handleSave] Upload error:", error);
-    toast.error("Error saving document pack");
+    toast.error(error?.message || "Error saving document pack");
+    if (onSuccess) onSuccess();
   } finally {
     setUploading(false);
   }
