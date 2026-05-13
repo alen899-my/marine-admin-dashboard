@@ -646,6 +646,7 @@ interface CandidateApplicationFormProps {
   companyLogo?: string;
   mode?: FormMode;
   isPublic?: boolean;
+  isCrewApplication?: boolean;
   availablePositions?: { value: string; label: string }[];
   initialPosition?: string;
   initialData?: CandidateApplicationData;
@@ -674,6 +675,7 @@ export default function CandidateApplicationForm({
   companyLogo,
   mode = "create",
   isPublic = false,
+  isCrewApplication = false,
   availablePositions = [],
   initialPosition = "",
   initialData,
@@ -2480,6 +2482,7 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
       companyName={companyName}
       companyLogo={companyLogo}
       isPublic={isPublic}
+      isCrewApplication={isCrewApplication}
       onNext={handleNext}
       onBack={handleBack}
       completedSteps={completedSteps}

@@ -29,6 +29,7 @@ interface MultiStepFormLayoutProps {
   companyName?: string;
   companyLogo?: string;
   isPublic?: boolean;
+  isCrewApplication?: boolean;
   children: React.ReactNode;
 }
 
@@ -239,7 +240,9 @@ export default function MultiStepFormLayout({
   pageTitle = "Application Form",
   pageSubtitle,
   companyName,
+  companyLogo,
   isPublic = false,
+  isCrewApplication = false,
   children,
 }: MultiStepFormLayoutProps) {
   const isFirst = currentStep === 1;
@@ -269,11 +272,13 @@ export default function MultiStepFormLayout({
             <div className="relative w-full bg-brand-500 bg-gradient-to-r from-brand-600 to-brand-400 px-6 py-8 sm:px-10 sm:py-10 text-white shrink-0">
               <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-100 opacity-90">
-                      Careers {companyName ? `at ${companyName}` : ""}
-                    </span>
-                  </div>
+                  {!isCrewApplication && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-100 opacity-90">
+                        Careers {companyName ? `at ${companyName}` : ""}
+                      </span>
+                    </div>
+                  )}
                   <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                     {pageTitle}
                   </h1>
@@ -294,11 +299,13 @@ export default function MultiStepFormLayout({
             <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800/50 shrink-0">
               <div className="flex items-center gap-4 px-6 sm:px-10 py-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                      Careers {companyName ? `at ${companyName}` : ""}
-                    </span>
-                  </div>
+                  {!isCrewApplication && (
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                        Careers {companyName ? `at ${companyName}` : ""}
+                      </span>
+                    </div>
+                  )}
                   <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
                     {pageTitle}
                   </h1>

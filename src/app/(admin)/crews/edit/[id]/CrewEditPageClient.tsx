@@ -439,6 +439,7 @@ export default function CrewEditPageClient({
               jobId={jobId}
               isSuperAdmin={isSuperAdmin}
               companies={companies}
+              isCrewApplication={true}
               onLivePreviewChange={handleCandidatePreviewChange}
             />
           ) : (
