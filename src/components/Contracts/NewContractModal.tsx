@@ -51,6 +51,8 @@ interface FormData {
   // Step 3 — Vessel & Contract
   portOfJoining: string;
   commencement: string;
+  contractStart: string;
+  contractEnd: string;
   contractPeriod: string;
   vesselId: string;
   signDate: string;
@@ -144,6 +146,8 @@ const createDefaultForm = (): FormData => ({
   allowances: [],
   portOfJoining: "",
   commencement: "",
+  contractStart: "",
+  contractEnd: "",
   contractPeriod: "",
   vesselId: "",
   signDate: "",
@@ -237,6 +241,12 @@ export default function NewContractModal({
         ? new Date(w.effectiveTo).toISOString().split("T")[0]
         : "";
       const period = c.contractPeriod || "";
+      const contractStart = c.contractStart
+        ? new Date(c.contractStart).toISOString().split("T")[0]
+        : "";
+      const contractEnd = c.contractEnd
+        ? new Date(c.contractEnd).toISOString().split("T")[0]
+        : "";
 
       setForm({
         cdcNo: cdc,
@@ -257,6 +267,8 @@ export default function NewContractModal({
             : [],
         portOfJoining: joining,
         commencement: commence,
+        contractStart,
+        contractEnd,
         contractPeriod: period,
         vesselId: c.vesselId?._id || c.vesselId || "",
         signDate: c.signDate
@@ -318,6 +330,49 @@ export default function NewContractModal({
   const handleDateChange = (key: keyof FormData) => (isoString: string) => {
     setForm((prev) => ({ ...prev, [key]: isoString }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
+  };
+
+  const calculatePeriod = (start: string, end: string): string => {
+    if (!start || !end) return "";
+    // Parse as local calendar dates — strip time portion first (picker emits full ISO strings)
+    const [sy, sm, sd] = start.split("T")[0].split("-").map(Number);
+    const [ey, em, ed] = end.split("T")[0].split("-").map(Number);
+    const startDate = new Date(sy, sm - 1, sd);
+    const endDate   = new Date(ey, em - 1, ed);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return "";
+    if (endDate < startDate) return "Invalid Range";
+
+    let years = endDate.getFullYear() - startDate.getFullYear();
+    let months = endDate.getMonth() - startDate.getMonth();
+    let days = endDate.getDate() - startDate.getDate();
+
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    const parts: string[] = [];
+    if (years > 0)   parts.push(`${years} ${years === 1 ? "Year" : "Years"}`);
+    if (months > 0)  parts.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+    if (days > 0)    parts.push(`${days} ${days === 1 ? "Day" : "Days"}`);
+    return parts.length > 0 ? parts.join(", ") : "0 Days";
+  };
+
+  const handleContractDateChange = (type: "start" | "end", val: string) => {
+    if (type === "start") {
+      const period = calculatePeriod(val, form.contractEnd);
+      setForm((prev) => ({ ...prev, contractStart: val, contractPeriod: period }));
+      if (errors.contractStart) setErrors((prev) => ({ ...prev, contractStart: "" }));
+    } else {
+      const period = calculatePeriod(form.contractStart, val);
+      setForm((prev) => ({ ...prev, contractEnd: val, contractPeriod: period }));
+      if (errors.contractEnd) setErrors((prev) => ({ ...prev, contractEnd: "" }));
+    }
   };
 
   const basicVal = parseFloat(form.basicWages || "0") || 0;
@@ -389,8 +444,10 @@ export default function NewContractModal({
         errs.portOfJoining = "Port of joining is required";
       if (!form.commencement)
         errs.commencement = "Commencement date is required";
-      if (!form.contractPeriod)
-        errs.contractPeriod = "Contract period is required";
+      if (!form.contractStart)
+        errs.contractStart = "Contract start date is required";
+      if (!form.contractEnd)
+        errs.contractEnd = "Contract end date is required";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -461,6 +518,8 @@ export default function NewContractModal({
           vesselId: form.vesselId,
           portOfJoining: form.portOfJoining.trim(),
           commencement: form.commencement,
+          contractStart: form.contractStart,
+          contractEnd: form.contractEnd,
           contractPeriod: form.contractPeriod,
           isDraft,
           wages: {
@@ -793,24 +852,39 @@ export default function NewContractModal({
                   hint={errors.commencement}
                   disabled={submitting}
                 />
-                <Select
-                  label="Contract Period *"
-                  options={[
-                    { value: "3 Months", label: "3 Months" },
-                    { value: "6 Months", label: "6 Months" },
-                    { value: "9 Months", label: "9 Months" },
-                    { value: "12 Months", label: "12 Months" },
-                    { value: "18 Months", label: "18 Months" },
-                    { value: "24 Months", label: "24 Months" },
-                  ]}
-                  value={form.contractPeriod}
-                  onChange={(val) =>
-                    setForm((p) => ({ ...p, contractPeriod: val }))
-                  }
-                  error={!!errors.contractPeriod}
-                  hint={errors.contractPeriod}
+                <SimpleDatePicker
+                  label="Contract Start *"
+                  value={form.contractStart}
+                  onChange={(val) => handleContractDateChange("start", val)}
+                  error={!!errors.contractStart}
+                  hint={errors.contractStart}
                   disabled={submitting}
                 />
+                <SimpleDatePicker
+                  label="Contract End *"
+                  value={form.contractEnd}
+                  onChange={(val) => handleContractDateChange("end", val)}
+                  error={!!errors.contractEnd}
+                  hint={errors.contractEnd}
+                  disabled={submitting}
+                />
+                {/* Auto-calculated contract period — editable like onboarding modal */}
+                <div>
+                  <Input
+                    label="Contract Period"
+                    placeholder="e.g. 9 Months"
+                    value={form.contractPeriod}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, contractPeriod: e.target.value }))
+                    }
+                    disabled={submitting}
+                    hint={
+                      errors.contractPeriod ||
+                      "Auto-calculates from start & end dates, but can be edited."
+                    }
+                    error={!!errors.contractPeriod}
+                  />
+                </div>
               </div>
             </ComponentCard>
 
