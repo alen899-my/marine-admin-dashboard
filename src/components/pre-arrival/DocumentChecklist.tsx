@@ -635,6 +635,16 @@ const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "rejected"
                           <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
                             {displayFileName ? displayFileName : "No document uploaded"}
                           </span>
+                          {/* ✅ Download button for view mode */}
+                          {isReadOnly && isUploaded && (
+                            <button
+                              onClick={() => handleDownloadFile(fileInfo?.fileUrl, displayFileName || row.name)}
+                              className="flex items-center justify-center h-[32px] w-[32px] bg-blue-50 dark:bg-transparent text-blue-600 rounded-lg border border-blue-100 dark:border-gray-100/10 transition-colors hover:bg-blue-100 shrink-0 ml-2"
+                              title="Download File"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

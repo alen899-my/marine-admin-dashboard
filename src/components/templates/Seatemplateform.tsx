@@ -459,11 +459,11 @@ export default function SeaTemplateForm({
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Template Identity</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField label="Template Name *" error={errors.name}>
+                      <FormField label="Template Name" required error={errors.name}>
                         <Input placeholder="e.g. Standard SEA – MLC 2006" value={templateName} onChange={(e) => setTemplateName(e.target.value)} error={!!errors.name} />
                       </FormField>
                       {isSuperAdmin && (
-                        <FormField label="Company *" error={errors.company}>
+                        <FormField label="Company" required error={errors.company}>
                           <SearchableSelect options={companies} value={selectedCompanyId} onChange={setSelectedCompanyId} placeholder="Select company…" />
                         </FormField>
                       )}
@@ -531,7 +531,7 @@ export default function SeaTemplateForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     {/* Logo */}
-                    <FormField label="Agency / Company Logo *" hint="Size: 785×220px recommended. File should be less than 500KB" error={errors.logo}>
+                    <FormField label="Agency / Company Logo" required hint="Size: 785×220px recommended. File should be less than 500KB" error={errors.logo}>
                       {logoPreview && (
                         <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           <img src={logoPreview} alt="Logo" className="h-10 object-contain" />
