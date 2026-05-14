@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import CandidateFilterWrapper from "./CandidateFilterWrapper";
 import Button from "@/components/ui/button/Button";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
+
 
 const excelMapping = (r: any) => ({
   // ── Identity
@@ -51,7 +51,7 @@ const excelMapping = (r: any) => ({
  
 
   "Resume":  r._id
-    ? `${BASE_URL}/candidates/resume/${r._id}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/candidates/resume/${r._id}`
     : "No Attachment",
 });
 interface CandidatePageClientProps {

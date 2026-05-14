@@ -1,7 +1,6 @@
 "use client";
 
 import ComponentCard from "@/components/common/ComponentCard";
-import ExportToExcel from "@/components/common/ExportToExcel";
 import FilterToggleButton from "@/components/common/FilterToggleButton";
 import TableCount from "@/components/common/TableCount";
 import { useFilterPersistence } from "@/hooks/useFilterPersistence";
@@ -9,55 +8,6 @@ import { ReactNode } from "react";
 import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter } from "next/navigation";
 import ContractFilterWrapper from "./ContractFilterWrapper";
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
-
-const getExcelMapping = (isSuperAdmin: boolean) => (r: any) => {
-  const baseMapping = {
-    // ── Identity
-    "First Name":          r.firstName || "-",
-    "Last Name":           r.lastName || "-",
-    "Rank":                r.rank || "-",
-    "Applied For":         r.positionApplied || "-",
-  };
-
-  const companyMapping = isSuperAdmin ? {
-    // ── Company
-    "Company":             r.companyName || "-",
-  } : {};
-
-  return {
-    ...baseMapping,
-    ...companyMapping,
-    // ── Personal
-    "Nationality":         r.nationality || "-",
-    "Date of Birth":       r.dateOfBirth ? new Date(r.dateOfBirth).toLocaleDateString("en-IN") : "-",
-    "Place of Birth":      r.placeOfBirth || "-",
-    "Marital Status":      r.maritalStatus || "-",
-
-    // ── Contact
-    "Email":               r.email || "-",
-    "Cell Phone":          r.cellPhone || "-",
-   
-    "Present Address":     r.presentAddress || "-",
-
-    // ── Availability
-    "Date of Availability": r.dateOfAvailability
-      ? new Date(r.dateOfAvailability).toLocaleDateString("en-IN")
-      : "-",
-    "Availability Note":   r.availabilityNote || "-",
-
-    // ── Physical
-    "Weight (kg)":         r.weightKg ?? "-",
-    "Height (cm)":         r.heightCm ?? "-",
-    "Coverall Size":       r.coverallSize || "-",
-    "Shoe Size":           r.shoeSize || "-",
-
-    "Resume":  r._id
-      ? `${BASE_URL}/candidates/resume/${r._id}`
-      : "No Attachment",
-  };
-};
 
 interface ContractPageClientProps {
   children: ReactNode;
