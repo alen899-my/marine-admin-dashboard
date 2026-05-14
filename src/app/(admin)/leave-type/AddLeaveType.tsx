@@ -210,7 +210,7 @@ export default function AddLeaveType({
                 </div>
 
                 <div className="md:col-span-1">
-                  <Label>Max Days</Label>
+                  <Label>Max Days (per month)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -224,38 +224,7 @@ export default function AddLeaveType({
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 py-2 border-t dark:border-white/10 mt-2">
-                  <Checkbox
-                    id="isCarryForward"
-                    label="Allow Carry Forward?"
-                    checked={formData.isCarryForward}
-                    onChange={(checked) =>
-                      handleFieldChange("isCarryForward", checked)
-                    }
-                  />
                 </div>
-
-                {formData.isCarryForward && (
-                  <div className="md:col-span-1">
-                    <Label>Max Carry Forward Days</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 5"
-                      value={
-                        formData.maxCarryForward === 0
-                          ? ""
-                          : formData.maxCarryForward
-                      }
-                      onChange={(e) =>
-                        handleFieldChange("maxCarryForward", e.target.value)
-                      }
-                      error={!!errors.maxCarryForward}
-                      hint={errors.maxCarryForward}
-                    />
-                  </div>
-                )}
-              </div>
             </ComponentCard>
           </div>
         </AddForm>

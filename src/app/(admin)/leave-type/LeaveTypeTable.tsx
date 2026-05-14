@@ -267,13 +267,13 @@ export default function LeaveTypeTable({
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-500 shrink-0">Maximum Days</span>
+                <span className="text-gray-500 shrink-0">Maximum Days (per month)</span>
                 <span className="font-medium text-right">
                   {selectedItem.maxDays}{" "}
                   {selectedItem.maxDays === 1 ? "day" : "days"}
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
+              {/* <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">
                   Carry Forward Allowed?
                 </span>
@@ -291,7 +291,7 @@ export default function LeaveTypeTable({
                     {selectedItem.maxCarryForward === 1 ? "day" : "days"}
                   </span>
                 </div>
-              )}
+              )} */}
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Status</span>
                 <span className="text-right">
@@ -378,7 +378,7 @@ export default function LeaveTypeTable({
                 </div>
 
                 <div className="md:col-span-1">
-                  <Label>Max Days</Label>
+                  <Label>Max Days (per month)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -405,33 +405,7 @@ export default function LeaveTypeTable({
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 py-2 border-t dark:border-white/10 mt-2">
-                  <Checkbox
-                    id="editIsCarryForward"
-                    label="Allow Carry Forward?"
-                    checked={editData.isCarryForward || false}
-                    onChange={(checked) =>
-                      handleFieldChange("isCarryForward", checked)
-                    }
-                  />
                 </div>
-
-                {editData.isCarryForward && (
-                  <div className="md:col-span-1">
-                    <Label>Max Carry Forward Days</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={editData.maxCarryForward || ""}
-                      onChange={(e) =>
-                        handleFieldChange("maxCarryForward", e.target.value)
-                      }
-                      error={!!errors.maxCarryForward}
-                      hint={errors.maxCarryForward}
-                    />
-                  </div>
-                )}
-              </div>
             </ComponentCard>
           )}
         </div>
