@@ -17,6 +17,7 @@ interface CrewRowData {
   positionApplied?: string;
   jobTitle?: string | null;
   crew?: string;
+  companyName?: string;
 }
 
 interface CrewsTableProps {
@@ -27,11 +28,13 @@ interface CrewsTableProps {
     total: number;
     totalPages: number;
   };
+  isSuperAdmin?: boolean;
 }
 
 export default function CrewsTable({
   data,
   pagination,
+  isSuperAdmin = false,
 }: CrewsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,6 +104,18 @@ export default function CrewsTable({
         </span>
       ),
     },
+    ...(isSuperAdmin
+      ? [
+          {
+            header: "Company",
+            render: (crew: CrewRowData) => (
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {crew.companyName || "-"}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       header: "Email",
       render: (crew: CrewRowData) => (
@@ -150,7 +165,7 @@ export default function CrewsTable({
     <>
       <div className="border border-gray-200 bg-white dark:border-white/10 dark:bg-slate-900 rounded-xl">
         <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1500]">
+          <div className="min-w-[1500px]">
             <CommonReportTable
               data={data}
               columns={columns}

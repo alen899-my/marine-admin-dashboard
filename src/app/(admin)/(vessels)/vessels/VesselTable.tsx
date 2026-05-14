@@ -154,22 +154,29 @@ export default function VesselTable({ data, pagination }: VesselTableProps) {
     },
     {
       header: "Vessel Name",
-      render: (v: Vessel) => (
-        <div className="flex flex-col">
-          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-            {v.name}
-          </span>
-          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-            {v.fleet && <span>{v.fleet}</span>}
-            {v.flag && (
-              <>
-                <span className="opacity-30">|</span>
-                <span>{v.flag}</span>
-              </>
-            )}
+      render: (v: Vessel) => {
+        const companyName =
+          typeof v.company === "object" ? v.company?.name : "N/A";
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold text-gray-900 dark:text-white">
+              {v.name}
+            </span>
+            <div className="text-[10px] text-gray-500 font-medium mt-0.5 uppercase tracking-wider">
+              {companyName || "N/A"}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+              {v.fleet && <span>{v.fleet}</span>}
+              {v.flag && (
+                <>
+                  <span className="opacity-30">|</span>
+                  <span>{v.flag}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     //  IMPROVED: Grid layout for perfect alignment & better spacing
     {
@@ -202,18 +209,7 @@ export default function VesselTable({ data, pagination }: VesselTableProps) {
         </div>
       ),
     },
-    {
-      header: "Company", //  New Column
-      render: (v: Vessel) => {
-        const companyName =
-          typeof v.company === "object" ? v.company?.name : "N/A";
-        return (
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            {companyName || "N/A"}
-          </span>
-        );
-      },
-    },
+
     {
       header: "Dimensions",
       render: (v: Vessel) => (

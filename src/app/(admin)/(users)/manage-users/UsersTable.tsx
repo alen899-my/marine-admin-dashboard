@@ -144,46 +144,44 @@ export default function UserTable({
     },
     {
       header: "Full Name",
-      render: (u: IUser) => (
-        <div className="flex items-center gap-3">
-          {/* Avatar Display in Table */}
-          <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
-            {u.profilePicture ? (
-              <Image
-                src={u.profilePicture}
-                alt={u.fullName}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-400" />
+      render: (u: IUser) => {
+        const companyName =
+          typeof u.company === "object" ? u.company?.name : "N/A";
+        return (
+          <div className="flex items-center gap-3">
+            {/* Avatar Display in Table */}
+            <div className="w-9 h-9 relative rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+              {u.profilePicture ? (
+                <Image
+                  src={u.profilePicture}
+                  alt={u.fullName}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-gray-400" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-medium text-gray-700 dark:text-gray-200">
+                {u.fullName}
+              </span>
+              <div className="text-[10px] text-gray-500 font-medium mt-0.5 uppercase tracking-wider">
+                {companyName || "N/A"}
               </div>
-            )}
+            </div>
           </div>
-          <span className="font-medium text-gray-700 dark:text-gray-200">
-            {u.fullName}
-          </span>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: "Email",
       render: (u: IUser) => u.email,
     },
-    {
-      header: "Company",
-      render: (u: IUser) => {
-        const companyName =
-          typeof u.company === "object" ? u.company?.name : "N/A";
-        return (
-          <span className="font-medium text-gray-700 dark:text-gray-200">
-            {companyName || "N/A"}
-          </span>
-        );
-      },
-    },
+
     {
       header: "Role",
       render: (user: any) => (

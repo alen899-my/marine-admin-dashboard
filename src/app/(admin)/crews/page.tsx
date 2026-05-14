@@ -226,6 +226,7 @@ export default async function CrewsManagement({ searchParams }: PageProps) {
             total: pagination.total,
             totalPages: pagination.totalPages,
           }}
+          isSuperAdmin={isSuperAdmin}
         />
       </CrewsPageClient>
     );

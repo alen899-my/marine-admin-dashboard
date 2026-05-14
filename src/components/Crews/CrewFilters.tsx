@@ -93,14 +93,8 @@ export default function CrewFilters({
             placeholder="All Companies"
             value={localCompanyId}
             onChange={(value) => {
-              const nextCompanyId = value || "";
-              setLocalCompanyId(nextCompanyId);
+              setLocalCompanyId(value || "");
               setLocalJobTitle("");
-              onApply({
-                search: localSearch,
-                companyId: nextCompanyId,
-                jobTitle: "",
-              });
             }}
           />
         </div>
