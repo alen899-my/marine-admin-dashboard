@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get("companyId");
   const startDate = req.nextUrl.searchParams.get("startDate");
   const endDate = req.nextUrl.searchParams.get("endDate");
+  const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
+  const limit = parseInt(req.nextUrl.searchParams.get("limit") || "20");
+  const skip = (page - 1) * limit;
 
   await dbConnect();
 
@@ -57,6 +60,9 @@ export async function GET(req: NextRequest) {
     sessionQuery.loginAt = { ...sessionQuery.loginAt, $lte: end };
   }
 
+  // Get total count for pagination
+  const total = await UserSession.countDocuments(sessionQuery);
+
   // Only sessions created within the last 7 days and still valid
   const sessions = await UserSession.find(sessionQuery)
     .populate({
@@ -69,6 +75,8 @@ export async function GET(req: NextRequest) {
       ],
     })
     .sort({ lastSeenAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .lean();
 
   const mapped = sessions.map((s) => ({
@@ -91,5 +99,11 @@ export async function GET(req: NextRequest) {
     lastSeenAt: s.lastSeenAt,
   }));
 
-  return NextResponse.json({ sessions: mapped });
+  return NextResponse.json({
+    sessions: mapped,
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  });
 }

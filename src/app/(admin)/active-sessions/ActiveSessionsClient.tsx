@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ActiveSessionsFilterWrapper from "./ActiveSessionsFilterWrapper";
 
 interface SessionEntry {
@@ -44,10 +44,17 @@ export default function ActiveSessionsClient({
   companies: { value: string; label: string }[];
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { isFilterVisible, setIsFilterVisible } = useFilterPersistence("sessions");
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [invalidating, setInvalidating] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -56,11 +63,23 @@ export default function ActiveSessionsClient({
       const res = await fetch(`/api/admin/sessions?${params.toString()}`);
       const data = await res.json();
       setSessions(data.sessions || []);
+      setPagination({
+        page: data.page || 1,
+        limit: data.limit || 20,
+        total: data.total || 0,
+        totalPages: data.totalPages || 1,
+      });
     } catch {
       toast.error("Failed to load sessions");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -115,7 +134,8 @@ export default function ActiveSessionsClient({
   const columns = [
     {
       header: "S.No",
-      render: (_: SessionEntry, index: number) => index + 1,
+      render: (_: SessionEntry, index: number) =>
+        (pagination.page - 1) * pagination.limit + index + 1,
     },
     {
       header: "User",
@@ -130,23 +150,31 @@ export default function ActiveSessionsClient({
               )}
             </div>
             <div className="text-xs text-gray-400">{s.user?.email}</div>
+            <div className="text-[11px] text-gray-500 font-medium mt-1 uppercase tracking-wider">
+              {s.user?.company ?? "—"}
+            </div>
           </div>
         );
       },
     },
     {
       header: "Role",
-      render: (s: SessionEntry) => (
-        <span className="capitalize">{s.user?.role ?? "—"}</span>
-      ),
-    },
-    {
-      header: "Company",
-      render: (s: SessionEntry) => (
-        <span className="text-gray-700 dark:text-gray-300">
-          {s.user?.company ?? "—"}
-        </span>
-      ),
+      render: (s: SessionEntry) => {
+        const role = s.user?.role ?? "—";
+        const getRoleColor = (r: string) => {
+          const roleLower = r.toLowerCase();
+          if (roleLower === "super-admin") return "error";
+          if (roleLower === "admin") return "warning";
+          if (roleLower === "company-admin") return "primary";
+          if (roleLower === "user") return "success";
+          return "info";
+        };
+        return (
+          <Badge color={getRoleColor(role) as any} className="capitalize">
+            {role}
+          </Badge>
+        );
+      },
     },
     {
       header: "IP",
@@ -265,7 +293,7 @@ export default function ActiveSessionsClient({
         }
       >
         <div className="flex justify-end me-2 mb-2 pt-4">
-          <TableCount count={sessions.length} label="active sessions" />
+          <TableCount count={pagination.total} label="active sessions" />
         </div>
 
         <div className="border border-gray-200 bg-white text-gray-800 dark:border-white/10 dark:bg-slate-900 dark:text-gray-100 rounded-xl mb-4">
@@ -275,9 +303,9 @@ export default function ActiveSessionsClient({
                 data={sessions}
                 columns={columns}
                 loading={loading}
-                currentPage={1}
-                totalPages={1}
-                onPageChange={() => {}}
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={handlePageChange}
               />
             </div>
           </div>
