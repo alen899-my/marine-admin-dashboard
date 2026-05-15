@@ -10,9 +10,6 @@ export async function GET(
   { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const authz = await authorizeRequest("contracts.view");
-    if (!authz.ok) return authz.response;
-
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
