@@ -368,24 +368,24 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // if ("status" in body) {
-    //   if (existing.status === "onboarded") {
-    //     return NextResponse.json(
-    //       { error: "Cannot change status of an onboarded candidate." },
-    //       { status: 400 }
-    //     );
-    //   }
-    //   const newStatus = str(body.status);
-    //   update.status = newStatus as ICandidate["status"];
+    if ("status" in body) {
+      // if (existing.status === "onboarded") {
+      //   return NextResponse.json(
+      //     { error: "Cannot change status of an onboarded candidate." },
+      //     { status: 400 }
+      //   );
+      // }
+      const newStatus = str(body.status);
+      update.status = newStatus as ICandidate["status"];
 
-    //   // If status is "accepted", also activate the associated contract
-    //   if (newStatus === "accepted") {
-    //     await Contract.updateMany(
-    //       { applicationId: new mongoose.Types.ObjectId(id), deletedAt: null },
-    //       { $set: { contractStatus: "active" } }
-    //     );
-    //   }
-    // }
+      // If status is "accepted", also activate the associated contract
+      if (newStatus === "accepted") {
+        await Contract.updateMany(
+          { applicationId: new mongoose.Types.ObjectId(id), deletedAt: null },
+          { $set: { contractStatus: "active" } }
+        );
+      }
+    }
 
     if ("crew" in body) {
       const crewStatus = str(body.crew).toLowerCase();
