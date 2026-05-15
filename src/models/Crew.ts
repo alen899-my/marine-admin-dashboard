@@ -30,13 +30,6 @@ export interface ICrew extends Document {
   // ── Crew status
   crewStatus: CrewStatus;
 
-  // ── Onboarding details
-  onboardDate?: Date;
-  onboardPort?: string;
-  contractStart?: Date;
-  contractEnd?: Date;
-  contractPeriod?: string;
-
   // ── Onboarding checklist
   onboardingChecklist: ICrewChecklistItem[];
 
@@ -76,13 +69,6 @@ const CrewSchema = new Schema<ICrew>(
       enum: CREW_STATUSES,
       default: "inactive",
     },
-
-    // ── Onboarding details
-    onboardDate: { type: Date },
-    onboardPort: { type: String, trim: true },
-    contractStart: { type: Date },
-    contractEnd: { type: Date },
-    contractPeriod: { type: String, trim: true },
 
     // ── Onboarding checklist
     onboardingChecklist: {

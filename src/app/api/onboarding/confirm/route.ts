@@ -73,21 +73,40 @@ async function updateOnboardingDetails(
       return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
     }
 
-    // ── Build Crew document data
-    const crewData: Record<string, any> = {
+    // ── Find and update Contract with onboarding details
+    const contractQuery: any = {
       applicationId: new mongoose.Types.ObjectId(applicationId),
-      company: candidate.company,
+      deletedAt: null,
+    };
+
+    if (session.user.role?.toLowerCase() !== "super-admin") {
+      contractQuery.company = candidate.company;
+    }
+
+    const contractUpdateData: Record<string, any> = {
       onboardDate: new Date(onboardDate),
-      onboardPort: port,
+      portOfJoining: port,
       contractStart: new Date(contractStart),
     };
 
-    if (contractEnd) crewData.contractEnd = new Date(contractEnd);
-    if (contractPeriod) crewData.contractPeriod = contractPeriod;
-
-    if (options?.activateCrew) {
-      crewData.crewStatus = "onboard";
+    if (contractEnd) {
+      contractUpdateData.contractEnd = new Date(contractEnd);
     }
+    if (contractPeriod) {
+      contractUpdateData.contractPeriod = contractPeriod;
+    }
+
+    await Contract.findOneAndUpdate(
+      contractQuery,
+      { $set: contractUpdateData },
+      { new: true },
+    );
+
+    // ── Build Crew document data (without onboarding fields, just status)
+    const crewData: Record<string, any> = {
+      applicationId: new mongoose.Types.ObjectId(applicationId),
+      company: candidate.company,
+    };
 
     // Fetch the latest contract to set contractId on Crew
     const latestContract = await Contract.findOne({
@@ -100,6 +119,10 @@ async function updateOnboardingDetails(
 
     if (latestContract) {
       crewData.contractId = latestContract._id;
+    }
+
+    if (options?.activateCrew) {
+      crewData.crewStatus = "onboard";
     }
 
     if (options?.activateCrew) {
@@ -119,18 +142,13 @@ async function updateOnboardingDetails(
         { $set: crewData },
         { upsert: true, new: true },
       );
-    } else {
-      // PATCH (edit) — just update the onboarding fields on existing Crew
+    } else if (latestContract) {
+      // PATCH (edit) — just update contractId on Crew
       await Crew.findOneAndUpdate(
         { applicationId: new mongoose.Types.ObjectId(applicationId) },
         {
           $set: {
-            onboardDate: crewData.onboardDate,
-            onboardPort: crewData.onboardPort,
-            contractStart: crewData.contractStart,
-            ...(contractEnd ? { contractEnd: crewData.contractEnd } : {}),
-            ...(contractPeriod ? { contractPeriod: crewData.contractPeriod } : {}),
-            ...(latestContract ? { contractId: latestContract._id } : {}),
+            contractId: latestContract._id,
           },
         },
         { new: true },

@@ -31,6 +31,7 @@ export interface IContract extends Document {
   // ── Vessel & Contract
   vesselId?: mongoose.Types.ObjectId;
   portOfJoining?: string;
+  onboardDate?: Date;
   commencement?: Date;
   contractStart?: Date;
   contractEnd?: Date;
@@ -85,6 +86,7 @@ const ContractSchema = new Schema<IContract>(
       ref: "Vessel",
     },
     portOfJoining: { type: String, trim: true },
+    onboardDate: { type: Date },
     commencement: { type: Date },
     contractStart: { type: Date },
     contractEnd: { type: Date },

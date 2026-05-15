@@ -111,6 +111,15 @@ export default async function CrewViewPage({
   }).lean();
   const crewDocSerialized = crewDoc ? JSON.parse(JSON.stringify(crewDoc)) : null;
 
+  const toDateString = (date: Date | string | null | undefined): string => {
+    if (!date) return "";
+    if (typeof date === "string") return date;
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      return date.toISOString().split("T")[0];
+    }
+    return "";
+  };
+
   const crew: CrewDetailsData = {
     ...serializedCrew,
     positionApplied:
@@ -123,11 +132,12 @@ export default async function CrewViewPage({
     crewId: crewDocSerialized ? String(crewDocSerialized._id) : null,
     crew: crewDocSerialized?.crewStatus ?? serializedCrew.crew ?? "inactive",
     crewStatus: crewDocSerialized?.crewStatus ?? serializedCrew.crew ?? "inactive",
-    onboardDate: crewDocSerialized?.onboardDate ?? serializedCrew.onboardDate ?? null,
-    onboardPort: crewDocSerialized?.onboardPort ?? serializedCrew.onboardPort ?? null,
-    contractStart: crewDocSerialized?.contractStart ?? serializedCrew.contractStart ?? null,
-    contractEnd: crewDocSerialized?.contractEnd ?? serializedCrew.contractEnd ?? null,
-    contractPeriod: crewDocSerialized?.contractPeriod ?? serializedCrew.contractPeriod ?? null,
+    // Onboarding fields from Contract
+    onboardDate: toDateString(latestContract?.onboardDate ?? serializedCrew.onboardDate ?? null),
+    onboardPort: latestContract?.portOfJoining ?? serializedCrew.onboardPort ?? null,
+    contractStart: toDateString(latestContract?.contractStart ?? serializedCrew.contractStart ?? null),
+    contractEnd: toDateString(latestContract?.contractEnd ?? serializedCrew.contractEnd ?? null),
+    contractPeriod: latestContract?.contractPeriod ?? serializedCrew.contractPeriod ?? null,
     onboardingChecklist: crewDocSerialized?.onboardingChecklist ?? serializedCrew.onboardingChecklist ?? [],
     leaveLimits: crewDocSerialized?.leaveLimits ?? serializedCrew.leaveLimits ?? [],
     contractRaw: latestContract

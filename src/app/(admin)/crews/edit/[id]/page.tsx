@@ -164,6 +164,15 @@ export default async function CrewEditPage({
   // Merge Crew document fields (source of truth) with Candidate fields (fallback)
   const crewDocSerialized = crewDoc ? JSON.parse(JSON.stringify(crewDoc)) : null;
 
+  const toDateString = (date: Date | string | null | undefined): string => {
+    if (!date) return "";
+    if (typeof date === "string") return date;
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      return date.toISOString().split("T")[0];
+    }
+    return "";
+  };
+
   const enrichedCrew = {
     ...crew,
     companyName: companyData?.name ?? "",
@@ -171,11 +180,12 @@ export default async function CrewEditPage({
     crewId: crewDocSerialized ? String(crewDocSerialized._id) : null,
     crew: crewDocSerialized?.crewStatus ?? crew.crew ?? "inactive",
     crewStatus: crewDocSerialized?.crewStatus ?? crew.crew ?? "inactive",
-    onboardDate: crewDocSerialized?.onboardDate ?? crew.onboardDate ?? null,
-    onboardPort: crewDocSerialized?.onboardPort ?? crew.onboardPort ?? null,
-    contractStart: crewDocSerialized?.contractStart ?? crew.contractStart ?? null,
-    contractEnd: crewDocSerialized?.contractEnd ?? crew.contractEnd ?? null,
-    contractPeriod: crewDocSerialized?.contractPeriod ?? crew.contractPeriod ?? null,
+    // Onboarding fields from Contract
+    onboardDate: toDateString(latestContract?.onboardDate ?? crew.onboardDate ?? null),
+    onboardPort: latestContract?.portOfJoining ?? crew.onboardPort ?? null,
+    contractStart: toDateString(latestContract?.contractStart ?? crew.contractStart ?? null),
+    contractEnd: toDateString(latestContract?.contractEnd ?? crew.contractEnd ?? null),
+    contractPeriod: latestContract?.contractPeriod ?? crew.contractPeriod ?? null,
     onboardingChecklist: crewDocSerialized?.onboardingChecklist ?? crew.onboardingChecklist ?? [],
     leaveLimits: crewDocSerialized?.leaveLimits ?? crew.leaveLimits ?? [],
     contractRaw: latestContract

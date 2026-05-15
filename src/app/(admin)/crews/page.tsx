@@ -176,11 +176,12 @@ export default async function CrewsManagement({ searchParams }: PageProps) {
         crewId: crewDoc ? String((crewDoc as any)._id) : null,
         crew: crewDoc?.crewStatus ?? app.crew ?? "inactive",
         crewStatus: crewDoc?.crewStatus ?? "inactive",
-        onboardDate: crewDoc?.onboardDate ?? app.onboardDate ?? null,
-        onboardPort: crewDoc?.onboardPort ?? app.onboardPort ?? null,
-        contractStart: crewDoc?.contractStart ?? app.contractStart ?? null,
-        contractEnd: crewDoc?.contractEnd ?? app.contractEnd ?? null,
-        contractPeriod: crewDoc?.contractPeriod ?? app.contractPeriod ?? null,
+        // Onboarding fields from Contract
+        onboardDate: contract?.onboardDate ?? app.onboardDate ?? null,
+        onboardPort: contract?.portOfJoining ?? app.onboardPort ?? null,
+        contractStart: contract?.contractStart ?? app.contractStart ?? null,
+        contractEnd: contract?.contractEnd ?? app.contractEnd ?? null,
+        contractPeriod: contract?.contractPeriod ?? app.contractPeriod ?? null,
         onboardingChecklist: crewDoc?.onboardingChecklist ?? app.onboardingChecklist ?? [],
         leaveLimits: crewDoc?.leaveLimits ?? app.leaveLimits ?? [],
         // Contract details

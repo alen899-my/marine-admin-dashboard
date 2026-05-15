@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
-import { Anchor } from "lucide-react";
+import { Anchor, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import Input from "@/components/form/input/InputField";
 import SimpleDatePicker from "@/components/form/new-datepicker";
@@ -51,6 +51,7 @@ export default function ConfirmOnboardModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { refreshCounts } = useSidebarNotifications();
+  const [hasContractData, setHasContractData] = useState(false);
 
   const title = mode === "edit" ? "Edit Onboarding Details" : "Confirm Onboard";
   const submitLabel =
@@ -77,6 +78,53 @@ export default function ConfirmOnboardModal({
     if (!isOpen && !embedded) return;
     resetForm();
   }, [embedded, isOpen, resetForm]);
+
+  const fetchContractData = useCallback(async () => {
+    if (!applicationId || mode !== "confirm") return;
+
+    try {
+      const res = await fetch(`/api/contracts/by-application/${applicationId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const contract = data.contract;
+
+        if (contract) {
+          setHasContractData(true);
+
+          if (contract.onboardDate && !initialValues?.onboardDate) {
+            const dateStr = new Date(contract.onboardDate).toISOString().split("T")[0];
+            setOnboardDate(dateStr);
+          }
+
+          if (contract.portOfJoining && !initialValues?.port) {
+            setPort(contract.portOfJoining);
+          }
+
+          if (contract.contractStart && !initialValues?.contractStart) {
+            const startStr = new Date(contract.contractStart).toISOString().split("T")[0];
+            setContractStart(startStr);
+          }
+
+          if (contract.contractEnd && !initialValues?.contractEnd) {
+            const endStr = new Date(contract.contractEnd).toISOString().split("T")[0];
+            setContractEnd(endStr);
+          }
+
+          if (contract.contractPeriod && !initialValues?.contractPeriod) {
+            setContractPeriod(contract.contractPeriod);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch contract data:", error);
+    }
+  }, [applicationId, mode, initialValues]);
+
+  useEffect(() => {
+    if (isOpen && mode === "confirm" && !embedded) {
+      fetchContractData();
+    }
+  }, [isOpen, mode, embedded, fetchContractData]);
 
   const calculatePeriod = (start: string, end: string) => {
     if (!start || !end) return "";
@@ -245,6 +293,15 @@ export default function ConfirmOnboardModal({
               </div>
             </div>
           </div>
+
+          {hasContractData && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-3 flex gap-2 items-start">
+              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Fields have been populated from the saved contract. You can edit these values as needed.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SimpleDatePicker
