@@ -36,13 +36,11 @@ function getWeekBoundaries(weeks: number): Array<{ start: Date; end: Date }> {
 }
 
 /**
- * Compute trend % between this week count and last week count.
- * Returns 0 if both are 0 (no change).
+ * Compute count difference (growth) from last week.
+ * Returns actual number increase/decrease.
  */
 function calcTrend(thisWeek: number, lastWeek: number): number {
-  if (lastWeek === 0) return thisWeek > 0 ? 100 : 0;
-  const pct = ((thisWeek - lastWeek) / lastWeek) * 100;
-  return Math.round(pct);
+  return thisWeek - lastWeek;
 }
 
 /**
@@ -78,30 +76,24 @@ async function weeklyFacet(
 }
 
 /**
- * Pending-leave sparkline via a single $facet aggregation.
- * The $unwind + nested $match cannot be expressed in the simple weeklyFacet helper,
- * so it gets its own — still just ONE aggregation call instead of 8.
+ * Custom facet for pending leave count per week.
  */
 async function pendingLeaveWeeklyFacet(
   baseFilter: Record<string, any>,
   weeks: Array<{ start: Date; end: Date }>,
 ): Promise<number[]> {
-  const facet: Record<string, any[]> = {};
-  weeks.forEach((w, i) => {
-    facet[`w${i}`] = [
-      { $match: { createdAt: { $gte: w.start, $lte: w.end } } },
-      { $unwind: "$leaveEntries" },
-      { $match: { "leaveEntries.status": "pending" } },
-      { $count: "n" },
-    ];
-  });
-
-  const [result] = await Payroll.aggregate([
-    { $match: baseFilter },
-    { $facet: facet },
-  ]);
-
-  return weeks.map((_, i) => (result?.[`w${i}`]?.[0]?.n ?? 0) as number);
+  const results = await Promise.all(
+    weeks.map(async (w) => {
+      const count = await Payroll.countDocuments({
+        ...baseFilter,
+        status: "pending",
+        "leaveRequests.isPending": true,
+        createdAt: { $gte: w.start, $lte: w.end },
+      });
+      return count;
+    }),
+  );
+  return results;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────

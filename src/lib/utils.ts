@@ -40,7 +40,9 @@ export const formatUploadedFileName = (
   fileUrl?: string | null,
 ) => {
   if (fileName?.trim()) {
-    return fileName.trim();
+    const cleaned = fileName.trim();
+    const match = cleaned.match(/^\d{10,}[-_](.+)$/);
+    return match ? match[1] : cleaned;
   }
 
   if (!fileUrl) return "File";
@@ -50,11 +52,14 @@ export const formatUploadedFileName = (
     const fileFromUrl = decodeURIComponent(pathname.split("/").pop() ?? "");
     const parts = fileFromUrl.split("_");
     const originalName = parts.length > 2 ? parts.slice(2).join("_") : fileFromUrl;
-    return originalName || "File";
+    const match = (originalName || fileFromUrl).match(/^\d{10,}[-_](.+)$/);
+    return match ? match[1] : originalName || fileFromUrl || "File";
   } catch {
     const fileFromUrl = fileUrl.split("/").pop()?.split("?")[0] ?? "";
     const parts = fileFromUrl.split("_");
-    return parts.length > 2 ? parts.slice(2).join("_") : fileFromUrl || "File";
+    const name = parts.length > 2 ? parts.slice(2).join("_") : fileFromUrl;
+    const match = name.match(/^\d{10,}[-_](.+)$/);
+    return match ? match[1] : name || "File";
   }
 };
 

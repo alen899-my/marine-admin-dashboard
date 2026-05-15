@@ -207,7 +207,7 @@ export function MetricCard({
         <div className="flex flex-col gap-1">
           <div className={`flex items-center gap-1 text-sm font-bold ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
             {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span>{Math.abs(trend)}%</span>
+            <span>{trend > 0 ? "+" : ""}{trend}</span>
           </div>
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
             vs last week

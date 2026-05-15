@@ -204,7 +204,7 @@ export default function LeaveSettingsPanel({
                 {/* Default Value Display */}
                 <div className="flex flex-col items-start sm:items-end">
                   <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                    System Default
+                     Default
                   </span>
                   <span className="mt-0.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                     {type.maxDays} Days
