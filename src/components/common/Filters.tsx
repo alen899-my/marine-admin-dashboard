@@ -101,6 +101,13 @@ export default function Filters({
     setLocalCompanyId(companyId);
   }, [companyId]);
 
+  // Filter vessels based on selected company (only for super admin)
+  const filteredVessels = isSuperAdmin && localCompanyId && localCompanyId !== "all"
+    ? (vessels || []).filter((v: any) => 
+        v.company?.toString() === localCompanyId || v.company === localCompanyId
+      )
+    : vessels || [];
+
   // Fetch Voyages for dropdown
   useEffect(() => {
     async function fetchAndFilterVoyages() {
@@ -151,7 +158,7 @@ export default function Filters({
     }
   };
 
-  const handleClear = () => {
+const handleClear = () => {
     // 1. Reset Local State
     setLocalSearch("");
     setLocalStatus("all");
@@ -182,6 +189,11 @@ export default function Filters({
       setCompanyId("");
     }
   };
+
+  // Get company name for placeholder
+  const selectedCompanyName = (companies || []).find(
+    (c: any) => c._id === localCompanyId,
+  )?.name;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleApplyFilters();
@@ -275,7 +287,7 @@ export default function Filters({
             placeholder="All Companies"
             value={localCompanyId}
             onChange={(val) => {
-              setLocalCompanyId(val || "all");
+              setLocalCompanyId(val || "");
               // Reset vessel/voyage when company changes
               setLocalVesselId("");
               setLocalVoyageId("");
@@ -292,23 +304,27 @@ export default function Filters({
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1 block">
                 Vessel Name
               </label>
-              <SearchableSelect
-                options={(vessels || []).map((v: any) => ({
+<SearchableSelect
+                options={filteredVessels.map((v: any) => ({
                   value: v.name,
                   label: v.name,
                 }))}
-                placeholder="Select Vessel"
+                placeholder={
+                  isSuperAdmin && (!localCompanyId || localCompanyId === "")
+                    ? "Select Company first" 
+                    : "Select Vessel"
+                }
                 value={
-                  (vessels || []).find((v) => v._id === localVesselId)?.name ||
-                  ""
+                  filteredVessels.find((v) => v._id === localVesselId)?.name || ""
                 }
                 onChange={(selectedName) => {
-                  const selectedVessel = (vessels || []).find(
+                  const selectedVessel = filteredVessels.find(
                     (v: any) => v.name === selectedName,
                   );
                   setLocalVesselId(selectedVessel?._id || "");
                   setLocalVoyageId(""); // Reset voyage when vessel changes
                 }}
+                disabled={isSuperAdmin && (!localCompanyId || localCompanyId === "")}
               />
             </div>
           )}
