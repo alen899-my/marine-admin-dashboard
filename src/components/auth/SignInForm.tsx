@@ -232,7 +232,7 @@ export default function SignInForm({ redirect }: SignInFormProps) {
             </div>
           </form>
 
-          <div className="mt-5 flex justify-center">
+          {/* <div className="mt-5 flex justify-center">
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
               Don&apos;t have an account?{" "}
               <Link
@@ -242,7 +242,7 @@ export default function SignInForm({ redirect }: SignInFormProps) {
                 Sign Up
               </Link>
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

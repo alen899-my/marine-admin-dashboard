@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import MyApplicationCard from "@/components/Jobs/MyApplicationCard";
 import JobDetailCard from "./JobDetailCard";
-import { buildCompanyCareerJobPath } from "@/lib/careerLinks";
+import CareerAuthCard from "./Careerauthcard";
 
 export interface JobOpening {
   id: string;
@@ -62,6 +62,11 @@ export default function CareersLayout({
     ? myApplications.find((app) => app.jobId === selectedJobId) ?? null
     : null;
   const hasAppliedToSelectedJob = selectedJobApplication !== null;
+  const isAuthenticated = Boolean(userEmail || userName);
+  const selectedApplicationPath = selectedJobId
+    ? `/careers/apply?company=${companyId}&jobId=${selectedJobId}`
+    : `/careers/apply?company=${companyId}`;
+  const [showAuthCard, setShowAuthCard] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 relative overflow-hidden">
@@ -135,7 +140,7 @@ export default function CareersLayout({
 
           <p className="text-white/50 text-sm sm:text-base max-w-xl mb-8">
             Explore open positions onboard and submit your application directly
-            online. We're looking for dedicated Candidateidate members to join our fleet.
+            online. We&apos;re looking for dedicated Candidate members to join our fleet.
           </p>
 
           {/* Apply Now (Generic) — only if not applied and no jobs are available */}
@@ -164,25 +169,32 @@ export default function CareersLayout({
           {/* ── Jobs + Applications layout ── */}
           {selectedJob && jobs?.length > 0 && (
             <div className="w-full max-w-7xl mb-12 text-left flex flex-col lg:flex-row gap-6 items-start">
-           
-
-              <div className="flex-1 min-w-0">
-                <JobDetailCard
-                  title={selectedJob.title}
-                  description={selectedJob.description}
-                  deadline={selectedJob.deadline}
-                  location={selectedJob.location}
-                  applicationLink={selectedJob.applicationLink}
-                  companyId={companyId}
-                  companyName={companyName}
-                  companyLogo={companyLogo}
-                  postedAt={selectedJob.postedAt}
-                  hasApplied={hasAppliedToSelectedJob}
-                />
-              </div>
+              {!isAuthenticated && showAuthCard ? (
+                <div id="career-auth" className="mx-auto w-full max-w-[900px] scroll-mt-20">
+                
+                  <CareerAuthCard redirectPath={selectedApplicationPath} />
+                </div>
+              ) : (
+                <div className="flex-1 min-w-0">
+                  <JobDetailCard
+                    title={selectedJob.title}
+                    description={selectedJob.description}
+                    deadline={selectedJob.deadline}
+                    location={selectedJob.location}
+                    applicationLink={selectedJob.applicationLink}
+                    companyId={companyId}
+                    companyName={companyName}
+                    companyLogo={companyLogo}
+                    postedAt={selectedJob.postedAt}
+                    hasApplied={hasAppliedToSelectedJob}
+                    requiresAuth={!isAuthenticated}
+                    onAuthRequired={() => setShowAuthCard(true)}
+                  />
+                </div>
+              )}
 
               {/* ── My Applications — right side on lg, bottom on mobile ── */}
-              {hasApplied && (
+              {isAuthenticated && hasApplied && (
                 <div className="lg:w-100 flex-shrink-0">
                   <div className="lg:sticky lg:top-16">
                     <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">

@@ -72,9 +72,7 @@ export default function SignUpForm({ redirect }: SignUpFormProps) {
   // Collect all errors at once
   const errors: FieldErrors = {};
 
-  if (!isChecked) {
-    errors.general = "Please accept Terms and Conditions";
-  }
+ 
 
   if (!form.phone.trim()) {
     errors.phone = "Phone is required";
@@ -301,25 +299,7 @@ export default function SignUpForm({ redirect }: SignUpFormProps) {
                 )}
               </div>
 
-              {/* Terms Checkbox */}
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={isChecked}
-                  onChange={setIsChecked}
-                  className="w-5 h-5"
-                />
-                <p className="text-gray-500 dark:text-gray-400">
-                  By creating an account you agree to the{" "}
-                  <span className="text-gray-800 dark:text-white cursor-pointer">
-                    Terms
-                  </span>{" "}
-                  and{" "}
-                  <span className="text-gray-800 dark:text-white cursor-pointer">
-                    Privacy Policy
-                  </span>
-                  .
-                </p>
-              </div>
+             
 
               {/* Submit Button */}
               <button

@@ -16,6 +16,8 @@ interface JobDetailCardProps {
   companyLogo?: string;
   postedAt?: string;
   hasApplied: boolean;
+  requiresAuth?: boolean;
+  onAuthRequired?: () => void;
 }
 
 export default function JobDetailCard({
@@ -29,6 +31,8 @@ export default function JobDetailCard({
   companyLogo,
   postedAt,
   hasApplied,
+  requiresAuth = false,
+  onAuthRequired,
 }: JobDetailCardProps) {
   const formattedDeadline = deadline
     ? new Date(deadline).toLocaleDateString("en-GB", {
@@ -155,6 +159,14 @@ export default function JobDetailCard({
     </svg>
     {isExpired && !hasApplied ? "Applications Closed" : "Already Applied"}
   </div>
+) : requiresAuth ? (
+  <Button
+    size="md"
+    variant="primary"
+    onClick={onAuthRequired}
+  >
+    Sign in to Apply
+  </Button>
 ) : (
   <Button
     size="md"
