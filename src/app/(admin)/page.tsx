@@ -131,14 +131,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <RecruitmentLoader user={session.user} companyId={selectedCompanyId} metrics={metrics} />
           </Suspense>
 
-          <Suspense fallback={<PayrollSkeleton />}>
-            <PayrollLoader
-              user={session.user}
-              companyId={selectedCompanyId}
-              metrics={metrics}
-              currencySettings={currencySettings}
-            />
-          </Suspense>
+          {!(isSuperAdmin && !selectedCompanyId) && (
+            <Suspense fallback={<PayrollSkeleton />}>
+              <PayrollLoader
+                user={session.user}
+                companyId={selectedCompanyId}
+                metrics={metrics}
+                currencySettings={currencySettings}
+              />
+            </Suspense>
+          )}
 
           <Suspense fallback={<ExpirySkeleton />}>
             <ExpiryLoader user={session.user} companyId={selectedCompanyId} />
@@ -156,13 +158,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <UserAccessLoader user={session.user} companyId={selectedCompanyId} metrics={metrics} />
           </Suspense>
 
-          <Suspense fallback={<SalaryInsightsSkeleton />}>
-            <SalaryInsightsLoader
-              user={session.user}
-              companyId={selectedCompanyId}
-              currencySettings={currencySettings}
-            />
-          </Suspense>
+          {!(isSuperAdmin && !selectedCompanyId) && (
+            <Suspense fallback={<SalaryInsightsSkeleton />}>
+              <SalaryInsightsLoader
+                user={session.user}
+                companyId={selectedCompanyId}
+                currencySettings={currencySettings}
+              />
+            </Suspense>
+          )}
         </div>
       </DashboardLayoutProvider>
     </div>
