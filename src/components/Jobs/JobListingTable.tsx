@@ -417,7 +417,7 @@ function JobCardItem({ job }: { job: JobItem }) {
                       : "text-gray-800 dark:text-gray-200"
                   }`}
                 >
-                  {isUrgent ? "Last Day" : "Deadline"}
+                  {isUrgent ? "Last Day" : "last Date to Apply"}
                 </p>
                 <p
                   className={`truncate text-[10px] sm:text-xs font-semibold leading-none ${

@@ -7,6 +7,8 @@ import { signIn } from "next-auth/react";
 import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Button from "@/components/ui/button/Button";
+import Alert from "../ui/alert/Alert";
+import { registerValidation } from "@/lib/validations/userValidation";
 
 type AuthMode = "login" | "signup";
 
@@ -84,7 +86,7 @@ const AuthInput: React.FC<{
 };
 
 const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
-  mode: modeProp = "login",
+  mode: modeProp = "signup",
   onModeChange,
   redirectPath = "/careers",
 }) => {
@@ -179,14 +181,38 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
     setSuccessMessage("");
 
     const errors: FieldErrors = {};
-    if (!fullName.trim()) errors.fullName = "Full name is required";
-    if (!signupEmail.trim()) errors.email = "Email is required";
-    if (!phone.trim()) errors.phone = "Phone is required";
-    if (!signupPassword) errors.password = "Password is required";
+
+    if (!fullName.trim()) {
+      errors.fullName = "Full name is required";
+    }
+
+    if (!signupEmail.trim()) {
+      errors.email = "Email is required";
+    }
+
+    if (!phone.trim()) {
+      errors.phone = "Phone is required";
+    }
+
+    if (!signupPassword) {
+      errors.password = "Password is required";
+    }
+
     if (signupPassword !== confirmPassword) {
       errors.confirmPassword = "Passwords must match";
     }
 
+    const { error: joiError } = registerValidation.validate(
+      { fullName, email: signupEmail, phone, password: signupPassword, confirmPassword, role: "candidate" },
+      { abortEarly: false },
+    );
+
+    if (joiError) {
+      joiError.details.forEach((detail) => {
+        const key = detail.path[0] as keyof FieldErrors;
+        errors[key] = detail.message;
+      });
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -226,7 +252,7 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
       setLoginPassword("");
       setLoading(false);
       switchMode("login");
-      setSuccessMessage("Account created. Please sign in to continue.");
+      setSuccessMessage("Account created! Please sign in to continue.");
     } catch {
       setFieldErrors({ general: "Network error or server unavailable" });
       setLoading(false);
@@ -265,10 +291,10 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               {fieldErrors.general && (
-                <InlineAlert message={fieldErrors.general} />
+                <Alert variant="error" title="Login Failed" message={fieldErrors.general} />
               )}
               {successMessage && (
-                <InlineAlert variant="success" message={successMessage} />
+                <Alert variant="success" title="Success" message={successMessage} />
               )}
               <AuthInput
                 type="email"
@@ -334,7 +360,10 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
 
             <form onSubmit={handleSignUp} className="mt-6 space-y-4">
               {fieldErrors.general && (
-                <InlineAlert message={fieldErrors.general} />
+                <Alert variant="error" title="Signup Failed" message={fieldErrors.general} />
+              )}
+              {successMessage && (
+                <Alert variant="success" title="Success" message={successMessage} />
               )}
               <AuthInput
                 name="fullName"
