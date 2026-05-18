@@ -79,15 +79,15 @@ export default function NoonReportsTable({ rows }: NoonReportsTableProps) {
                   <td className="py-3.5 px-2 text-sm font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
                     {formatCoord(row.lat)} / {formatCoord(row.long)}
                   </td>
-                  <td className="py-3.5 px-2 text-sm font-semibold text-gray-800 dark:text-white text-right">
+                  <td className="py-3.5 px-2 text-sm font-semibold text-gray-800 dark:text-white">
                     {row.distLast24h.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-2 text-sm text-right">
+                  <td className="py-3.5 px-2 text-sm">
                     <span className="inline-block rounded-md bg-orange-50 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:bg-orange-900/20 dark:text-orange-400">
                       {row.vlsfo.toFixed(2)}
                     </span>
                   </td>
-                  <td className="py-3.5 px-2 text-sm text-right">
+                  <td className="py-3.5 px-2 text-sm">
                     <span className="inline-block rounded-md bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-900/20 dark:text-sky-400">
                       {row.lsmgo.toFixed(2)}
                     </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { FileX } from "lucide-react";
 import Avatar from "@/components/ui/avatar/Avatar";
 
@@ -66,7 +67,9 @@ export default function ExpiryTable({ rows }: ExpiryTableProps) {
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           Expiring Documents — Next 90 Days
         </span>
-     
+        <Link href="/compliance-expiry" className="text-sm text-brand-500 hover:text-brand-600 font-medium">
+          View More
+        </Link>
       </div>
 
       {rows.length === 0 ? (

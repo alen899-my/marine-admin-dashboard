@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import Badge from "@/components/ui/badge/Badge";
 import { format } from "date-fns";
 
@@ -21,9 +22,14 @@ interface RecentApplicationsProps {
 export default function RecentApplications({ data }: RecentApplicationsProps) {
   return (
     <div className="min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-brand-500/50 flex flex-col">
-      <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 block shrink-0">
-        Recent Applications
-      </span>
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+          Recent Applications
+        </span>
+        <Link href="/candidates" className="text-sm text-brand-500 hover:text-brand-600 font-medium">
+          View More
+        </Link>
+      </div>
       <div className="overflow-auto flex-1 pr-1 -mr-1">
         <table className="w-full text-left border-collapse">
           <thead>
