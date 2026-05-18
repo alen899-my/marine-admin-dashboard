@@ -56,7 +56,7 @@ export default function CrewStatusTable({ crewList }: CrewStatusTableProps) {
       sortableItems.sort((a, b) => {
         const aVal = a[sortConfig.key] ? new Date(a[sortConfig.key]!).getTime() : 0;
         const bVal = b[sortConfig.key] ? new Date(b[sortConfig.key]!).getTime() : 0;
-        
+
         if (aVal < bVal) {
           return sortConfig.direction === "asc" ? -1 : 1;
         }
@@ -66,7 +66,7 @@ export default function CrewStatusTable({ crewList }: CrewStatusTableProps) {
         return 0;
       });
     }
-    return sortableItems;
+    return sortableItems.slice(0, 10);
   }, [crewList, sortConfig]);
 
   const groupedCrew = useMemo(() => {

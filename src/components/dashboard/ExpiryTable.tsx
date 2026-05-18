@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { FileX } from "lucide-react";
 import Avatar from "@/components/ui/avatar/Avatar";
 
@@ -55,12 +55,10 @@ function formatDate(d: Date | string): string {
   });
 }
 
-const PAGE_SIZE = 10;
+
 
 export default function ExpiryTable({ rows }: ExpiryTableProps) {
-  const [page, setPage] = useState(0);
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
-  const paged = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const displayedRows = rows.slice(0, 10);
 
   return (
     <div className="min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-brand-500/50 flex flex-col">
@@ -68,11 +66,7 @@ export default function ExpiryTable({ rows }: ExpiryTableProps) {
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           Expiring Documents — Next 90 Days
         </span>
-        {rows.length > 0 && (
-          <span className="shrink-0 pr-12 text-xs text-gray-400 dark:text-gray-500">
-            {rows.length} document{rows.length !== 1 ? "s" : ""}
-          </span>
-        )}
+     
       </div>
 
       {rows.length === 0 ? (
@@ -86,86 +80,60 @@ export default function ExpiryTable({ rows }: ExpiryTableProps) {
           </p>
         </div>
       ) : (
-        <>
-          <div className="overflow-auto flex-1 pr-1 -mr-1">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
-                    Seafarer Name
-                  </th>
-                  <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
-                    Document Type
-                  </th>
-                  <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
-                    Document Number
-                  </th>
-                  <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
-                    Expiry Date
-                  </th>
-                  <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
-                    Days Remaining
-                  </th>
+        <div className="overflow-auto flex-1 pr-1 -mr-1">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
+                  Seafarer Name
+                </th>
+                <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
+                  Document Type
+                </th>
+                <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
+                  Document Number
+                </th>
+                <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
+                  Expiry Date
+                </th>
+                <th className="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
+                  Days Remaining
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              {displayedRows.map((row, i) => (
+                <tr
+                  key={i}
+                  className="group hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                >
+                  <td className="py-3.5 px-2">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar src={row.profilePhoto} name={row.seafarerName} size="xsmall" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {row.seafarerName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-2 text-sm text-gray-600 dark:text-gray-400">
+                    {row.documentType}
+                  </td>
+                  <td className="py-3.5 px-2 text-sm font-mono text-gray-700 dark:text-gray-300">
+                    {row.documentNumber}
+                  </td>
+                  <td className="py-3.5 px-2 text-sm text-gray-600 dark:text-gray-400">
+                    {formatDate(row.expiryDate)}
+                  </td>
+                  <td className="py-3.5 px-2">
+                    <DaysRemainingPill days={row.daysRemaining} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                {paged.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="group hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="py-3.5 px-2">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar src={row.profilePhoto} name={row.seafarerName} size="xsmall" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {row.seafarerName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-2 text-sm text-gray-600 dark:text-gray-400">
-                      {row.documentType}
-                    </td>
-                    <td className="py-3.5 px-2 text-sm font-mono text-gray-700 dark:text-gray-300">
-                      {row.documentNumber}
-                    </td>
-                    <td className="py-3.5 px-2 text-sm text-gray-600 dark:text-gray-400">
-                      {formatDate(row.expiryDate)}
-                    </td>
-                    <td className="py-3.5 px-2">
-                      <DaysRemainingPill days={row.daysRemaining} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-              <span className="text-xs text-gray-400">
-                Page {page + 1} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="px-3 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page === totalPages - 1}
-                  className="px-3 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
+
   );
 }

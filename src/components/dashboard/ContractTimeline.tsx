@@ -63,17 +63,15 @@ function barColor(progress: number, daysRemaining: number): string {
 }
 
 export default function ContractTimeline({ rows }: ContractTimelineProps) {
+  const displayedRows = rows.slice(0, 10);
+
   return (
     <div className="min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-brand-500/50">
       <div className="flex items-center justify-between mb-5">
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           Active Contract Timeline
         </span>
-        {rows.length > 0 && (
-          <span className="shrink-0 pr-12 text-xs text-gray-400 dark:text-gray-500">
-            {rows.length} contract{rows.length !== 1 ? "s" : ""}
-          </span>
-        )}
+        
       </div>
 
       {rows.length === 0 ? (
@@ -110,7 +108,7 @@ export default function ContractTimeline({ rows }: ContractTimelineProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {rows.map((row) => (
+              {displayedRows.map((row) => (
                 <tr
                   key={row.contractId}
                   className="group hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
@@ -171,5 +169,6 @@ export default function ContractTimeline({ rows }: ContractTimelineProps) {
         </div>
       )}
     </div>
+
   );
 }

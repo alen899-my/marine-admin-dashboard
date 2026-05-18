@@ -63,7 +63,7 @@ export async function getCrewStatusMetrics(user: any, companyId?: string) {
           profilePhoto: "$candidate.profilePhoto",
           vesselName: { $ifNull: ["$vessel.name", "N/A"] },
           crewStatus: 1,
-          contractEnd: 1,
+          contractEnd: "$contract.contractEnd",
         },
       },
       { $sort: { crewStatus: 1, name: 1 } },
