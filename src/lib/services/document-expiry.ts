@@ -31,6 +31,23 @@ function daysDiff(expiryDate: Date, now: Date): number {
   return Math.ceil((expiryDate.getTime() - now.getTime()) / msPerDay);
 }
 
+function toValidDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getLatestPassport(passports: any[] | null | undefined) {
+  return (passports ?? []).reduce((latest: any | null, passport: any) => {
+    const expiry = toValidDate(passport?.dateExpired);
+    if (!expiry) return latest;
+
+    const latestExpiry = toValidDate(latest?.dateExpired);
+    if (!latest || !latestExpiry || expiry > latestExpiry) return passport;
+    return latest;
+  }, null);
+}
+
 function addRows(
   out: ExpiryRow[],
   seafarerName: string,
@@ -42,8 +59,8 @@ function addRows(
   profilePhoto?: string | null
 ) {
   for (const doc of docs) {
-    if (!doc.dateExpired) continue;
-    const exp = new Date(doc.dateExpired);
+    const exp = toValidDate(doc.dateExpired);
+    if (!exp) continue;
     if (exp > cutoff) continue; // beyond 90 days — skip
     out.push({
       seafarerName,
@@ -54,6 +71,20 @@ function addRows(
       daysRemaining: daysDiff(exp, now),
     });
   }
+}
+
+function addLatestPassportRow(
+  out: ExpiryRow[],
+  seafarerName: string,
+  passports: any[],
+  now: Date,
+  cutoff: Date,
+  profilePhoto?: string | null
+) {
+  const latestPassport = getLatestPassport(passports);
+  if (!latestPassport) return;
+
+  addRows(out, seafarerName, [latestPassport], "Passport", (d) => d.number, now, cutoff, profilePhoto);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,7 +137,7 @@ export async function getDocumentExpiryAlerts(
     const name = `${c.firstName} ${c.lastName}`;
 
     addRows(rows, name, c.licences ?? [], "Licence (COC/COE)", (d) => d.number, now, cutoff, c.profilePhoto);
-    addRows(rows, name, c.passports ?? [], "Passport", (d) => d.number, now, cutoff, c.profilePhoto);
+    addLatestPassportRow(rows, name, c.passports ?? [], now, cutoff, c.profilePhoto);
     addRows(rows, name, c.seamansBooks ?? [], "Seaman's Book", (d) => d.number, now, cutoff, c.profilePhoto);
     addRows(rows, name, c.visas ?? [], "Visa", (d) => d.number, now, cutoff, c.profilePhoto);
     addRows(rows, name, c.endorsements ?? [], "Endorsement", (d) => d.number || d.name, now, cutoff, c.profilePhoto);

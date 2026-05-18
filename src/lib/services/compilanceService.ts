@@ -8,6 +8,76 @@ import { redirect, notFound } from "next/navigation";
 import Contract from "@/models/Contract";
 import Vessel from "@/models/Vessel";
 
+function toValidDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getLatestPassport(passports: any[] | null | undefined) {
+  return (passports ?? []).reduce((latest: any | null, passport: any) => {
+    const expiry = toValidDate(passport?.dateExpired);
+    if (!expiry) return latest;
+
+    const latestExpiry = toValidDate(latest?.dateExpired);
+    if (!latest || !latestExpiry || expiry > latestExpiry) return passport;
+    return latest;
+  }, null);
+}
+
+function buildComplianceAlerts(c: any, future: Date, now: Date, expiryType: string) {
+  const alerts: {
+    type: string;
+    label: string;
+    expiry: string | null;
+    issued: string | null;
+    expired: boolean;
+  }[] = [];
+
+  const shouldCheck = (type: string) => expiryType === "all" || expiryType === type;
+
+  const check = (
+    type: string,
+    label: string,
+    dateStr: string | Date | null | undefined,
+    issuedDate?: string | Date | null
+  ) => {
+    if (!shouldCheck(type)) return;
+    const d = toValidDate(dateStr);
+    if (!d || d > future) return;
+
+    alerts.push({
+      type,
+      label,
+      expiry: typeof dateStr === "string" ? dateStr : d.toISOString(),
+      issued: issuedDate ? (typeof issuedDate === "string" ? issuedDate : issuedDate.toISOString()) : null,
+      expired: d < now,
+    });
+  };
+
+  check("medical", "Medical Cert", c.medicalCertExpiredDate, c.medicalCertIssuedDate);
+
+  const latestPassport = getLatestPassport(c.passports);
+  if (latestPassport) {
+    check("passport", `Passport ${latestPassport.number || ""}`.trim(), latestPassport.dateExpired);
+  }
+
+  for (const l of c.licences ?? []) {
+    if (l.licenceType === "coc") {
+      const label = `CoC ${l.grade || ""}`.trim();
+      check("coc", label, l.dateExpired);
+    }
+  }
+  for (const sb of c.seamansBooks ?? []) {
+    check("seaman", `CDC/Seaman Book ${sb.number || ""}`.trim(), sb.dateExpired);
+  }
+  for (const s of c.stcwCertificates ?? []) {
+    check("stcw", s.name || "STCW Cert", s.dateExpired);
+  }
+
+  return alerts;
+}
+
 
 export async function getComplianceExpiryCrews({
   page = 1,
@@ -69,114 +139,20 @@ export async function getComplianceExpiryCrews({
     ];
   }
 
-  // Expiry window condition — past or within daysAhead
-  const expiryWindow = { $lte: future };
-
-  // Build expiry filter depending on type
-  const expiryConditions: any[] = [];
-
-  if (expiryType === "all" || expiryType === "medical") {
-    expiryConditions.push({ medicalCertExpiredDate: expiryWindow });
-  }
-  if (expiryType === "all" || expiryType === "passport") {
-    expiryConditions.push({ "passports.dateExpired": expiryWindow });
-  }
-  if (expiryType === "all" || expiryType === "coc") {
-    expiryConditions.push({
-      licences: {
-        $elemMatch: {
-          licenceType: "coc",
-          dateExpired: expiryWindow,
-        },
-      },
-    });
-  }
-  if (expiryType === "all" || expiryType === "coe") {
-    expiryConditions.push({
-      licences: {
-        $elemMatch: {
-          licenceType: "coe",
-          dateExpired: expiryWindow,
-        },
-      },
-    });
-  }
-  if (expiryType === "all" || expiryType === "stcw") {
-    expiryConditions.push({ "stcwCertificates.dateExpired": expiryWindow });
-  }
-  if (expiryType === "all" || expiryType === "seaman") {
-    expiryConditions.push({ "seamansBooks.dateExpired": expiryWindow });
-  }
-  if (expiryType === "all" || expiryType === "endorsement") {
-    expiryConditions.push({ "endorsements.dateExpired": expiryWindow });
-  }
-
-  // Merge expiry $or with existing $or (search)
-  if (expiryConditions.length > 0) {
-    if (query.$or) {
-      // search $or already exists — wrap both in $and
-      query.$and = [
-        { $or: query.$or },
-        { $or: expiryConditions },
-      ];
-      delete query.$or;
-    } else {
-      query.$or = expiryConditions;
-    }
-  }
-
-  const [data, total] = await Promise.all([
-    Candidate.find(query)
-      .select(
-        "firstName lastName rank nationality profilePhoto crew status email cellPhone " +
-        "medicalCertExpiredDate passports licences seamansBooks stcwCertificates endorsements company"
-      )
-      .populate("company", "name")
-      .sort({ medicalCertExpiredDate: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Candidate.countDocuments(query),
-  ]);
+  const data = await Candidate.find(query)
+    .select(
+      "firstName lastName rank nationality profilePhoto crew status email cellPhone " +
+      "medicalCertIssuedDate medicalCertExpiredDate passports licences seamansBooks stcwCertificates endorsements company"
+    )
+    .populate("company", "name")
+    .sort({ medicalCertExpiredDate: 1 })
+    .lean();
 
   const serialized = JSON.parse(JSON.stringify(data));
 
   // Tag each crew with which docs are expiring/expired
   const tagged = serialized.map((c: any) => {
-    const alerts: {
-      type: string;
-      label: string;
-      expiry: string | null;
-      issued: string | null;
-      expired: boolean;
-    }[] = [];
-
-    const check = (type: string, label: string, dateStr: string | null | undefined, issuedDate?: string | null) => {
-      if (!dateStr) return;
-      const d = new Date(dateStr);
-      if (d <= future) {
-        alerts.push({ type, label, expiry: dateStr, issued: issuedDate || null, expired: d < now });
-      }
-    };
-
-    check("medical", "Medical Cert", c.medicalCertExpiredDate, c.medicalCertIssuedDate);
-
-    for (const p of c.passports ?? []) {
-      check("passport", `Passport ${p.number || ""}`.trim(), p.dateExpired);
-    }
-    for (const l of c.licences ?? []) {
-      if (l.licenceType === "coc") {
-        const label = `CoC ${l.grade || ""}`.trim();
-        check("coc", label, l.dateExpired);
-      }
-    }
-    for (const sb of c.seamansBooks ?? []) {
-      check("seaman", `CDC/Seaman Book ${sb.number || ""}`.trim(), sb.dateExpired);
-    }
-    for (const s of c.stcwCertificates ?? []) {
-      check("stcw", s.name || "STCW Cert", s.dateExpired);
-    }
-
+    const alerts = buildComplianceAlerts(c, future, now, expiryType);
     return {
       _id: c._id,
       firstName: c.firstName,
@@ -194,10 +170,19 @@ export async function getComplianceExpiryCrews({
       hasExpired: alerts.some((a) => a.expired),
       alertCount: alerts.length,
     };
+  }).filter((c: any) => c.alertCount > 0);
+
+  tagged.sort((a: any, b: any) => {
+    const aTime = Math.min(...a.alerts.map((alert: any) => new Date(alert.expiry).getTime()));
+    const bTime = Math.min(...b.alerts.map((alert: any) => new Date(alert.expiry).getTime()));
+    return aTime - bTime;
   });
 
+  const total = tagged.length;
+  const paged = tagged.slice(skip, skip + limit);
+
   return {
-    data: tagged,
+    data: paged,
     pagination: {
       total,
       page,
@@ -246,28 +231,11 @@ export async function getComplianceExpiryCount({
     _id: { $in: activeCrewAppIds2 },
   };
 
-  const expiryWindow = { $lte: future };
+  const candidates = await Candidate.find(query)
+    .select(
+      "medicalCertIssuedDate medicalCertExpiredDate passports licences seamansBooks stcwCertificates endorsements"
+    )
+    .lean();
 
-  const expiryConditions: any[] = [
-    { medicalCertExpiredDate: expiryWindow },
-    { "passports.dateExpired": expiryWindow },
-    { "licences.dateExpired": expiryWindow },
-    { "seamansBooks.dateExpired": expiryWindow },
-    { "stcwCertificates.dateExpired": expiryWindow },
-    { "endorsements.dateExpired": expiryWindow },
-  ];
-
-  if (expiryConditions.length > 0) {
-    if (query.$or) {
-      query.$and = [
-        { $or: query.$or },
-        { $or: expiryConditions },
-      ];
-      delete query.$or;
-    } else {
-      query.$or = expiryConditions;
-    }
-  }
-
-  return await Candidate.countDocuments(query);
+  return candidates.filter((candidate) => buildComplianceAlerts(candidate, future, now, "all").length > 0).length;
 }
