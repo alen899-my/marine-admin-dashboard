@@ -76,21 +76,15 @@ export async function PATCH(
       updatedBy:    session.user.id,
     };
 
-    // Lock on sent/acknowledged/completed
-    if (["sent", "acknowledged", "completed"].includes(body.status)) {
-      updateFields.isLocked = true;
-      if (body.status === "sent" && !current.submittedAt) {
-        updateFields.submittedAt = new Date();
-        updateFields.submittedBy = session.user.id;
-      }
-      if (body.status === "acknowledged") {
-        updateFields.acknowledgedAt = new Date();
-      }
+    updateFields.isLocked = body.status === "completed";
+
+    if (body.status === "sent" && !current.submittedAt) {
+      updateFields.submittedAt = new Date();
+      updateFields.submittedBy = session.user.id;
     }
 
-    // Unlock if status changed back to draft or published
-    if (["draft", "published"].includes(body.status)) {
-      updateFields.isLocked = false;
+    if (body.status === "acknowledged") {
+      updateFields.acknowledgedAt = new Date();
     }
 
     const updated = await PreArrival.findByIdAndUpdate(

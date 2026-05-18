@@ -103,9 +103,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
-    const isPackLocked =
-      !!preArrival.isLocked ||
-      ["sent", "acknowledged", "completed"].includes(preArrival.status);
+    const isPackLocked = preArrival.status === "completed";
 
     if (isPackLocked) {
       return NextResponse.json(

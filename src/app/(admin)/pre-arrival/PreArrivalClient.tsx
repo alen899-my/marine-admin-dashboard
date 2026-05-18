@@ -45,8 +45,7 @@ export default function PreArrivalClient({
   user: serverUser,
   isSuperAdmin,
 }: PreArrivalClientProps) {
-  const isRowLocked = (row: any) =>
-    !!row?.isLocked || ["sent", "acknowledged", "completed"].includes(row?.status);
+  const isRowLocked = (row: any) => row?.status === "completed";
 
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -36,9 +36,7 @@ export default function WorkspaceModal({
   const { can } = useAuthorization();
   const [isZipping, setIsZipping] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const isPackLocked =
-    !!data?.isLocked ||
-    ["sent", "acknowledged", "completed"].includes(data?.status);
+  const isPackLocked = data?.status === "completed";
   const isEffectivelyReadOnly = isReadOnly || isPackLocked;
   // Inside WorkspaceModal component
 
