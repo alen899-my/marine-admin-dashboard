@@ -26,9 +26,11 @@ export default function RecentApplications({ data }: RecentApplicationsProps) {
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
           Recent Applications
         </span>
-        <Link href="/candidates" className="text-sm text-brand-500 hover:text-brand-600 font-medium">
-          View More
-        </Link>
+        {data.length > 0 && (
+          <Link href="/candidates" className="text-sm text-brand-500 hover:text-brand-600 font-medium">
+            View More
+          </Link>
+        )}
       </div>
       <div className="overflow-auto flex-1 pr-1 -mr-1">
         <table className="w-full text-left border-collapse">

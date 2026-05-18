@@ -39,8 +39,13 @@ export async function getRecruitmentMetrics(user: any, selectedCompanyId?: strin
     };
   });
 
+  const activeCandidateFilter = {
+    ...filter,
+    status: { $nin: ["rejected", "onboarded"] },
+  };
+
   // 2. Recent Applications (Top 5)
-  const recentApplicationsRaw = await Candidate.find(filter)
+  const recentApplicationsRaw = await Candidate.find(activeCandidateFilter)
     .sort({ createdAt: -1 })
     .limit(5)
     .populate("assignedTo", "fullName")
@@ -70,7 +75,7 @@ export async function getRecruitmentMetrics(user: any, selectedCompanyId?: strin
     .lean();
 
   const jobCandidateCounts = await Candidate.aggregate([
-    { $match: filter },
+    { $match: activeCandidateFilter },
     { $group: { _id: "$jobId", count: { $sum: 1 } } }
   ]);
 
