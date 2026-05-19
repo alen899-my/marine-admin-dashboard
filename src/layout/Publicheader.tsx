@@ -53,6 +53,15 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
 
         {/* ── RIGHT: Desktop nav + user ── */}
         <div className="hidden lg:flex items-center gap-2">
+          {companyLogo && (
+            <div className="flex items-center h-12 max-w-[160px] relative transition-all duration-200 hover:opacity-85">
+              <img
+                src={companyLogo}
+                alt="Company Logo"
+                className="max-h-12 max-w-full object-contain rounded-md"
+              />
+            </div>
+          )}
           <nav className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname.includes(item.id);
@@ -88,6 +97,15 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
 
         {/* ── RIGHT: Mobile — user + hamburger ── */}
         <div className="flex lg:hidden items-center gap-2">
+          {companyLogo && (
+            <div className="flex items-center h-10 max-w-[120px] relative transition-all duration-200 hover:opacity-85">
+              <img
+                src={companyLogo}
+                alt="Company Logo"
+                className="max-h-10 max-w-full object-contain rounded-md"
+              />
+            </div>
+          )}
           {status === "loading" ? (
             <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse" />
           ) : status === "authenticated" ? (

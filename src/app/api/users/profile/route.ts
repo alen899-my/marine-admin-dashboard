@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const user = await User.findById(session.user.id)
       .select("-password")
       .populate("role", "name") // Fetch the role name (e.g. "Admin", "Manager")
-      .populate("company", "name")
+      .populate("company", "name logo")
       .lean();
 
     if (!user) {
@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest) {
     )
       .select("-password")
       .populate("role", "name")
-      .populate("company", "name");
+      .populate("company", "name logo");
 
     return NextResponse.json(updatedUser);
   } catch (error: any) {
