@@ -384,6 +384,27 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           { applicationId: new mongoose.Types.ObjectId(id), deletedAt: null },
           { $set: { contractStatus: "active" } }
         );
+      } else if (
+        [
+          "draft",
+          "submitted",
+          "hr_review",
+          "shortlisted",
+          "interview_scheduled",
+          "interview_completed",
+          "selected",
+          "offer_sea_issued",
+        ].includes(newStatus)
+      ) {
+        // If contract was active, revert it to generated
+        await Contract.updateMany(
+          {
+            applicationId: new mongoose.Types.ObjectId(id),
+            contractStatus: "active",
+            deletedAt: null,
+          },
+          { $set: { contractStatus: "generated" } }
+        );
       }
     }
 

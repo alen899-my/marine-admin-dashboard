@@ -144,15 +144,18 @@ export async function POST(req: NextRequest) {
     // ── Update or Create Contract
     const query = contractId ? { _id: contractId } : { applicationId, company: companyId };
     const existingContract = await Contract.findOne(query);
+    const candidate = await Candidate.findById(applicationId).select("status").lean();
     
-let finalStatus = isDraft ? "draft" : "generated";
+    let finalStatus = isDraft ? "draft" : "generated";
     
     if (isDraft && (existingContract?.contractStatus === "generated" || existingContract?.contractStatus === "active")) {
         finalStatus = existingContract.contractStatus;
     }
 
     if (!isDraft && existingContract?.contractStatus === "active") {
-        finalStatus = "active";
+        if (candidate && ["accepted", "onboarding_ready", "onboarded"].includes(candidate.status as string)) {
+            finalStatus = "active";
+        }
     }
 
     const contract = await Contract.findOneAndUpdate(
