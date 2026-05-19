@@ -55,6 +55,33 @@ export async function getHiddenCompanyIdsForGlobalCareers(companyIds: string[]) 
   );
 }
 
+export async function getGlobalCareerCompanyNames() {
+  await dbConnect();
+
+  const rawActiveJobs = await Job.find({
+    isAccepting: true,
+    $or: [{ deadline: null }, { deadline: { $gt: new Date() } }],
+  })
+    .populate("companyId", "name")
+    .lean();
+
+  const companyIds = rawActiveJobs
+    .map((job: any) => job.companyId?._id?.toString())
+    .filter(Boolean);
+  const hiddenCompanyIds = await getHiddenCompanyIdsForGlobalCareers(companyIds);
+  const companiesMap = new Map<string, string>();
+
+  for (const job of rawActiveJobs as any[]) {
+    const companyId = job.companyId?._id?.toString();
+    const companyName = job.companyId?.name;
+    if (companyId && companyName && !hiddenCompanyIds.has(companyId)) {
+      companiesMap.set(companyId, companyName);
+    }
+  }
+
+  return Array.from(companiesMap.values()).sort((a, b) => a.localeCompare(b));
+}
+
 export async function renderCompanyCareersPage({
   companyId,
 }: {

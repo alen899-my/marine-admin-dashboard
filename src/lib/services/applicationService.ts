@@ -319,7 +319,7 @@ export async function getMyApplicationById(userId: string, applicationId: string
 export async function requireCareerAuth(redirectPath: string) {
   const [, session] = await Promise.all([dbConnect(), auth()]);
   if (!session?.user) {
-    redirect(`/signin?redirect=${encodeURIComponent(redirectPath)}`);
+    redirect(`/careers/login?redirect=${encodeURIComponent(redirectPath)}`);
   }
   return session;
 }

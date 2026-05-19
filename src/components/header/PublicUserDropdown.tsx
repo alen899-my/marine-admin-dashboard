@@ -127,7 +127,7 @@ export default function PublicUserDropdown() {
               <button
                 onClick={() => {
                   closeDropdown();
-                  signOut({ callbackUrl: "/signin" });
+                  signOut({ callbackUrl: "/careers" });
                 }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-theme-sm font-medium text-error-600 dark:text-error-400 border border-error-100 dark:border-error-500/20 bg-error-50 dark:bg-error-500/10 hover:bg-error-100 transition-all duration-150"
               >

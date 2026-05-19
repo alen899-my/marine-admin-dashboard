@@ -137,10 +137,10 @@ export default function JobDetailCard({
         <div className="border-t border-gray-100 dark:border-white/10" />
 
         {/* ── FOOTER: Back link + CTA ── */}
-        <div className="px-8 md:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="px-4 sm:px-8 md:px-10 py-6 flex flex-row items-center justify-between gap-3">
           <Link
             href={buildCompanyCareersPath(companyId)}
-            className="inline-flex items-center gap-1.5 text-xs text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 font-semibold transition-colors whitespace-nowrap"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -149,7 +149,7 @@ export default function JobDetailCard({
           </Link>
 
          {hasApplied || isExpired ? (
-  <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 text-sm font-bold rounded-xl cursor-not-allowed border border-gray-200 dark:border-gray-700">
+  <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 text-xs sm:text-sm font-bold rounded-xl cursor-not-allowed border border-gray-200 dark:border-gray-700 whitespace-nowrap">
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={
         isExpired && !hasApplied

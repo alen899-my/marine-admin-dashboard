@@ -8,8 +8,11 @@ import { useSession } from "next-auth/react";
 import { ImpersonationBanner } from "@/components/common/ImpersonationBanner";
 
 const NAV_ITEMS = [
-
-  { id: "applications", label: "My Applications", href: "/careers/applications" },
+  {
+    id: "applications",
+    label: "My Applications",
+    href: "/careers/applications",
+  },
 ];
 
 interface PublicHeaderProps {
@@ -30,7 +33,6 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
     <header className="sticky top-0 flex flex-col w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-[99999]">
       <ImpersonationBanner />
       <div className="flex items-center justify-between px-4 sm:px-6 h-16">
-
         {/* ── LEFT: Logo ── */}
         <Link href="/careers" className="flex items-center flex-shrink-0">
           <Image
@@ -53,15 +55,6 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
 
         {/* ── RIGHT: Desktop nav + user ── */}
         <div className="hidden lg:flex items-center gap-2">
-          {companyLogo && (
-            <div className="flex items-center h-12 max-w-[160px] relative transition-all duration-200 hover:opacity-85">
-              <img
-                src={companyLogo}
-                alt="Company Logo"
-                className="max-h-12 max-w-full object-contain rounded-md"
-              />
-            </div>
-          )}
           <nav className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname.includes(item.id);
@@ -69,10 +62,11 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${isActive
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                    isActive
                       ? "text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                    }`}
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -97,17 +91,6 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
 
         {/* ── RIGHT: Mobile — user + hamburger ── */}
         <div className="flex lg:hidden items-center gap-2">
-          {companyLogo && (
-            <div className="flex items-center h-10 max-w-[120px] relative">
-              <Image
-                height={40}
-                width={120}
-                src={companyLogo}
-                alt="Company Logo"
-                className="max-h-10 max-w-full object-contain rounded-md"
-              />
-            </div>
-          )}
           {status === "loading" ? (
             <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse" />
           ) : status === "authenticated" ? (
@@ -119,12 +102,32 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
             aria-label="Toggle menu"
           >
             {mobileOpen ? (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             )}
           </button>
@@ -141,10 +144,11 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
                   key={item.id}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-4 rounded-xl text-base font-semibold transition-colors ${isActive
+                  className={`flex items-center gap-3 px-4 py-4 rounded-xl text-base font-semibold transition-colors ${
+                    isActive
                       ? "text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                    }`}
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -154,7 +158,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ companyLogo }) => {
             {/* Mobile Login fallback when unauthenticated */}
             {status === "unauthenticated" && (
               <Link
-            href={`/careers/login?redirect=${encodeURIComponent(currentPath)}`}
+                href={`/careers/login?redirect=${encodeURIComponent(currentPath)}`}
                 onClick={() => setMobileOpen(false)}
                 className="mt-4 mx-4 py-3 text-center rounded-xl text-base font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors"
               >

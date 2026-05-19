@@ -16,6 +16,8 @@ interface CareerAuthCardProps {
   mode?: AuthMode;
   onModeChange?: (mode: AuthMode) => void;
   redirectPath?: string;
+  loginPath?: string;
+  signupPath?: string;
 }
 
 interface FieldErrors {
@@ -89,6 +91,8 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
   mode: modeProp = "signup",
   onModeChange,
   redirectPath = "/careers",
+  loginPath,
+  signupPath,
 }) => {
   const [internalMode, setInternalMode] = useState<AuthMode>(modeProp);
   const mode = onModeChange ? modeProp : internalMode;
@@ -339,14 +343,23 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
 
             <p className="mt-6 text-center text-sm text-gray-500">
               Don&apos;t have an account?{" "}
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => switchMode("signup")}
-                className="font-semibold dark:text-brand-400"
-              >
-                Sign Up
-              </Button>
+              {signupPath ? (
+                <Link
+                  href={signupPath}
+                  className="font-semibold text-brand-500 hover:text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  Sign Up
+                </Link>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => switchMode("signup")}
+                  className="font-semibold dark:text-brand-400"
+                >
+                  Sign Up
+                </Button>
+              )}
             </p>
           </>
         ) : (
@@ -431,14 +444,23 @@ const CareerAuthCard: React.FC<CareerAuthCardProps> = ({
 
             <p className="mt-6 text-center text-sm text-gray-500">
               Already have an account?{" "}
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => switchMode("login")}
-                className="font-semibold dark:text-brand-400"
-              >
-                Log In
-              </Button>
+              {loginPath ? (
+                <Link
+                  href={loginPath}
+                  className="font-semibold text-brand-500 hover:text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  Log In
+                </Link>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => switchMode("login")}
+                  className="font-semibold dark:text-brand-400"
+                >
+                  Log In
+                </Button>
+              )}
             </p>
           </>
         )}

@@ -17,7 +17,7 @@ export default async function MyApplicationsPage() {
   const [, session] = await Promise.all([dbConnect(), auth()]);
 
   if (!session?.user) {
-    redirect(`/signin?redirect=${encodeURIComponent("/careers/applications")}`);
+    redirect(`/careers/login?redirect=${encodeURIComponent("/careers/applications")}`);
   }
 
   const applications = await getAllMyApplications(session.user.id);

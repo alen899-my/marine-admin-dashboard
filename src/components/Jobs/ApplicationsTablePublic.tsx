@@ -77,15 +77,15 @@ function ApplicationCard({ app }: { app: any }) {
             <Image
               src={app.company.logo}
               alt={app.company?.name ?? ""}
-              width={44}
-              height={44}
-              className="rounded-xl object-contain border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-0.5"
+              width={785}
+              height={220}
+              className="w-40 max-w-full rounded-xl object-contain border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-1"
               unoptimized
             />
           ) : (
-            <div className="w-11 h-11 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center border border-brand-100 dark:border-brand-500/20">
+            <div className="w-40 aspect-[785/220] rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center border border-brand-100 dark:border-brand-500/20">
               <svg
-                className="w-5 h-5 text-brand-500"
+                className="w-7 h-7 text-brand-500"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
