@@ -339,118 +339,63 @@ function JobCardItem({ job }: { job: JobItem }) {
   return (
     <Link
       href={buildCompanyCareerJobPath(job.companyId, job._id)}
-      className="block h-full group"
+      className="block h-full group focus:outline-none"
     >
-      <article className="relative grid h-full min-h-[160px] sm:min-h-[200px] grid-cols-[minmax(0,1fr)_80px] sm:grid-cols-[minmax(0,1fr)_100px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
-        {/* Diagonal stripe pattern background */}
-        <div
-          className="pointer-events-none absolute inset-0"
-        />
-
-        {/* ── Left Content ── */}
-        <div className="relative flex min-w-0 flex-col px-4 py-4 sm:px-6 sm:py-5">
-          {/* Company Logo + Info */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-200 dark:bg-white">
-              {job.companyLogo ? (
-                <Image
-                  src={job.companyLogo}
-                  alt={job.companyName}
-                  width={72}
-                  height={72}
-                  className="object-contain p-1.5 sm:p-2.5"
-                  unoptimized
-                />
-              ) : (
-                <>
-                  <Users size={24} className="text-gray-300 sm:hidden dark:text-gray-400" />
-                  <Users size={32} className="hidden sm:block text-gray-300 dark:text-gray-400" />
-                </>
-              )}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="mb-0.5 truncate text-xs sm:text-sm font-bold text-brand-600 dark:text-brand-400">
-                {job.companyName}
-              </p>
-              <h3 className="line-clamp-2 text-base sm:text-lg font-extrabold leading-tight text-gray-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400">
-                {job.title}
-              </h3>
-              {/* Teal underline accent */}
-              <div className="mt-1.5 sm:mt-2 h-0.5 w-8 sm:w-10 rounded-full bg-brand-400" />
-            </div>
+      <article className="flex flex-col h-full rounded-[24px] border border-gray-100 bg-white p-5 sm:p-7 shadow-sm transition-all duration-300 hover:shadow-md hover:border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+        {/* Top section: Logo, Info, Arrow */}
+        <div className="flex items-start gap-4 sm:gap-5 mb-5 sm:mb-6">
+          {/* Logo */}
+          <div className="flex h-16 w-16 sm:h-[84px] sm:w-[84px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            {job.companyLogo ? (
+              <Image
+                src={job.companyLogo}
+                alt={job.companyName}
+                width={84}
+                height={84}
+                className="h-full w-full object-contain"
+                unoptimized
+              />
+            ) : (
+              <Users size={32} className="text-gray-300 dark:text-gray-600" />
+            )}
           </div>
 
-          {/* Info Rows */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Location Row */}
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2 sm:px-4 sm:py-3 dark:border-gray-700 dark:bg-gray-700/30">
-              <span className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400">
-                <MapPin size={16} className="sm:hidden" />
-                <MapPin size={18} className="hidden sm:block" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs font-bold text-gray-800 dark:text-gray-200 leading-none mb-0.5">Location</p>
-                <p className="truncate text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 leading-none">
-                  {job.location || "Location to be confirmed"}
-                </p>
-              </div>
-            </div>
+          {/* Title and Company */}
+          <div className="flex-1 min-w-0 pt-1">
+            <p className="mb-1.5 truncate text-sm sm:text-[15px] font-medium text-brand-600 dark:text-brand-400">
+              {job.companyName}
+            </p>
+            <h3 className="line-clamp-2 text-lg sm:text-[22px] font-bold leading-tight text-gray-800 group-hover:text-brand-600 transition-colors dark:text-white dark:group-hover:text-brand-400">
+              {job.title}
+            </h3>
+          </div>
 
-            {/* Deadline Row */}
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2 sm:px-4 sm:py-3 dark:border-gray-700 dark:bg-gray-700/30">
-              <span
-                className={`flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg ${
-                  isUrgent
-                    ? "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400"
-                    : "bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400"
-                }`}
-              >
-                <CalendarDays size={16} className="sm:hidden" />
-                <CalendarDays size={18} className="hidden sm:block" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
-                  className={`text-[10px] sm:text-xs font-bold leading-none mb-0.5 ${
-                    isUrgent
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-gray-800 dark:text-gray-200"
-                  }`}
-                >
-                  {isUrgent ? "Last Day" : "last Date to Apply"}
-                </p>
-                <p
-                  className={`truncate text-[10px] sm:text-xs font-semibold leading-none ${
-                    isUrgent
-                      ? "text-red-500 dark:text-red-400"
-                      : "text-gray-500 dark:text-gray-400"
-                  }`}
-                >
-                  <span className={isUrgent ? "text-red-400" : "text-brand-400"}>•</span>{" "}
-                  {formattedDate || "No deadline"}
-                </p>
-              </div>
-            </div>
+          {/* Arrow Button */}
+          <div className="flex-shrink-0 pt-1 hidden sm:block">
+            <span className="flex h-12 w-12 sm:h-[52px] sm:w-[52px] items-center justify-center rounded-full border border-gray-200 text-brand-600 transition-all duration-200 group-hover:border-brand-500 group-hover:bg-brand-50 dark:border-gray-700 dark:text-brand-400 dark:group-hover:bg-brand-500/10 dark:group-hover:border-brand-400">
+              <ArrowRight size={22} strokeWidth={1.5} />
+            </span>
           </div>
         </div>
 
-        {/* ── Right Sidebar with Ship Image ── */}
-        <div className="relative flex flex-col items-center justify-start overflow-hidden">
-          {/* Ship background image */}
-          <Image
-            src="/images/career/shipcover.png"
-            alt=""
-            fill
-            className="object-cover"
-            unoptimized
-          />
-          {/* Teal overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-500/80 via-brand-600/75 to-brand-700/85" />
+        {/* Divider */}
+        <div className="mt-auto mb-4 sm:mb-5 border-t border-gray-100 dark:border-gray-800" />
 
-          {/* Arrow button */}
-          <div className="relative z-10 mt-5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/30 bg-white text-brand-600 shadow-md transition-all duration-200 group-hover:scale-110 group-hover:border-white/60 group-hover:shadow-lg dark:bg-white dark:text-brand-600">
-              <ArrowRight size={18} strokeWidth={2.5} />
+        {/* Bottom section: Location & Date */}
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+          {/* Location */}
+          <div className="flex items-center gap-2 sm:gap-3 text-gray-700 dark:text-gray-300">
+            <MapPin size={22} strokeWidth={1.5} className="text-brand-600 dark:text-brand-400" />
+            <span className="text-sm sm:text-[15px]">
+              {job.location || "Location to be confirmed"}
+            </span>
+          </div>
+
+          {/* Date */}
+          <div className="flex items-center gap-2 sm:gap-3 text-gray-700 dark:text-gray-300">
+            <CalendarDays size={22} strokeWidth={1.5} className={daysLeft !== null && daysLeft <= 3 ? "text-red-500 dark:text-red-400" : "text-brand-600 dark:text-brand-400"} />
+            <span className={`text-sm sm:text-[15px] ${daysLeft !== null && daysLeft <= 3 ? 'text-red-600 dark:text-red-400 font-semibold' : ''}`}>
+              Last Day: {formattedDate || "No deadline"}
             </span>
           </div>
         </div>
