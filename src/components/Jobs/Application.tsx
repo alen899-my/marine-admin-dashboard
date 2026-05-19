@@ -1575,12 +1575,12 @@ export default function CandidateApplicationForm({
         }),
       );
 
+      await refreshCounts();
+
       if (isDraft) {
         toast.success(" saved successfully");
         return true;
       }
-
-      await refreshCounts();
 
       if (isEdit) {
         if (isPublic) {
@@ -2392,7 +2392,7 @@ const statusMap: Record<string, { color: StatusColor; label: string }> = {
                         }
                       />
                       <div className="border border-gray-300 dark:border-white/15 px-2 py-1.5 min-w-0">
-                        <p className="text-sm text-gray-800 dark:text-white/90 break-all whitespace-pre-wrap text-xs">
+                        <p className="text-sm text-gray-800 dark:text-white/90 break-all whitespace-pre-wrap">
                           {s.jobDescription || "—"}
                         </p>
                       </div>

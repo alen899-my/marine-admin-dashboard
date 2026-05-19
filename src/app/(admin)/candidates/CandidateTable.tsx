@@ -7,6 +7,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { useSidebarNotifications } from "@/context/SidebarNotificationContext";
 
 interface Application {
   _id: string;
@@ -90,6 +91,7 @@ export default function CandidateTable({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { can, isReady } = useAuthorization();
+  const { refreshCounts } = useSidebarNotifications();
   const canEdit = can("candidates.edit");
   const canDelete = can("candidates.delete");
 
@@ -113,6 +115,7 @@ export default function CandidateTable({
       }
 
       toast.success("Application deleted successfully");
+      await refreshCounts();
       router.refresh();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete");
