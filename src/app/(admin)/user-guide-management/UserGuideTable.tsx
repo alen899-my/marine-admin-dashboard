@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import EditModal from "@/components/common/EditModal";
@@ -11,7 +12,7 @@ import { useAuthorization } from "@/hooks/useAuthorization";
 import CommonReportTable from "@/components/tables/CommonReportTable";
 import Badge from "@/components/ui/badge/Badge";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 import { UserGuideSection } from "@/types/userGuide";
 
@@ -121,6 +122,7 @@ export default function UserGuideTable({
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [groupOptions, setGroupOptions] = useState<{ value: string; label: string }[]>([]);
@@ -316,49 +318,100 @@ export default function UserGuideTable({
         title={selectedSection?.title || "User Guide Details"}
         size="lg"
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 md:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">Section</p>
-              <p className="mt-1 font-medium text-gray-900 dark:text-white">
-                {selectedSection?.group?.name || "Ungrouped"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">Assigned Roles</p>
-              <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
-                {selectedSection?.assignedRoles?.join(", ") || "No roles"}
-              </p>
+        <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/5">
+          <div className="p-4">
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 md:grid-cols-2">
+              <div className="p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Section</p>
+                <p className="mt-1 font-medium text-gray-900 dark:text-white">
+                  {selectedSection?.group?.name || "Ungrouped"}
+                </p>
+              </div>
+              <div className="p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Assigned Roles</p>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                  {selectedSection?.assignedRoles?.join(", ") || "No roles"}
+                </p>
+              </div>
             </div>
           </div>
 
           {selectedSection &&
           Object.keys(selectedSection.roleContents || {}).length > 0 ? (
-            <div className="space-y-5">
-              {selectedSection.assignedRoles.map((role) => {
-                const matchedEntry = Object.entries(
-                  selectedSection.roleContents || {},
-                ).find(([entryRole]) => entryRole.toLowerCase() === role.toLowerCase());
-                const roleContent = matchedEntry?.[1] || "";
+            selectedSection.assignedRoles.map((role, index) => {
+              const matchedEntry = Object.entries(
+                selectedSection.roleContents || {},
+              ).find(([entryRole]) => entryRole.toLowerCase() === role.toLowerCase());
+              const roleContent = matchedEntry?.[1] || "";
 
-                return (
-                  <div key={role}>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      {role} content
-                    </p>
-                    <div
-                      className="rte-content text-sm leading-relaxed text-gray-700 dark:text-gray-300"
-                      dangerouslySetInnerHTML={{ __html: roleContent }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+              return (
+                <div key={role}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenSections((prev) => ({ ...prev, [role]: !prev[role] }))}
+                    className="w-full flex items-center justify-between gap-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-4 py-3 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-white/80">
+                        {role} Content
+                      </span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 flex-shrink-0 text-gray-400 transition-transform duration-200 ${openSections[role] ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {openSections[role] && (
+                    <div className="border-l border-r border-b border-gray-200 dark:border-white/10 p-4 bg-white dark:bg-gray-900">
+                      <div
+                        className="rte-content text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+                        dangerouslySetInnerHTML={{ __html: roleContent }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
           ) : (
-            <div
-              className="rte-content text-sm leading-relaxed text-gray-700 dark:text-gray-300"
-              dangerouslySetInnerHTML={{ __html: selectedSection?.content || "" }}
-            />
+            <div className="p-4">
+              <button
+                type="button"
+                onClick={() => setOpenSections((prev) => ({ ...prev, content: !prev.content }))}
+                className="w-full flex items-center justify-between gap-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-4 py-3 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-600 text-[10px] font-bold text-white">
+                    01
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-white/80">
+                    Content
+                  </span>
+                </div>
+                <svg
+                  className={`w-4 h-4 flex-shrink-0 text-gray-400 transition-transform duration-200 ${openSections.content ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {openSections.content && (
+                <div className="border-l border-r border-b border-gray-200 dark:border-white/10 p-4 bg-white dark:bg-gray-900">
+                  <div
+                    className="rte-content text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+                    dangerouslySetInnerHTML={{ __html: selectedSection?.content || "" }}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </div>
       </ViewModal>

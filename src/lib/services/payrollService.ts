@@ -1082,6 +1082,12 @@ export async function savePayrollRecords({
       throw new Error(`Salary head not found for ${sourceRow.crewName}`);
     }
 
+    if (requestedSalaryHeadId && !sourceRow.hasActivePayscale) {
+      throw new Error(
+        `${sourceRow.crewName} does not have an active payscale. Please set payscale first.`,
+      );
+    }
+
     if (requestedSalaryHeadId) {
       if (
         !isSalaryHeadApplicableToPayrollMonth(requestedSalaryHead, payrollPeriod)

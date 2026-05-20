@@ -487,16 +487,34 @@ export default function PayrollPageClient({
       toast.error("Selected crew do not have a salary head to remove");
       return;
     }
+
+    const rowsWithoutPayscale = targetRows.filter((row) => !row.hasActivePayscale);
+    const rowsWithPayscale = targetRows.filter((row) => row.hasActivePayscale);
+
+    if (rowsWithoutPayscale.length > 0 && !isRemovingSalaryHead) {
+      toast.error(
+        `${rowsWithoutPayscale.length} crew ${rowsWithoutPayscale.length === 1 ? "doesn't" : "don't"} have a payscale. Please set payscale first.`,
+      );
+      return;
+    }
+
     if (
       !isRemovingSalaryHead &&
+      rowsWithPayscale.length > 0 &&
       !doesSalaryHeadCoverPayrollMonth(selectedSalaryHead, payrollDate)
     ) {
       setSalaryHeadPeriodErrorOpen(true);
       return;
     }
 
+    if (rowsWithPayscale.length === 0 && !isRemovingSalaryHead) {
+      toast.error("No crew with payscale selected");
+      return;
+    }
+
     setActiveAction("apply");
     try {
+      const rowsToProcess = isRemovingSalaryHead ? targetRows : rowsWithPayscale;
       const res = await fetch("/api/payroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -504,7 +522,7 @@ export default function PayrollPageClient({
           salaryHeadId: isRemovingSalaryHead ? "" : selectedSalaryHeadId,
           companyId,
           payrollDate,
-          items: targetRows.map((row) => ({
+          items: rowsToProcess.map((row) => ({
             applicationId: row.applicationId,
             salaryHeadId: isRemovingSalaryHead ? "" : selectedSalaryHeadId,
             leaveEntries: row.leaveEntries,
@@ -531,8 +549,8 @@ export default function PayrollPageClient({
       }
       toast.success(
         isRemovingSalaryHead
-          ? `Salary head removed from ${data?.count || targetRows.length} crew`
-          : `Salary head applied to ${data?.count || targetRows.length} crew`,
+          ? `Salary head removed from ${data?.count || rowsToProcess.length} crew`
+          : `Salary head applied to ${data?.count || rowsToProcess.length} crew`,
       );
       router.refresh();
     } catch {

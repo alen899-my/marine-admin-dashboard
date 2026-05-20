@@ -240,6 +240,7 @@ export default function PayrollTable({
       onPageChange={() => {}}
       getRowKey={(row) => getPayrollRowKey(row)}
       tableMinWidthClassName="min-w-[1600px] "
+      rowClassName={(row: PayrollRow) => (!row.hasActivePayscale ? "bg-red-50 dark:bg-red-900/10" : "")}
       onRowClick={(row) => {
         const rowKey = getPayrollRowKey(row);
         const isSelected = selectedKeys.includes(rowKey);
