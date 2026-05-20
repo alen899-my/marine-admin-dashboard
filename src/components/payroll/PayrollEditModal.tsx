@@ -246,6 +246,13 @@ export default function PayrollEditModal({
   const { options: deductionOptions, loading: loadingDeductions } =
     useAllowanceDeductionOptions("deduction", row?.companyId);
   const [formData, setFormData] = useState(toFormValues(row, leaveTypes));
+  const isFinanceApproved = row?.status === "finance_approved";
+  const amountTextClass = isFinanceApproved
+    ? "text-gray-900 dark:text-white"
+    : "text-gray-400 dark:text-gray-500";
+  const netPayableTextClass = isFinanceApproved
+    ? "text-success-600 dark:text-success-400"
+    : "text-gray-400 dark:text-gray-500";
 
   useEffect(() => {
     setFormData(toFormValues(row, leaveTypes));
@@ -419,7 +426,7 @@ export default function PayrollEditModal({
                     <p className="text-xs uppercase tracking-wider text-gray-500">
                       Gross Wages
                     </p>
-                    <p className="font-semibold text-gray-900 dark:text-white">
+                    <p className={`font-semibold ${amountTextClass}`}>
                       {formatCurrency(row.grossWages, currencyCode || "USD", { currencySettings })}
                     </p>
                   </div>
@@ -427,7 +434,7 @@ export default function PayrollEditModal({
                     <p className="text-xs uppercase tracking-wider text-gray-500">
                       Net Payable
                     </p>
-                    <p className="font-semibold text-success-600 dark:text-success-400">
+                    <p className={`font-semibold ${netPayableTextClass}`}>
                       {formatCurrency(row.netPayable, currencyCode || "USD", { currencySettings })}
                     </p>
                   </div>

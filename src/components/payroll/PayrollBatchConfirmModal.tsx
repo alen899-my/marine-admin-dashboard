@@ -43,6 +43,13 @@ export default function PayrollBatchConfirmModal({
   const [unselectedRowIds, setUnselectedRowIds] = useState<Set<string>>(new Set());
 
   const formatValue = (value: number) => formatCurrency(value, currencyCode, { currencySettings });
+  const getAmountClass = (
+    row: PayrollRow,
+    approvedClass = "text-gray-700 dark:text-gray-300",
+  ) =>
+    row.status === "finance_approved"
+      ? approvedClass
+      : "text-gray-400 dark:text-gray-500";
 
   const rowsWithPendingLeaves = rows.filter((r) =>
     r.leaveEntries.some((l) => l.status === "pending"),
@@ -174,15 +181,15 @@ export default function PayrollBatchConfirmModal({
                   <div className="flex items-center gap-6 sm:gap-8 lg:gap-10">
                     <div className="hidden sm:flex flex-col items-end">
                       <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest leading-none mb-1.5">Gross Wages</p>
-                      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatValue(row.grossWages)}</p>
+                      <p className={`text-sm font-bold whitespace-nowrap ${getAmountClass(row)}`}>{formatValue(row.grossWages)}</p>
                     </div>
                     <div className="hidden sm:flex flex-col items-end">
                       <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest leading-none mb-1.5">Total Deductions</p>
-                      <p className="text-sm font-bold text-error-600 dark:text-error-400 whitespace-nowrap">-{formatValue(row.totalDeductions)}</p>
+                      <p className={`text-sm font-bold whitespace-nowrap ${getAmountClass(row, "text-error-600 dark:text-error-400")}`}>-{formatValue(row.totalDeductions)}</p>
                     </div>
                     <div className="flex flex-col items-end">
                       <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em] leading-none mb-1.5">Net Payable</p>
-                      <p className="text-xl font-black text-success-600 dark:text-success-400 whitespace-nowrap">{formatValue(row.netPayable)}</p>
+                      <p className={`text-xl font-black whitespace-nowrap ${getAmountClass(row, "text-success-600 dark:text-success-400")}`}>{formatValue(row.netPayable)}</p>
                     </div>
                   </div>
                 </div>

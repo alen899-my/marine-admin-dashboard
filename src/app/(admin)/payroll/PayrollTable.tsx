@@ -87,6 +87,13 @@ export default function PayrollTable({
 
   // Format currency using common formatCurrency with company currency
   const formatValue = (value: number) => formatCurrency(value, currencyCode, { currencySettings });
+    const getAmountClass = (
+    row: PayrollRow,
+    approvedClass = "text-gray-700 dark:text-gray-200",
+  ) =>
+    row.status === "finance_approved"
+      ? approvedClass
+      : "text-gray-400 dark:text-gray-500";
 
   const columns = [
     {
@@ -179,20 +186,20 @@ export default function PayrollTable({
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Per Day</span>
-              <span className="font-semibold text-gray-700 dark:text-gray-200">{formatValue(row.perDayRate)}</span>
+              <span className={`font-semibold ${getAmountClass(row)}`}>{formatValue(row.perDayRate)}</span>
             </div>
             <div className="my-1 h-px bg-gray-100 dark:bg-white/10" />
             <div className="flex items-center justify-between gap-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Basic</span>
-              <span className="font-semibold text-success-600 dark:text-success-500">{formatValue(row.payableBasic)}</span>
+              <span className={`font-semibold ${getAmountClass(row, "text-success-600 dark:text-success-500")}`}>{formatValue(row.payableBasic)}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Allowance</span>
-              <span className="font-semibold text-gray-900 dark:text-white/90">{formatValue(row.totalAllowance)}</span>
+              <span className={`font-semibold ${getAmountClass(row, "text-gray-900 dark:text-white/90")}`}>{formatValue(row.totalAllowance)}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Deduction</span>
-              <span className="font-semibold text-error-600">-{formatValue(row.totalDeductions)}</span>
+              <span className={`font-semibold ${getAmountClass(row, "text-error-600 dark:text-error-400")}`}>-{formatValue(row.totalDeductions)}</span>
             </div>
           </div>
         </div>
@@ -215,7 +222,7 @@ export default function PayrollTable({
           <p className="text-[11px] uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
             Net Payable
           </p>
-          <p className="mt-2 text-2xl font-bold text-success-600">
+          <p className={`mt-2 text-2xl font-bold ${getAmountClass(row, "text-success-600 dark:text-success-400")}`}>
             {formatValue(row.netPayable)}
           </p>
         </div>

@@ -64,6 +64,9 @@ export default function PayrollSlipBody({
   standalone = false,
 }: PayrollSlipBodyProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const isFinanceApproved = row.status === "finance_approved";
+  const approvedAmountClass = (approvedClass: string) =>
+    isFinanceApproved ? approvedClass : "text-gray-400 dark:text-gray-500";
 
   const formatValue = (v: number) => formatCurrency(v, currencyCode, { currencySettings });
   const formatEntryValue = (value: number, type = "amount") =>
@@ -196,8 +199,8 @@ export default function PayrollSlipBody({
           <span
             className={
               isError && parseFloat(group.total.replace(/[^0-9.-]+/g, "")) > 0
-                ? "text-error-600 dark:text-error-400 font-medium"
-                : ""
+                ? `font-medium ${approvedAmountClass("text-error-600 dark:text-error-400")}`
+                : approvedAmountClass("")
             }
           >
             {group.total}
@@ -212,7 +215,11 @@ export default function PayrollSlipBody({
               >
                 <span>{item.label}</span>
                 <span
-                  className={`font-medium ${isError ? "text-error-600 dark:text-error-400" : "text-gray-800 dark:text-gray-300"}`}
+                  className={`font-medium ${
+                    isError
+                      ? approvedAmountClass("text-error-600 dark:text-error-400")
+                      : approvedAmountClass("text-gray-800 dark:text-gray-300")
+                  }`}
                 >
                   {item.value}
                 </span>
@@ -327,7 +334,7 @@ export default function PayrollSlipBody({
           <div className="space-y-4">
             <div className="flex justify-between items-center text-sm font-semibold text-gray-900 dark:text-white">
               <span>Basic Wages</span>
-              <span>{formatValue(row.payableBasic)}</span>
+              <span className={approvedAmountClass("text-gray-900 dark:text-white")}>{formatValue(row.payableBasic)}</span>
             </div>
             <div className="space-y-1 mt-2">
               {earningGroups.map((g) => renderAccordionGroup(g, false))}
@@ -336,7 +343,7 @@ export default function PayrollSlipBody({
           <div className="mt-auto pt-6">
             <div className="flex justify-between items-center text-sm font-semibold text-gray-900 dark:text-white pt-3 border-t border-gray-100 dark:border-white/10">
               <span>Total Allowances</span>
-              <span>{formatValue(row.totalAllowance)}</span>
+              <span className={approvedAmountClass("text-gray-900 dark:text-white")}>{formatValue(row.totalAllowance)}</span>
             </div>
           </div>
         </div>
@@ -344,7 +351,7 @@ export default function PayrollSlipBody({
           <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Gross Earnings
           </span>
-          <span className="text-[17px] font-bold text-success-600 dark:text-success-400">
+          <span className={`text-[17px] font-bold ${approvedAmountClass("text-success-600 dark:text-success-400")}`}>
             {formatValue(row.grossWages)}
           </span>
         </div>
@@ -363,7 +370,7 @@ export default function PayrollSlipBody({
               {row.leaveDeduction > 0 && (
                 <div className="flex justify-between items-center text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2 py-1.5 mx-0.5">
                   <span>Leave Deduction</span>
-                  <span className="font-medium text-error-600 dark:text-error-400">
+                  <span className={`font-medium ${approvedAmountClass("text-error-600 dark:text-error-400")}`}>
                     {formatValue(row.leaveDeduction)}
                   </span>
                 </div>
@@ -372,7 +379,7 @@ export default function PayrollSlipBody({
           ) : row.leaveDeduction > 0 ? (
             <div className="flex justify-between items-center text-sm font-semibold text-gray-700 dark:text-gray-300 border-t border-gray-100/50 dark:border-white/5 pb-1">
               <span>Leave Deduction</span>
-              <span className="font-medium text-error-600 dark:text-error-400">
+              <span className={`font-medium ${approvedAmountClass("text-error-600 dark:text-error-400")}`}>
                 {formatValue(row.leaveDeduction)}
               </span>
             </div>
@@ -387,7 +394,7 @@ export default function PayrollSlipBody({
           <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Total Deductions
           </span>
-          <span className="text-[17px] font-bold text-error-600 dark:text-error-400">
+          <span className={`text-[17px] font-bold ${approvedAmountClass("text-error-600 dark:text-error-400")}`}>
             {formatValue(row.totalDeductions)}
           </span>
         </div>
@@ -396,11 +403,17 @@ export default function PayrollSlipBody({
   );
 
   const netPayableSection = (
-    <div className="bg-gradient-to-r from-success-50 to-success-100/50 dark:from-success-900/20 dark:to-success-800/10 border-t border-success-200 dark:border-success-900/50 px-6 py-5 flex items-center justify-between">
-      <p className="text-sm font-bold uppercase tracking-widest text-success-800 dark:text-success-400">
+    <div
+      className={`border-t px-6 py-5 flex items-center justify-between ${
+        isFinanceApproved
+          ? "bg-gradient-to-r from-success-50 to-success-100/50 border-success-200 dark:from-success-900/20 dark:to-success-800/10 dark:border-success-900/50"
+          : "bg-gray-50/80 border-gray-200 dark:bg-white/[0.03] dark:border-white/10"
+      }`}
+    >
+      <p className={`text-sm font-bold uppercase tracking-widest ${approvedAmountClass("text-success-800 dark:text-success-400")}`}>
         Net Payable Information
       </p>
-      <p className="text-3xl sm:text-4xl font-extrabold text-success-700 dark:text-success-400 tracking-tight">
+      <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${approvedAmountClass("text-success-700 dark:text-success-400")}`}>
         {formatValue(row.netPayable)}
       </p>
     </div>
@@ -507,12 +520,12 @@ export default function PayrollSlipBody({
           {
             label: "Per Day Rate",
             value: formatValue(row.perDayRate),
-            cls: "text-gray-700 dark:text-gray-300",
+            cls: approvedAmountClass("text-gray-700 dark:text-gray-300"),
           },
           {
             label: "Leave Deduction",
             value: formatValue(row.leaveDeduction),
-            cls: "text-error-600 dark:text-error-400",
+            cls: approvedAmountClass("text-error-600 dark:text-error-400"),
           },
         ].map(({ label, value, cls }) => (
           <div key={label}>

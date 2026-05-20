@@ -26,6 +26,9 @@ export function generatePayrollHtml(
 
   const formatEntryValue = (value: number, type = "amount") =>
     type === "percent" ? `${value}%` : formatValue(value);
+  const isFinanceApproved = row.status === "finance_approved";
+  const amountClass = (approvedClass = "") =>
+    isFinanceApproved ? approvedClass : "amount-muted";
 
   const formatDate = (value: string) => {
     if (!value) return "—";
@@ -174,14 +177,14 @@ export function generatePayrollHtml(
         (group) => `
           <tr class="group-row">
             <td>${escapeHtml(group.label)}</td>
-            <td class="amount ${isDeduction ? "deduction-text" : "earnings-text"}">${escapeHtml(group.total)}</td>
+            <td class="amount ${amountClass(isDeduction ? "deduction-text" : "earnings-text")}">${escapeHtml(group.total)}</td>
           </tr>
           ${group.items
             .map(
               (item) => `
                 <tr class="sub-row">
                   <td class="sub-item">${escapeHtml(item.label)}</td>
-                  <td class="amount sub-amount ${isDeduction ? "deduction-text" : ""}">${escapeHtml(item.value)}</td>
+                  <td class="amount sub-amount ${amountClass(isDeduction ? "deduction-text" : "")}">${escapeHtml(item.value)}</td>
                 </tr>
               `,
             )
@@ -564,6 +567,7 @@ export function generatePayrollHtml(
 
     .earnings-text  { color: var(--green); }
     .deduction-text { color: var(--red);   }
+    .amount-muted { color: var(--gray-400) !important; }
 
     .muted-empty {
       padding: 12px 0;
@@ -598,6 +602,7 @@ export function generatePayrollHtml(
 
     .panel-total .gross-text   { color: var(--green); }
     .panel-total .deduction-text { color: var(--red); }
+    .panel-total .amount-muted { color: var(--gray-400); }
 
     /* ── NET PAY STRIP ───────────────────────────────────── */
     .net-strip {
@@ -609,6 +614,10 @@ export function generatePayrollHtml(
       width: 100%;
       background: var(--color-success-50);
       border-top: 1px solid var(--gray-200);
+    }
+
+    .net-strip.amount-disabled-strip {
+      background: var(--gray-100);
     }
 
     .net-label {
@@ -626,6 +635,11 @@ export function generatePayrollHtml(
       font-weight: 800;
       color: var(--color-success-700);
       letter-spacing: -0.015em;
+    }
+
+    .net-strip.amount-disabled-strip .net-label,
+    .net-strip.amount-disabled-strip .net-value {
+      color: var(--gray-400);
     }
 
     /* ── LEAVE TABLE ─────────────────────────────────────── */
@@ -792,7 +806,7 @@ export function generatePayrollHtml(
                 <tbody>
                   <tr>
                     <td><strong>Basic Wages</strong></td>
-                    <td class="amount">${escapeHtml(
+                    <td class="amount ${amountClass()}">${escapeHtml(
                       formatValue(row.payableBasic),
                     )}</td>
                   </tr>
@@ -802,11 +816,11 @@ export function generatePayrollHtml(
             </div>
             <div class="panel-subtotal">
               <span><strong>Total Allowances</strong></span>
-              <strong>${escapeHtml(formatValue(row.totalAllowance))}</strong>
+              <strong class="${amountClass()}">${escapeHtml(formatValue(row.totalAllowance))}</strong>
             </div>
             <div class="panel-total">
               <span>Gross Earnings</span>
-              <span class="gross-text">${escapeHtml(
+              <span class="${amountClass("gross-text")}">${escapeHtml(
                 formatValue(row.grossWages),
               )}</span>
             </div>
@@ -827,7 +841,7 @@ export function generatePayrollHtml(
                           row.leaveDeduction > 0
                             ? `<tr class="group-row">
                                 <td>Leave Deduction</td>
-                                <td class="amount deduction-text">${escapeHtml(
+                                <td class="amount ${amountClass("deduction-text")}">${escapeHtml(
                                   formatValue(row.leaveDeduction),
                                 )}</td>
                               </tr>`
@@ -840,14 +854,14 @@ export function generatePayrollHtml(
             </div>
             <div class="panel-total" style="margin-top:auto;">
               <span>Total Deductions</span>
-              <span class="deduction-text">${escapeHtml(
+              <span class="${amountClass("deduction-text")}">${escapeHtml(
                 formatValue(row.totalDeductions),
               )}</span>
             </div>
           </td>
         </tr>
       </table>
-      <div class="net-strip">
+      <div class="net-strip ${isFinanceApproved ? "" : "amount-disabled-strip"}">
         <div class="net-label">Net Payable Information</div>
         <div class="net-value">${escapeHtml(formatValue(row.netPayable))}</div>
       </div>
@@ -903,11 +917,11 @@ export function generatePayrollHtml(
         </div>
         <div>
           <div class="info-label">Per Day Rate</div>
-          <div class="info-value">${escapeHtml(formatValue(row.perDayRate))}</div>
+          <div class="info-value ${amountClass()}">${escapeHtml(formatValue(row.perDayRate))}</div>
         </div>
         <div>
           <div class="info-label">Leave Deduction</div>
-          <div class="info-value deduction-text">${escapeHtml(
+          <div class="info-value ${amountClass("deduction-text")}">${escapeHtml(
             formatValue(row.leaveDeduction),
           )}</div>
         </div>
