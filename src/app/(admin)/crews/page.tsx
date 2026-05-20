@@ -80,6 +80,9 @@ export default async function CrewsManagement({ searchParams }: PageProps) {
     if (!isSuperAdminNoCompany && targetCompanyId) {
       crewQuery.company = new mongoose.Types.ObjectId(targetCompanyId);
     }
+    if (resolvedParams.crewStatus?.trim()) {
+      crewQuery.crewStatus = resolvedParams.crewStatus.trim();
+    }
 
     const skip = (currentPage - 1) * limit;
     const crewDocs = await Crew.find(crewQuery)

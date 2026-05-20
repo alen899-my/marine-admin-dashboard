@@ -41,6 +41,7 @@ export default function CrewFilterWrapper({
       search={searchParams.get("search") || ""}
       companyId={searchParams.get("companyId") || ""}
       jobTitle={searchParams.get("jobTitle") || ""}
+      crewStatus={searchParams.get("crewStatus") || ""}
       companies={companies}
       jobs={jobs}
       isSuperAdmin={isSuperAdmin}

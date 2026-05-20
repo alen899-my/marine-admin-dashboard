@@ -8,12 +8,26 @@ export interface CrewFilterData {
   search: string;
   companyId: string;
   jobTitle: string;
+  crewStatus: string;
 }
+
+const CREW_STATUS_OPTIONS = [
+  { value: "onboard", label: "Onboard" },
+  { value: "vacation", label: "Vacation" },
+  { value: "available", label: "Available" },
+  { value: "traveling", label: "Traveling" },
+  { value: "medical_leave", label: "Medical Leave" },
+  { value: "training", label: "Training" },
+  { value: "inactive", label: "Inactive" },
+  { value: "resigned", label: "Resigned" },
+  { value: "blacklisted", label: "Blacklisted" },
+];
 
 interface CrewFiltersProps {
   search: string;
   companyId?: string;
   jobTitle?: string;
+  crewStatus?: string;
   companies?: { id?: string; _id?: string; name: string }[];
   jobs?: { value: string; label: string }[];
   isSuperAdmin?: boolean;
@@ -24,6 +38,7 @@ export default function CrewFilters({
   search,
   companyId = "",
   jobTitle = "",
+  crewStatus = "",
   companies = [],
   jobs = [],
   isSuperAdmin = false,
@@ -32,6 +47,7 @@ export default function CrewFilters({
   const [localSearch, setLocalSearch] = useState(search);
   const [localCompanyId, setLocalCompanyId] = useState(companyId);
   const [localJobTitle, setLocalJobTitle] = useState(jobTitle);
+  const [localCrewStatus, setLocalCrewStatus] = useState(crewStatus);
 
   useEffect(() => {
     setLocalSearch(search);
@@ -45,11 +61,16 @@ export default function CrewFilters({
     setLocalJobTitle(jobTitle);
   }, [jobTitle]);
 
+  useEffect(() => {
+    setLocalCrewStatus(crewStatus);
+  }, [crewStatus]);
+
   const handleApply = () => {
     onApply({
       search: localSearch,
       companyId: localCompanyId,
       jobTitle: localJobTitle,
+      crewStatus: localCrewStatus,
     });
   };
 
@@ -57,7 +78,8 @@ export default function CrewFilters({
     setLocalSearch("");
     setLocalCompanyId("");
     setLocalJobTitle("");
-    onApply({ search: "", companyId: "", jobTitle: "" });
+    setLocalCrewStatus("");
+    onApply({ search: "", companyId: "", jobTitle: "", crewStatus: "" });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -109,6 +131,18 @@ export default function CrewFilters({
           placeholder="All Positions"
           value={localJobTitle}
           onChange={(value) => setLocalJobTitle(value || "")}
+        />
+      </div>
+
+      <div className="w-full sm:w-auto min-w-[180px]">
+        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-1 mb-1.5 block">
+          Crew Status
+        </label>
+        <SearchableSelect
+          options={CREW_STATUS_OPTIONS}
+          placeholder="All Statuses"
+          value={localCrewStatus}
+          onChange={(value) => setLocalCrewStatus(value || "")}
         />
       </div>
 
