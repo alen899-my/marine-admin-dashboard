@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AddForm from "@/components/common/AddForm";
+import Avatar from "@/components/ui/avatar/Avatar";
 import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
@@ -411,16 +412,26 @@ export default function PayrollEditModal({
       >
         <div className="max-h-[70dvh] space-y-5 overflow-y-auto p-1">
           {row ? (
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold text-gray-900 dark:text-white">
-                    {row.crewName}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {row.rank || "No rank"} • {row.vesselName || "No vessel"}
-                  </p>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* Avatar + Crew Info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar
+                    src={row.profilePhoto ?? undefined}
+                    name={row.crewName}
+                    size="large"
+                    status="none"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                      {row.crewName}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {row.rank || "No rank"} • {row.vesselName || "No vessel"}
+                    </p>
+                  </div>
                 </div>
+                {/* Wages Summary */}
                 <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[260px]">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-gray-500">

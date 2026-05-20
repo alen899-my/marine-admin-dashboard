@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
 import Checkbox from "@/components/form/input/Checkbox";
 import Alert from "@/components/ui/alert/Alert";
+import Avatar from "@/components/ui/avatar/Avatar";
 import Badge from "@/components/ui/badge/Badge";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { PayrollLeaveTypeOption, PayrollRow } from "@/lib/payroll";
@@ -166,6 +167,12 @@ export default function PayrollBatchConfirmModal({
                     <div className={`p-2 rounded-lg transition-colors ${isExpanded ? "bg-brand-500 text-white" : "bg-gray-100 dark:bg-white/5 text-gray-400 group-hover:bg-brand-50"}`}>
                       {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     </div>
+                    <Avatar
+                      src={row.profilePhoto ?? undefined}
+                      name={row.crewName}
+                      size="large"
+                      status="none"
+                    />
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-base font-bold text-gray-900 dark:text-white leading-tight">{row.crewName}</p>
